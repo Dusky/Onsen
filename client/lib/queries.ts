@@ -4,6 +4,7 @@ import type {
   AppendMessageRequest,
   AuthorDto,
   ConnectionProfileDto,
+  TaskRunDto,
   CharacterDto,
   PersonaDto,
   SceneSetupRequest,
@@ -36,6 +37,22 @@ export function useConnectionProfiles() {
   return useQuery({
     queryKey: ["connection-profiles"] as const,
     queryFn: () => api.get<ConnectionProfileDto[]>("/connections/profiles"),
+  });
+}
+
+/**
+ * What a background task has actually been doing (SPEC §7).
+ *
+ * A side call may never fail a generation, so its failures are swallowed by
+ * design — this is where they can still be read. Refetched rather than cached
+ * for long: the interesting case is "it just went wrong".
+ */
+export function useTaskRuns(key: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["tasks", key, "runs"] as const,
+    queryFn: () => api.get<TaskRunDto[]>(`/tasks/${key}/runs`),
+    enabled,
+    staleTime: 0,
   });
 }
 

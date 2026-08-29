@@ -11,6 +11,7 @@ import {
   useRemoveFromCast,
   useScene,
   useSceneSetup,
+  useTaskRuns,
 } from "../lib/queries.ts";
 import { Sheet } from "../components/Sheet.tsx";
 import { TURN_STRATEGIES, type TurnStrategy } from "@shared/types.ts";
@@ -49,6 +50,10 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
   const removeFromCast = useRemoveFromCast(sceneId);
   const createPersona = useCreatePersona();
   const profiles = useConnectionProfiles();
+  // What the turn director has actually been doing. A side call may never fail
+  // a generation (SPEC §7), so its failures are swallowed on purpose — and a
+  // swallowed failure nobody can read is the feature quietly not working.
+  const directorRuns = useTaskRuns("turn_classifier", query.data?.scene.turnStrategy === "classifier");
   const [picking, setPicking] = useState(false);
 
   const scene = query.data?.scene;
@@ -202,9 +207,56 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                   </button>
                 ))}
               </div>
-              <p className="chrome mb-[22px] text-[9.5px] leading-[1.5] text-ink-dim">
+              <p className="chrome mb-[16px] text-[9.5px] leading-[1.5] text-ink-dim">
                 {strings.sceneSetup.directorProfileHint}
               </p>
+
+              <p className="section-label mb-[8px]">{strings.sceneSetup.directorRuns}</p>
+              {(() => {
+                const runs = (directorRuns.data ?? [])
+                  .filter((run) => run.sceneId === sceneId)
+                  .slice(0, 5);
+                if (runs.length === 0) {
+                  return (
+                    <p className="chrome mb-[22px] text-[10px] tracking-[0.12em] text-ink-dim uppercase">
+                      {strings.sceneSetup.directorRunsEmpty}
+                    </p>
+                  );
+                }
+                return (
+                  <div className="mb-[22px]">
+                    {runs.map((run) => (
+                      <div key={run.id} className="border-b border-rule py-[9px]">
+                        <div className="flex items-baseline gap-[8px]">
+                          <span
+                            className="chrome text-[9px] tracking-[0.12em] uppercase"
+                            style={{
+                              color:
+                                run.status === "ok"
+                                  ? "var(--onsen-color-text-label)"
+                                  : "var(--onsen-color-red)",
+                            }}
+                          >
+                            {strings.sceneSetup.directorRunStatus(run.status)}
+                          </span>
+                          <span className="chrome flex-1 truncate text-[9px] tracking-[0.06em] text-ink-dim">
+                            {run.model ?? ""}
+                          </span>
+                          <span className="chrome text-[9px] tracking-[0.06em] text-ink-dim">
+                            {strings.sceneSetup.directorRunTiming(run.durationMs)}
+                          </span>
+                        </div>
+                        {/* The answer when it worked, the reason when it did not. */}
+                        {run.status === "ok" ? null : run.detail === null ? null : (
+                          <p className="chrome mt-[4px] text-[9px] leading-[1.5] text-ink-dim">
+                            {run.detail}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </>
           ) : null}
 

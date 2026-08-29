@@ -262,6 +262,27 @@ export const strings = {
     strategyClassifierHint:
       "A model reads the last few turns and picks, in its own words. It runs when you send.",
 
+    /** The run log (SPEC §7): a side call's failures are swallowed by design. */
+    directorRuns: "Recent decisions",
+    directorRunsEmpty: "Nothing yet — it runs when you send.",
+    directorRunStatus: (status: string) => {
+      switch (status) {
+        case "ok":
+          return "Answered";
+        case "skipped":
+          return "Not asked";
+        case "unusable":
+          return "Unreadable answer";
+        case "timeout":
+          return "Too slow";
+        case "cancelled":
+          return "Cancelled";
+        default:
+          return "Failed";
+      }
+    },
+    directorRunTiming: (ms: number) => `${(ms / 1000).toFixed(1)}s`,
+
     /** Where the classifier runs (SPEC §6). */
     directorProfile: "Where the director runs",
     directorProfileSame: "Same as the scene",
