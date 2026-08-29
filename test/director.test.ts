@@ -218,7 +218,7 @@ describe("manual", () => {
   });
 });
 
-describe("strategies that are not built yet", () => {
+describe("strategies that do not decide here", () => {
   test("fall back to round robin and say which fallback they took", () => {
     // SPEC §6 specifies the fallback for `mention`; saying so is what stops the
     // choice looking arbitrary.
@@ -230,12 +230,15 @@ describe("strategies that are not built yet", () => {
     expect(mention).toMatchObject({ characterId: "mira" });
     expect(mention!.reason).toContain("round robin");
 
+    // The classifier is a model call, which a pure function called on every
+    // read of a scene cannot make. What it returns is the fallback that stands
+    // if the call fails, said out loud as provisional rather than decided.
     const classifier = chooseSpeaker({
       strategy: "classifier",
       cast: cast("Bell", "Mira"),
       history: [said("bell")],
     });
     expect(classifier).toMatchObject({ characterId: "mira" });
-    expect(classifier!.reason).toContain("Classifier not available");
+    expect(classifier!.reason).toBe("The classifier decides when you send");
   });
 });

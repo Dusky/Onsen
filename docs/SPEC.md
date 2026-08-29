@@ -796,6 +796,42 @@ silently behaving like something else. And `manual` still returns a suggestion
 when nothing has been cued — whoever has been quiet longest — because the
 composer has to name who the send button will speak as before it is pressed.
 
+### The classifier decides mid-flight
+
+Settled while building phase 10.
+
+- **The decision is an event on the generation stream**, not part of the
+  response that starts it. The classifier is a model call; making `POST
+  /generate` wait on one would put a second model's latency between pressing
+  send and anything happening. So the generation starts, the director answers,
+  and a `director` event carries `{ characterId, name, reason, source, scope }`
+  before the first token of prose. Every strategy emits it, not only the
+  classifier — §6 asks for the decision to be exposed, and that is not a
+  classifier-specific requirement.
+- **The composer says it does not know yet.** With the classifier and nothing
+  cued, no cast card is highlighted and the send button carries a question mark
+  rather than a name. Naming the round-robin fallback would be a guess shown as
+  a fact, and wrong about as often as it is right.
+- **"Never twice consecutively" is enforced by not offering them.** The
+  character who spoke last is left out of the candidate list rather than asked
+  about politely in the prompt. A rule a small model can decline to follow is
+  not a rule.
+- **A classifier failure never costs the turn.** No profile, an unreachable
+  provider, a timeout, a reply naming nobody, a reply that is an apology — all
+  of them return "no answer", and the pure director's fallback stands with a
+  reason that says so. The alternative is a director that can stop a scene,
+  which is worse than no director.
+- **It is bounded twice**, by a timeout and by a reply-length cap, because the
+  thing being asked for is three lines. A model that starts talking costs a
+  moment, not a turn.
+- **`auto` scope is the classifier's** (§3.5). The third scope option is offered
+  only under the classifier strategy, because it means "ask the director" and no
+  other director can answer. An explicit spotlight or beat is never put to the
+  model — the user already decided.
+- **`scenes.director_profile_id`** routes the call. Per-operation routing
+  generally is phase 13; this is the one operation whose whole point is being
+  routed differently, so it gets a column now.
+
 ### Presence tracking
 
 Characters should not react to events they weren't present for. Track

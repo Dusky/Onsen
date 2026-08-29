@@ -283,7 +283,12 @@ describe("resumable streaming", () => {
     // And reconnecting from the offset it had picks up the rest.
     const resumed = await t.fetch(`/api/generations/${snapshot.id}/stream?offset=7`);
     const events = payloads(await readStream(resumed));
-    expect(events[0]).toMatchObject({ type: "chunk", offset: 7, text: "after" });
+    // The stream opens by naming who is speaking (SPEC §6), then replays.
+    expect(events.filter((event) => event["type"] === "chunk")[0]).toMatchObject({
+      type: "chunk",
+      offset: 7,
+      text: "after",
+    });
   });
 
   test("a client arriving after the end still gets the terminal event", async () => {
@@ -297,7 +302,10 @@ describe("resumable streaming", () => {
     await until(() => t.generation.get(snapshot.id)?.status === "complete");
 
     const events = payloads(await readStream(await t.fetch(`/api/generations/${snapshot.id}/stream`)));
-    expect(events[0]).toMatchObject({ type: "chunk", text: "all of it" });
+    expect(events.filter((event) => event["type"] === "chunk")[0]).toMatchObject({
+      type: "chunk",
+      text: "all of it",
+    });
     expect(events.at(-1)!["type"]).toBe("done");
   });
 

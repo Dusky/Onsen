@@ -770,3 +770,87 @@ part. That nests a gesture target inside the beat's own, so both long-presses
 fire and the beat loses its swipe. Recast is reached from the message's action
 sheet instead, which opens a picker of the parts — which is also where a reader
 would look for it.
+
+---
+
+## Phase 10 — Classifier turn director
+
+"Let an AI decide who speaks next" has been an open request in SillyTavern for
+years; what is on offer there is a talkativeness dice roll plus whole-word name
+matching, which users find arbitrary. The fix is not a better heuristic. It is
+asking a model and then showing its reasoning.
+
+### What was built
+
+**The question and the answer** (`server/generation/classifier.ts`), pure. The
+question is small on purpose — the roster with a line about each of them and how
+long they have been quiet, the last eight turns in excerpt, and a format of two
+or three plain lines. Handing a cheap model the whole scene is how a classifier
+turns into a second generation.
+
+The parser assumes the model answering is small, fast and imperfect. It takes
+`**"Mira Vance."**`, a bare name on its own line, a first name, lowercase field
+names, and a preamble before the answer. It refuses an ambiguous first name and
+a name that is nobody, because a wrong decision presented confidently is worse
+than a fallback that says what it is.
+
+**The decision as a stream event.** `POST /generate` cannot wait on a second
+model, so the generation starts, the director answers, and a `director` event
+carries who and why before the first token of prose. Every strategy emits it —
+§6 asks for the decision to be exposed, and that was never a classifier-only
+requirement. The composer shows "choosing who speaks", then the name with the
+model's own sentence under it, then the prose streams beneath that.
+
+**Not knowing, out loud.** Under the classifier with nothing cued, no cast card
+is highlighted, the caption reads "the classifier decides when you send", and
+the send button carries a question mark. The round-robin fallback is a real
+answer if the call fails, but showing it as the speaker would be a guess
+presented as a fact.
+
+**`auto` scope** (§3.5's third option) is now real, and is offered only under
+the classifier, because it means "ask the director". An explicit spotlight or
+beat is never put to the model — the user already decided, and inviting it to
+disagree would be rude.
+
+**`scenes.director_profile_id`** (migration 0008) routes the call somewhere
+cheap, with a picker in scene setup beside the strategy that needs it.
+
+**Verified end to end in a browser** at 390×844 dark, against a stub answering
+both the director and the prose: a classifier spotlight attributed to the
+character it named, the "choosing" state with the log's red rail and a reachable
+stop, the reason printed above the streaming prose, and `auto` producing a
+three-hander beat because the director asked for the room.
+
+**Tests.** 35 new: 19 on the question and the parser with no database, 16 driving
+the classifier over HTTP — including every way it can misbehave.
+
+### Deliberately not built
+
+- **The `mention` strategy.** Listed under Polish, not here. It still falls back
+  and says so.
+- **A background-task primitive.** Phase 11. `collect()` in the service is the
+  one-shot form of it and is where that generalisation will start.
+- **Asking the classifier how long a beat should run.** The bound stays the
+  user's; nothing observed yet says the model should own it.
+- **`max_tokens` on the wire.** The reply is bounded by a length cap and an
+  abort instead, which works on every adapter and does not change how any
+  existing generation behaves.
+
+### Spec changes
+
+§6 gains "The classifier decides mid-flight": the decision as an event, the
+composer admitting it does not know, the never-twice rule enforced by omission
+rather than instruction, failure never costing the turn, and the two bounds.
+
+### Surprises
+
+The existing streaming tests caught a real bug the moment the new event landed:
+the SSE route ended the stream on any event that was not a chunk. A `director`
+event is news about the turn, not the end of it, so the stream was being closed
+before a word of prose arrived. Six tests failed at once and all of them were
+right to. The route now names the three terminal events instead of describing
+them by what they are not.
+
+The smaller one: `bare()`, which strips the quotes and asterisks a model wraps a
+name in, also strips a trailing full stop — correct for a name, vandalism for
+the reason sentence next to it. Names are cleaned; prose is left alone.

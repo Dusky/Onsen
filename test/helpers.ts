@@ -123,6 +123,17 @@ export class ScriptedAdapter implements Adapter {
   aborted = false;
   /** Every prompt this adapter was handed, so tests can read what was sent. */
   readonly prompts: BuiltPrompt[] = [];
+  /**
+   * What to answer a turn director's question with (SPEC §6). Side calls share
+   * the adapter with the generation they are part of, so a test that wants to
+   * script both needs them told apart; the classifier's prompt says who built
+   * it, and answering it never touches the queue driving the prose.
+   */
+  classifierReply: string | null = null;
+  /** How many director questions this adapter has been asked. */
+  classifierCalls = 0;
+  /** Set to make the director's call fail, as an unreachable local model would. */
+  classifierFails = false;
   /** Resolves once generate() has actually been entered. */
   readonly started: Promise<void>;
 
@@ -174,6 +185,14 @@ export class ScriptedAdapter implements Adapter {
     signal: AbortSignal,
   ): AsyncIterable<TokenChunk> {
     this.prompts.push(prompt);
+
+    if (prompt.debug.blocks[0]?.source === "turn director") {
+      this.classifierCalls += 1;
+      if (this.classifierFails) throw new Error("the director's model is unreachable");
+      if (this.classifierReply !== null) yield { text: this.classifierReply };
+      return;
+    }
+
     this.markStarted();
     signal.addEventListener("abort", () => {
       this.aborted = true;
