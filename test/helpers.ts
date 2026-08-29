@@ -5,15 +5,19 @@ import { openDatabase } from "../server/db/index.ts";
 import { migrate } from "../server/db/migrate.ts";
 import { loadOrCreateKeyring } from "../server/lib/crypto.ts";
 import { loadConfig, ensureDataDirs, type Config } from "../server/config.ts";
-import { createApp } from "../server/app.ts";
+import { createServer } from "../server/app.ts";
+import { GenerationService } from "../server/generation/service.ts";
 import type { AppContext } from "../server/context.ts";
 import type { Hono } from "hono";
 import type { AppEnv } from "../server/context.ts";
+import type { Adapter, TokenChunk } from "../server/adapters/index.ts";
+import { OPENAI_COMPATIBLE_CAPABILITIES } from "../server/adapters/index.ts";
 
 export interface TestHarness {
   ctx: AppContext;
   app: Hono<AppEnv>;
   config: Config;
+  generation: GenerationService;
   /** Sends a request through the app, carrying the session cookie if one is held. */
   fetch(path: string, init?: RequestInit): Promise<Response>;
   /** Capture the session cookie from a response so later requests are authenticated. */
@@ -22,7 +26,16 @@ export interface TestHarness {
   cleanup(): void;
 }
 
-export function createHarness(): TestHarness {
+export interface HarnessOptions {
+  /**
+   * Supplied so tests never contact a live provider (SPEC §23). The adapter
+   * this returns is usually a ScriptedAdapter, which lets a test control
+   * exactly when tokens arrive.
+   */
+  adapter?: Adapter;
+}
+
+export function createHarness(options: HarnessOptions = {}): TestHarness {
   const dataDir = mkdtempSync(join(tmpdir(), "onsen-test-"));
   const config = loadConfig({ ONSEN_DATA_DIR: dataDir } as NodeJS.ProcessEnv);
   ensureDataDirs(config);
@@ -30,12 +43,20 @@ export function createHarness(): TestHarness {
   const db = openDatabase(":memory:");
   migrate(db);
   const ctx: AppContext = { db, config, keyring: loadOrCreateKeyring(config, {} as NodeJS.ProcessEnv) };
-  const app = createApp(ctx, { serveClient: false });
+  const generation = new GenerationService({
+    db,
+    keyring: ctx.keyring,
+    ...(options.adapter === undefined
+      ? {}
+      : { createAdapter: () => options.adapter as Adapter }),
+  });
+  const { app } = createServer(ctx, { serveClient: false, generationService: generation });
 
   const harness: TestHarness = {
     ctx,
     app,
     config,
+    generation,
     cookie: null,
     async fetch(path, init) {
       const headers = new Headers(init?.headers);
@@ -50,6 +71,7 @@ export function createHarness(): TestHarness {
       harness.cookie = value ?? null;
     },
     cleanup() {
+      generation.shutdown();
       db.close();
       rmSync(dataDir, { recursive: true, force: true });
     },
@@ -78,4 +100,103 @@ export async function completeSetup(harness: TestHarness): Promise<Response> {
   });
   harness.captureCookie(response);
   return response;
+}
+
+
+/* ------------------------------------------------------------------ */
+/* A controllable adapter                                              */
+/* ------------------------------------------------------------------ */
+
+type ScriptItem = { text: string } | { end: true } | { error: Error };
+
+/**
+ * An adapter whose output a test drives token by token. This is what makes the
+ * streaming behaviour testable: a test can push a token, disconnect a client,
+ * push another, reconnect, and assert nothing was lost.
+ */
+export class ScriptedAdapter implements Adapter {
+  readonly kind = "scripted";
+  readonly capabilities = OPENAI_COMPATIBLE_CAPABILITIES;
+
+  /** Set when the generation service aborted this adapter. */
+  aborted = false;
+  /** Resolves once generate() has actually been entered. */
+  readonly started: Promise<void>;
+
+  private queue: ScriptItem[] = [];
+  private wake: (() => void) | null = null;
+  private markStarted!: () => void;
+
+  constructor() {
+    this.started = new Promise((resolve) => {
+      this.markStarted = resolve;
+    });
+  }
+
+  push(text: string): void {
+    this.queue.push({ text });
+    this.flush();
+  }
+
+  end(): void {
+    this.queue.push({ end: true });
+    this.flush();
+  }
+
+  fail(error: Error): void {
+    this.queue.push({ error });
+    this.flush();
+  }
+
+  private flush(): void {
+    this.wake?.();
+    this.wake = null;
+  }
+
+  private next(): Promise<void> {
+    return new Promise((resolve) => {
+      this.wake = resolve;
+    });
+  }
+
+  async *generate(
+    _prompt: unknown,
+    _settings: unknown,
+    signal: AbortSignal,
+  ): AsyncIterable<TokenChunk> {
+    this.markStarted();
+    signal.addEventListener("abort", () => {
+      this.aborted = true;
+      this.flush();
+    });
+
+    for (;;) {
+      if (signal.aborted) return;
+      const item = this.queue.shift();
+      if (item === undefined) {
+        await this.next();
+        continue;
+      }
+      if ("text" in item) yield { text: item.text };
+      else if ("end" in item) return;
+      else throw item.error;
+    }
+  }
+}
+
+/** Give the event loop a turn, so background work can advance. */
+export async function tick(times = 3): Promise<void> {
+  for (let i = 0; i < times; i++) await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/** Wait for a condition the generation service reaches asynchronously. */
+export async function until(
+  predicate: () => boolean,
+  { timeoutMs = 2000 }: { timeoutMs?: number } = {},
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!predicate()) {
+    if (Date.now() > deadline) throw new Error("timed out waiting for a condition");
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
 }
