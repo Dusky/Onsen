@@ -58,11 +58,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
+function withBody(method: string, body: unknown): RequestInit {
+  return { method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) };
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path),
-  post: <T>(path: string, body?: unknown) =>
-    request<T>(path, {
-      method: "POST",
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-    }),
+  post: <T>(path: string, body?: unknown) => request<T>(path, withBody("POST", body)),
+  put: <T>(path: string, body?: unknown) => request<T>(path, withBody("PUT", body)),
+  patch: <T>(path: string, body?: unknown) => request<T>(path, withBody("PATCH", body)),
+  delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };

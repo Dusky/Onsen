@@ -14,9 +14,11 @@
     "build:standalone": "bun run scripts/build-standalone.ts"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.102.8",
     "hono": "^4.13.5",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
