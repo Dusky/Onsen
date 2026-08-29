@@ -1044,6 +1044,36 @@ Ship these:
 Auto-run per scene or manual per message. Show pass results as a small
 annotation on the message, not a modal.
 
+**Settled while building phase 14.**
+
+- **The pipeline starts after the turn is announced, never before it.** §7 is
+  absolute that a background task must not block a user-facing generation, and
+  three extra model calls in front of every reply would be a worse product than
+  no pipeline. The message lands, the passes run behind it, and
+  `messages.passes_pending` is what tells a client to look again.
+- **A pass that cannot be read says nothing.** An unreadable verdict is not a
+  flag: a pipeline that shouts at the user because a small model rambled is
+  worse than one that stays quiet. Every failure is recorded against the message
+  and the next pass carries on.
+- **`ok` is recorded, not only `flagged`.** "The voice pass ran and was happy"
+  and "the voice pass never ran" are different things to know, and a pipeline
+  whose silence is ambiguous is one nobody trusts. A clean verdict is drawn
+  quieter, not omitted.
+- **Voice validation reads a beat part by part**, and its annotation carries the
+  segment ordinal. Naming *which line* stopped sounding like itself is the whole
+  value; "the exchange felt off" is what a reader already knew.
+- **Only prose refinement replaces, and it keeps the original.** The user-lock
+  check flags by design — a pass that quietly rewrites a turn is a second author
+  nobody hired, and the fix for the author taking over the reader's character is
+  a regeneration the user asks for.
+- **A refinement that changed nothing is recorded as `ok`, not as a revision.**
+  A revision nobody can see, with a revert button on it, is noise.
+- **Running a pass twice leaves one verdict per pass per part.** The history of
+  *runs* is the task log's job (§7); the message carries the current finding.
+- **The manual run is awaited; the automatic one is not.** A user who pressed a
+  button is waiting, so the response carries the findings rather than making
+  them poll for something they just asked for.
+
 ---
 
 ## 8. Persistent guides and trackers
@@ -2017,6 +2047,11 @@ Things existing frontends do that this project should not.
   Joining is enough for the case that actually occurs (a character arriving
   mid-scene); an explicit exit point is still open, and is only worth adding
   when something needs a character to stop knowing things.
+- A message says whether the passes are still reading it, and the client polls
+  while any of them are (§7.5). It stops on its own and costs a request or two,
+  but the honest mechanism is the per-scene channel §5 already anticipates for
+  multi-device sync — the same channel would carry annotations as they land.
+  Building it for this alone would be the wrong order.
 - Impersonate does not stream: it returns a finished draft rather than filling
   the composer a word at a time. For a two-line turn that is right; for a long
   one the wait is silent. Streaming into the composer needs a generation whose

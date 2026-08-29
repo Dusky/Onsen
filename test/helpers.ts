@@ -8,6 +8,7 @@ import { loadConfig, ensureDataDirs, type Config } from "../server/config.ts";
 import { createServer } from "../server/app.ts";
 import { GenerationService } from "../server/generation/service.ts";
 import { TaskRunner } from "../server/tasks/runner.ts";
+import { PassPipeline } from "../server/passes/pipeline.ts";
 import type { AppContext } from "../server/context.ts";
 import type { Hono } from "hono";
 import type { AppEnv } from "../server/context.ts";
@@ -21,6 +22,7 @@ export interface TestHarness {
   config: Config;
   generation: GenerationService;
   tasks: TaskRunner;
+  passes: PassPipeline;
   /** Sends a request through the app, carrying the session cookie if one is held. */
   fetch(path: string, init?: RequestInit): Promise<Response>;
   /** Capture the session cookie from a response so later requests are authenticated. */
@@ -51,11 +53,19 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
   // The runner is shared with the generation service, as it is in production:
   // a side call and the turn it belongs to run against the same fixture.
   const tasks = new TaskRunner({ db, keyring: ctx.keyring, ...adapterOption });
-  const generation = new GenerationService({ db, keyring: ctx.keyring, tasks, ...adapterOption });
+  const passes = new PassPipeline({ db, tasks });
+  const generation = new GenerationService({
+    db,
+    keyring: ctx.keyring,
+    tasks,
+    passes,
+    ...adapterOption,
+  });
   const { app } = createServer(ctx, {
     serveClient: false,
     generationService: generation,
     taskRunner: tasks,
+    passPipeline: passes,
   });
 
   const harness: TestHarness = {
@@ -64,6 +74,7 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
     config,
     generation,
     tasks,
+    passes,
     cookie: null,
     async fetch(path, init) {
       const headers = new Headers(init?.headers);
@@ -80,6 +91,7 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
     cleanup() {
       generation.shutdown();
       tasks.shutdown();
+      passes.shutdown();
       db.close();
       rmSync(dataDir, { recursive: true, force: true });
     },
@@ -137,6 +149,12 @@ export class ScriptedAdapter implements Adapter {
    * never touches the queue driving the prose.
    */
   taskReply: string | null = null;
+  /**
+   * A reply chosen from the prompt, for tests that script several kinds of side
+   * call at once — the post-generation pipeline runs three in a row, and they
+   * all reach the same adapter.
+   */
+  taskReplyFor: ((prompt: BuiltPrompt) => string | null) | null = null;
   /** How many side calls this adapter has been asked. */
   taskCalls = 0;
   /** Set to make side calls fail, as an unreachable local model would. */
@@ -199,7 +217,8 @@ export class ScriptedAdapter implements Adapter {
     if (source === "turn director" || source === "guided op") {
       this.taskCalls += 1;
       if (this.taskFails) throw new Error("the model is unreachable");
-      if (this.taskReply !== null) yield { text: this.taskReply };
+      const chosen = this.taskReplyFor?.(prompt) ?? this.taskReply;
+      if (chosen !== null) yield { text: chosen };
       return;
     }
 
@@ -228,13 +247,20 @@ export async function tick(times = 3): Promise<void> {
   for (let i = 0; i < times; i++) await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-/** Wait for a condition the generation service reaches asynchronously. */
+/**
+ * Wait for a condition something reaches asynchronously.
+ *
+ * The predicate may be async — the post-generation pipeline is only observable
+ * over HTTP — and the result is awaited rather than tested for truthiness. A
+ * pending promise is truthy, so a version of this that did not await would
+ * return immediately and the test would pass by luck.
+ */
 export async function until(
-  predicate: () => boolean,
+  predicate: () => boolean | Promise<boolean>,
   { timeoutMs = 2000 }: { timeoutMs?: number } = {},
 ): Promise<void> {
   const deadline = Date.now() + timeoutMs;
-  while (!predicate()) {
+  while (!(await predicate())) {
     if (Date.now() > deadline) throw new Error("timed out waiting for a condition");
     await new Promise((resolve) => setTimeout(resolve, 5));
   }

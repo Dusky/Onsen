@@ -1140,3 +1140,99 @@ And a smaller judgement: the op templates live under `/prompt`, not under
 keys are duplicated as constants rather than imported, to keep `/prompt` from
 importing anything outside itself. A test asserts the two lists agree, which is
 a cheaper coupling than the layering violation would have been.
+
+---
+
+## Phase 14 — The post-generation pipeline
+
+ReCast's rationale, which SPEC §7.5 adopts and is right about: a model cannot go
+back once it has committed to a response, but a second model reading the
+finished text can catch what the first one got wrong. Voice validation is the
+flagship, and it is the direct answer to the risk this product's whole
+architecture runs — one author voicing a whole cast, and voices converging.
+
+### What was built
+
+**Three passes**, each a background task on phase 11's primitive, each with its
+own model, prompt and declared effect.
+
+*Voice validation* reads a beat **part by part** and its annotation carries the
+segment ordinal. That is the entire value: not "the exchange felt off", which
+the reader already knew, but "this line is Aldan's dry register, not hers". It
+is shown who the character is, how they talk, and the last few things they
+actually said, so the judgement has a reference rather than a vibe. And it is
+told explicitly to judge the voice and not the events — a character doing
+something surprising is not drift.
+
+*User-lock check* flags and does not rewrite, which §7.5 is deliberate about: a
+pass that quietly rewrites a turn is a second author nobody hired, and the fix
+for the author taking over the reader's character is a regeneration the user
+asks for. It is told the difference between a character speaking *to* the reader
+and one speaking *for* them, because that distinction is the whole job.
+
+*Prose refinement* is the only pass that replaces, and it keeps the original on
+the annotation so the change can be seen and put back. Off unless switched on,
+because it costs a second full generation.
+
+**The pipeline never delays a turn.** It starts after the terminal event is
+emitted, not before it — §7 is absolute, and three extra model calls in front of
+every reply would be a worse product than no pipeline. `passes_pending` on the
+message is what tells a client to look again.
+
+**A pass that cannot be read says nothing.** An unreadable verdict is not a
+flag. And `ok` is recorded as well as `flagged`, because "the pass ran and was
+happy" and "the pass never ran" are different things, and a pipeline whose
+silence is ambiguous is one nobody reads.
+
+**`auto_trigger`** (migration 0012), deferred in phase 13 until it had a
+consumer, now has three. Plus `scenes.auto_passes`: §7.5's "auto-run per scene
+or manual per message" is two switches, and both are real — one says whether a
+scene reads its turns back, the other says which passes take part.
+
+**Annotations in the log**, built to the design's rule — a small annotation on
+the message, never a modal. Entirely mono, like the reasoning strip, so it reads
+as a note in the margin rather than another voice in the scene. Clean verdicts
+are drawn quieter than flagged ones; a revision carries "put it back".
+
+**Verified end to end in a browser** at 390×844 in both themes: a three-hander
+beat generated, then read back part by part, with Aldan's and Bell's parts
+marked ok in the quiet treatment and Mira's flagged in red carrying the model's
+own sentence.
+
+**Tests.** 27 new.
+
+### Deliberately not built
+
+- **Slop scan.** It matches against §13.6's ban list, which is phase 18. A scan
+  with nothing to scan for would be a fourth switch that does nothing.
+- **A regeneration offered from a lock-check flag.** §7.5 says the pass should
+  "offer a regeneration"; the ops to do it exist (guided swipe, correct), so
+  what is missing is a button on the annotation. It wants the flag to carry
+  which op it is proposing, and that is a decision better made once more than
+  one pass proposes something.
+- **Per-pass prompt overrides.** The passes build their questions in code, like
+  the classifier: their shape is a roster and a reply format, not a paragraph.
+  Phase 13's template mechanism handles paragraphs.
+
+### Spec changes
+
+§7.5 gains "settled while building phase 14": the pipeline starting after the
+turn, an unreadable verdict not being a flag, `ok` being recorded, voice
+validation naming the part, only one pass replacing, a no-op refinement not
+counting as a revision, one verdict per pass, and the manual run being awaited
+where the automatic one is not. §24 gains the polling question.
+
+### Surprises
+
+Two, both mine rather than the code's.
+
+The first was a latent flake that would have bitten later: `until()` in the test
+helpers took a synchronous predicate, and I handed it an async one. A pending
+promise is truthy, so it returned immediately and every pipeline test passed by
+luck — the passes happened to finish before the next assertion. It now awaits
+the predicate.
+
+The second was a spacing bug I caused and then saw in a screenshot. Wrapping
+each beat segment in a div to hang its annotations under it meant `first:mt-0`
+on the inner element matched *every* segment, so the parts collapsed against
+each other. The spacing belongs on the wrapper.
