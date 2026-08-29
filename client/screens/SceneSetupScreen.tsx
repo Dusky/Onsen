@@ -5,6 +5,7 @@ import {
   useAddToCast,
   useAuthors,
   useCharacters,
+  useConnectionProfiles,
   useCreatePersona,
   usePersonas,
   useRemoveFromCast,
@@ -47,6 +48,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
   const addToCast = useAddToCast(sceneId);
   const removeFromCast = useRemoveFromCast(sceneId);
   const createPersona = useCreatePersona();
+  const profiles = useConnectionProfiles();
   const [picking, setPicking] = useState(false);
 
   const scene = query.data?.scene;
@@ -161,16 +163,50 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               </button>
             ))}
           </div>
-          {/* Two strategies are accepted by the schema but not yet built; the
-              director falls back to round robin and says so rather than
-              silently doing something else. */}
-          {scene.turnStrategy === "mention" || scene.turnStrategy === "classifier" ? (
+          {/* `mention` is accepted by the schema but not yet built; the director
+              falls back to round robin and says so rather than silently doing
+              something else. */}
+          {scene.turnStrategy === "mention" ? (
             <p className="chrome mb-[22px] text-[9.5px] leading-[1.5] text-ink-dim">
               {strings.sceneSetup.strategyNotReady}
+            </p>
+          ) : scene.turnStrategy === "classifier" ? (
+            <p className="chrome mb-[16px] text-[9.5px] leading-[1.5] text-ink-dim">
+              {strings.sceneSetup.strategyClassifierHint}
             </p>
           ) : (
             <div className="mb-[22px]" />
           )}
+
+          {/* The classifier is a one-line question, so it wants a small model —
+              which is the whole reason it can be routed separately (SPEC §6). */}
+          {scene.turnStrategy === "classifier" ? (
+            <>
+              <p className="section-label mb-[8px]">{strings.sceneSetup.directorProfile}</p>
+              <div className="mb-[8px] flex flex-wrap gap-[6px]">
+                <button
+                  type="button"
+                  onClick={() => setup.mutate({ directorProfileId: null })}
+                  className={`btn ${scene.directorProfileId === null ? "btn-primary" : ""}`}
+                >
+                  {strings.sceneSetup.directorProfileSame}
+                </button>
+                {(profiles.data ?? []).map((profile) => (
+                  <button
+                    key={profile.id}
+                    type="button"
+                    onClick={() => setup.mutate({ directorProfileId: profile.id })}
+                    className={`btn ${scene.directorProfileId === profile.id ? "btn-primary" : ""}`}
+                  >
+                    {profile.name}
+                  </button>
+                ))}
+              </div>
+              <p className="chrome mb-[22px] text-[9.5px] leading-[1.5] text-ink-dim">
+                {strings.sceneSetup.directorProfileHint}
+              </p>
+            </>
+          ) : null}
 
           <p className="section-label mb-[8px]">{strings.sceneSetup.cast}</p>
           {scene.cast.length === 0 ? (

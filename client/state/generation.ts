@@ -13,13 +13,28 @@ import { create } from "zustand";
  * In memory only. No localStorage anywhere in this app (HANDOFF 8).
  */
 
+/** What the turn director settled on, once it has (SPEC §6). */
+export interface DirectorDecision {
+  characterId: string | null;
+  name: string;
+  reason: string;
+  source: "user" | "director";
+  scope: "spotlight" | "beat";
+}
+
 export interface ActiveGeneration {
   generationId: string;
   sceneId: string;
   /** Scene title, so the cross-screen strip can name where it is happening. */
   sceneTitle: string;
-  /** Who is speaking, for the streaming row. */
-  speaker: string;
+  /**
+   * Who is speaking, for the streaming row. Null until the director has said —
+   * with the classifier that is a model call, so for a moment the honest answer
+   * is that nobody knows yet.
+   */
+  speaker: string | null;
+  /** The director's decision and its reason, once it arrives. */
+  director: DirectorDecision | null;
   /**
    * Set when this generation replaces one part of a beat rather than adding a
    * message (SPEC §7). The text belongs inside that message, so the log renders
@@ -36,7 +51,14 @@ export interface ActiveGeneration {
 
 interface GenerationStore {
   active: ActiveGeneration | null;
-  begin(generation: Omit<ActiveGeneration, "text" | "offset" | "status" | "error">): void;
+  begin(
+    generation: Omit<
+      ActiveGeneration,
+      "text" | "offset" | "status" | "error" | "director"
+    >,
+  ): void;
+  /** The turn director's answer, which arrives on the stream. */
+  direct(generationId: string, decision: DirectorDecision): void;
   /** Append a chunk, ignoring anything already received (§5 replay is idempotent). */
   appendAt(generationId: string, offset: number, text: string): void;
   settle(generationId: string, status: ActiveGeneration["status"], error?: string | null): void;
@@ -47,7 +69,26 @@ export const useGenerationStore = create<GenerationStore>((set) => ({
   active: null,
 
   begin(generation) {
-    set({ active: { ...generation, text: "", offset: 0, status: "connecting", error: null } });
+    set({
+      active: {
+        ...generation,
+        director: null,
+        text: "",
+        offset: 0,
+        status: "connecting",
+        error: null,
+      },
+    });
+  },
+
+  direct(generationId, decision) {
+    set((state) => {
+      const active = state.active;
+      if (active === null || active.generationId !== generationId) return state;
+      // The decision also names the speaker, which until now was a guess or
+      // nothing at all.
+      return { active: { ...active, director: decision, speaker: decision.name } };
+    });
   },
 
   appendAt(generationId, offset, text) {

@@ -1,4 +1,9 @@
-import type { NextSpeakerDto, SceneMemberDto, TurnScope } from "@shared/types.ts";
+import type {
+  NextSpeakerDto,
+  SceneMemberDto,
+  TurnScope,
+  TurnStrategy,
+} from "@shared/types.ts";
 import { strings } from "../strings.ts";
 
 /**
@@ -26,6 +31,12 @@ interface CastStripProps {
   /** One voice or the whole room (SPEC §3.5). */
   scope: TurnScope;
   onScope(scope: TurnScope): void;
+  strategy: TurnStrategy;
+  /**
+   * True when the classifier will choose the speaker at send time, so there is
+   * nobody to cue-highlight yet and saying otherwise would be a guess.
+   */
+  decidesOnSend: boolean;
 }
 
 export function CastStrip({
@@ -35,18 +46,27 @@ export function CastStrip({
   onLongPress,
   scope,
   onScope,
+  strategy,
+  decidesOnSend,
 }: CastStripProps) {
   if (cast.length === 0) return null;
 
   const inPlay = cast.filter((member) => member.isActive);
   const canBeat = inPlay.length > 1;
+  // `auto` means "ask the director", so it is offered only where a director can
+  // answer. Offering it under a strategy that cannot would be a button that
+  // secretly means something else.
+  const options: TurnScope[] =
+    canBeat && strategy === "classifier"
+      ? ["spotlight", "beat", "auto"]
+      : ["spotlight", "beat"];
 
   return (
     <div className="mb-[11px]">
       {/* The strip scrolls horizontally; the lifted cued card needs headroom. */}
       <div className="flex items-end gap-[8px] overflow-x-auto pt-[16px] pb-[2px]">
         {cast.map((member) => {
-          const cued = member.characterId === nextSpeaker?.characterId;
+          const cued = !decidesOnSend && member.characterId === nextSpeaker?.characterId;
           return (
             <button
               key={member.characterId}
@@ -112,7 +132,7 @@ export function CastStrip({
       {/* One voice, or the room. Offered only when there is a room. */}
       {canBeat ? (
         <div className="mt-[9px] flex gap-[6px]">
-          {(["spotlight", "beat"] as const).map((option) => (
+          {options.map((option) => (
             <button
               key={option}
               type="button"
@@ -128,7 +148,11 @@ export function CastStrip({
                     : "var(--onsen-color-text-muted)",
               }}
             >
-              {option === "beat" ? strings.chat.scopeBeat : strings.chat.scopeSpotlight}
+              {option === "beat"
+                ? strings.chat.scopeBeat
+                : option === "auto"
+                  ? strings.chat.scopeAuto
+                  : strings.chat.scopeSpotlight}
             </button>
           ))}
         </div>
@@ -141,11 +165,19 @@ export function CastStrip({
         <p className="chrome mt-[8px] text-[9.5px] leading-[1.5] tracking-[0.06em] text-ink-dim uppercase">
           {strings.chat.scopeBeatHint(inPlay.map((member) => member.name).join(", "))}
         </p>
+      ) : scope === "auto" ? (
+        <p className="chrome mt-[8px] text-[9.5px] leading-[1.5] tracking-[0.06em] text-ink-dim uppercase">
+          {strings.chat.scopeAutoHint}
+        </p>
       ) : nextSpeaker !== null ? (
         <p className="chrome mt-[8px] text-[9.5px] leading-[1.5] tracking-[0.06em] text-ink-dim uppercase">
-          {nextSpeaker.source === "user"
-            ? strings.chat.yourPickOverrides
-            : `${nextSpeaker.name} — ${nextSpeaker.reason}`}
+          {/* While the classifier is still to decide there is no name to print:
+              the fallback is a guess, and printing it would be one. */}
+          {decidesOnSend
+            ? nextSpeaker.reason
+            : nextSpeaker.source === "user"
+              ? strings.chat.yourPickOverrides
+              : `${nextSpeaker.name} — ${nextSpeaker.reason}`}
         </p>
       ) : null}
     </div>

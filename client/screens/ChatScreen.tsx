@@ -67,7 +67,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
    * One voice or the room. Like the cue, this is a decision about the next turn
    * rather than scene configuration, so it lives here and not on the server.
    */
-  const [scope, setScope] = useState<TurnScope>("spotlight");
+  const [requestedScope, setScope] = useState<TurnScope>("spotlight");
   const [castActing, setCastActing] = useState<SceneMemberDto | null>(null);
   /**
    * Who the user cued for this turn. Client-side and one-shot: a cue is a
@@ -98,7 +98,21 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           source: "user",
           reason: strings.chat.yourPickOverrides,
         };
-  const speakerName = nextSpeaker?.name ?? authorName ?? strings.chat.narratorName;
+  /**
+   * With the classifier, nobody knows who speaks until the turn is under way
+   * (SPEC §6) — so the composer says so rather than naming the fallback and
+   * being wrong about it half the time.
+   */
+  const strategy = scene.data?.scene.turnStrategy ?? "manual";
+  // `auto` is a question for the classifier; under any other strategy there is
+  // nobody to ask, so it reads as a spotlight rather than quietly meaning one.
+  const scope: TurnScope = requestedScope === "auto" && strategy !== "classifier"
+    ? "spotlight"
+    : requestedScope;
+  const decidesOnSend = strategy === "classifier" && cued === null && cast.length > 1;
+  const speakerName = decidesOnSend
+    ? null
+    : (nextSpeaker?.name ?? authorName ?? strings.chat.narratorName);
 
   const active = generation.active;
   const isGenerating =
@@ -144,10 +158,11 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     return {
       sceneId,
       sceneTitle: title,
+      // Null means "not decided yet"; the director event fills it in.
       speaker: scope === "beat" ? (authorName ?? strings.chat.beatLabel) : speakerName,
       scope,
       // In a beat the cue chooses who opens rather than who speaks.
-      ...(nextSpeaker === null ? {} : { characterId: nextSpeaker.characterId }),
+      ...(nextSpeaker === null || decidesOnSend ? {} : { characterId: nextSpeaker.characterId }),
     };
   }
 
@@ -246,13 +261,24 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
 
           {/* The message being written, in the same treatment as a finished one:
               the attribution header appears first, then text streams under it. */}
-          {isGenerating && recastInFlight === null ? (
+          {/* Nothing is drawn until there is a speaker to attribute it to: while
+              the director is still choosing, the status row below already says
+              so, and a header over an empty body says it twice. */}
+          {isGenerating && recastInFlight === null && active.speaker !== null ? (
             <article>
-              <header className="mb-[10px] flex items-center gap-[10px]">
-                <span className="chrome shrink-0 text-[10px] font-semibold tracking-[0.18em] text-ink-label uppercase">
-                  {active.speaker}
-                </span>
-                <span className="h-px flex-1 bg-rule" />
+              <header className="mb-[10px]">
+                <div className="flex items-center gap-[10px]">
+                  <span className="chrome shrink-0 text-[10px] font-semibold tracking-[0.18em] text-ink-label uppercase">
+                    {active.speaker}
+                  </span>
+                  <span className="h-px flex-1 bg-rule" />
+                </div>
+                {/* The director's own sentence, where it had one to give. */}
+                {active.director !== null && active.director.reason !== "" ? (
+                  <p className="chrome mt-[5px] text-[9px] leading-[1.5] tracking-[0.06em] text-ink-dim uppercase">
+                    {active.director.reason}
+                  </p>
+                ) : null}
               </header>
               <p className="text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)] whitespace-pre-wrap">
                 {active.text}
@@ -277,7 +303,9 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                 style={{ background: "var(--onsen-color-red)" }}
               />
               <span className="chrome flex-1 text-[9.5px] tracking-[0.14em] text-ink-muted uppercase">
-                {strings.chat.writing(active.speaker)}
+                {active.speaker === null
+                  ? strings.chat.choosing
+                  : strings.chat.writing(active.speaker)}
               </span>
               <button
                 type="button"
@@ -302,6 +330,8 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
               onLongPress={(member) => setCastActing(member)}
               scope={scope}
               onScope={setScope}
+              strategy={strategy}
+              decidesOnSend={decidesOnSend}
             />
           </div>
         </div>
@@ -312,7 +342,11 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         onGenerate={() => void generation.start(nextTurn()).then(() => setCued(null))}
         disabled={isGenerating}
         speakerInitials={
-          scope === "beat" ? strings.chat.beatInitials : initialsOf(speakerName)
+          scope === "beat"
+            ? strings.chat.beatInitials
+            : speakerName === null
+              ? strings.chat.chooseInitials
+              : initialsOf(speakerName)
         }
       />
 

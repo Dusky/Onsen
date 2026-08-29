@@ -114,6 +114,11 @@ export const strings = {
 
     /** Turn scope (SPEC §3.5). */
     scope: "This turn",
+    scopeAuto: "Let it decide",
+    scopeAutoHint: "The director chooses one voice or the room when you send",
+    /** Before the director has answered — with a classifier, that takes a moment. */
+    choosing: "Choosing who speaks",
+    chooseInitials: "?",
     scopeSpotlight: "One voice",
     scopeBeat: "The room",
     scopeBeatHint: (names: string) => `${names} — one exchange, written together`,
@@ -254,6 +259,14 @@ export const strings = {
     strategyMention: "By mention",
     strategyClassifier: "Let a model decide",
     strategyNotReady: "Not built yet — falls back to round robin",
+    strategyClassifierHint:
+      "A model reads the last few turns and picks, in its own words. It runs when you send.",
+
+    /** Where the classifier runs (SPEC §6). */
+    directorProfile: "Where the director runs",
+    directorProfileSame: "Same as the scene",
+    directorProfileHint:
+      "A one-line question, so it wants a small fast model. Left alone it uses the scene's own, which works and costs more.",
   },
 
   nav: {

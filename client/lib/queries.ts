@@ -3,6 +3,7 @@ import { api } from "./api.ts";
 import type {
   AppendMessageRequest,
   AuthorDto,
+  ConnectionProfileDto,
   CharacterDto,
   PersonaDto,
   SceneSetupRequest,
@@ -29,6 +30,14 @@ export const keys = {
   siblings: (sceneId: string, messageId: string) =>
     ["scenes", sceneId, "messages", messageId, "siblings"] as const,
 };
+
+/** The connection profiles, for anything that routes an operation (§6, §13). */
+export function useConnectionProfiles() {
+  return useQuery({
+    queryKey: ["connection-profiles"] as const,
+    queryFn: () => api.get<ConnectionProfileDto[]>("/connections/profiles"),
+  });
+}
 
 export function useScenes() {
   return useQuery({ queryKey: keys.scenes, queryFn: () => api.get<SceneDto[]>("/scenes") });

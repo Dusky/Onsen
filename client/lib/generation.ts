@@ -17,7 +17,8 @@ import type { BeatBound, TurnScope } from "@shared/types.ts";
 interface StartArgs {
   sceneId: string;
   sceneTitle: string;
-  speaker: string;
+  /** Null when the director has not decided yet — the classifier decides late. */
+  speaker: string | null;
   /** Names a parent to fork from — how a reroll asks for a sibling. */
   parentId?: string | null;
   /** Forces who speaks, overriding the turn director for this turn. */
@@ -34,11 +35,17 @@ interface StartArgs {
 }
 
 interface ServerEvent {
-  type: "chunk" | "done" | "cancelled" | "error";
+  type: "director" | "chunk" | "done" | "cancelled" | "error";
   offset?: number;
   text?: string;
   message?: string;
   detail?: string | null;
+  /** `director` only: who the turn director settled on, and why (SPEC §6). */
+  characterId?: string | null;
+  name?: string;
+  reason?: string;
+  source?: "user" | "director";
+  scope?: "spotlight" | "beat";
 }
 
 /** Backoff between reconnection attempts, in milliseconds. */
@@ -98,7 +105,18 @@ export function useGeneration() {
                 continue;
               }
 
-              if (event.type === "chunk") {
+              if (event.type === "director") {
+                // Who is speaking, decided after the request returned because
+                // the classifier is a model call (SPEC §6). The composer said
+                // "choosing" until now.
+                store.direct(generationId, {
+                  characterId: event.characterId ?? null,
+                  name: event.name ?? "",
+                  reason: event.reason ?? "",
+                  source: event.source ?? "director",
+                  scope: event.scope ?? "spotlight",
+                });
+              } else if (event.type === "chunk") {
                 attempt = 0; // progress resets the backoff
                 store.appendAt(generationId, event.offset ?? 0, event.text ?? "");
               } else {
