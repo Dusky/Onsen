@@ -32,6 +32,8 @@ export interface SceneRow {
   /** Null selects single-character mode (SPEC §3). */
   author_id: number | null;
   persona_id: number | null;
+  /** Who speaks next, when the user has not said (SPEC §6). */
+  turn_strategy: "manual" | "round_robin" | "mention" | "classifier";
   active_leaf_id: number | null;
   created_at: number;
   updated_at: number;
@@ -125,6 +127,7 @@ export function toSceneDto(
   extras: {
     presetUlid: string | null;
     profileUlid: string | null;
+    turnStrategy: SceneDto["turnStrategy"];
     authorUlid: string | null;
     authorName: string | null;
     personaUlid: string | null;
@@ -139,6 +142,7 @@ export function toSceneDto(
     title: row.title,
     presetId: extras.presetUlid,
     connectionProfileId: extras.profileUlid,
+    turnStrategy: extras.turnStrategy,
     authorId: extras.authorUlid,
     authorName: extras.authorName,
     personaId: extras.personaUlid,
@@ -555,7 +559,7 @@ function ulidOf(db: Database, table: "presets" | "connection_profiles" | "messag
 export function castOf(db: Database, sceneId: number): SceneMemberDto[] {
   const rows = db
     .query(
-      `SELECT c.ulid, c.name, c.avatar_path, m.display_order
+      `SELECT c.ulid, c.name, c.avatar_path, m.display_order, m.is_active
          FROM scene_members m JOIN characters c ON c.id = m.character_id
         WHERE m.scene_id = $scene_id
         ORDER BY m.display_order, m.id`,
@@ -565,12 +569,14 @@ export function castOf(db: Database, sceneId: number): SceneMemberDto[] {
     name: string;
     avatar_path: string | null;
     display_order: number;
+    is_active: number;
   }[];
   return rows.map((row) => ({
     characterId: row.ulid,
     name: row.name,
     hasAvatar: row.avatar_path !== null,
     displayOrder: row.display_order,
+    isActive: row.is_active === 1,
   }));
 }
 
@@ -592,6 +598,7 @@ export function sceneDto(db: Database, row: SceneRow): SceneDto {
   return toSceneDto(row, {
     presetUlid: ulidOf(db, "presets", row.preset_id),
     profileUlid: ulidOf(db, "connection_profiles", row.connection_profile_id),
+    turnStrategy: row.turn_strategy,
     authorUlid: author.ulid,
     authorName: author.name,
     personaUlid: persona.ulid,

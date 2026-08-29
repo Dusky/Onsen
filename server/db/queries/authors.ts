@@ -257,11 +257,27 @@ export function addSceneMember(db: Database, sceneId: number, characterId: numbe
       .get({ scene_id: sceneId }) as { next: number }
   ).next;
 
+  // Presence tracking (SPEC §6): a character added to a scene already in
+  // progress did not witness what came before, and the leaf at the moment they
+  // joined is what marks that. Joining an empty scene leaves it null, meaning
+  // "present from the start".
+  const leaf = (
+    db.query("SELECT active_leaf_id FROM scenes WHERE id = $id").get({ id: sceneId }) as {
+      active_leaf_id: number | null;
+    }
+  ).active_leaf_id;
+
   db.query(
-    `INSERT INTO scene_members (scene_id, character_id, display_order, created_at)
-     VALUES ($scene_id, $character_id, $display_order, $now)
+    `INSERT INTO scene_members (scene_id, character_id, display_order, joined_after_message_id, created_at)
+     VALUES ($scene_id, $character_id, $display_order, $joined_after, $now)
      ON CONFLICT (scene_id, character_id) DO NOTHING`,
-  ).run({ scene_id: sceneId, character_id: characterId, display_order: next, now: Date.now() });
+  ).run({
+    scene_id: sceneId,
+    character_id: characterId,
+    display_order: next,
+    joined_after: leaf,
+    now: Date.now(),
+  });
 }
 
 export function removeSceneMember(db: Database, sceneId: number, characterId: number): void {
@@ -270,12 +286,41 @@ export function removeSceneMember(db: Database, sceneId: number, characterId: nu
   ).run({ scene_id: sceneId, character_id: characterId });
 }
 
-/** Full character rows for a scene's cast, in display order. */
-export function castRowsOf(db: Database, sceneId: number): CharacterRow[] {
+/** A cast member: the character, plus how they take part in this scene. */
+export interface CastRow extends CharacterRow {
+  is_active: number;
+  display_order: number;
+  /** The last message that had happened when this member joined (SPEC §6). */
+  joined_after_message_id: number | null;
+}
+
+/** Full cast rows for a scene, in display order. */
+export function castRowsOf(db: Database, sceneId: number): CastRow[] {
   return db
     .query(
-      `SELECT c.* FROM scene_members m JOIN characters c ON c.id = m.character_id
+      `SELECT c.*, m.is_active, m.display_order, m.joined_after_message_id
+         FROM scene_members m JOIN characters c ON c.id = m.character_id
         WHERE m.scene_id = $scene_id ORDER BY m.display_order, m.id`,
     )
-    .all({ scene_id: sceneId }) as CharacterRow[];
+    .all({ scene_id: sceneId }) as CastRow[];
+}
+
+export function setMemberActive(
+  db: Database,
+  sceneId: number,
+  characterId: number,
+  isActive: boolean,
+): void {
+  db.query(
+    `UPDATE scene_members SET is_active = $is_active
+      WHERE scene_id = $scene_id AND character_id = $character_id`,
+  ).run({ scene_id: sceneId, character_id: characterId, is_active: isActive ? 1 : 0 });
+}
+
+export function setTurnStrategy(db: Database, sceneId: number, strategy: string): void {
+  db.query("UPDATE scenes SET turn_strategy = $strategy, updated_at = $now WHERE id = $id").run({
+    id: sceneId,
+    strategy,
+    now: Date.now(),
+  });
 }
