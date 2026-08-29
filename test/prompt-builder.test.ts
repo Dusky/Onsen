@@ -363,6 +363,35 @@ describe("capability branching", () => {
   });
 });
 
+describe("an unnamed persona", () => {
+  test("phrases the user-lock around the reader, not around a placeholder", () => {
+    const built = buildPrompt(
+      context({ persona: { name: null, description: null }, history: [userSays("go")] }),
+    );
+
+    expect(built.system).toContain("The reader's own character is theirs alone");
+    expect(built.system).not.toContain("belongs to the reader");
+    expect(built.messages.at(-1)!.content).toContain("Do not write the reader's dialogue");
+    // No name and no description means there is nothing to say about them that
+    // the user-lock has not already said.
+    expect(built.debug.blocks.map((block) => block.id)).not.toContain("persona");
+  });
+
+  test("still labels the reader's turns in the transcript", () => {
+    const built = buildPrompt(
+      context({ persona: { name: null, description: null }, history: [userSays("mine")] }),
+    );
+    expect(flatten(built)).toContain("Reader: mine");
+  });
+
+  test("a described but unnamed persona still contributes its description", () => {
+    const built = buildPrompt(
+      context({ persona: { name: null, description: "A surveyor with a bad knee." } }),
+    );
+    expect(built.system).toContain("A surveyor with a bad knee.");
+  });
+});
+
 describe("the history marker", () => {
   test("never leaks into the prompt", () => {
     // The history block holds a placeholder so it survives as a position in the

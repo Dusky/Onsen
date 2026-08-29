@@ -30,8 +30,8 @@ function resolve(text: string, ctx: PromptContext = context(), outlets: Record<s
 describe("identity macros", () => {
   test("resolve the speaker, the reader and the author", () => {
     expect(resolve("{{char}}").text).toBe(BELL.name);
-    expect(resolve("{{user}}").text).toBe(PERSONA.name);
-    expect(resolve("{{persona}}").text).toBe(PERSONA.name);
+    expect(resolve("{{user}}").text).toBe(PERSONA.name!);
+    expect(resolve("{{persona}}").text).toBe(PERSONA.name!);
     expect(resolve("{{author}}").text).toBe(AUTHOR.name);
   });
 
@@ -137,6 +137,15 @@ describe("random macros", () => {
   test("leaves an unparseable roll alone rather than inventing a number", () => {
     expect(resolve("{{roll:coin}}").text).toBe("{{roll:coin}}");
     expect(resolve("{{random:}}").text).toBe("{{random:}}");
+  });
+});
+
+describe("an unnamed persona", () => {
+  test("resolves to the reader rather than a placeholder name", () => {
+    // A stand-in name turns the most important sentence in the system prompt
+    // into "You belongs to the reader".
+    const anonymous = context({ persona: { name: null, description: null } });
+    expect(resolve("{{user}}", anonymous).text).toBe("the reader");
   });
 });
 

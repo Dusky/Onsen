@@ -144,7 +144,12 @@ describe("scenes", () => {
   test("lists most recently touched first", async () => {
     const t = await signedIn();
     const first = await newScene(t, "first");
+    // Timestamps are millisecond-resolution, so two scenes created in the same
+    // millisecond tie and fall back to creation order. That only happens in a
+    // test; a millisecond apart is already realistic.
+    await new Promise((resolve) => setTimeout(resolve, 2));
     const second = await newScene(t, "second");
+    await new Promise((resolve) => setTimeout(resolve, 2));
 
     // Posting into the older scene should bring it back to the top.
     await post(t, first, "something happens");
