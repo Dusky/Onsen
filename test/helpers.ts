@@ -9,6 +9,7 @@ import { createServer } from "../server/app.ts";
 import { GenerationService } from "../server/generation/service.ts";
 import { TaskRunner } from "../server/tasks/runner.ts";
 import { PassPipeline } from "../server/passes/pipeline.ts";
+import { GuideRunner } from "../server/guides/runner.ts";
 import type { AppContext } from "../server/context.ts";
 import type { Hono } from "hono";
 import type { AppEnv } from "../server/context.ts";
@@ -23,6 +24,7 @@ export interface TestHarness {
   generation: GenerationService;
   tasks: TaskRunner;
   passes: PassPipeline;
+  guides: GuideRunner;
   /** Sends a request through the app, carrying the session cookie if one is held. */
   fetch(path: string, init?: RequestInit): Promise<Response>;
   /** Capture the session cookie from a response so later requests are authenticated. */
@@ -54,11 +56,13 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
   // a side call and the turn it belongs to run against the same fixture.
   const tasks = new TaskRunner({ db, keyring: ctx.keyring, ...adapterOption });
   const passes = new PassPipeline({ db, tasks });
+  const guides = new GuideRunner({ db, tasks });
   const generation = new GenerationService({
     db,
     keyring: ctx.keyring,
     tasks,
     passes,
+    guides,
     ...adapterOption,
   });
   const { app } = createServer(ctx, {
@@ -66,6 +70,7 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
     generationService: generation,
     taskRunner: tasks,
     passPipeline: passes,
+    guideRunner: guides,
   });
 
   const harness: TestHarness = {
@@ -75,6 +80,7 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
     generation,
     tasks,
     passes,
+    guides,
     cookie: null,
     async fetch(path, init) {
       const headers = new Headers(init?.headers);
@@ -92,6 +98,7 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
       generation.shutdown();
       tasks.shutdown();
       passes.shutdown();
+      guides.shutdown();
       db.close();
       rmSync(dataDir, { recursive: true, force: true });
     },
@@ -155,7 +162,7 @@ export class ScriptedAdapter implements Adapter {
    * all reach the same adapter.
    */
   taskReplyFor: ((prompt: BuiltPrompt) => string | null) | null = null;
-  /** How many side calls this adapter has been asked. */
+  /** How many side calls this adapter has been asked, of every kind. */
   taskCalls = 0;
   /** Set to make side calls fail, as an unreachable local model would. */
   taskFails = false;
@@ -198,10 +205,28 @@ export class ScriptedAdapter implements Adapter {
     });
   }
 
+  /**
+   * The last prompt for a *turn*, ignoring side calls.
+   *
+   * Several side calls now follow every turn — the classifier before it, the
+   * passes and the guides after — so "the last thing the adapter saw" stopped
+   * meaning "the turn" the moment guides landed. A turn's prompt is assembled
+   * from §3's blocks and has more than the two a side call builds.
+   */
   get lastPrompt(): BuiltPrompt {
-    const prompt = this.prompts.at(-1);
+    const prompt = this.prompts.filter((entry) => entry.debug.blocks.length > 2).at(-1);
     if (prompt === undefined) throw new Error("nothing has been generated yet");
     return prompt;
+  }
+
+  /** Side-call prompts, by the label their first block carries. */
+  promptsLabelled(label: string): BuiltPrompt[] {
+    return this.prompts.filter((prompt) => prompt.debug.blocks[0]?.label === label);
+  }
+
+  /** How many side calls of one kind this adapter has been asked. */
+  callsLabelled(label: string): number {
+    return this.promptsLabelled(label).length;
   }
 
   async *generate(

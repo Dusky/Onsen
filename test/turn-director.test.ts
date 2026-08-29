@@ -152,7 +152,8 @@ describe("the decision reaches the client", () => {
     // SPEC §6 asks for the decision to be exposed; that is not a classifier
     // feature, so every turn says who and why on the same channel.
     expect(snapshot.director!.reason).toContain("Round robin");
-    expect(adapter.taskCalls).toBe(0);
+    // The director specifically: several other side calls follow a turn.
+    expect(adapter.callsLabelled("Classifier")).toBe(0);
   });
 });
 
@@ -170,7 +171,7 @@ describe("what the classifier is allowed to decide", () => {
 
     // The transcript still shows what Bell said — she is only kept off the list
     // of people who may be chosen.
-    const question = adapter.prompts.at(-2)!.messages[0]!.content;
+    const question = adapter.promptsLabelled("Classifier").at(-1)!.messages[0]!.content;
     const roster = question.slice(
       question.indexOf("Who is available:"),
       question.indexOf("What has just happened"),
@@ -188,7 +189,8 @@ describe("what the classifier is allowed to decide", () => {
     const snapshot = await generate(t, sceneId, { characterId: aldan.id });
     expect(snapshot.director).toMatchObject({ characterId: aldan.id, source: "user" });
     // Nothing left to ask, so nothing was asked.
-    expect(adapter.taskCalls).toBe(0);
+    // The director specifically: several other side calls follow a turn.
+    expect(adapter.callsLabelled("Classifier")).toBe(0);
   });
 
   test("the reader is named in the question and put out of reach", async () => {
@@ -199,10 +201,10 @@ describe("what the classifier is allowed to decide", () => {
 
     adapter.taskReply = "SPEAKER: Mira Vance\nWHY: She was addressed.";
     await generate(t, sceneId);
+    // The turn's own prompt says nothing about the reader being out of reach —
+    // that is a rule for the director, not for the author writing prose.
     expect(adapter.lastPrompt.messages[0]!.content).not.toContain("Wren is the reader");
-    const question = adapter.prompts.find(
-      (prompt) => prompt.debug.blocks[0]?.source === "turn director",
-    )!;
+    const question = adapter.promptsLabelled("Classifier")[0]!;
     expect(question.messages[0]!.content).toContain("Wren is the reader");
   });
 });

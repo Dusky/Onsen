@@ -173,7 +173,8 @@ describe("a side call never fails the turn", () => {
     const snapshot = await generate(t, sceneId);
 
     expect(snapshot.status).toBe("complete");
-    expect(adapter.taskCalls).toBe(0);
+    // The director specifically: several other side calls follow a turn.
+    expect(adapter.callsLabelled("Classifier")).toBe(0);
     expect(snapshot.director!.reason).toBe("Round robin — the classifier is turned off");
   });
 

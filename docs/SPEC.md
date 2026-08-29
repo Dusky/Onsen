@@ -1101,6 +1101,40 @@ Clothes, State).
 
 Guides are scene-scoped and versioned per message, so rewinding rewinds them.
 
+**Settled while building phase 15.**
+
+- **A guide is a row per version, not a mutable row per scene.** "Versioned per
+  message, so rewinding rewinds them" only works one way: each write is a new
+  row anchored to the message it was written after, and the version in force is
+  the newest whose anchor is on the active path. Two branches therefore carry
+  their own guides without either knowing about the other, and rewinding is a
+  read, not an undo.
+- **A flush takes every version, not the one in force.** Deleting only the
+  current row would resurrect an older one the moment the reader rewound, which
+  is the opposite of what the button says.
+- **Each guide is its own op**, on phase 11's primitive, rather than one op with
+  a kind parameter. §8 makes auto-trigger a per-guide decision and names three
+  that default on; per-op routing then falls out for free, so the cheap model
+  can keep the clothes list while a better one keeps the thinking.
+- **A refresh is shown the previous version.** A guide that forgot everything
+  each time it ran would lose exactly the state it exists to carry — a coat
+  taken off three turns ago has to stay off.
+- **A hand-edit pins the version, and a refresh skips a pinned guide.** §8 makes
+  guides editable; an edit the next automatic run overwrites is not an edit. A
+  rebuild the user explicitly asks for by kind still leaves the pin alone —
+  flushing is how you take it back.
+- **An empty reply leaves the previous version standing.** The failure mode of a
+  guide is a model that returns nothing, and replacing a good note with an empty
+  one would make the feature worse than not having it.
+- **Guides refresh after the passes, not before.** §7.5 may have rewritten the
+  turn the guide is about to read.
+- **The custom guide is the only one with no built-in question**, so its
+  question is scene configuration and lives on the scene, not on the op. Without
+  one it is skipped rather than asked something generic.
+- **The panel lists all six kinds whether or not they have been written.** A
+  guide you can only discover by first turning something on in settings is one
+  nobody finds.
+
 ### Trackers (structured)
 
 For users who want strict state and a visual panel.

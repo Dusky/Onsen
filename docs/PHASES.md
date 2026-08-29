@@ -1236,3 +1236,91 @@ The second was a spacing bug I caused and then saw in a screenshot. Wrapping
 each beat segment in a div to hang its annotations under it meant `first:mt-0`
 on the inner element matched *every* segment, so the parts collapsed against
 each other. The spacing belongs on the wrapper.
+
+---
+
+## Phase 15 — Persistent guides
+
+SPEC §8's first half: state a side call writes once and the prompt injects every
+turn until it is flushed. Free-form prose on purpose — there is no parse step,
+so there is nothing to fail, which is what makes guides the default and trackers
+the option.
+
+### What was built
+
+**Six guides**, each its own op on phase 11's primitive — Situational, Thinking,
+Clothes, Positions, Rules and Custom. Six ops rather than one with a kind
+parameter, because §8 makes auto-trigger a per-guide decision and names exactly
+three that default on; per-op routing then falls out for free, so a cheap fast
+model can keep the clothes list while a better one keeps the thinking.
+
+**Versioned per message** (migration 0013), which is the whole design and not an
+implementation detail. A guide is not one mutable row per scene: every write is
+a new row anchored to the message it was written after, and the version in force
+is the newest whose anchor is on the active path. Rewinding therefore rewinds
+the guides as a *read*, not an undo, and two branches carry their own without
+either knowing about the other. A flush takes every version rather than the one
+in force — deleting only the current row would resurrect an older one the moment
+the reader rewound, which is the opposite of what the button says.
+
+**A refresh is shown the previous version.** A guide that forgot everything each
+time it ran would lose exactly the state it exists to carry: a coat somebody
+took off three turns ago has to stay off. And an empty reply leaves the previous
+version standing, because the failure mode of a guide is a model returning
+nothing, and replacing a good note with an empty one is worse than not running.
+
+**Hand-editing pins.** §8 makes guides editable, and an edit that the next
+automatic run overwrites is not an edit. A pinned guide is skipped by every
+refresh — including a rebuild asked for by kind — until it is flushed.
+
+**Guides refresh after the passes**, not before: §7.5 may have rewritten the
+turn the guide is about to read. And like every side call they never delay a
+turn or fail one.
+
+**The panel** (design screen `3f`): a blue bottom sheet, `GUIDES · INJECTED NOW`
+with the total cost, a hairline row per guide showing what it costs on every
+single turn, expanded content as Spectral prose, and `EDIT` / `REBUILD` / a
+red-bordered `FLUSH` per guide over `REBUILD ALL` / `DONE` / `FLUSH ALL`. All
+six kinds get a row whether or not they have been written — a guide you can only
+discover by first turning something on in settings is one nobody finds — and an
+unwritten one offers `WRITE IT`.
+
+**Verified end to end in a browser** at 390×844 in both themes: five guides
+written from a scene, one hand-edited and surviving a rebuild-all, one flushed
+back to `NONE`, and the custom guide written from a question set in scene setup.
+
+### Deliberately not built
+
+- **Trackers**, the structured half of §8. They are a different feature with a
+  different failure mode — strict JSON, per-field pinning, a panel above the
+  composer — and §20 does not schedule them here.
+- **A guide's own history.** Every version is kept and the active path picks
+  one, but nothing shows you the versions. The task log (§7) already records
+  every run.
+- **Automatic flushing.** A guide grows until somebody flushes it. Rolling
+  summarisation is phase 16 and is where a budget for this belongs.
+
+### Spec changes
+
+§8 gains "settled while building phase 15": a row per version rather than a
+mutable row, a flush taking every version, each guide being its own op, the
+refresh being shown the previous version, an edit pinning, an empty reply
+leaving the old one standing, guides running after the passes, the custom
+guide's question being scene configuration, and the panel listing all six kinds.
+
+### Surprises
+
+Seven tests failed the moment guides landed, and all seven were the test
+helpers' fault rather than the feature's. Three guides default to auto-trigger,
+so `adapter.taskCalls === 0` stopped meaning "the classifier was not asked" and
+`adapter.lastPrompt` stopped meaning "the turn" — both now had guide traffic in
+them. The helpers gained `callsLabelled()` and `promptsLabelled()`, and
+`lastPrompt` now means the last *turn* prompt. Worth recording because it will
+happen again: every phase that adds a background call quietly widens what "the
+last call" means.
+
+A smaller one, in the client. `CONTINUE` had a cell in the six-cell ops grid and
+is permanently dark — no adapter that ships can accept a partial assistant turn
+— so a sixth of the grid was spent on an apology. Guides took the cell and
+continue moved into the message action sheet, where it is still offered and
+still says why.
