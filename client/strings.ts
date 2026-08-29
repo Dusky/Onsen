@@ -76,17 +76,50 @@ export const strings = {
     submitting: "Signing in…",
   },
 
-  home: {
-    kicker: "Set up",
-    title: "Ready",
-    body: "The server is running and this install is configured. The chat screen arrives with the next phases.",
-    signOut: "Sign out",
-    connectionsLabel: "Connection profiles",
+  scenes: {
+    kicker: "Onsen",
+    title: "Roleplays",
+    empty: "Nothing here yet. Start one.",
+    emptyScene: "No messages yet.",
+    create: "New roleplay",
+    untitled: "Untitled",
+    stillWriting: (title: string) => `Still writing in ${title}`,
+    open: "Open",
+    counts: (messages: number) => `${messages} ${messages === 1 ? "reply" : "replies"}`,
+  },
+
+  chat: {
+    kicker: "Roleplay",
+    composerPlaceholder: "Direct the scene…",
+    send: "Send",
+    continueWithout: "Reply without me",
+    writing: (speaker: string) => `${speaker} is writing`,
+    stop: "Stop",
+    edited: "Edited",
+    save: "Save",
+    versionCounter: (index: number, total: number) => `◂ ${index}/${total} ▸`,
+    versions: "Versions",
+    back: "‹",
+
+    /** Long-press action sheet (§16). */
+    actions: "Message",
+    reroll: "Reroll",
+    edit: "Edit",
+    branch: "Branch from here",
+    copy: "Copy",
+    copied: "Copied",
+    delete: "Delete",
+    deleteConfirm: "Delete this and everything after it?",
+
+    you: "You",
+    /** Provisional: the AI has no character until characters land. */
+    narratorName: "Author",
   },
 
   errors: {
     network: "Could not reach the server.",
     unexpected: "Something went wrong.",
+    generationFailed: "Generation failed",
   },
 } as const;
 

@@ -14,7 +14,7 @@ interface ScreenProps {
  */
 export function Screen({ kicker, title, children, footer }: ScreenProps) {
   return (
-    <div className="flex h-[100dvh] flex-col bg-bg">
+    <div className="flex screen-height flex-col bg-bg">
       <header
         className="hairline shrink-0 px-[22px] pb-[14px]"
         style={{ paddingTop: "calc(22px + env(safe-area-inset-top))" }}

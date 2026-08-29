@@ -1,10 +1,25 @@
 import { useCallback, useEffect, useState } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SetupScreen } from "./screens/SetupScreen.tsx";
 import { LoginScreen } from "./screens/LoginScreen.tsx";
-import { ReadyScreen } from "./screens/ReadyScreen.tsx";
+import { ScenesScreen } from "./screens/ScenesScreen.tsx";
+import { ChatScreen } from "./screens/ChatScreen.tsx";
 import { api } from "./lib/api.ts";
 import { strings } from "./strings.ts";
+import { useRoute } from "./lib/router.ts";
+import { useViewportHeight } from "./lib/viewport.ts";
 import type { BootstrapDto } from "@shared/types.ts";
+
+/**
+ * Server state is cached but never stale for long: the message tree is
+ * authoritative on the server, and a generation can change it without this
+ * client asking.
+ */
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 5_000, refetchOnWindowFocus: true, retry: 1 },
+  },
+});
 
 type Phase = { status: "loading" } | { status: "error" } | { status: "ready"; boot: BootstrapDto };
 
@@ -15,6 +30,7 @@ type Phase = { status: "loading" } | { status: "error" } | { status: "ready"; bo
  */
 export function App() {
   const [phase, setPhase] = useState<Phase>({ status: "loading" });
+  useViewportHeight();
 
   const refresh = useCallback(async () => {
     try {
@@ -30,7 +46,7 @@ export function App() {
 
   if (phase.status === "loading") {
     return (
-      <div className="flex h-[100dvh] items-center justify-center">
+      <div className="flex screen-height items-center justify-center">
         <p className="chrome text-[9px] tracking-[0.18em] text-ink-dim uppercase">
           {strings.common.working}
         </p>
@@ -40,7 +56,7 @@ export function App() {
 
   if (phase.status === "error") {
     return (
-      <div className="flex h-[100dvh] items-center justify-center px-[22px]">
+      <div className="flex screen-height items-center justify-center px-[22px]">
         <p className="chrome text-center text-[10px] tracking-[0.06em] text-red-text uppercase">
           {strings.errors.network}
         </p>
@@ -54,5 +70,14 @@ export function App() {
   if (!phase.boot.authenticated) {
     return <LoginScreen onAuthenticated={() => void refresh()} />;
   }
-  return <ReadyScreen onSignedOut={() => void refresh()} />;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Routed />
+    </QueryClientProvider>
+  );
+}
+
+function Routed() {
+  const route = useRoute();
+  return route.name === "chat" ? <ChatScreen sceneId={route.sceneId} /> : <ScenesScreen />;
 }

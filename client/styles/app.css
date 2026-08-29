@@ -106,6 +106,15 @@
 }
 
 @layer components {
+  /*
+   * The height of the visible viewport, which is not the same as the layout
+   * viewport once a software keyboard is open. client/lib/viewport.ts publishes
+   * the custom property; 100dvh is the fallback where visualViewport is absent.
+   */
+  .screen-height {
+    height: var(--onsen-app-height, 100dvh);
+  }
+
   /* The app speaking: labels, attribution, state, buttons — all chrome. */
   .chrome {
     font-family: var(--onsen-font-mono);
