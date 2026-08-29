@@ -244,6 +244,12 @@ export interface SceneDto {
   presetId: string | null;
   connectionProfileId: string | null;
   turnStrategy: TurnStrategy;
+  /**
+   * Where the classifier turn director runs (SPEC §6). Null means the scene's
+   * own profile — correct, but it spends a roleplay model on a one-line
+   * question, which is what naming a cheap one here avoids.
+   */
+  directorProfileId: string | null;
   /** Null selects single-character mode (SPEC §3). */
   authorId: string | null;
   authorName: string | null;
@@ -306,7 +312,10 @@ export interface AppendMessageRequest {
  * turn director deciding between them is `auto`, and belongs to the classifier
  * (§20 phase 10) — it is not offered until it exists.
  */
-export type TurnScope = "spotlight" | "beat";
+export type TurnScope = "spotlight" | "beat" | "auto";
+
+/** What a turn actually became. `auto` is a request, never an outcome. */
+export type ResolvedTurnScope = "spotlight" | "beat";
 
 /**
  * How long a beat runs. An unbounded beat is a stalling beat, so the bound is
@@ -323,7 +332,7 @@ export const DEFAULT_BEAT_BOUND: BeatBound = { kind: "exchanges", count: 2 };
 export const MAX_BEAT_EXCHANGES = 6;
 
 export function isTurnScope(value: unknown): value is TurnScope {
-  return value === "spotlight" || value === "beat";
+  return value === "spotlight" || value === "beat" || value === "auto";
 }
 
 export function isBeatBound(value: unknown): value is BeatBound {
@@ -579,5 +588,7 @@ export interface SceneSetupRequest {
   presetId?: string | null;
   connectionProfileId?: string | null;
   turnStrategy?: TurnStrategy;
+  /** Where the classifier runs. Null falls back to the scene's own profile. */
+  directorProfileId?: string | null;
   title?: string;
 }

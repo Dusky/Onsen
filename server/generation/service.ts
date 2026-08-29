@@ -3,21 +3,36 @@ import { ulid } from "../lib/ulid.ts";
 import { decryptSecret, type Keyring } from "../lib/crypto.ts";
 import { createAdapter as defaultCreateAdapter, AdapterError, type Adapter } from "../adapters/index.ts";
 import { buildPrompt, createEstimatingTokenizer, PromptBudgetError } from "../prompt/index.ts";
+import type { BuiltPrompt } from "../prompt/index.ts";
 import { DEFAULT_BEAT_BOUND } from "../../shared/types.ts";
-import type { BeatBound, ProviderKind, SamplerSettings, TurnScope } from "../../shared/types.ts";
+import type {
+  BeatBound,
+  ProviderKind,
+  ResolvedTurnScope,
+  SamplerSettings,
+  TurnScope,
+} from "../../shared/types.ts";
 import {
+  activePath,
   appendMessage,
   findMessageById,
   findSceneById,
   reparseSegments,
   replaceSegment,
   segmentRowsOf,
+  speakerLookup,
   type MessageRow,
   type MessageRowWithSiblings,
   type SceneRow,
 } from "../db/queries/history.ts";
 import { buildPromptContext, resolvePreset } from "./context.ts";
 import { internalIdOf, resolveNextSpeaker } from "./turn.ts";
+import {
+  buildClassifierPrompt,
+  parseClassifierReply,
+  type ClassifierCandidate,
+} from "./classifier.ts";
+import { castRowsOf } from "../db/queries/authors.ts";
 
 /**
  * The generation service (SPEC §5).
@@ -47,7 +62,25 @@ export interface GenerationMeta {
   samplers: SamplerSettings;
 }
 
+/**
+ * What the turn director settled on, announced before any prose arrives.
+ *
+ * SPEC §6 requires the decision to be exposed in the UI, and with the
+ * classifier it is not known until the generation is already under way — the
+ * call has to happen somewhere, and doing it inside `start()` would make
+ * pressing send wait on a second model. So it is an event: the composer says
+ * "choosing", then names who and why, then the prose streams under it.
+ */
+export interface DirectorEvent {
+  characterId: string | null;
+  name: string;
+  reason: string;
+  source: "user" | "director";
+  scope: ResolvedTurnScope;
+}
+
 export type GenerationEvent =
+  | ({ type: "director" } & DirectorEvent)
   | { type: "chunk"; offset: number; text: string }
   | { type: "done"; messageId: string; meta: GenerationMeta }
   | { type: "cancelled"; messageId: string | null; meta: GenerationMeta }
@@ -63,6 +96,8 @@ export interface GenerationSnapshot {
   offset: number;
   messageId: string | null;
   meta: GenerationMeta | null;
+  /** Null until the director has decided, which the classifier does mid-flight. */
+  director: DirectorEvent | null;
   error: string | null;
   startedAt: number;
   finishedAt: number | null;
@@ -82,8 +117,12 @@ interface ActiveGeneration {
   messageUlid: string | null;
   /** Which cast member this turn is voiced as, recorded on the message. */
   spotlightId: number | null;
+  /** The character the user cued, which always beats the strategy (SPEC §6). */
+  requestedSpotlightId: number | null;
   /** What was asked for, and where the result lands (SPEC §3.5, §7). */
   turn: ResolvedTurn;
+  /** Announced once, before streaming, and replayed to anyone who joins late. */
+  director: DirectorEvent | null;
   abort: AbortController;
   listeners: Set<(event: GenerationEvent) => void>;
   startedAt: number;
@@ -147,6 +186,8 @@ export interface StartOptions {
  */
 type ResolvedTurn =
   | { kind: "spotlight" }
+  /** The director decides one voice or several. Never survives past `direct`. */
+  | { kind: "auto"; bound: BeatBound }
   | { kind: "beat"; bound: BeatBound }
   | { kind: "recast"; messageId: number; ordinal: number; beatText: string; characterName: string };
 
@@ -261,11 +302,13 @@ export class GenerationService {
       // Resolved now rather than at completion: the cast can change mid-turn,
       // and the message must record who actually spoke. An explicit choice
       // wins; otherwise the turn director decides (SPEC §6).
-      spotlightId:
-        turn.kind === "recast"
-          ? recastSpeakerId(this.db, turn)
-          : (options.spotlightId ?? directorChoice(this.db, scene)),
+      // For a recast the character is already known. For everything else the
+      // director decides once the generation is running: the classifier is a
+      // model call, and pressing send must not wait on one.
+      spotlightId: turn.kind === "recast" ? recastSpeakerId(this.db, turn) : null,
+      requestedSpotlightId: options.spotlightId ?? null,
       turn,
+      director: null,
       abort: new AbortController(),
       listeners: new Set(),
       startedAt,
@@ -294,6 +337,11 @@ export class GenerationService {
   ): (() => void) | null {
     const generation = this.active.get(id);
     if (generation === undefined) return null;
+
+    // A client that reconnected mid-stream still needs to know who is speaking.
+    if (generation.director !== null) {
+      listener({ type: "director", ...generation.director });
+    }
 
     const from = Math.max(0, Math.min(offset, generation.buffer.length));
     if (from < generation.buffer.length) {
@@ -364,6 +412,14 @@ export class GenerationService {
       const { samplers } = resolvePreset(this.db, route.presetId);
       generation.meta.samplers = samplers;
 
+      // Who speaks, and whether one of them or several. For the classifier this
+      // is a model call, which is why it happens here rather than in `start`.
+      await this.direct(generation, scene);
+      if (generation.abort.signal.aborted) {
+        this.finish(generation, dispatchedAt);
+        return;
+      }
+
       const context = buildPromptContext({
         db: this.db,
         scene,
@@ -372,7 +428,9 @@ export class GenerationService {
         turn:
           generation.turn.kind === "recast"
             ? { kind: "recast", beatText: generation.turn.beatText }
-            : generation.turn,
+            : generation.turn.kind === "auto"
+              ? { kind: "spotlight" }
+              : generation.turn,
         now: this.now(),
         // The seed is derived from the generation's own identifier, so a reroll
         // is a genuinely different draw while one generation stays reproducible.
@@ -404,6 +462,169 @@ export class GenerationService {
     }
 
     this.finish(generation, dispatchedAt);
+  }
+
+  /* ---------------- the turn director ---------------- */
+
+  /**
+   * Settle who speaks and whether one of them or several, then announce it.
+   *
+   * The announcement is the point as much as the decision is: SPEC §6 requires
+   * the choice to be visible so it never reads as a dice roll, and with the
+   * classifier the choice is not known until a model has answered. Every path
+   * out of here sets `spotlightId`, resolves `turn` away from `auto`, and emits
+   * exactly one director event — including every failure path, because a turn
+   * whose speaker was chosen by a silent fallback is the thing this replaces.
+   */
+  private async direct(generation: ActiveGeneration, scene: SceneRow): Promise<void> {
+    if (generation.turn.kind === "recast") {
+      const name = generation.turn.characterName;
+      this.announce(generation, {
+        characterId: null,
+        name,
+        source: "user",
+        reason: `Rewriting ${name}'s part of this beat`,
+        scope: "spotlight",
+      });
+      return;
+    }
+
+    const requestedUlid =
+      generation.requestedSpotlightId === null
+        ? null
+        : (castRowsOf(this.db, scene.id).find(
+            (row) => row.id === generation.requestedSpotlightId,
+          )?.ulid ?? null);
+
+    const fallback = resolveNextSpeaker(this.db, scene, requestedUlid);
+    const wantsScope = generation.turn.kind === "auto";
+
+    // Nobody to choose: an empty or entirely benched cast. The author narrates,
+    // and a beat has nobody to be a beat between.
+    if (fallback === null) {
+      this.settleTurn(generation, null, "spotlight");
+      this.announce(generation, {
+        characterId: null,
+        name: scene.author_id === null ? "the narrator" : "the author",
+        source: "director",
+        reason: "Nobody is in the cast, so this is narration",
+        scope: "spotlight",
+      });
+      return;
+    }
+
+    const decided =
+      scene.turn_strategy === "classifier"
+        ? await this.classify(generation, scene, fallback.source === "user", wantsScope)
+        : null;
+
+    const characterUlid = decided?.characterId ?? fallback.characterId;
+    const name = decided?.name ?? fallback.name;
+    const reason = decided?.reason ?? fallback.reason;
+    const scope: ResolvedTurnScope =
+      generation.turn.kind === "beat"
+        ? "beat"
+        : wantsScope
+          ? (decided?.scope ?? "spotlight")
+          : "spotlight";
+
+    this.settleTurn(generation, internalIdOf(this.db, scene, characterUlid), scope);
+    this.announce(generation, {
+      characterId: characterUlid,
+      name,
+      // A cue the classifier was never allowed to overrule stays the user's.
+      source: fallback.source === "user" ? "user" : "director",
+      reason,
+      scope,
+    });
+  }
+
+  /** Fix the speaker and resolve `auto` into what the turn actually is. */
+  private settleTurn(
+    generation: ActiveGeneration,
+    spotlightId: number | null,
+    scope: ResolvedTurnScope,
+  ): void {
+    generation.spotlightId = spotlightId;
+    if (generation.turn.kind !== "auto") return;
+    generation.turn =
+      scope === "beat" ? { kind: "beat", bound: generation.turn.bound } : { kind: "spotlight" };
+  }
+
+  private announce(generation: ActiveGeneration, event: DirectorEvent): void {
+    generation.director = event;
+    this.emit(generation, { type: "director", ...event });
+  }
+
+  /**
+   * Ask a model who should speak (SPEC §6).
+   *
+   * Null means "no usable answer", and every way of getting there — no cast to
+   * choose between, no profile, a provider that failed, a reply that named
+   * nobody — returns it rather than throwing. A classifier that can cost the
+   * user their turn is worse than no classifier, so this never fails a
+   * generation; the pure director's answer stands and the reason says why.
+   */
+  private async classify(
+    generation: ActiveGeneration,
+    scene: SceneRow,
+    speakerIsPinned: boolean,
+    wantsScope: boolean,
+  ): Promise<{ characterId: string; name: string; reason: string; scope: ResolvedTurnScope } | null> {
+    const path = activePathOf(this.db, scene.id);
+    const lastSpoke = lastCharacterOf(path);
+    const cast = castRowsOf(this.db, scene.id).filter((row) => row.is_active === 1);
+
+    // Never twice consecutively (SPEC §6) is enforced by not offering them,
+    // rather than by asking the model nicely and hoping.
+    const offered = cast.length > 1 ? cast.filter((row) => row.id !== lastSpoke) : cast;
+    // With the speaker already pinned and no scope to decide, there is nothing
+    // left to ask; with one candidate and no scope question, likewise.
+    if (speakerIsPinned && !wantsScope) return null;
+    if (offered.length < 2 && !wantsScope) return null;
+    if (offered.length === 0) return null;
+
+    const candidates: ClassifierCandidate[] = offered.map((row) => ({
+      id: row.ulid,
+      name: row.name,
+      description: row.description,
+      turnsSilent: turnsSinceSpeaking(path, row.id),
+    }));
+
+    let reply: string;
+    try {
+      const route = this.resolveRoute(scene, scene.director_profile_id);
+      const adapter = this.makeAdapter(route.kind, {
+        baseUrl: route.baseUrl,
+        apiKey: route.apiKey,
+        model: route.model,
+      });
+      const prompt = buildClassifierPrompt(
+        {
+          candidates,
+          history: recentTurns(this.db, path),
+          reader: personaNameOf(this.db, scene),
+          askScope: wantsScope,
+        },
+        createEstimatingTokenizer(),
+      );
+      reply = await collect(adapter, prompt, generation.abort.signal);
+    } catch {
+      // A missing profile, an unreachable provider, a 401. The scene keeps
+      // going on the pure director's answer.
+      return null;
+    }
+
+    const parsed = parseClassifierReply(reply, candidates);
+    if (parsed === null) return null;
+
+    const scope: ResolvedTurnScope = wantsScope ? (parsed.scope ?? "spotlight") : "spotlight";
+    return {
+      characterId: speakerIsPinned ? candidates[0]!.id : parsed.characterId,
+      name: speakerIsPinned ? candidates[0]!.name : parsed.name,
+      reason: parsed.reason ?? "Chosen by the classifier",
+      scope,
+    };
   }
 
   private append(generation: ActiveGeneration, text: string): void {
@@ -614,6 +835,7 @@ export class GenerationService {
       offset: generation.buffer.length,
       messageId: generation.messageUlid,
       meta: generation.meta,
+      director: generation.director,
       error: generation.error,
       startedAt: generation.startedAt,
       finishedAt: generation.finishedAt,
@@ -662,6 +884,9 @@ export class GenerationService {
       offset: row.buffer.length,
       messageId: row.message_ulid,
       meta,
+      // A generation read back from disk is finished; the decision belonged to
+      // the turn it was taken for and is not worth a column of its own.
+      director: null,
       error: row.error,
       startedAt: row.started_at,
       finishedAt: row.finished_at,
@@ -807,9 +1032,9 @@ function resolveTurn(db: Database, options: StartOptions): ResolvedTurn {
     };
   }
 
-  return options.scope === "beat"
-    ? { kind: "beat", bound: options.beatBound ?? DEFAULT_BEAT_BOUND }
-    : { kind: "spotlight" };
+  if (options.scope === "beat") return { kind: "beat", bound: options.beatBound ?? DEFAULT_BEAT_BOUND };
+  if (options.scope === "auto") return { kind: "auto", bound: options.beatBound ?? DEFAULT_BEAT_BOUND };
+  return { kind: "spotlight" };
 }
 
 /** The character a recast is rewriting, which is the segment's own speaker. */
@@ -820,6 +1045,97 @@ function recastSpeakerId(
   const segment = segmentRowsOf(db, turn.messageId).find((row) => row.ordinal === turn.ordinal);
   return segment?.character_id ?? null;
 }
+
+/* ---------------- reading the scene for the classifier ---------------- */
+
+/** How many turns of the scene the classifier is shown. It needs the gist. */
+const CLASSIFIER_HISTORY_TURNS = 8;
+/** A director that thinks for longer than this is not the cheap call it is for. */
+const CLASSIFIER_TIMEOUT_MS = 12_000;
+/** A three-line answer that runs past this is a model that has started talking. */
+const CLASSIFIER_REPLY_LIMIT = 600;
+
+function activePathOf(db: Database, sceneId: number): MessageRowWithSiblings[] {
+  return activePath(db, sceneId);
+}
+
+/** The last cast member to speak, counting who a beat ended on (SPEC §3.5). */
+function lastCharacterOf(path: MessageRowWithSiblings[]): number | null {
+  for (let index = path.length - 1; index >= 0; index--) {
+    const row = path[index]!;
+    if (row.character_id !== null) return row.character_id;
+  }
+  return null;
+}
+
+function turnsSinceSpeaking(path: MessageRowWithSiblings[], characterId: number): number | null {
+  for (let index = path.length - 1; index >= 0; index--) {
+    if (path[index]!.character_id === characterId) return path.length - 1 - index;
+  }
+  return null;
+}
+
+/** The tail of the scene, with each turn labelled by who said it. */
+function recentTurns(
+  db: Database,
+  path: MessageRowWithSiblings[],
+): { speaker: string; content: string }[] {
+  const speakers = speakerLookup(db);
+  return path
+    .filter((row) => row.is_hidden === 0)
+    .slice(-CLASSIFIER_HISTORY_TURNS)
+    .map((row) => ({
+      speaker:
+        row.character_id === null
+          ? row.author_type === "user"
+            ? "The reader"
+            : "Narration"
+          : (speakers.nameById.get(row.character_id) ?? "Someone"),
+      content: row.content,
+    }));
+}
+
+function personaNameOf(db: Database, scene: SceneRow): string | null {
+  if (scene.persona_id === null) return null;
+  const row = db.query("SELECT name FROM personas WHERE id = $id").get({ id: scene.persona_id }) as
+    | { name: string }
+    | null;
+  return row?.name ?? null;
+}
+
+/**
+ * Run an adapter to completion and return the text.
+ *
+ * Bounded twice — by a timeout and by a length cap — because the thing being
+ * asked for is three lines and a model that ignores that should cost a moment,
+ * not a turn. Phase 11's background-task primitive is the general form of this.
+ */
+async function collect(adapter: Adapter, prompt: BuiltPrompt, outer: AbortSignal): Promise<string> {
+  const own = new AbortController();
+  const signal = AbortSignal.any([outer, own.signal, AbortSignal.timeout(CLASSIFIER_TIMEOUT_MS)]);
+  let text = "";
+  try {
+    for await (const chunk of adapter.generate(prompt, CLASSIFIER_SAMPLERS, signal)) {
+      text += chunk.text;
+      if (text.length >= CLASSIFIER_REPLY_LIMIT) {
+        // Enough to read an answer out of, and the signal reaches the provider,
+        // so the rest is never generated (SPEC §4).
+        own.abort();
+        break;
+      }
+    }
+  } catch {
+    // A timeout or an abort mid-stream still leaves whatever arrived, which is
+    // often the whole answer — the format puts the name on the first line.
+  }
+  return text;
+}
+
+/**
+ * The classifier's own samplers. Deliberately not the scene's: this is a
+ * decision, not prose, and §13's defaults exist to make prose less predictable.
+ */
+const CLASSIFIER_SAMPLERS: SamplerSettings = { temperature: 0.2, top_p: 0.9 };
 
 /** Who the turn director says speaks, as an internal id. */
 function directorChoice(db: Database, scene: SceneRow): number | null {

@@ -254,8 +254,13 @@ export function generationRoutes(service: GenerationService): Hono<AppEnv> {
 
         unsubscribe = service.subscribe(id, offset, (event) => {
           send(sseFrame(event));
-          // Terminal events end the stream; the generation itself is done.
-          if (event.type !== "chunk") finish();
+          // Only the three terminal events end the stream. A `director` event
+          // is news about the turn, not the end of it — closing on anything
+          // that merely is not a chunk would cut the stream off before a word
+          // of prose arrived.
+          if (event.type === "done" || event.type === "cancelled" || event.type === "error") {
+            finish();
+          }
         });
 
         if (unsubscribe === null) {

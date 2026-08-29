@@ -132,20 +132,33 @@ export function chooseSpeaker(input: DirectorInput): DirectorDecision | null {
       };
     }
 
-    // Not implemented yet (phases 10 and later). Falling back to round robin is
-    // what SPEC §6 specifies for `mention`; saying so is what stops the choice
-    // looking arbitrary.
-    case "mention":
+    // `mention` is not implemented yet. Falling back to round robin is what
+    // SPEC §6 specifies for it; saying so is what stops the choice looking
+    // arbitrary.
+    case "mention": {
+      const chosen = nextInOrder(active, previous);
+      return {
+        characterId: chosen.id,
+        name: chosen.name,
+        source: "director",
+        reason: "No name mentioned — round robin",
+      };
+    }
+
+    /**
+     * The classifier is a model call, so it cannot happen here — this function
+     * is pure, and it is called on every read of a scene. The decision is taken
+     * when the turn is generated and announced on the stream; what is returned
+     * here is the fallback that stands if the call fails, labelled as the
+     * provisional thing it is rather than as a choice already made.
+     */
     case "classifier": {
       const chosen = nextInOrder(active, previous);
       return {
         characterId: chosen.id,
         name: chosen.name,
         source: "director",
-        reason:
-          input.strategy === "mention"
-            ? "No name mentioned — round robin"
-            : "Classifier not available — round robin",
+        reason: "The classifier decides when you send",
       };
     }
   }
