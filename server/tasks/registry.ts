@@ -36,6 +36,7 @@ export interface TaskKind {
 }
 
 export const TURN_CLASSIFIER = "turn_classifier";
+export const IMPERSONATE = "impersonate";
 
 export const TASK_KINDS: readonly TaskKind[] = [
   {
@@ -48,6 +49,19 @@ export const TASK_KINDS: readonly TaskKind[] = [
     // Two or three short lines. A reply past this is a model that has started
     // talking, and the answer is on the first line anyway.
     replyLimit: 600,
+  },
+  {
+    key: IMPERSONATE,
+    label: "As me",
+    description: "Turns a line of shorthand into a full message in your character's voice.",
+    stage: "sidecar",
+    // Prose, not a decision: this one wants the scene's usual warmth rather
+    // than the near-deterministic settings a classifier runs on.
+    samplers: { temperature: 0.9, min_p: 0.05 },
+    // The user is watching this one, so it is given room — but not the whole
+    // turn's worth, because a draft that overruns the composer is not a draft.
+    timeoutMs: 60_000,
+    replyLimit: 2_400,
   },
 ];
 

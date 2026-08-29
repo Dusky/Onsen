@@ -58,7 +58,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   api.route("/", setupRoutes(ctx));
   api.route("/connections", connectionRoutes(ctx));
   api.route("/scenes", sceneRoutes(ctx));
-  api.route("/scenes", sceneGenerationRoutes(ctx, generation));
+  api.route("/scenes", sceneGenerationRoutes(ctx, generation, tasks));
   api.route("/generations", generationRoutes(generation));
   api.route("/characters", characterRoutes(ctx));
   api.route("/authors", authorRoutes(ctx));

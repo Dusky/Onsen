@@ -34,6 +34,7 @@ import {
   findAuthor,
   findPersona,
   removeSceneMember,
+  setDirectorNote,
   setDirectorProfile,
   setMemberActive,
   setTurnStrategy,
@@ -195,6 +196,15 @@ export function sceneRoutes(ctx: AppContext): Hono<AppEnv> {
         return c.json(badRequest("Unknown turn strategy."), 400);
       }
       setTurnStrategy(ctx.db, row.id, input.turnStrategy as string);
+    }
+    // Steer (SPEC §7): a note applied to every turn until cleared. An empty
+    // string is a clear, not an empty instruction.
+    if ("directorNote" in input) {
+      const note = input.directorNote;
+      if (note !== null && typeof note !== "string") {
+        return c.json(badRequest("The steer must be text, or nothing."), 400);
+      }
+      setDirectorNote(ctx.db, row.id, note === null || note.trim() === "" ? null : note.trim());
     }
     // Where the classifier runs (SPEC §6). Null is meaningful: it means the
     // scene's own profile, which is correct but spends a roleplay model on a

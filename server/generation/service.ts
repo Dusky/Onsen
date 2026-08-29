@@ -6,6 +6,7 @@ import { buildPrompt, createEstimatingTokenizer, PromptBudgetError } from "../pr
 import { DEFAULT_BEAT_BOUND } from "../../shared/types.ts";
 import type {
   BeatBound,
+  MessageKind,
   ResolvedTurnScope,
   SamplerSettings,
   TurnScope,
@@ -125,6 +126,8 @@ interface ActiveGeneration {
   turn: ResolvedTurn;
   /** Announced once, before streaming, and replayed to anyone who joins late. */
   director: DirectorEvent | null;
+  /** One-shot direction for this generation, never stored as a message (§7). */
+  nudge: string | null;
   abort: AbortController;
   listeners: Set<(event: GenerationEvent) => void>;
   startedAt: number;
@@ -207,6 +210,19 @@ export interface StartOptions {
    * as a new message.
    */
   recast?: { message: MessageRow; ordinal: number };
+  /**
+   * A one-shot instruction for this generation only (SPEC §7). Injected at
+   * depth 0 and never persisted as a message: a nudge is direction, not
+   * something the reader said, and a scene that fills up with the user's stage
+   * directions reads wrong on the next pass.
+   */
+  nudge?: string;
+  /**
+   * Produce a better version of a turn that already exists (SPEC §7). The
+   * result is a sibling of the target, so nothing is lost — expanding a turn
+   * and disliking the result must leave the original one swipe away.
+   */
+  revise?: { message: MessageRow; mode: "expand" | "correct" | "continue"; instructions?: string };
 }
 
 /**
@@ -221,7 +237,20 @@ type ResolvedTurn =
   /** The director decides one voice or several. Never survives past `direct`. */
   | { kind: "auto"; bound: BeatBound }
   | { kind: "beat"; bound: BeatBound }
-  | { kind: "recast"; messageId: number; ordinal: number; beatText: string; characterName: string };
+  | { kind: "recast"; messageId: number; ordinal: number; beatText: string; characterName: string }
+  | {
+      kind: "revise";
+      mode: "expand" | "correct" | "continue";
+      original: string;
+      instructions?: string;
+      /** Who the target was voiced as, so the new version is voiced the same. */
+      characterId: number | null;
+      characterName: string;
+      /** The target's parent: the new version is its sibling, not its child. */
+      parentId: number | null;
+      /** A revised beat is still a beat, and still needs parsing into parts. */
+      targetKind: MessageKind;
+    };
 
 export class GenerationError extends Error {
   readonly code: string;
@@ -287,9 +316,13 @@ export class GenerationService {
     const parentId =
       beat !== null
         ? beat.parent_id
-        : options.parentId === undefined
-          ? scene.active_leaf_id
-          : options.parentId;
+        : // A revised turn is a sibling of the one it revises, so the original
+          // is always one swipe away.
+          turn.kind === "revise"
+          ? turn.parentId
+          : options.parentId === undefined
+            ? scene.active_leaf_id
+            : options.parentId;
     const startedAt = this.now();
     const id = ulid();
 
@@ -330,10 +363,16 @@ export class GenerationService {
       // For a recast the character is already known. For everything else the
       // director decides once the generation is running: the classifier is a
       // model call, and pressing send must not wait on one.
-      spotlightId: turn.kind === "recast" ? recastSpeakerId(this.db, turn) : null,
+      spotlightId:
+        turn.kind === "recast"
+          ? recastSpeakerId(this.db, turn)
+          : turn.kind === "revise"
+            ? turn.characterId
+            : null,
       requestedSpotlightId: options.spotlightId ?? null,
       turn,
       director: null,
+      nudge: options.nudge?.trim() === "" ? null : (options.nudge ?? null),
       abort: new AbortController(),
       listeners: new Set(),
       startedAt,
@@ -450,12 +489,8 @@ export class GenerationService {
         scene,
         capabilities: adapter.capabilities,
         spotlightId: generation.spotlightId,
-        turn:
-          generation.turn.kind === "recast"
-            ? { kind: "recast", beatText: generation.turn.beatText }
-            : generation.turn.kind === "auto"
-              ? { kind: "spotlight" }
-              : generation.turn,
+        turn: promptTurnOf(generation.turn),
+        ...(generation.nudge === null ? {} : { nudge: generation.nudge }),
         now: this.now(),
         // The seed is derived from the generation's own identifier, so a reroll
         // is a genuinely different draw while one generation stays reproducible.
@@ -510,6 +545,26 @@ export class GenerationService {
         source: "user",
         reason: `Rewriting ${name}'s part of this beat`,
         scope: "spotlight",
+      });
+      return;
+    }
+
+    // A revised turn is voiced by whoever voiced the original. There is nothing
+    // for a director to decide, and asking one would let it change the speaker
+    // halfway through a correction.
+    if (generation.turn.kind === "revise") {
+      const turn = generation.turn;
+      this.announce(generation, {
+        characterId: null,
+        name: turn.characterName,
+        source: "user",
+        reason:
+          turn.mode === "expand"
+            ? `Writing ${turn.characterName}'s turn again, longer`
+            : turn.mode === "continue"
+              ? `Carrying on from where ${turn.characterName} stopped`
+              : `Rewriting ${turn.characterName}'s turn`,
+        scope: turn.targetKind === "beat" ? "beat" : "spotlight",
       });
       return;
     }
@@ -762,13 +817,20 @@ export class GenerationService {
       return replaceSegment(this.db, beat, generation.turn.ordinal, generation.buffer);
     }
 
-    const isBeat = generation.turn.kind === "beat";
+    const revise = generation.turn.kind === "revise" ? generation.turn : null;
+    const isBeat = revise === null ? generation.turn.kind === "beat" : revise.targetKind === "beat";
     const message = appendMessage(this.db, {
       sceneId: generation.sceneId,
       parentId: generation.parentId,
       kind: isBeat ? "beat" : "spotlight",
       authorType: "character",
-      content: generation.buffer,
+      // Continue extends rather than replaces: the message that lands is the
+      // whole turn, original and continuation, so the log reads as one piece of
+      // writing rather than a fragment beside its own beginning.
+      content:
+        revise?.mode === "continue"
+          ? `${revise.original.trimEnd()} ${generation.buffer.trimStart()}`
+          : generation.buffer,
       // A beat is filed under whoever opened it, so the log has something to
       // attribute it to; who spoke *last* in it comes from its segments (§6).
       characterId: generation.spotlightId,
@@ -1031,9 +1093,64 @@ function resolveTurn(db: Database, options: StartOptions): ResolvedTurn {
     };
   }
 
+  const revise = options.revise;
+  if (revise !== undefined) {
+    const target = revise.message;
+    if (target.author_type === "user") {
+      throw new GenerationError(
+        "not_revisable",
+        "That is your own message. Edit it directly rather than asking for another version.",
+      );
+    }
+    if (target.content.trim() === "") {
+      throw new GenerationError("not_revisable", "There is nothing there to work from.");
+    }
+    const speaker =
+      target.character_id === null
+        ? null
+        : (db.query("SELECT name FROM characters WHERE id = $id").get({ id: target.character_id }) as
+            | { name: string }
+            | null);
+    return {
+      kind: "revise",
+      mode: revise.mode,
+      original: target.content,
+      ...(revise.instructions === undefined ? {} : { instructions: revise.instructions }),
+      characterId: target.character_id,
+      characterName: speaker?.name ?? "the narrator",
+      parentId: target.parent_id,
+      targetKind: target.kind,
+    };
+  }
+
   if (options.scope === "beat") return { kind: "beat", bound: options.beatBound ?? DEFAULT_BEAT_BOUND };
   if (options.scope === "auto") return { kind: "auto", bound: options.beatBound ?? DEFAULT_BEAT_BOUND };
   return { kind: "spotlight" };
+}
+
+/**
+ * The turn as the prompt builder reads it.
+ *
+ * `auto` never reaches the builder — the director resolves it into a spotlight
+ * or a beat first — so it maps to a spotlight here only as a guard against a
+ * path that should not exist.
+ */
+function promptTurnOf(turn: ResolvedTurn) {
+  switch (turn.kind) {
+    case "recast":
+      return { kind: "recast" as const, beatText: turn.beatText };
+    case "revise":
+      return {
+        kind: "revise" as const,
+        mode: turn.mode,
+        original: turn.original,
+        ...(turn.instructions === undefined ? {} : { instructions: turn.instructions }),
+      };
+    case "auto":
+      return { kind: "spotlight" as const };
+    default:
+      return turn;
+  }
 }
 
 /** The character a recast is rewriting, which is the segment's own speaker. */

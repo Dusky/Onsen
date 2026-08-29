@@ -1,8 +1,21 @@
 import { Hono } from "hono";
 import type { AppContext, AppEnv } from "../context.ts";
 import { requireAuth } from "../middleware/session.ts";
-import { findScene, findMessage } from "../db/queries/history.ts";
-import { isBeatBound, isTurnScope } from "../../shared/types.ts";
+import { findScene, findMessage, activePath, speakerLookup } from "../db/queries/history.ts";
+import {
+  isBeatBound,
+  isImpersonatePerson,
+  isReviseMode,
+  isTurnScope,
+  type ImpersonateResponse,
+} from "../../shared/types.ts";
+import { buildImpersonatePrompt, cleanImpersonation } from "../generation/impersonate.ts";
+import { createEstimatingTokenizer } from "../prompt/index.ts";
+import { IMPERSONATE, taskKind } from "../tasks/registry.ts";
+import type { TaskRunner } from "../tasks/runner.ts";
+import { capabilitiesFor } from "../adapters/index.ts";
+import type { ProviderKind } from "../../shared/types.ts";
+import type { SceneRow } from "../db/queries/history.ts";
 import { GenerationError, type GenerationEvent, type GenerationService } from "../generation/service.ts";
 
 /**
@@ -14,6 +27,38 @@ import { GenerationError, type GenerationEvent, type GenerationService } from ".
  * a phone comes back from being suspended, and the stream can be reopened from
  * any offset as many times as the network requires.
  */
+
+/**
+ * Which provider a scene generates on, for the capability checks an op has to
+ * make before offering itself. Unknown means unknown, not "assume the best":
+ * an op that pretends to work is worse than one that says it cannot.
+ */
+function providerKindOf(ctx: AppContext, scene: SceneRow): ProviderKind | null {
+  if (scene.connection_profile_id === null) return null;
+  const row = ctx.db
+    .query(
+      `SELECT p.kind FROM connection_profiles cp JOIN providers p ON p.id = cp.provider_id
+        WHERE cp.id = $id`,
+    )
+    .get({ id: scene.connection_profile_id }) as { kind: ProviderKind } | null;
+  return row?.kind ?? null;
+}
+
+/**
+ * Continue needs the provider to accept a partial assistant turn (SPEC §7).
+ * Where it cannot, the op says so rather than producing a fresh turn that
+ * pretends to be a continuation.
+ */
+function canContinue(ctx: AppContext, scene: SceneRow): boolean {
+  const kind = providerKindOf(ctx, scene);
+  if (kind === null) return false;
+  try {
+    return capabilitiesFor(kind).supportsPrefill;
+  } catch {
+    // An adapter that does not exist yet has no capabilities to read.
+    return false;
+  }
+}
 
 /** SPEC §5: heartbeat every 15s so proxies do not close an idle stream. */
 const HEARTBEAT_MS = 15_000;
@@ -33,6 +78,7 @@ function sseFrame(event: GenerationEvent): string {
 export function sceneGenerationRoutes(
   ctx: AppContext,
   service: GenerationService,
+  tasks: TaskRunner,
 ): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
   app.use("*", requireAuth());
@@ -53,6 +99,7 @@ export function sceneGenerationRoutes(
       characterId?: string | null;
       scope?: unknown;
       beatBound?: unknown;
+      nudge?: unknown;
     } = {};
     try {
       const parsed: unknown = await c.req.json();
@@ -118,6 +165,13 @@ export function sceneGenerationRoutes(
     }
     const beatBound = isBeatBound(body.beatBound) ? body.beatBound : undefined;
 
+    // A one-shot instruction for this generation only (SPEC §7). Never stored
+    // as a message: direction is not something the reader said.
+    if (body.nudge !== undefined && typeof body.nudge !== "string") {
+      return c.json({ error: { code: "bad_request", message: "The nudge must be text." } }, 400);
+    }
+    const nudge = typeof body.nudge === "string" && body.nudge.trim() !== "" ? body.nudge : undefined;
+
     try {
       const snapshot = service.start({
         scene,
@@ -126,6 +180,7 @@ export function sceneGenerationRoutes(
         ...(spotlightId === undefined ? {} : { spotlightId }),
         ...(scope === undefined ? {} : { scope }),
         ...(beatBound === undefined ? {} : { beatBound }),
+        ...(nudge === undefined ? {} : { nudge }),
       });
       return c.json(snapshot, 201);
     } catch (caught) {
@@ -135,6 +190,157 @@ export function sceneGenerationRoutes(
       }
       throw caught;
     }
+  });
+
+  /**
+   * Produce a better version of a turn that already exists (SPEC §7).
+   *
+   * Expand, correct and continue are one endpoint because they are one shape:
+   * hand the model what it wrote and ask for something different. The result is
+   * always a sibling of the target, so asking for a longer version and
+   * disliking it costs a swipe and nothing else.
+   */
+  app.post("/:sceneId/messages/:messageId/revise", async (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    const message = findMessage(ctx.db, c.req.param("messageId"));
+    if (message === null || message.scene_id !== scene.id) {
+      return c.json({ error: { code: "not_found", message: "No such message." } }, 404);
+    }
+
+    let body: { mode?: unknown; instructions?: unknown } = {};
+    try {
+      const parsed: unknown = await c.req.json();
+      if (typeof parsed === "object" && parsed !== null) body = parsed;
+    } catch {
+      /* Falls through to the validation below. */
+    }
+    if (!isReviseMode(body.mode)) {
+      return c.json(
+        { error: { code: "bad_request", message: "Expand, correct or continue?" } },
+        400,
+      );
+    }
+    if (body.instructions !== undefined && typeof body.instructions !== "string") {
+      return c.json(
+        { error: { code: "bad_request", message: "The instructions must be text." } },
+        400,
+      );
+    }
+    // Continue needs the provider to accept a partial assistant turn. Where it
+    // cannot, saying so beats producing a fresh turn that pretends to be a
+    // continuation (SPEC §7).
+    if (body.mode === "continue" && !canContinue(ctx, scene)) {
+      return c.json(
+        {
+          error: {
+            code: "unsupported",
+            message: "This provider cannot continue a message it has already finished.",
+          },
+        },
+        422,
+      );
+    }
+
+    const instructions =
+      typeof body.instructions === "string" && body.instructions.trim() !== ""
+        ? body.instructions.trim()
+        : undefined;
+
+    try {
+      return c.json(
+        service.start({
+          scene,
+          revise: {
+            message,
+            mode: body.mode,
+            ...(instructions === undefined ? {} : { instructions }),
+          },
+        }),
+        201,
+      );
+    } catch (caught) {
+      if (caught instanceof GenerationError) {
+        const status =
+          caught.code === "already_generating" ? 409 : caught.code === "not_revisable" ? 422 : 400;
+        return c.json({ error: { code: caught.code, message: caught.message } }, status);
+      }
+      throw caught;
+    }
+  });
+
+  /**
+   * Impersonate (SPEC §7): expand an outline into a turn in the reader's voice.
+   *
+   * The result lands in the composer and never auto-sends, which is what makes
+   * this op safe — it is the one place the author is asked to write the
+   * reader's character, and nothing it produces reaches the story without the
+   * user pressing send.
+   */
+  app.post("/:sceneId/impersonate", async (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+
+    let body: { outline?: unknown; person?: unknown } = {};
+    try {
+      const parsed: unknown = await c.req.json();
+      if (typeof parsed === "object" && parsed !== null) body = parsed;
+    } catch {
+      /* An empty body is "write something for me", which is a real ask. */
+    }
+    const outline = typeof body.outline === "string" ? body.outline : "";
+    const person = isImpersonatePerson(body.person) ? body.person : "first";
+
+    const speakers = speakerLookup(ctx.db);
+    const persona =
+      scene.persona_id === null
+        ? { name: null, description: null }
+        : ((ctx.db
+            .query("SELECT name, description FROM personas WHERE id = $id")
+            .get({ id: scene.persona_id }) as { name: string; description: string | null } | null) ??
+          { name: null, description: null });
+    const author =
+      scene.author_id === null
+        ? null
+        : ((ctx.db.query("SELECT name FROM authors WHERE id = $id").get({ id: scene.author_id }) as
+            | { name: string }
+            | null)?.name ?? null);
+
+    const outcome = await tasks.run({
+      kind: taskKind(IMPERSONATE)!,
+      sceneId: scene.id,
+      fallbackProfileId: scene.connection_profile_id,
+      prompt: buildImpersonatePrompt(
+        {
+          persona,
+          outline,
+          person,
+          author,
+          history: activePath(ctx.db, scene.id)
+            .filter((row) => row.is_hidden === 0)
+            .slice(-8)
+            .map((row) => ({
+              speaker:
+                row.character_id === null
+                  ? row.author_type === "user"
+                    ? (persona.name ?? "The reader")
+                    : "Narration"
+                  : (speakers.nameById.get(row.character_id) ?? "Someone"),
+              content: row.content,
+            })),
+        },
+        createEstimatingTokenizer(),
+      ),
+    });
+
+    const response: ImpersonateResponse = outcome.ok
+      ? { text: cleanImpersonation(outcome.text), detail: null }
+      : { text: null, detail: outcome.detail };
+    return c.json(response, outcome.ok ? 200 : 502);
   });
 
   /**
