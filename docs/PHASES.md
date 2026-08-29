@@ -93,3 +93,77 @@ work. Left open until phase 28, which is the first phase that needs vectors.
   `NODE_EXTRA_CA_CERTS`/`HTTPS_PROXY` in a proxied environment. It affects
   nothing at runtime, but `scripts/fetch-fonts.ts` will fail behind a
   TLS-intercepting proxy.
+
+---
+
+## Phase 2 — History tree
+
+> Store, active path, branching, swipe/edit/delete, checkpoints. API first,
+> tested, before any UI.
+
+### Built
+
+**Schema.** `scenes`, `messages`, `checkpoints`. A message's `parent_id` is
+nullable — null is a root, and a scene may have several, because alternate
+greetings are siblings at the top of the tree (§9). `scenes.active_leaf_id` is
+added by `ALTER TABLE` after `messages` exists, since the reference is circular.
+
+**One operation, four names.** Swipe, rewind, branch and checkpoint restore are
+all "move the leaf pointer". Nothing is copied and nothing is truncated; only an
+explicit delete removes a node. Appending to something that is not the current
+leaf is not an error — it forks there, which is what branching is.
+
+The one substantive decision: **swiping descends, rewinding does not.** Landing
+on a sibling follows the most recent child down to a leaf, so swiping away from
+a version and back restores that version's own continuation instead of chopping
+it off. Rewind and checkpoint restore stop exactly on the chosen message, so the
+next turn forks at that point — which is the whole purpose of a bookmark you can
+"return to and optionally fork from later" (§2). Both are recorded in SPEC §2
+under "Tree operations".
+
+**Active path** is a recursive CTE from the leaf upward, returning each message
+with its `sibling_index` and `sibling_count` in the same query — the swipe
+counter comes free rather than costing a query per row. The UI shows it only
+when the count exceeds one; there is no empty `1/1`.
+
+**Deleting** takes the subtree by cascade. If the active leaf was inside it, the
+pointer moves to the surviving branch below the parent; deleting the last root
+empties the scene rather than leaving a dangling pointer.
+
+**Editing** invalidates the cached `token_count` and stamps `edited_at`. Hiding
+a message does neither — `is_hidden` is a prompt concern, not an edit — and
+rewriting a message with identical text is not an edit either.
+
+**API.** Scenes (list, create, read-with-history, rename, delete), messages
+(append, edit, delete, siblings), the leaf pointer, and checkpoints. Every
+message and checkpoint route verifies the record belongs to the scene it was
+requested under, so one scene's identifiers cannot reach into another's.
+
+**Tests.** 46 new: 24 against the tree module for semantics, 22 against the HTTP
+surface. Covers everything §23 names for this phase — branch, swipe,
+edit-in-place, rewind, checkpoint restore — plus a 2,000-message chain, deletion
+of the active branch, root siblings, and cross-scene isolation.
+
+### Deliberately not built
+
+- **MessageSegment.** Beats are phase 9; in phase 2 a message's content is the
+  whole of it.
+- **`character_id`, `reasoning`, `expression`, `generation_meta` on messages.**
+  Each arrives by `ALTER TABLE` with the phase that gives it behaviour —
+  characters (6), reasoning extraction (17), expressions (27), the generation
+  service (4).
+- **`author_id`, `persona_id`, turn strategy, autopilot, OOC and VN flags on
+  scenes.** Phases 7, 8, 21, 22 and 27 respectively.
+- **Any UI.** The phase says API first, and the chat screen is phase 5.
+
+### Spec changes
+
+SPEC §2 gains a "Tree operations" subsection recording the five decisions above,
+which the spec described the data for but not the behaviour of.
+
+### Surprises
+
+Nothing structural. Worth noting for later phases: SQLite's `IS` rather than `=`
+is what makes root siblings work, since `parent_id = NULL` matches nothing — a
+sibling query written with `=` silently reports that every alternate greeting is
+the only one of its kind.

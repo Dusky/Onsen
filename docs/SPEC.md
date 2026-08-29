@@ -222,6 +222,30 @@ Siblings under the same parent are swipes. `active_leaf_id` on the scene defines
 the current path; walking parents from the leaf to the root yields the active
 history.
 
+### Tree operations
+
+Settled while building phase 2. All of them preserve what they move away from:
+only an explicit delete removes a node.
+
+- **Swipe, rewind, branch and checkpoint restore are one operation** — moving
+  `active_leaf_id`. Nothing is copied and nothing is truncated. Appending to a
+  message that is not the current leaf is not an error; it forks there, and that
+  is what branching is.
+- **Swiping descends; rewinding does not.** Landing on a sibling follows the
+  most recent child down to a leaf, so swiping away from a version and back
+  again restores that version's own continuation rather than truncating it.
+  Rewinding and restoring a checkpoint stop exactly on the chosen message, so
+  the next turn forks at that point — which is what a checkpoint is for.
+- **Alternate greetings are root siblings**, `parent_id IS NULL`. Sibling
+  queries must therefore treat a null parent as a group, not as "no siblings".
+- **Deleting takes the subtree.** If the active leaf was inside it, the pointer
+  moves to the surviving branch below the parent; deleting the last root leaves
+  the scene empty rather than dangling. Checkpoints bookmarking a deleted
+  message go with it.
+- **Editing content invalidates `token_count` and stamps `edited_at`.** Hiding a
+  message, or rewriting it with identical text, does neither: `is_hidden` is a
+  prompt concern, and an unchanged edit is not an edit.
+
 ### Checkpoint
 
 Named save-points, distinct from branches. A branch forks the timeline; a
