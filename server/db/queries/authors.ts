@@ -324,3 +324,10 @@ export function setTurnStrategy(db: Database, sceneId: number, strategy: string)
     now: Date.now(),
   });
 }
+
+/** Where the classifier runs. Null falls back to the scene's own profile (§6). */
+export function setDirectorProfile(db: Database, sceneId: number, profileId: number | null): void {
+  db.query(
+    "UPDATE scenes SET director_profile_id = $profile, updated_at = $now WHERE id = $id",
+  ).run({ id: sceneId, profile: profileId, now: Date.now() });
+}

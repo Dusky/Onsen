@@ -36,6 +36,8 @@ export interface SceneRow {
   persona_id: number | null;
   /** Who speaks next, when the user has not said (SPEC §6). */
   turn_strategy: "manual" | "round_robin" | "mention" | "classifier";
+  /** Where the classifier runs; null falls back to the scene's own (SPEC §6). */
+  director_profile_id: number | null;
   active_leaf_id: number | null;
   created_at: number;
   updated_at: number;
@@ -140,6 +142,7 @@ export function toSceneDto(
     presetUlid: string | null;
     profileUlid: string | null;
     turnStrategy: SceneDto["turnStrategy"];
+    directorProfileUlid: string | null;
     authorUlid: string | null;
     authorName: string | null;
     personaUlid: string | null;
@@ -155,6 +158,7 @@ export function toSceneDto(
     presetId: extras.presetUlid,
     connectionProfileId: extras.profileUlid,
     turnStrategy: extras.turnStrategy,
+    directorProfileId: extras.directorProfileUlid,
     authorId: extras.authorUlid,
     authorName: extras.authorName,
     personaId: extras.personaUlid,
@@ -615,6 +619,7 @@ export function sceneDto(db: Database, row: SceneRow): SceneDto {
     presetUlid: ulidOf(db, "presets", row.preset_id),
     profileUlid: ulidOf(db, "connection_profiles", row.connection_profile_id),
     turnStrategy: row.turn_strategy,
+    directorProfileUlid: ulidOf(db, "connection_profiles", row.director_profile_id),
     authorUlid: author.ulid,
     authorName: author.name,
     personaUlid: persona.ulid,

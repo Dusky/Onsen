@@ -34,6 +34,7 @@ import {
   findAuthor,
   findPersona,
   removeSceneMember,
+  setDirectorProfile,
   setMemberActive,
   setTurnStrategy,
 } from "../db/queries/authors.ts";
@@ -194,6 +195,14 @@ export function sceneRoutes(ctx: AppContext): Hono<AppEnv> {
         return c.json(badRequest("Unknown turn strategy."), 400);
       }
       setTurnStrategy(ctx.db, row.id, input.turnStrategy as string);
+    }
+    // Where the classifier runs (SPEC §6). Null is meaningful: it means the
+    // scene's own profile, which is correct but spends a roleplay model on a
+    // one-line question.
+    if ("directorProfileId" in input) {
+      const profile = resolveRef(input.directorProfileId, "connection_profiles");
+      if (profile === INVALID) return c.json(badRequest("No such connection profile."), 400);
+      setDirectorProfile(ctx.db, row.id, profile ?? null);
     }
 
     return c.json(sceneDto(ctx.db, updateScene(ctx.db, row.id, patch)));
