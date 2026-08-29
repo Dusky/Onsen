@@ -16,7 +16,7 @@ if (result.applied.length > 0) {
 }
 
 const ctx: AppContext = { db, config, keyring: loadOrCreateKeyring(config) };
-const { app, generation } = createServer(ctx);
+const { app, generation, tasks } = createServer(ctx);
 
 const server = Bun.serve({
   port: config.port,
@@ -32,8 +32,11 @@ if (!isSetupCompleted(db)) {
 
 function shutdown(signal: string): void {
   console.log(`onsen: ${signal}, shutting down`);
-  // Abort in-flight generations so upstream inference actually stops (§4).
+  // Abort in-flight generations so upstream inference actually stops (§4), and
+  // stop admitting side calls — a background task that reaches the database
+  // after it is closed is the SIGTERM path, not a test artefact (§7).
   generation.shutdown();
+  tasks.shutdown();
   void server.stop();
   db.close();
   process.exit(0);

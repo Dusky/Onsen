@@ -1,13 +1,11 @@
 import type { Database } from "bun:sqlite";
 import { ulid } from "../lib/ulid.ts";
-import { decryptSecret, type Keyring } from "../lib/crypto.ts";
+import type { Keyring } from "../lib/crypto.ts";
 import { createAdapter as defaultCreateAdapter, AdapterError, type Adapter } from "../adapters/index.ts";
 import { buildPrompt, createEstimatingTokenizer, PromptBudgetError } from "../prompt/index.ts";
-import type { BuiltPrompt } from "../prompt/index.ts";
 import { DEFAULT_BEAT_BOUND } from "../../shared/types.ts";
 import type {
   BeatBound,
-  ProviderKind,
   ResolvedTurnScope,
   SamplerSettings,
   TurnScope,
@@ -26,6 +24,7 @@ import {
   type SceneRow,
 } from "../db/queries/history.ts";
 import { buildPromptContext, resolvePreset } from "./context.ts";
+import { resolveRoute, RouteError, type ResolvedRoute } from "./route.ts";
 import { internalIdOf, resolveNextSpeaker } from "./turn.ts";
 import {
   buildClassifierPrompt,
@@ -33,6 +32,9 @@ import {
   type ClassifierCandidate,
 } from "./classifier.ts";
 import { castRowsOf } from "../db/queries/authors.ts";
+import { taskKind, TURN_CLASSIFIER } from "../tasks/registry.ts";
+import type { TaskRunner } from "../tasks/runner.ts";
+import type { TaskRunStatus } from "../../shared/types.ts";
 
 /**
  * The generation service (SPEC §5).
@@ -144,6 +146,36 @@ export interface GenerationServiceOptions {
   now?: () => number;
   /** Injected in tests so no live provider is ever contacted (§23). */
   createAdapter?: typeof defaultCreateAdapter;
+  /** Runs the side calls a turn needs, off the main path (SPEC §7). */
+  tasks: TaskRunner;
+}
+
+/**
+ * What asking the classifier came to.
+ *
+ * `decided` is the answer; `why` is the sentence explaining its absence, which
+ * exists because "no answer" and "no answer because the model was unreachable"
+ * look identical to a user otherwise.
+ */
+interface ClassifierOutcome {
+  decided: { characterId: string; name: string; reason: string; scope: ResolvedTurnScope } | null;
+  why: string | null;
+}
+
+/** Why the fallback is standing, in words that belong under a cast strip. */
+function reasonForFailure(status: Exclude<TaskRunStatus, "ok">): string {
+  switch (status) {
+    case "skipped":
+      return "the classifier is turned off";
+    case "timeout":
+      return "the classifier took too long";
+    case "cancelled":
+      return "the turn was cancelled";
+    case "unusable":
+      return "the classifier answered with nothing";
+    case "failed":
+      return "the classifier could not be reached";
+  }
 }
 
 export interface StartOptions {
@@ -191,15 +223,6 @@ type ResolvedTurn =
   | { kind: "beat"; bound: BeatBound }
   | { kind: "recast"; messageId: number; ordinal: number; beatText: string; characterName: string };
 
-interface ResolvedRoute {
-  kind: ProviderKind;
-  providerName: string;
-  baseUrl: string;
-  apiKey: string | null;
-  model: string;
-  presetId: number | null;
-}
-
 export class GenerationError extends Error {
   readonly code: string;
   constructor(code: string, message: string) {
@@ -214,6 +237,7 @@ export class GenerationService {
   private readonly keyring: Keyring;
   private readonly now: () => number;
   private readonly makeAdapter: typeof defaultCreateAdapter;
+  private readonly tasks: TaskRunner;
   private readonly active = new Map<string, ActiveGeneration>();
   /**
    * Set once the process is shutting down. Aborting a generation resolves
@@ -228,6 +252,7 @@ export class GenerationService {
     this.keyring = options.keyring;
     this.now = options.now ?? Date.now;
     this.makeAdapter = options.createAdapter ?? defaultCreateAdapter;
+    this.tasks = options.tasks;
   }
 
   /* ---------------- lifecycle ---------------- */
@@ -513,14 +538,22 @@ export class GenerationService {
       return;
     }
 
-    const decided =
+    const asked =
       scene.turn_strategy === "classifier"
         ? await this.classify(generation, scene, fallback.source === "user", wantsScope)
-        : null;
+        : { decided: null, why: null };
+    const decided = asked.decided;
 
     const characterUlid = decided?.characterId ?? fallback.characterId;
     const name = decided?.name ?? fallback.name;
-    const reason = decided?.reason ?? fallback.reason;
+    // When the classifier was asked and could not answer, the reason says so
+    // rather than repeating the provisional sentence the scene carried before
+    // the turn: a director that is quietly broken should not look exactly like
+    // one that is quietly working. The fallback under `classifier` is round
+    // robin (see `chooseSpeaker`), which is what the sentence names.
+    const reason =
+      decided?.reason ??
+      (asked.why === null ? fallback.reason : `Round robin — ${asked.why}`);
     const scope: ResolvedTurnScope =
       generation.turn.kind === "beat"
         ? "beat"
@@ -570,7 +603,16 @@ export class GenerationService {
     scene: SceneRow,
     speakerIsPinned: boolean,
     wantsScope: boolean,
-  ): Promise<{ characterId: string; name: string; reason: string; scope: ResolvedTurnScope } | null> {
+  ): Promise<ClassifierOutcome> {
+    const kind = taskKind(TURN_CLASSIFIER)!;
+    const base = {
+      kind,
+      sceneId: scene.id,
+      profileId: scene.director_profile_id,
+      fallbackProfileId: scene.connection_profile_id,
+      signal: generation.abort.signal,
+    };
+
     const path = activePathOf(this.db, scene.id);
     const lastSpoke = lastCharacterOf(path);
     const cast = castRowsOf(this.db, scene.id).filter((row) => row.is_active === 1);
@@ -580,9 +622,13 @@ export class GenerationService {
     const offered = cast.length > 1 ? cast.filter((row) => row.id !== lastSpoke) : cast;
     // With the speaker already pinned and no scope to decide, there is nothing
     // left to ask; with one candidate and no scope question, likewise.
-    if (speakerIsPinned && !wantsScope) return null;
-    if (offered.length < 2 && !wantsScope) return null;
-    if (offered.length === 0) return null;
+    const nothingToAsk =
+      offered.length === 0 ||
+      (!wantsScope && (speakerIsPinned || offered.length < 2));
+    if (nothingToAsk) {
+      this.tasks.noteSkipped(base, "There was only one turn this could be.");
+      return { decided: null, why: null };
+    }
 
     const candidates: ClassifierCandidate[] = offered.map((row) => ({
       id: row.ulid,
@@ -591,15 +637,9 @@ export class GenerationService {
       turnsSilent: turnsSinceSpeaking(path, row.id),
     }));
 
-    let reply: string;
-    try {
-      const route = this.resolveRoute(scene, scene.director_profile_id);
-      const adapter = this.makeAdapter(route.kind, {
-        baseUrl: route.baseUrl,
-        apiKey: route.apiKey,
-        model: route.model,
-      });
-      const prompt = buildClassifierPrompt(
+    const request = {
+      ...base,
+      prompt: buildClassifierPrompt(
         {
           candidates,
           history: recentTurns(this.db, path),
@@ -607,23 +647,32 @@ export class GenerationService {
           askScope: wantsScope,
         },
         createEstimatingTokenizer(),
-      );
-      reply = await collect(adapter, prompt, generation.abort.signal);
-    } catch {
-      // A missing profile, an unreachable provider, a 401. The scene keeps
-      // going on the pure director's answer.
-      return null;
+      ),
+    };
+
+    const outcome = await this.tasks.run(request);
+    if (!outcome.ok) {
+      // Never fails the turn (SPEC §7) — but the fallback should say *why* it
+      // is the fallback, or a director that is quietly broken looks the same
+      // as one that is quietly working.
+      return { decided: null, why: reasonForFailure(outcome.status) };
     }
 
-    const parsed = parseClassifierReply(reply, candidates);
-    if (parsed === null) return null;
+    const parsed = parseClassifierReply(outcome.text, candidates);
+    if (parsed === null) {
+      this.tasks.noteUnusable(request, outcome.text, "The reply named nobody in the cast.");
+      return { decided: null, why: "the classifier named nobody in the cast" };
+    }
 
     const scope: ResolvedTurnScope = wantsScope ? (parsed.scope ?? "spotlight") : "spotlight";
     return {
-      characterId: speakerIsPinned ? candidates[0]!.id : parsed.characterId,
-      name: speakerIsPinned ? candidates[0]!.name : parsed.name,
-      reason: parsed.reason ?? "Chosen by the classifier",
-      scope,
+      decided: {
+        characterId: speakerIsPinned ? candidates[0]!.id : parsed.characterId,
+        name: speakerIsPinned ? candidates[0]!.name : parsed.name,
+        reason: parsed.reason ?? "Chosen by the classifier",
+        scope,
+      },
+      why: null,
     };
   }
 
@@ -898,71 +947,21 @@ export class GenerationService {
    * explicit profile wins over the scene's, which is the mechanism per-operation
    * model routing is built on (SPEC §0.11, §7).
    */
+  /**
+   * Where this scene generates. A per-call override beats the scene's own
+   * profile, which is the mechanism behind per-operation routing (SPEC §7).
+   */
   private resolveRoute(scene: SceneRow, overrideProfileId: number | null): ResolvedRoute {
-    const profileId = overrideProfileId ?? scene.connection_profile_id;
-    if (profileId === null) {
-      throw new GenerationError(
-        "no_connection",
-        "This scene has no connection profile. Choose one before generating.",
-      );
+    try {
+      return resolveRoute(this.db, this.keyring, {
+        profileId: overrideProfileId ?? scene.connection_profile_id,
+      });
+    } catch (caught) {
+      // The generation path speaks in GenerationErrors, which routes map onto
+      // status codes; a routing failure is one of those, not a crash.
+      if (caught instanceof RouteError) throw new GenerationError(caught.code, caught.message);
+      throw caught;
     }
-
-    const row = this.db
-      .query(
-        `SELECT cp.model AS profile_model, cp.preset_id,
-                p.name AS provider_name, p.kind, p.base_url, p.api_key_encrypted, p.model AS provider_model, p.enabled
-           FROM connection_profiles cp
-           JOIN providers p ON p.id = cp.provider_id
-          WHERE cp.id = $id`,
-      )
-      .get({ id: profileId }) as
-      | {
-          profile_model: string | null;
-          preset_id: number | null;
-          provider_name: string;
-          kind: ProviderKind;
-          base_url: string | null;
-          api_key_encrypted: string | null;
-          provider_model: string | null;
-          enabled: number;
-        }
-      | null;
-
-    if (row === null) {
-      throw new GenerationError("no_connection", "That connection profile no longer exists.");
-    }
-    if (row.enabled !== 1) {
-      throw new GenerationError("provider_disabled", `${row.provider_name} is disabled.`);
-    }
-
-    const model = row.profile_model ?? row.provider_model;
-    if (model === null) {
-      throw new GenerationError("no_model", `No model is set for ${row.provider_name}.`);
-    }
-    if (row.base_url === null) {
-      throw new GenerationError("no_base_url", `No address is set for ${row.provider_name}.`);
-    }
-
-    let apiKey: string | null = null;
-    if (row.api_key_encrypted !== null) {
-      try {
-        apiKey = decryptSecret(this.keyring, row.api_key_encrypted);
-      } catch {
-        throw new GenerationError(
-          "unreadable_key",
-          `The stored API key for ${row.provider_name} cannot be decrypted. Re-enter it.`,
-        );
-      }
-    }
-
-    return {
-      kind: row.kind,
-      providerName: row.provider_name,
-      baseUrl: row.base_url,
-      apiKey,
-      model,
-      presetId: row.preset_id,
-    };
   }
 }
 
@@ -1050,10 +1049,6 @@ function recastSpeakerId(
 
 /** How many turns of the scene the classifier is shown. It needs the gist. */
 const CLASSIFIER_HISTORY_TURNS = 8;
-/** A director that thinks for longer than this is not the cheap call it is for. */
-const CLASSIFIER_TIMEOUT_MS = 12_000;
-/** A three-line answer that runs past this is a model that has started talking. */
-const CLASSIFIER_REPLY_LIMIT = 600;
 
 function activePathOf(db: Database, sceneId: number): MessageRowWithSiblings[] {
   return activePath(db, sceneId);
@@ -1102,40 +1097,6 @@ function personaNameOf(db: Database, scene: SceneRow): string | null {
     | null;
   return row?.name ?? null;
 }
-
-/**
- * Run an adapter to completion and return the text.
- *
- * Bounded twice — by a timeout and by a length cap — because the thing being
- * asked for is three lines and a model that ignores that should cost a moment,
- * not a turn. Phase 11's background-task primitive is the general form of this.
- */
-async function collect(adapter: Adapter, prompt: BuiltPrompt, outer: AbortSignal): Promise<string> {
-  const own = new AbortController();
-  const signal = AbortSignal.any([outer, own.signal, AbortSignal.timeout(CLASSIFIER_TIMEOUT_MS)]);
-  let text = "";
-  try {
-    for await (const chunk of adapter.generate(prompt, CLASSIFIER_SAMPLERS, signal)) {
-      text += chunk.text;
-      if (text.length >= CLASSIFIER_REPLY_LIMIT) {
-        // Enough to read an answer out of, and the signal reaches the provider,
-        // so the rest is never generated (SPEC §4).
-        own.abort();
-        break;
-      }
-    }
-  } catch {
-    // A timeout or an abort mid-stream still leaves whatever arrived, which is
-    // often the whole answer — the format puts the name on the first line.
-  }
-  return text;
-}
-
-/**
- * The classifier's own samplers. Deliberately not the scene's: this is a
- * decision, not prose, and §13's defaults exist to make prose less predictable.
- */
-const CLASSIFIER_SAMPLERS: SamplerSettings = { temperature: 0.2, top_p: 0.9 };
 
 /** Who the turn director says speaks, as an internal id. */
 function directorChoice(db: Database, scene: SceneRow): number | null {

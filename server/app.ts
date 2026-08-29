@@ -9,6 +9,9 @@ import { characterRoutes } from "./routes/characters.ts";
 import { authorRoutes, personaRoutes } from "./routes/authors.ts";
 import { generationRoutes, sceneGenerationRoutes } from "./routes/generation.ts";
 import { GenerationService } from "./generation/service.ts";
+import { TaskRunner } from "./tasks/runner.ts";
+import { taskRoutes } from "./routes/tasks.ts";
+import type { createAdapter } from "./adapters/index.ts";
 import { spaStatic } from "./static.ts";
 
 export interface CreateAppOptions {
@@ -20,17 +23,31 @@ export interface CreateAppOptions {
    * cancel everything in flight on shutdown.
    */
   generationService?: GenerationService;
+  /** Injected together with a generation service, so both share one runner. */
+  taskRunner?: TaskRunner;
+  /** Injected in tests so no live provider is ever contacted (§23). */
+  createAdapter?: typeof createAdapter;
 }
 
 export interface CreatedApp {
   app: Hono<AppEnv>;
   generation: GenerationService;
+  /** Side calls (SPEC §7). Owned here so shutdown can stop admitting them. */
+  tasks: TaskRunner;
 }
 
 /** Build the app and the services it owns. */
 export function createServer(ctx: AppContext, options: CreateAppOptions = {}): CreatedApp {
+  const tasks =
+    options.taskRunner ??
+    new TaskRunner({
+      db: ctx.db,
+      keyring: ctx.keyring,
+      ...(options.createAdapter === undefined ? {} : { createAdapter: options.createAdapter }),
+    });
   const generation =
-    options.generationService ?? new GenerationService({ db: ctx.db, keyring: ctx.keyring });
+    options.generationService ??
+    new GenerationService({ db: ctx.db, keyring: ctx.keyring, tasks });
   const app = new Hono<AppEnv>();
 
   app.use("*", sessionMiddleware(ctx));
@@ -46,6 +63,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   api.route("/characters", characterRoutes(ctx));
   api.route("/authors", authorRoutes(ctx));
   api.route("/personas", personaRoutes(ctx));
+  api.route("/tasks", taskRoutes(ctx));
 
   // An unknown API path is an API error, not the SPA shell — returning HTML
   // from a fetch is the kind of thing that costs an hour to diagnose.
@@ -59,7 +77,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
     app.use("*", spaStatic(ctx.config.clientDir));
   }
 
-  return { app, generation };
+  return { app, generation, tasks };
 }
 
 /** The app alone, for callers that do not need the services. */
