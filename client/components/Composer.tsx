@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { strings } from "../strings.ts";
 
 /**
@@ -21,10 +21,29 @@ interface ComposerProps {
   disabled: boolean;
   /** Initials of the speaker the send button will produce. */
   speakerInitials: string;
+  /**
+   * The draft lives above this component because the ops read it: "no reply"
+   * posts it, and "as me" replaces it with a turn written from it.
+   */
+  draft: string;
+  onDraftChange(value: string): void;
+  /** The ops drawer, rendered above the input row when something is open. */
+  opsOpen: boolean;
+  onToggleOps(): void;
+  ops?: ReactNode;
 }
 
-export function Composer({ onSend, onGenerate, disabled, speakerInitials }: ComposerProps) {
-  const [draft, setDraft] = useState("");
+export function Composer({
+  onSend,
+  onGenerate,
+  disabled,
+  speakerInitials,
+  draft,
+  onDraftChange,
+  opsOpen,
+  onToggleOps,
+  ops,
+}: ComposerProps) {
   const field = useRef<HTMLTextAreaElement>(null);
 
   // Grow with the text, up to a cap, so a long message is visible while it is
@@ -39,7 +58,7 @@ export function Composer({ onSend, onGenerate, disabled, speakerInitials }: Comp
   function send() {
     const text = draft.trim();
     if (text === "" || disabled) return;
-    setDraft("");
+    onDraftChange("");
     onSend(text);
   }
 
@@ -48,6 +67,10 @@ export function Composer({ onSend, onGenerate, disabled, speakerInitials }: Comp
       className="flex-none border-t border-rule bg-bg-raised px-[16px] pt-[11px]"
       style={{ paddingBottom: "calc(10px + env(safe-area-inset-bottom))" }}
     >
+      {/* Progressive disclosure: the ops drawer sits above the input row and is
+          closed by default, so the resting composer stays two rows tall. */}
+      {ops === undefined ? null : <div className="mb-[11px]">{ops}</div>}
+
       <div className="flex items-end gap-[8px]">
         <textarea
           ref={field}
@@ -55,7 +78,7 @@ export function Composer({ onSend, onGenerate, disabled, speakerInitials }: Comp
           className="field min-h-[46px] flex-1 resize-none py-[13px]"
           placeholder={strings.chat.composerPlaceholder}
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={(event) => onDraftChange(event.target.value)}
           onKeyDown={(event) => {
             // Enter sends on a keyboard; Shift+Enter is a newline. On a phone
             // the on-screen return key inserts a newline as it should, because
@@ -66,6 +89,23 @@ export function Composer({ onSend, onGenerate, disabled, speakerInitials }: Comp
             }
           }}
         />
+
+        {/* The ops key. Takes the red active treatment while the drawer is open. */}
+        <button
+          type="button"
+          onClick={onToggleOps}
+          aria-pressed={opsOpen}
+          // The label follows the state: a button that says "close" to the eye
+          // and "ops" to a screen reader is two different buttons.
+          aria-label={opsOpen ? strings.chat.opsClose : strings.chat.ops}
+          className="chrome flex h-[46px] w-[46px] flex-none items-center justify-center border text-[9px] tracking-[0.10em] uppercase"
+          style={{
+            borderColor: opsOpen ? "var(--onsen-color-red)" : "var(--onsen-color-border-quiet)",
+            color: opsOpen ? "var(--onsen-color-red)" : "var(--onsen-color-text-muted)",
+          }}
+        >
+          {opsOpen ? strings.chat.opsClose : strings.chat.ops}
+        </button>
 
         {/* Send posts the message and asks for a reply. */}
         <button

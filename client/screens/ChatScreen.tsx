@@ -15,8 +15,16 @@ import { MessageBlock, MessageEditor } from "../components/MessageBlock.tsx";
 import { Composer } from "../components/Composer.tsx";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
 import { CastStrip } from "../components/CastStrip.tsx";
-import { useBenchMember, useSplitBeat } from "../lib/queries.ts";
-import type { NextSpeakerDto, SceneMemberDto, TurnScope } from "@shared/types.ts";
+import { OpsGrid, OpPrompt, type Op } from "../components/OpsGrid.tsx";
+import { useBenchMember, useSceneSetup, useSplitBeat } from "../lib/queries.ts";
+import type {
+  ImpersonateResponse,
+  NextSpeakerDto,
+  ReviseMode,
+  SceneMemberDto,
+  TurnScope,
+} from "@shared/types.ts";
+import { api } from "../lib/api.ts";
 
 /**
  * The chat screen. Everything else in the app is support.
@@ -60,6 +68,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
 
   const bench = useBenchMember(sceneId);
   const split = useSplitBeat(sceneId);
+  const setup = useSceneSetup(sceneId);
   const [acting, setActing] = useState<MessageDto | null>(null);
   /** The beat whose parts are being picked from, for a recast. */
   const [recasting, setRecasting] = useState<MessageDto | null>(null);
@@ -68,6 +77,23 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
    * rather than scene configuration, so it lives here and not on the server.
    */
   const [requestedScope, setScope] = useState<TurnScope>("spotlight");
+  /**
+   * The composer draft lives here because the ops read it: "no reply" posts it,
+   * and "as me" replaces it with a turn written from it.
+   */
+  const [draft, setDraft] = useState("");
+  /**
+   * Which ops panel is open. Closed by default — the design's whole approach to
+   * the composer is progressive disclosure, because it has to fit above a
+   * keyboard at 390px.
+   */
+  const [opsPanel, setOpsPanel] = useState<
+    null | "grid" | "nudge" | "guided_swipe" | "steer" | "impersonate"
+  >(null);
+  /** Set while an op that produces a draft is working. */
+  const [opWorking, setOpWorking] = useState(false);
+  /** A message being corrected, once the user has said which one. */
+  const [correcting, setCorrecting] = useState<MessageDto | null>(null);
   const [castActing, setCastActing] = useState<SceneMemberDto | null>(null);
   /**
    * Who the user cued for this turn. Client-side and one-shot: a cue is a
@@ -179,14 +205,230 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   }
 
   /** Reroll: generate a sibling under the same parent, keeping the original. */
-  async function reroll(message: MessageDto) {
+  async function reroll(message: MessageDto, nudge?: string) {
     setActing(null);
     await generation.start({
       sceneId,
       sceneTitle: title,
       speaker: strings.chat.narratorName,
       parentId: message.parentId,
+      ...(nudge === undefined ? {} : { nudge }),
     });
+  }
+
+  /* ---------------- guided ops (SPEC §7) ---------------- */
+
+  const lastReply = [...messages].reverse().find((message) => message.authorType !== "user") ?? null;
+
+  /** A one-shot instruction for the next turn. Never becomes a message. */
+  async function nudge(instruction: string) {
+    setOpsPanel(null);
+    await generation.start({ ...nextTurn(), nudge: instruction });
+    setCued(null);
+  }
+
+  /** Reroll the last reply with direction. Only when there is one to reroll. */
+  async function guidedSwipe(instruction: string) {
+    setOpsPanel(null);
+    if (lastReply === null) return;
+    await reroll(lastReply, instruction);
+  }
+
+  /** Produce a better version of a turn, as a sibling (SPEC §7). */
+  async function revise(message: MessageDto, mode: ReviseMode, instructions?: string) {
+    setActing(null);
+    setCorrecting(null);
+    await generation.start({
+      sceneId,
+      sceneTitle: title,
+      speaker: message.speakerName ?? authorName ?? strings.chat.narratorName,
+      revise: {
+        messageId: message.id,
+        mode,
+        ...(instructions === undefined ? {} : { instructions }),
+      },
+    });
+  }
+
+  /**
+   * Expand the draft into a turn in the reader's voice, and put it back in the
+   * composer. Nothing is sent — that is what makes this op safe (SPEC §7).
+   */
+  async function impersonate(person: "first" | "second" | "third") {
+    setOpWorking(true);
+    try {
+      const result = await api.post<ImpersonateResponse>(`/scenes/${sceneId}/impersonate`, {
+        outline: draft,
+        person,
+      });
+      if (result.text !== null) setDraft(result.text);
+      setOpsPanel(null);
+    } catch {
+      // The op failed; the draft the user typed is still theirs, untouched.
+      setOpsPanel(null);
+    } finally {
+      setOpWorking(false);
+    }
+  }
+
+  /** Post without asking for a reply. Essential for stacking messages (§7). */
+  async function sendWithoutReply() {
+    const text = draft.trim();
+    if (text === "") return;
+    setDraft("");
+    setOpsPanel(null);
+    await send.mutateAsync({ kind: "user", authorType: "user", content: text });
+  }
+
+  const steer = scene.data?.scene.directorNote ?? null;
+
+  /**
+   * Who speaks next, in one line — what replaces the cast strip and the
+   * director's reason while the ops grid is open (design handoff).
+   */
+  function cueSummary(): string | undefined {
+    if (cast.length === 0) return undefined;
+    if (scope === "beat") return strings.chat.cueBeat(cast.filter((m) => m.isActive).length);
+    if (speakerName === null) return strings.chat.cueUndecided;
+    return cued === null
+      ? strings.chat.cueAuto(speakerName)
+      : strings.chat.cueYours(speakerName);
+  }
+
+  const ops: Op[] = [
+    {
+      key: "nudge",
+      glyph: strings.chat.opNudgeKey,
+      label: strings.chat.opNudge,
+      onPress: () => setOpsPanel("nudge"),
+    },
+    {
+      key: "guided_swipe",
+      glyph: strings.chat.opGuidedSwipeKey,
+      label: strings.chat.opGuidedSwipe,
+      // Only when the last message is from the AI — there is nothing else to
+      // reroll, and §7 says so explicitly.
+      disabled: lastReply === null,
+      onPress: () => setOpsPanel("guided_swipe"),
+    },
+    {
+      key: "impersonate",
+      glyph: strings.chat.opImpersonateKey,
+      label: strings.chat.opImpersonate,
+      onPress: () => setOpsPanel("impersonate"),
+    },
+    {
+      key: "steer",
+      glyph: strings.chat.opSteerKey,
+      label: strings.chat.opSteer,
+      onPress: () => setOpsPanel("steer"),
+    },
+    {
+      key: "continue",
+      glyph: strings.chat.opContinueKey,
+      label: strings.chat.opContinue,
+      // No adapter that ships can accept a partial assistant turn, so the op is
+      // present and says why rather than pretending (SPEC §7).
+      unavailable: strings.chat.opContinueUnavailable,
+      onPress: () => {
+        if (lastReply !== null) void revise(lastReply, "continue");
+      },
+    },
+    {
+      key: "no_reply",
+      glyph: strings.chat.opNoReplyKey,
+      label: strings.chat.opNoReply,
+      // An empty composer needs no explanation.
+      disabled: draft.trim() === "",
+      onPress: () => void sendWithoutReply(),
+    },
+  ];
+
+  function opsDrawer() {
+    switch (opsPanel) {
+      case null:
+        return undefined;
+      case "grid":
+        return <OpsGrid ops={ops} cue={cueSummary()} />;
+      case "nudge":
+        return (
+          <OpPrompt
+            title={strings.chat.opNudgeTitle}
+            hint={strings.chat.opNudgeHint}
+            placeholder={strings.chat.opNudgePlaceholder}
+            submitLabel={strings.chat.opApply}
+            onSubmit={(value) => void nudge(value)}
+            onCancel={() => setOpsPanel("grid")}
+          />
+        );
+      case "guided_swipe":
+        return (
+          <OpPrompt
+            title={strings.chat.opGuidedSwipeTitle}
+            hint={strings.chat.opGuidedSwipeHint}
+            placeholder={strings.chat.opNudgePlaceholder}
+            submitLabel={strings.chat.opApply}
+            onSubmit={(value) => void guidedSwipe(value)}
+            onCancel={() => setOpsPanel("grid")}
+          />
+        );
+      case "steer":
+        return (
+          <OpPrompt
+            title={strings.chat.opSteerTitle}
+            hint={strings.chat.opSteerHint}
+            placeholder={strings.chat.opSteerPlaceholder}
+            initial={steer ?? ""}
+            submitLabel={strings.chat.opApply}
+            onSubmit={(value) => {
+              setup.mutate({ directorNote: value });
+              setOpsPanel(null);
+            }}
+            onCancel={() => setOpsPanel("grid")}
+            {...(steer === null
+              ? {}
+              : {
+                  onClear: () => {
+                    setup.mutate({ directorNote: null });
+                    setOpsPanel(null);
+                  },
+                })}
+          />
+        );
+      case "impersonate":
+        return (
+          <div className="pb-[2px]">
+            <p className="section-label mb-[6px]">{strings.chat.opImpersonateTitle}</p>
+            <p className="chrome mb-[9px] text-[9px] leading-[1.5] text-ink-dim">
+              {strings.chat.opImpersonateHint}
+            </p>
+            <div className="flex gap-[6px]">
+              {(["first", "second", "third"] as const).map((person) => (
+                <button
+                  key={person}
+                  type="button"
+                  disabled={opWorking}
+                  className="btn flex-1"
+                  onClick={() => void impersonate(person)}
+                >
+                  {person === "first"
+                    ? strings.chat.opImpersonateFirst
+                    : person === "second"
+                      ? strings.chat.opImpersonateSecond
+                      : strings.chat.opImpersonateThird}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="btn mt-[6px] w-full"
+              onClick={() => setOpsPanel("grid")}
+            >
+              {opWorking ? strings.chat.opImpersonateWorking : strings.common.cancel}
+            </button>
+          </div>
+        );
+    }
   }
 
   return (
@@ -320,7 +562,24 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         </div>
       </div>
 
-      {cast.length > 0 && !isGenerating ? (
+      {/* Steer, when it is set: a hairline strip above the composer, so a note
+          that changes every turn is visible while you write (design handoff). */}
+      {steer !== null && opsPanel === null ? (
+        <button
+          type="button"
+          onClick={() => setOpsPanel("steer")}
+          className="flex-none border-t border-rule bg-bg-raised px-[16px] py-[8px] text-left"
+        >
+          <span className="chrome mx-auto flex w-full max-w-[var(--onsen-prose-measure)] gap-[8px] text-[9px] leading-[1.5] tracking-[0.06em] uppercase">
+            <span style={{ color: "var(--onsen-color-red)" }}>{strings.chat.steerActive}</span>
+            <span className="min-w-0 flex-1 truncate text-ink-dim">{steer}</span>
+          </span>
+        </button>
+      ) : null}
+
+      {/* With the ops drawer open the cast strip collapses away, so the whole
+          composer stack still fits above an open keyboard (design handoff). */}
+      {cast.length > 0 && !isGenerating && opsPanel === null ? (
         <div className="flex-none border-t border-rule bg-bg-raised px-[16px] pt-[2px]">
           <div className="mx-auto w-full max-w-[var(--onsen-prose-measure)]">
             <CastStrip
@@ -348,6 +607,11 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
               ? strings.chat.chooseInitials
               : initialsOf(speakerName)
         }
+        draft={draft}
+        onDraftChange={setDraft}
+        opsOpen={opsPanel !== null}
+        onToggleOps={() => setOpsPanel(opsPanel === null ? "grid" : null)}
+        ops={opsDrawer()}
       />
 
       {acting !== null ? (
@@ -365,6 +629,14 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             label={strings.chat.branch}
             onClick={() => {
               setLeaf.mutate({ messageId: acting.id, descend: false });
+              setActing(null);
+            }}
+          />
+          <SheetAction label={strings.chat.opExpand} onClick={() => void revise(acting, "expand")} />
+          <SheetAction
+            label={strings.chat.opCorrect}
+            onClick={() => {
+              setCorrecting(acting);
               setActing(null);
             }}
           />
@@ -405,6 +677,21 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
               setActing(null);
             }}
           />
+        </Sheet>
+      ) : null}
+
+      {correcting !== null ? (
+        <Sheet title={strings.chat.opCorrectTitle} onClose={() => setCorrecting(null)}>
+          <div className="pt-[6px] pb-[10px]">
+            <OpPrompt
+              title={strings.chat.opCorrectTitle}
+              hint={strings.chat.opCorrectHint}
+              placeholder={strings.chat.opCorrectPlaceholder}
+              submitLabel={strings.chat.opApply}
+              onSubmit={(value) => void revise(correcting, "correct", value.trim() || undefined)}
+              onCancel={() => setCorrecting(null)}
+            />
+          </div>
         </Sheet>
       ) : null}
 
