@@ -4,6 +4,7 @@ import { sessionMiddleware } from "./middleware/session.ts";
 import { authRoutes } from "./routes/auth.ts";
 import { setupRoutes } from "./routes/setup.ts";
 import { connectionRoutes } from "./routes/connections.ts";
+import { sceneRoutes } from "./routes/scenes.ts";
 import { spaStatic } from "./static.ts";
 
 export interface CreateAppOptions {
@@ -21,6 +22,7 @@ export function createApp(ctx: AppContext, options: CreateAppOptions = {}): Hono
   api.route("/", authRoutes(ctx));
   api.route("/", setupRoutes(ctx));
   api.route("/connections", connectionRoutes(ctx));
+  api.route("/scenes", sceneRoutes(ctx));
 
   // An unknown API path is an API error, not the SPA shell — returning HTML
   // from a fetch is the kind of thing that costs an hour to diagnose.
