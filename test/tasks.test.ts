@@ -9,7 +9,7 @@ import {
 } from "./helpers.ts";
 import { OPENAI_COMPATIBLE_CAPABILITIES, type Adapter } from "../server/adapters/index.ts";
 import { V1_CARD, V2_CARD, charxCard, jsonBytes, pngCard } from "./card-fixtures.ts";
-import { TASK_KINDS, TURN_CLASSIFIER, taskKind } from "../server/tasks/registry.ts";
+import { OP_KINDS, TURN_CLASSIFIER, taskKind } from "../server/tasks/registry.ts";
 import { TaskRunner } from "../server/tasks/runner.ts";
 import { listTaskRuns, updateTask } from "../server/db/queries/tasks.ts";
 import { createEstimatingTokenizer } from "../server/prompt/index.ts";
@@ -420,7 +420,7 @@ describe("configuring a task", () => {
   test("lists every kind the code knows, configured or not", async () => {
     const t = await signedIn();
     const tasks = await json<TaskDto[]>(t, "GET", "/api/tasks");
-    expect(tasks.map((task) => task.key)).toEqual(TASK_KINDS.map((kind) => kind.key));
+    expect(tasks.map((task) => task.key)).toEqual(OP_KINDS.map((kind) => kind.key));
     expect(tasks[0]).toMatchObject({
       key: TURN_CLASSIFIER,
       stage: "pre_generation",

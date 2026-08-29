@@ -908,6 +908,40 @@ injection_role, auto_trigger, button_visible, run_order
 - **`auto_trigger`** — run automatically after each reply.
 - **`button_visible`** — control which ops appear in the UI.
 
+### Settled while building phase 13
+
+- **An op is anything with a configuration row**, and two kinds share the table
+  because they share the row: a *side call* runs off the main path on its own
+  model and returns text; a *turn instruction* is a block inside a user-facing
+  generation's prompt. Routing and a timeout only mean something for the first,
+  and the row says which kind it is rather than leaving a caller to guess.
+- **A template has two substitution passes, and the order matters.** The op's
+  own variables — `{{input}}`, `{{original}}` — are filled by the caller,
+  because only the caller knows what they mean. Everything else is the ordinary
+  macro set, filled at assembly, so `{{char}}` inside a user's override resolves
+  exactly as it does inside a preset. Filling must therefore leave unknown
+  macros alone: one deleted in the first pass never reaches the engine that
+  knows it.
+- **The user-lock is not part of any template.** §0.5 makes it a hard constraint
+  restated near the turn, and a template a user can edit is not where a
+  non-negotiable belongs. The builder appends it after the template, where an
+  override cannot drop it by accident.
+- **The template is the only copy of an op's words.** The prompt builder reads
+  it rather than holding a second copy for the un-overridden case — two copies
+  of the same paragraph is how the built-in and the default drift apart.
+- **Hidden is not off.** `button_visible` decides whether a button is shown;
+  `enabled` decides whether the op runs at all. An op with no button still runs
+  when something else asks for it, and the list says which ops hiding would even
+  mean anything for.
+- **`auto_trigger` is the one field from §7's row still missing.** It means "run
+  automatically after each reply", and the only ops that want it are the
+  post-generation passes (§7.5). It arrives with them; a switch that does
+  nothing is worse than a short settings screen.
+- **The last provider and the last profile cannot be deleted.** Deleting a
+  profile leaves the scenes that used it saying they have no connection, which
+  is recoverable; leaving the installation with nowhere at all to generate is
+  not.
+
 ### Settled while building phase 12
 
 - **Ephemeral means ephemeral.** A nudge reaches the model at depth 0 and is

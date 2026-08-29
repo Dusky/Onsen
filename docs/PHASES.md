@@ -1041,3 +1041,102 @@ was looking at. And the composer's draft had to move up into the chat screen,
 because two ops read it: "no reply" posts it, and "as me" replaces it with a
 turn written from it. A component that owns state two of its siblings need is
 the wrong owner.
+
+---
+
+## Phase 13 — Per-op configuration and connection profiles
+
+Two halves of one idea. Every op gets §7's configuration row — which model it
+runs on, the words it uses, where they are injected, whether its button is shown
+— and connection profiles become something you can actually make, which until
+now they were not: the routing built in phases 10 and 11 pointed at a list with
+one item in it.
+
+### What was built
+
+**One registry for every op.** A *side call* runs off the main path on its own
+model and returns text; a *turn instruction* is a block inside a user-facing
+generation's prompt. They share a table because they share a row, and the row
+says which kind it is rather than leaving a caller to work it out — routing and
+a timeout mean nothing for the second.
+
+**Templates, actually read.** `prompt_template` was accepted but inert since
+phase 11; now the built-in words for nudge, steer, expand, correct and continue
+live in `server/prompt/op-templates.ts` and a user's override replaces them.
+Two substitution passes, and the order is the whole design: the op's own
+variables are filled by the caller, because only the caller knows what
+`{{original}}` is, and everything else is the ordinary macro set filled at
+assembly — so `{{char}}` inside an override resolves exactly as it does inside a
+preset. Filling therefore leaves unknown macros alone; one deleted in the first
+pass would never reach the engine that knows it.
+
+**The user-lock is outside every template.** §0.5 makes it a hard constraint
+restated near the turn, and a template a user can edit is not where a
+non-negotiable belongs. The builder appends it after the template.
+
+**The template is the only copy.** The prompt builder now reads it for the
+un-overridden case too, and the paragraph that used to be hardcoded beside it is
+gone. Two copies of the same words is how a built-in and a default drift apart.
+
+**`injection_role` and `button_visible`** (migration 0011) complete §7's row
+apart from `auto_trigger`. Hidden is not off: a button you have hidden still
+runs when something else asks for the op, and the list says which ops hiding
+would even mean anything for — nothing shows a button for the turn director, so
+offering the switch would be a lie.
+
+**Providers and profiles are editable.** Add a second box, point a profile at
+it, route the classifier and impersonate there. Three states for an API key —
+absent leaves it, null clears it, a string replaces it — because a form that
+came back empty must never delete a credential nobody touched. The last provider
+and the last profile cannot be removed.
+
+**The Settings screen**, built to the design's screen 3i: **Connections** with a
+green status dot over a mono spec line, and **Routing by operation**, which the
+design calls the interesting screen for this audience and is right about. Each
+op names where it runs and whether its words are the built-in ones or yours.
+The design's third group, Reading, is theme, prose size and VN stage — all three
+belong to features that do not exist, so it is absent rather than drawn empty.
+
+**Verified end to end in a browser** at 390×844 in both themes: two providers,
+two profiles, the classifier and "as me" routed at the cheap one, a nudge
+template overridden and reaching the model as written, and hiding the nudge
+button removing it from the ops grid.
+
+**Tests.** 23 new, including two that keep the registry and the templates honest
+about each other — every templated op exists, every declared variable is
+actually used.
+
+### Deliberately not built
+
+- **`auto_trigger`.** Its only consumers are the post-generation passes, phase
+  14. It arrives with them.
+- **A test button on a connection.** The read-only routes' old comment promised
+  one "which needs the adapters from phase 4"; the adapters exist now, but a
+  test call is a side call and belongs on the task primitive with a proper run
+  log entry. Worth doing, not worth doing badly in the last hour of a phase.
+- **Presets.** A profile can point at one and the setup wizard makes one; there
+  is still no preset editor. §13's sampler work is phase 17.
+- **The Reading group.** See above.
+
+### Spec changes
+
+§7 gains "settled while building phase 13": what an op is, the two substitution
+passes and why the order matters, the lock living outside every template, the
+template being the only copy, hidden not meaning off, `auto_trigger` waiting for
+its consumer, and the last-profile rule.
+
+### Surprises
+
+One real bug, caught by a test that was only meant to check the happy path.
+`connection_profiles` has a partial unique index enforcing one default, and
+`updateConnectionProfile` cleared the old default before setting a new one —
+but `insertConnectionProfile` did not. So creating a profile and asking for it
+to be the default was a constraint violation and a 500, on a path the setup
+wizard never takes because it makes the first profile when there is nothing to
+collide with.
+
+And a smaller judgement: the op templates live under `/prompt`, not under
+`/tasks`, because they are the words a prompt is made of. That means five op
+keys are duplicated as constants rather than imported, to keep `/prompt` from
+importing anything outside itself. A test asserts the two lists agree, which is
+a cheaper coupling than the layering violation would have been.
