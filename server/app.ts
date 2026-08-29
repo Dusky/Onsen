@@ -5,6 +5,7 @@ import { authRoutes } from "./routes/auth.ts";
 import { setupRoutes } from "./routes/setup.ts";
 import { connectionRoutes } from "./routes/connections.ts";
 import { sceneRoutes } from "./routes/scenes.ts";
+import { characterRoutes } from "./routes/characters.ts";
 import { generationRoutes, sceneGenerationRoutes } from "./routes/generation.ts";
 import { GenerationService } from "./generation/service.ts";
 import { spaStatic } from "./static.ts";
@@ -41,6 +42,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   api.route("/scenes", sceneRoutes(ctx));
   api.route("/scenes", sceneGenerationRoutes(ctx, generation));
   api.route("/generations", generationRoutes(generation));
+  api.route("/characters", characterRoutes(ctx));
 
   // An unknown API path is an API error, not the SPA shell — returning HTML
   // from a fetch is the kind of thing that costs an hour to diagnose.

@@ -275,3 +275,98 @@ export interface CreateCheckpointRequest {
   /** Defaults to the scene's active leaf. */
   messageId?: string;
 }
+
+/* ------------------------------------------------------------------ */
+/* Characters (SPEC §2, §9)                                            */
+/* ------------------------------------------------------------------ */
+
+export type CardFormat = "png_v2" | "png_v3" | "json" | "charx" | "native";
+export type CardExportFormat = "png" | "charx" | "json";
+
+/**
+ * Per-field token costs, computed server-side so the editor can print them on
+ * each field's label row. SPEC §16: cost is always expressed as a share of the
+ * context window, not an abstract number.
+ */
+export interface CardTokenCosts {
+  description: number;
+  personality: number;
+  scenario: number;
+  firstMessage: number;
+  exampleDialogue: number;
+  voiceNotes: number;
+  depthPrompt: number;
+  /** What the character contributes to a prompt when spotlighted. */
+  total: number;
+  /** True while only the estimator ships (§3). */
+  estimated: boolean;
+}
+
+export interface CharacterDto {
+  id: string;
+  name: string;
+  hasAvatar: boolean;
+
+  description: string | null;
+  personality: string | null;
+  scenario: string | null;
+  firstMessage: string | null;
+  alternateGreetings: string[];
+  groupGreetings: string[];
+  exampleDialogue: string | null;
+  voiceNotes: string | null;
+
+  depthPrompt: string | null;
+  depthPromptDepth: number;
+  depthPromptRole: PromptRoleName;
+
+  systemPrompt: string | null;
+  postHistoryInstructions: string | null;
+  creatorNotes: string | null;
+  tags: string[];
+  creator: string | null;
+  characterVersion: string | null;
+
+  /** How the card arrived, so export can offer its original format. */
+  format: CardFormat;
+  /**
+   * Fields present in the original card that this app does not model. They are
+   * preserved verbatim and survive export; this names them so the user knows.
+   */
+  unmodelledFields: string[];
+
+  tokens: CardTokenCosts;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type PromptRoleName = "system" | "user" | "assistant";
+
+export interface UpdateCharacterRequest {
+  name?: string;
+  description?: string | null;
+  personality?: string | null;
+  scenario?: string | null;
+  firstMessage?: string | null;
+  alternateGreetings?: string[];
+  groupGreetings?: string[];
+  exampleDialogue?: string | null;
+  voiceNotes?: string | null;
+  depthPrompt?: string | null;
+  depthPromptDepth?: number;
+  depthPromptRole?: PromptRoleName;
+  systemPrompt?: string | null;
+  postHistoryInstructions?: string | null;
+  creatorNotes?: string | null;
+  tags?: string[];
+  creator?: string | null;
+  characterVersion?: string | null;
+}
+
+/** What an import produced, including anything worth telling the user. */
+export interface ImportCharacterResponse {
+  character: CharacterDto;
+  /** True when the file matched a character already in the library. */
+  duplicateOf: string | null;
+  warnings: string[];
+}
