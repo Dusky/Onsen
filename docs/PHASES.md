@@ -598,3 +598,78 @@ two scenes created in the same millisecond tie on `updated_at`, and the
 millisecond-resolution artefact rather than a real ordering bug — real scenes
 are created seconds apart — so the test is now realistic rather than the
 ordering being engineered around.
+
+---
+
+## Phase 8 — Group scenes
+
+> Cast, spotlight, voice notes, depth prompts, presence tracking, turn director
+> (manual + round robin).
+
+### Built
+
+**The turn director**, pure like the prompt builder and for the same reason: the
+decision has to be inspectable and reproducible. §6 requires it to be exposed in
+the UI, which makes the *reason* part of the return value rather than a comment
+in the code — `{ characterId, source, reason }`, printed verbatim under the cast
+strip. All three cross-strategy rules are implemented and tested: never the same
+character twice consecutively, an explicit pick always wins (including over that
+rule — "unless requested" is what it means), and every decision carries a reason.
+
+`manual` still returns a suggestion when nothing has been cued: whoever has been
+quiet longest, with the silence counted in the reason. The composer has to name
+who the send button will speak as before it is pressed, so refusing to choose
+was not an option. `mention` and `classifier` fall back to round robin and
+**say which fallback they took**, rather than silently behaving like something
+else.
+
+**Benching.** A benched cast member keeps their history and their place but
+stops being chosen and stops contributing voice notes. Removal is a different
+thing and still available.
+
+**Presence tracking.** A character added to a scene in progress records the leaf
+at the moment they joined. The author sees everything, so history is not
+trimmed — trimming it would cost the author the continuity it needs — and the
+spotlight instruction states the constraint instead: "Mira Vance was not present
+for the first 2 turns of this scene and does not know what happened in them."
+
+**The cast strip**, which is the headline UI of the phase and is built to the
+design: the cued speaker's card is larger, lifted, red-topped, with a red
+caption and a brighter name, and the director's reason is printed always — no
+tooltip, no modal.
+
+**Verified end to end in a browser**: three cards imported, an author created, a
+three-character cast assembled, round robin set, and three generations that
+cycled Aldan → Mira → Bell with the reason updating each turn.
+
+**Tests.** 32 new: 19 on the director's rules with no database in sight, 13 on
+group behaviour over HTTP and in the assembled prompt.
+
+### Deliberately not built
+
+- **The `mention` and `classifier` strategies.** Classifier is phase 10;
+  mention is listed under Polish. Both are accepted and both say what they
+  actually did.
+- **Beats** (§3.5). Phase 9, and the other headline differentiator.
+- **Per-scene card overrides** (`SceneMember.overrides`) and the private-agenda
+  tracker field §6 mentions. Trackers are phase 29.
+- **Autopilot.** Phase 22.
+
+### Spec changes
+
+§6 gains "Turn director decisions are prose". §24's presence question is partly
+resolved — see below.
+
+### Surprises
+
+The column §2 calls `first_seen_message_id` cannot hold what its name says. The
+first message a joining character witnesses does not exist yet at the moment
+they join, so storing the current leaf under that name is off by one in the only
+place it is ever read — which is exactly how it showed up: a character who
+missed two turns was told they had missed one. It is now
+`joined_after_message_id`, which is what the value actually is, and §24 records
+the deviation.
+
+Also worth noting as a product fix rather than a bug: importing a card used to
+jump straight into its editor, which makes importing several cards in a row
+tedious. The library now stays put and says what it imported.

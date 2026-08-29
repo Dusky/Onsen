@@ -737,6 +737,21 @@ Rules for every strategy:
 - Respect an explicit user target over the strategy.
 - Expose the decision in the UI.
 
+### Turn director decisions are prose
+
+Settled while building phase 8. §6 requires the decision to be exposed in the
+UI, which makes the *reason* part of the director's return value rather than a
+comment in the code: `{ characterId, source, reason }`, where `source`
+distinguishes the user's pick from the director's and `reason` is written to be
+read by a person. The design prints it verbatim under the cast strip. A reason
+nobody can read is the arbitrary dice roll this is meant to replace.
+
+Two consequences. A strategy that is not implemented yet falls back and **says
+which fallback it took** ("Classifier not available — round robin") rather than
+silently behaving like something else. And `manual` still returns a suggestion
+when nothing has been cued — whoever has been quiet longest — because the
+composer has to name who the send button will speak as before it is pressed.
+
 ### Presence tracking
 
 Characters should not react to events they weren't present for. Track
@@ -1814,8 +1829,14 @@ Things existing frontends do that this project should not.
   pseudo-character needed? Author-narrates is simpler and probably right.
 - Should timed-effect delay measure from scene start or from branch point?
   Offering both is cheap; pick a default.
-- Does presence tracking need an explicit exit point per character, or is
-  "present from first_seen onward" sufficient?
+- Presence tracking: **partly resolved.** The stored column is
+  `joined_after_message_id` — the last message that had already happened when a
+  character joined — rather than §2's `first_seen_message_id`. The first message
+  a joining character witnesses does not exist yet at the moment they join, so
+  storing the leaf under that name is off by one in the only place it is read.
+  Joining is enough for the case that actually occurs (a character arriving
+  mid-scene); an explicit exit point is still open, and is only worth adding
+  when something needs a character to stop knowing things.
 - Should beats be the default turn type, with spotlight as the exception? Group
   scenes probably want beats most of the time; single-character scenes never do.
 - Does a beat swipe reroll the whole exchange, or should swipe be disabled on
