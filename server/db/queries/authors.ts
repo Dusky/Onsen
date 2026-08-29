@@ -340,3 +340,12 @@ export function setDirectorNote(db: Database, sceneId: number, note: string | nu
     now: Date.now(),
   });
 }
+
+/** Whether this scene runs the post-generation passes unasked (SPEC §7.5). */
+export function setAutoPasses(db: Database, sceneId: number, on: boolean): void {
+  db.query("UPDATE scenes SET auto_passes = $on, updated_at = $now WHERE id = $id").run({
+    id: sceneId,
+    on: on ? 1 : 0,
+    now: Date.now(),
+  });
+}

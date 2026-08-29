@@ -5,11 +5,14 @@ import type {
   MessageAuthorType,
   MessageDto,
   MessageKind,
+  AnnotationDto,
   MessageSegmentDto,
   SceneDto,
   SceneMemberDto,
 } from "../../../shared/types.ts";
 import { parseBeat, spliceSegment, type ParsedSegment } from "../../generation/segments.ts";
+import { annotationsOf, toAnnotationDto } from "./annotations.ts";
+import { opKind } from "../../tasks/registry.ts";
 
 /**
  * The history tree (SPEC §0.3, §2).
@@ -40,6 +43,8 @@ export interface SceneRow {
   director_profile_id: number | null;
   /** Steer: a persistent director note, applied until cleared (SPEC §7). */
   director_note: string | null;
+  /** Whether the post-generation passes run without being asked (§7.5). */
+  auto_passes: number;
   active_leaf_id: number | null;
   created_at: number;
   updated_at: number;
@@ -59,6 +64,8 @@ export interface MessageRow {
   token_count: number | null;
   /** A beat whose speaker labels could not be read (SPEC §3.5). */
   parse_degraded: number;
+  /** True while the post-generation pipeline is still working on it (§7.5). */
+  passes_pending: number;
   created_at: number;
   edited_at: number | null;
 }
@@ -114,6 +121,8 @@ export function toMessageDto(
    * swipe carousel showing three-line excerpts — does not pay for them.
    */
   segments: MessageSegmentDto[] | null = null,
+  /** What the passes found. Passed in for the same reason segments are. */
+  annotations: AnnotationDto[] = [],
 ): MessageDto {
   return {
     id: row.ulid,
@@ -135,6 +144,8 @@ export function toMessageDto(
     siblingCount: row.sibling_count,
     segments,
     parseDegraded: row.parse_degraded === 1,
+    annotations,
+    passesPending: row.passes_pending === 1,
   };
 }
 
@@ -162,6 +173,7 @@ export function toSceneDto(
     turnStrategy: extras.turnStrategy,
     directorProfileId: extras.directorProfileUlid,
     directorNote: row.director_note,
+    autoPasses: row.auto_passes === 1,
     authorId: extras.authorUlid,
     authorName: extras.authorName,
     personaId: extras.personaUlid,
@@ -649,6 +661,7 @@ export function activePathDtos(db: Database, scene: SceneRow): MessageDto[] {
       // Only a beat carries a parsed view; every other kind of message is its
       // own single segment and does not need it sent twice.
       row.kind === "beat" ? segmentDtosOf(db, row, speakers) : null,
+      annotationDtosOf(db, row.id),
     ),
   );
 }
@@ -661,6 +674,7 @@ export function messageDto(db: Database, row: MessageRow, sceneUlid: string): Me
     ulidOf(db, "messages", row.parent_id),
     speakers,
     row.kind === "beat" ? segmentDtosOf(db, row, speakers) : null,
+    annotationDtosOf(db, row.id),
   );
 }
 
@@ -875,4 +889,16 @@ export function splitBeat(db: Database, message: MessageRow): MessageRow[] {
     parentId = node.id;
   }
   return created;
+}
+
+/**
+ * A message's pass findings, labelled (SPEC §7.5).
+ *
+ * Read here rather than in the annotations module so the tree module stays the
+ * one place a message DTO is assembled — the same reason segments live here.
+ */
+export function annotationDtosOf(db: Database, messageId: number): AnnotationDto[] {
+  return annotationsOf(db, messageId).map((row) =>
+    toAnnotationDto(row, opKind(row.pass_key)?.label ?? row.pass_key),
+  );
 }

@@ -236,6 +236,29 @@ export interface MessageSegmentDto {
   charEnd: number;
 }
 
+/**
+ * What a post-generation pass found (SPEC §7.5).
+ *
+ * Shown as a small annotation on the message, never a modal: a pass is a second
+ * reader's note in the margin, not an interruption.
+ */
+export interface AnnotationDto {
+  id: string;
+  passKey: string;
+  passLabel: string;
+  /** Which part of a beat this is about. Null for the whole message. */
+  segmentOrdinal: number | null;
+  /**
+   * `ok` is reported as well as `flagged`, because "the pass ran and was happy"
+   * and "the pass never ran" are different things to know.
+   */
+  status: "ok" | "flagged" | "revised" | "failed";
+  detail: string | null;
+  /** True when the pass changed the message and the original is still held. */
+  revertable: boolean;
+  createdAt: number;
+}
+
 export interface MessageDto {
   id: string;
   sceneId: string;
@@ -268,6 +291,10 @@ export interface MessageDto {
    * content, so sending it again would double the payload of every log.
    */
   segments: MessageSegmentDto[] | null;
+  /** What the post-generation passes found, in the order they ran (§7.5). */
+  annotations: AnnotationDto[];
+  /** True while the pipeline is still working on this message. */
+  passesPending: boolean;
   /**
    * True when a beat arrived with no usable speaker labels and was kept whole
    * as narration (SPEC §3.5). The text is intact; the attribution is not.
@@ -294,6 +321,8 @@ export interface SceneDto {
   personaName: string | null;
   /** Steer (SPEC §7): applied to every turn until cleared. Null when clear. */
   directorNote: string | null;
+  /** Whether the post-generation passes run without being asked (§7.5). */
+  autoPasses: boolean;
   /** The cast, in display order. One member until group scenes (phase 8). */
   cast: SceneMemberDto[];
   /** Null while the scene is empty. */
@@ -462,6 +491,14 @@ export interface TaskDto {
   injectionRole: InjectionRole;
   /** Whether its button is shown. Hidden is not the same as turned off. */
   buttonVisible: boolean;
+  /** Whether this pass runs automatically after a reply (SPEC §7.5). */
+  autoTrigger: boolean;
+  /**
+   * What a pass does to the message it read. `flag` looks and reports;
+   * `replace` rewrites and keeps the original. Null for an op that is not a
+   * pass at all.
+   */
+  effect: "flag" | "replace" | null;
   /** False when hiding this op's button would mean nothing. */
   hideable: boolean;
   timeoutMs: number;
@@ -501,6 +538,7 @@ export interface UpdateTaskRequest {
   promptTemplate?: string | null;
   injectionRole?: InjectionRole;
   buttonVisible?: boolean;
+  autoTrigger?: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -759,5 +797,7 @@ export interface SceneSetupRequest {
   directorProfileId?: string | null;
   /** Steer: a persistent director note, applied until cleared (SPEC §7). */
   directorNote?: string | null;
+  /** Whether the post-generation passes run without being asked (§7.5). */
+  autoPasses?: boolean;
   title?: string;
 }

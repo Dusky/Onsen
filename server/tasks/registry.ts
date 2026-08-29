@@ -49,6 +49,18 @@ interface OpBase {
 export interface SideCallOp extends OpBase {
   runs: "side_call";
   /**
+   * What this op does to the message it read (SPEC §7.5). Absent for a side
+   * call that is not a pass at all.
+   *
+   * `flag` looks and reports; `replace` rewrites the message and keeps the
+   * original so the user can revert. §7.5 is deliberate that the user-lock
+   * check flags rather than rewriting — a pass that quietly rewrites a turn is
+   * a second author nobody hired.
+   */
+  effect?: "flag" | "replace";
+  /** Order within the pipeline. Lower runs first. */
+  passOrder?: number;
+  /**
    * Samplers for this op. Deliberately not the scene's: a side call is a
    * decision or a summary, and §13's defaults exist to make prose less
    * predictable, which is the opposite of what is wanted here.
@@ -77,6 +89,12 @@ export const STEER = "steer";
 export const EXPAND = "expand";
 export const CORRECT = "correct";
 export const CONTINUE = "continue";
+export const VOICE_CHECK = "voice_check";
+export const LOCK_CHECK = "lock_check";
+export const PROSE_REFINE = "prose_refine";
+
+/** The post-generation pipeline, in the order §7.5 runs it. */
+export const PASS_KEYS: readonly string[] = [VOICE_CHECK, LOCK_CHECK, PROSE_REFINE];
 
 export const OP_KINDS: readonly OpKind[] = [
   {
@@ -156,6 +174,52 @@ export const OP_KINDS: readonly OpKind[] = [
     injectionRole: "system",
     variables: ["original"],
     hideable: true,
+  },
+  {
+    key: VOICE_CHECK,
+    runs: "side_call",
+    label: "Voice check",
+    description:
+      "Reads each character's part and says whether it still sounds like them. The direct answer to one author voicing everybody.",
+    stage: "post_generation",
+    effect: "flag",
+    passOrder: 0,
+    samplers: { temperature: 0.2, top_p: 0.9 },
+    timeoutMs: 20_000,
+    replyLimit: 500,
+    variables: ["character", "text"],
+    hideable: false,
+  },
+  {
+    key: LOCK_CHECK,
+    runs: "side_call",
+    label: "User-lock check",
+    description: "Notices the author writing your character, and says so rather than rewriting it.",
+    stage: "post_generation",
+    effect: "flag",
+    passOrder: 1,
+    samplers: { temperature: 0.2, top_p: 0.9 },
+    timeoutMs: 20_000,
+    replyLimit: 500,
+    variables: ["persona", "text"],
+    hideable: false,
+  },
+  {
+    key: PROSE_REFINE,
+    runs: "side_call",
+    label: "Prose refinement",
+    description:
+      "Rewrites the turn with better vocabulary and rhythm, keeping every event. Costs a second full generation, so it is off unless you turn it on.",
+    stage: "post_generation",
+    effect: "replace",
+    passOrder: 2,
+    // Prose, not a verdict: this one is writing, so it gets the warmth §13's
+    // defaults exist for.
+    samplers: { temperature: 0.9, min_p: 0.05 },
+    timeoutMs: 90_000,
+    replyLimit: 8_000,
+    variables: ["text", "speaker"],
+    hideable: false,
   },
 ];
 

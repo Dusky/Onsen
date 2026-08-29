@@ -32,6 +32,8 @@ export interface TaskRow {
   injection_role: InjectionRole;
   /** Whether its button is shown. Hidden is not the same as off. */
   button_visible: number;
+  /** Whether this pass runs automatically after a reply (SPEC §7, §7.5). */
+  auto_trigger: number;
   created_at: number;
   updated_at: number;
 }
@@ -95,6 +97,7 @@ export interface TaskPatch {
   timeoutMs?: number;
   injectionRole?: InjectionRole;
   buttonVisible?: boolean;
+  autoTrigger?: boolean;
 }
 
 export function updateTask(db: Database, kind: OpKind, patch: TaskPatch): TaskRow {
@@ -108,6 +111,7 @@ export function updateTask(db: Database, kind: OpKind, patch: TaskPatch): TaskRo
               timeout_ms = $timeout,
               injection_role = $role,
               button_visible = $visible,
+              auto_trigger = $auto,
               updated_at = $now
         WHERE id = $id
         RETURNING *`,
@@ -125,6 +129,7 @@ export function updateTask(db: Database, kind: OpKind, patch: TaskPatch): TaskRo
       role: patch.injectionRole ?? current.injection_role,
       visible:
         patch.buttonVisible === undefined ? current.button_visible : patch.buttonVisible ? 1 : 0,
+      auto: patch.autoTrigger === undefined ? current.auto_trigger : patch.autoTrigger ? 1 : 0,
       now: Date.now(),
     }) as TaskRow;
 }
@@ -230,6 +235,9 @@ export function toTaskDto(row: TaskRow, profileUlid: string | null): TaskDto {
     variables: kind?.variables ?? [],
     injectionRole: row.injection_role,
     buttonVisible: row.button_visible === 1,
+    autoTrigger: row.auto_trigger === 1,
+    // What this op does to the message it read, for the passes that read one.
+    effect: kind !== null && kind.runs === "side_call" ? (kind.effect ?? null) : null,
     hideable: kind?.hideable ?? false,
     timeoutMs: row.timeout_ms,
   };
