@@ -4,13 +4,15 @@ A self-hosted, mobile-first AI roleplay frontend. Group scenes are the primary
 case: one AI **author** with its own personality plays the whole cast, like a GM
 running a table, while you direct.
 
-> **Status: phase 11 of 41 — usable.** Set it up, import character cards, give
+> **Status: phase 12 of 41 — usable.** Set it up, import character cards, give
 > the AI an author persona of its own, and run a group scene: one writing
 > partner voicing a whole cast, **beats** — a whole exchange between several
 > characters written in one go, which you can then correct one character at a
 > time or split into separate turns — and a **turn director that can be a model**
-> and prints its reasoning before it writes a word. Plus streaming, swipe to
-> reroll, a version carousel, edit and branch, and a stream that survives a
+> and prints its reasoning before it writes a word. Direct it as you go: nudge a
+> single turn, steer the whole scene, reroll with guidance, expand or rewrite a
+> reply, or have it draft your own turn into the composer. Plus streaming, swipe
+> to reroll, a version carousel, edit and branch, and a stream that survives a
 > phone suspending its tab. See
 > [`docs/SPEC.md` §20](docs/SPEC.md) for the build order and
 > [`docs/PHASES.md`](docs/PHASES.md) for what exists today.

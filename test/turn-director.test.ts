@@ -121,7 +121,7 @@ describe("the decision reaches the client", () => {
   test("the generation carries who was chosen and why", async () => {
     const t = await signedIn();
     const { aldan, sceneId } = await classifierScene(t);
-    adapter.classifierReply = "SPEAKER: Aldan Roe\nWHY: He keeps the ledger and was asked.";
+    adapter.taskReply = "SPEAKER: Aldan Roe\nWHY: He keeps the ledger and was asked.";
 
     const snapshot = await generate(t, sceneId);
     expect(snapshot.director).toMatchObject({
@@ -136,7 +136,7 @@ describe("the decision reaches the client", () => {
   test("the message is attributed to whoever the classifier picked", async () => {
     const t = await signedIn();
     const { mira, sceneId } = await classifierScene(t);
-    adapter.classifierReply = "SPEAKER: Mira Vance\nWHY: She was already halfway out the door.";
+    adapter.taskReply = "SPEAKER: Mira Vance\nWHY: She was already halfway out the door.";
 
     await generate(t, sceneId);
     const messages = await json<MessageDto[]>(t, "GET", `/api/scenes/${sceneId}/messages`);
@@ -152,7 +152,7 @@ describe("the decision reaches the client", () => {
     // SPEC §6 asks for the decision to be exposed; that is not a classifier
     // feature, so every turn says who and why on the same channel.
     expect(snapshot.director!.reason).toContain("Round robin");
-    expect(adapter.classifierCalls).toBe(0);
+    expect(adapter.taskCalls).toBe(0);
   });
 });
 
@@ -160,12 +160,12 @@ describe("what the classifier is allowed to decide", () => {
   test("it is never offered whoever just spoke", async () => {
     const t = await signedIn();
     const { sceneId } = await classifierScene(t);
-    adapter.classifierReply = "SPEAKER: Sister Bell\nWHY: She has not spoken.";
+    adapter.taskReply = "SPEAKER: Sister Bell\nWHY: She has not spoken.";
     await generate(t, sceneId);
 
     // Bell spoke; the next question must not list her, so "never twice
     // consecutively" is structural rather than a plea in the prompt.
-    adapter.classifierReply = "SPEAKER: Mira Vance\nWHY: She answers Bell.";
+    adapter.taskReply = "SPEAKER: Mira Vance\nWHY: She answers Bell.";
     await generate(t, sceneId);
 
     // The transcript still shows what Bell said — she is only kept off the list
@@ -183,12 +183,12 @@ describe("what the classifier is allowed to decide", () => {
   test("a cued character is not put to a vote", async () => {
     const t = await signedIn();
     const { aldan, sceneId } = await classifierScene(t);
-    adapter.classifierReply = "SPEAKER: Mira Vance\nWHY: I prefer her.";
+    adapter.taskReply = "SPEAKER: Mira Vance\nWHY: I prefer her.";
 
     const snapshot = await generate(t, sceneId, { characterId: aldan.id });
     expect(snapshot.director).toMatchObject({ characterId: aldan.id, source: "user" });
     // Nothing left to ask, so nothing was asked.
-    expect(adapter.classifierCalls).toBe(0);
+    expect(adapter.taskCalls).toBe(0);
   });
 
   test("the reader is named in the question and put out of reach", async () => {
@@ -197,7 +197,7 @@ describe("what the classifier is allowed to decide", () => {
     const persona = await json<{ id: string }>(t, "POST", "/api/personas", { name: "Wren" });
     await json<SceneDto>(t, "PATCH", `/api/scenes/${sceneId}`, { personaId: persona.id });
 
-    adapter.classifierReply = "SPEAKER: Mira Vance\nWHY: She was addressed.";
+    adapter.taskReply = "SPEAKER: Mira Vance\nWHY: She was addressed.";
     await generate(t, sceneId);
     expect(adapter.lastPrompt.messages[0]!.content).not.toContain("Wren is the reader");
     const question = adapter.prompts.find(
@@ -211,7 +211,7 @@ describe("scope: one voice or the room", () => {
   test("auto lets the classifier ask for a beat", async () => {
     const t = await signedIn();
     const { sceneId } = await classifierScene(t);
-    adapter.classifierReply =
+    adapter.taskReply =
       "SPEAKER: Mira Vance\nSCOPE: room\nWHY: All three of them have a stake in the oil.";
 
     const snapshot = await generate(t, sceneId, { scope: "auto" });
@@ -224,7 +224,7 @@ describe("scope: one voice or the room", () => {
   test("auto with one voice produces a spotlight", async () => {
     const t = await signedIn();
     const { sceneId } = await classifierScene(t);
-    adapter.classifierReply = "SPEAKER: Mira Vance\nSCOPE: one\nWHY: Only she cares.";
+    adapter.taskReply = "SPEAKER: Mira Vance\nSCOPE: one\nWHY: Only she cares.";
 
     const snapshot = await generate(t, sceneId, { scope: "auto" });
     expect(snapshot.director!.scope).toBe("spotlight");
@@ -235,7 +235,7 @@ describe("scope: one voice or the room", () => {
   test("scope is only asked about when it is still open", async () => {
     const t = await signedIn();
     const { sceneId } = await classifierScene(t);
-    adapter.classifierReply = "SPEAKER: Mira Vance\nWHY: Because.";
+    adapter.taskReply = "SPEAKER: Mira Vance\nWHY: Because.";
 
     await generate(t, sceneId, { scope: "beat" });
     const question = adapter.prompts.find(
@@ -248,7 +248,7 @@ describe("scope: one voice or the room", () => {
   test("an explicit beat stays a beat whatever the classifier says", async () => {
     const t = await signedIn();
     const { sceneId } = await classifierScene(t);
-    adapter.classifierReply = "SPEAKER: Mira Vance\nSCOPE: one\nWHY: Just her.";
+    adapter.taskReply = "SPEAKER: Mira Vance\nSCOPE: one\nWHY: Just her.";
 
     const snapshot = await generate(t, sceneId, { scope: "beat" });
     expect(snapshot.director!.scope).toBe("beat");
@@ -259,10 +259,10 @@ describe("when the classifier does not answer", () => {
   test("a failing director model costs a decision, never the turn", async () => {
     const t = await signedIn();
     const { sceneId } = await classifierScene(t);
-    adapter.classifierFails = true;
+    adapter.taskFails = true;
 
     const snapshot = await generate(t, sceneId);
-    adapter.classifierFails = false;
+    adapter.taskFails = false;
 
     expect(snapshot.status).toBe("complete");
     expect(snapshot.buffer).toBe("A line of prose.");
@@ -274,7 +274,7 @@ describe("when the classifier does not answer", () => {
   test("a reply naming nobody falls back rather than guessing", async () => {
     const t = await signedIn();
     const { sceneId } = await classifierScene(t);
-    adapter.classifierReply = "I'm sorry, I can't help with that.";
+    adapter.taskReply = "I'm sorry, I can't help with that.";
 
     const snapshot = await generate(t, sceneId);
     expect(snapshot.status).toBe("complete");
@@ -285,7 +285,7 @@ describe("when the classifier does not answer", () => {
   test("a reply with a name but no reason still says something readable", async () => {
     const t = await signedIn();
     const { sceneId } = await classifierScene(t);
-    adapter.classifierReply = "SPEAKER: Sister Bell";
+    adapter.taskReply = "SPEAKER: Sister Bell";
 
     const snapshot = await generate(t, sceneId);
     expect(snapshot.director!.name).toBe("Sister Bell");

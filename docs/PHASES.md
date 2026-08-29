@@ -949,3 +949,95 @@ when the caller aborts — produced an empty reply, and the runner reported it a
 the two things the named statuses exist to tell apart. The timeout signal is now
 held separately from the merged one so the reason is still readable after a
 clean end.
+
+---
+
+## Phase 12 — Core guided ops
+
+Eight ops: nudge, guided swipe, steer, continue, expand, corrections, simple
+send, impersonate. Modelled on the Guided Generations extension's shape, built
+from SPEC §7's rules rather than its code.
+
+### What was built
+
+**Nudge and steer**, which are the same idea at two lifetimes. A nudge reaches
+the model at depth 0 and is gone — not written to the tree, not carried into the
+next turn. A steer is a note on the scene applied until cleared, and is the only
+op with a column (migration 0010), because *persistent* is the whole difference
+between the two. Both appear in the prompt as their own inspectable blocks,
+which §3's assembly already had slots for.
+
+**Expand, correct and continue** behind one endpoint and three instructions.
+They share a shape — hand the model what it wrote, ask for something different —
+and nothing else, and the wording is where the value is: "longer" produces
+padding unless it is told what to spend the length on, "fix this" rewrites the
+parts that were already working unless it is told not to, and "continue" starts
+again from the top unless it is told to begin mid-flow.
+
+Every revision is a **sibling** of its target and keeps the target's speaker.
+Asking for a longer version and disliking it costs a swipe; a correction that
+quietly changes who is speaking is not a correction. Continue **extends** rather
+than replacing — the message that lands is the whole turn, original and
+continuation, so the log reads as one piece of writing.
+
+**Continue is gated on the provider and says why.** No adapter that ships can
+accept a partial assistant turn, so the op is present, dark, and carries its
+reason under the grid. A fresh turn dressed as a continuation would be worse
+than saying no.
+
+**Guided swipe is reroll plus nudge** — not a mechanism of its own, which is
+what makes it obviously correct rather than a fourth thing to keep in step.
+
+**Impersonate** is a background task on phase 11's primitive rather than a
+generation, because its result lands in the composer and never auto-sends. That
+is what makes it safe at all: it is the one place the author is asked to write
+the reader's character, and nothing it produces reaches the story without the
+user pressing send. Three persons are three prompts, not one prompt with a
+parameter — "I reached for the door", "You reach for the door" and "She reached
+for the door" are three registers. The reply is cleaned of the lead-in and the
+wrapping quotes a model puts around a draft, so what lands is text you could
+send unedited.
+
+**The ops grid**, built to the design: a 3 × 2 grid of 52px cells, each a mono
+glyph over a mono caption, **lettered like proofreading marks rather than
+emoji** — a proofreader's mark is learned once and then read at a glance. Closed
+by default; opening it collapses the cast strip and the director's reason into
+one line summarising the cue, so the whole stack still fits above a keyboard at
+390px.
+
+**Verified end to end in a browser** at 390×844 dark: the grid with Continue
+dark and explained, a steer set and reaching the prompt, a nudge reaching the
+prompt and not the log, an expansion landing as `◂ 2/2 ▸` with the original one
+swipe away, and "as me" turning `count the barrels, keep quiet` into a full turn
+in the composer without sending it.
+
+**Tests.** 22 new, mostly the two rules: ephemeral instructions never becoming
+messages, and every new version being a sibling.
+
+### Deliberately not built
+
+- **Interject, summarize, extend beat, spellchecker, edit intros, input
+  recovery.** Summarize is phase 16; the rest are Polish. §20's phase 12 line
+  names eight ops and these are not among them.
+- **Per-op prompt overrides and per-op profiles.** Phase 13, and the column is
+  already there waiting.
+- **Keyboard shortcuts** for the lettered keys. The letters are the design's
+  vocabulary now; the bindings belong with the desktop layout, where there is a
+  keyboard to bind them to.
+
+### Spec changes
+
+§7 gains "settled while building phase 12": ephemeral means ephemeral, the three
+revision modes as three instructions, siblings and speakers, continue extending
+and being gated, guided swipe as a composition, and impersonate as a task. §24
+gains one question — impersonate does not stream.
+
+### Surprises
+
+Nothing structural, and two small things worth the note. The ops key kept
+`aria-label="Ops"` while showing `CLOSE`, so its accessible name and its visible
+name disagreed — caught by a browser script that could not find the button it
+was looking at. And the composer's draft had to move up into the chat screen,
+because two ops read it: "no reply" posts it, and "as me" replaces it with a
+turn written from it. A component that owns state two of its siblings need is
+the wrong owner.

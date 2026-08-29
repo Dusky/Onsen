@@ -908,6 +908,38 @@ injection_role, auto_trigger, button_visible, run_order
 - **`auto_trigger`** — run automatically after each reply.
 - **`button_visible`** — control which ops appear in the UI.
 
+### Settled while building phase 12
+
+- **Ephemeral means ephemeral.** A nudge reaches the model at depth 0 and is
+  gone: it is not written to the tree, and the next turn does not carry it. A
+  scene that fills up with the user's stage directions reads wrong on the next
+  pass, and a nudge that silently persists is a steer nobody asked for. Steer is
+  the only op with a column, because *persistent until cleared* is the whole
+  difference between the two.
+- **Expand, correct and continue are one endpoint and three instructions.** They
+  share a shape — hand the model what it wrote, ask for something different —
+  and share nothing else. "Longer" produces padding unless it is told what to
+  spend the length on; "fix this" rewrites the parts that were already working
+  unless it is told not to; "continue" starts again from the top unless it is
+  told to begin mid-flow. Reading the three as one would blur all three.
+- **Every revision is a sibling, and keeps the original's speaker.** Asking for
+  a longer version and disliking it must cost a swipe and nothing else, and a
+  correction that quietly changes who is speaking is not a correction.
+- **Continue extends rather than replaces.** What lands is the whole turn,
+  original and continuation, so the log reads as one piece of writing rather
+  than a fragment sitting beside its own beginning.
+- **Continue is gated on the provider, and says so.** No adapter that currently
+  ships can accept a partial assistant turn, so the op is present, dark, and
+  carries its reason. A fresh turn dressed as a continuation would be worse than
+  saying no.
+- **Guided swipe is reroll plus nudge**, not a mechanism of its own — which is
+  what makes it obviously correct rather than a fourth thing to keep in step.
+- **Impersonate is a background task, not a generation** (§7's primitive),
+  because its result lands in the composer and never auto-sends. That is what
+  makes it safe: it is the one place the author is asked to write the reader's
+  character, and nothing it produces reaches the story without the user pressing
+  send. The cost is that it does not stream token by token.
+
 ### Background tasks
 
 Generalize the above into a named background-task primitive: a stored prompt
@@ -1951,6 +1983,11 @@ Things existing frontends do that this project should not.
   Joining is enough for the case that actually occurs (a character arriving
   mid-scene); an explicit exit point is still open, and is only worth adding
   when something needs a character to stop knowing things.
+- Impersonate does not stream: it returns a finished draft rather than filling
+  the composer a word at a time. For a two-line turn that is right; for a long
+  one the wait is silent. Streaming into the composer needs a generation whose
+  target is the composer rather than the tree, which is a real seam and not
+  worth cutting before the wait is observed to be a problem.
 - Once a turn has finished, the director's reason survives only in the task log
   (§7) — the message itself records who spoke, not who chose them or why. Keeping
   it per message would need somewhere to show it; the prompt inspector (§20

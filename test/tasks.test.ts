@@ -155,10 +155,10 @@ describe("a side call never fails the turn", () => {
   test("an unreachable model", async () => {
     const t = await signedIn();
     const { sceneId } = await classifierScene(t);
-    adapter.classifierFails = true;
+    adapter.taskFails = true;
 
     const snapshot = await generate(t, sceneId);
-    adapter.classifierFails = false;
+    adapter.taskFails = false;
 
     expect(snapshot.status).toBe("complete");
     expect(snapshot.buffer).toBe("A line of prose.");
@@ -167,20 +167,20 @@ describe("a side call never fails the turn", () => {
   test("a task turned off", async () => {
     const t = await signedIn();
     const { sceneId } = await classifierScene(t);
-    adapter.classifierReply = "SPEAKER: Mira Vance\nWHY: She was addressed.";
+    adapter.taskReply = "SPEAKER: Mira Vance\nWHY: She was addressed.";
 
     await json<TaskDto>(t, "PATCH", `/api/tasks/${TURN_CLASSIFIER}`, { enabled: false });
     const snapshot = await generate(t, sceneId);
 
     expect(snapshot.status).toBe("complete");
-    expect(adapter.classifierCalls).toBe(0);
+    expect(adapter.taskCalls).toBe(0);
     expect(snapshot.director!.reason).toBe("Round robin — the classifier is turned off");
   });
 
   test("a run that produced nothing at all", async () => {
     const t = await signedIn();
     const { sceneId } = await classifierScene(t);
-    adapter.classifierReply = "";
+    adapter.taskReply = "";
 
     const snapshot = await generate(t, sceneId);
     expect(snapshot.status).toBe("complete");
@@ -189,7 +189,7 @@ describe("a side call never fails the turn", () => {
 
   test("the runner itself returns a named failure rather than throwing", async () => {
     const t = await signedIn();
-    adapter.classifierFails = true;
+    adapter.taskFails = true;
     const outcome = await t.tasks.run({
       kind: taskKind(TURN_CLASSIFIER)!,
       sceneId: null,
@@ -200,7 +200,7 @@ describe("a side call never fails the turn", () => {
       fallbackProfileId: null,
       profileId: profileIdOf(t),
     });
-    adapter.classifierFails = false;
+    adapter.taskFails = false;
 
     expect(outcome.ok).toBe(false);
     if (!outcome.ok) {
@@ -235,7 +235,7 @@ describe("every run is readable afterwards", () => {
   test("a successful run records what was asked and what came back", async () => {
     const t = await signedIn();
     const { sceneId } = await classifierScene(t);
-    adapter.classifierReply = "SPEAKER: Mira Vance\nWHY: She was already halfway out.";
+    adapter.taskReply = "SPEAKER: Mira Vance\nWHY: She was already halfway out.";
     await generate(t, sceneId);
 
     const runs = await json<TaskRunDto[]>(t, "GET", `/api/tasks/${TURN_CLASSIFIER}/runs`);
@@ -249,9 +249,9 @@ describe("every run is readable afterwards", () => {
   test("a failure is recorded with a reason a person can read", async () => {
     const t = await signedIn();
     const { sceneId } = await classifierScene(t);
-    adapter.classifierFails = true;
+    adapter.taskFails = true;
     await generate(t, sceneId);
-    adapter.classifierFails = false;
+    adapter.taskFails = false;
 
     const runs = await json<TaskRunDto[]>(t, "GET", `/api/tasks/${TURN_CLASSIFIER}/runs`);
     expect(runs[0]).toMatchObject({ status: "failed" });
@@ -261,7 +261,7 @@ describe("every run is readable afterwards", () => {
   test("an answer that could not be used is told apart from a failure", async () => {
     const t = await signedIn();
     const { sceneId } = await classifierScene(t);
-    adapter.classifierReply = "I'm afraid I can't help with that.";
+    adapter.taskReply = "I'm afraid I can't help with that.";
     await generate(t, sceneId);
 
     const runs = await json<TaskRunDto[]>(t, "GET", `/api/tasks/${TURN_CLASSIFIER}/runs`);
@@ -274,7 +274,7 @@ describe("every run is readable afterwards", () => {
   test("a call that was not worth making is recorded as skipped", async () => {
     const t = await signedIn();
     const { sceneId, profiles } = await classifierScene(t);
-    adapter.classifierReply = "SPEAKER: Mira Vance\nWHY: Because.";
+    adapter.taskReply = "SPEAKER: Mira Vance\nWHY: Because.";
 
     // Cueing somebody leaves nothing to ask about.
     const scene = await json<{ scene: SceneDto }>(t, "GET", `/api/scenes/${sceneId}`);
@@ -474,7 +474,7 @@ describe("configuring a task", () => {
       directorProfileId: profiles[0]!.id,
     });
 
-    adapter.classifierReply = "SPEAKER: Mira Vance\nWHY: Because.";
+    adapter.taskReply = "SPEAKER: Mira Vance\nWHY: Because.";
     const snapshot = await generate(t, sceneId);
     expect(snapshot.director!.reason).toBe("Because.");
   });

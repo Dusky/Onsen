@@ -131,16 +131,16 @@ export class ScriptedAdapter implements Adapter {
   /** Every prompt this adapter was handed, so tests can read what was sent. */
   readonly prompts: BuiltPrompt[] = [];
   /**
-   * What to answer a turn director's question with (SPEC §6). Side calls share
-   * the adapter with the generation they are part of, so a test that wants to
-   * script both needs them told apart; the classifier's prompt says who built
-   * it, and answering it never touches the queue driving the prose.
+   * What to answer a background task with (SPEC §7). Side calls share the
+   * adapter with the generation they belong to, so a test that scripts both
+   * needs them told apart; a task's prompt says who built it, and answering it
+   * never touches the queue driving the prose.
    */
-  classifierReply: string | null = null;
-  /** How many director questions this adapter has been asked. */
-  classifierCalls = 0;
-  /** Set to make the director's call fail, as an unreachable local model would. */
-  classifierFails = false;
+  taskReply: string | null = null;
+  /** How many side calls this adapter has been asked. */
+  taskCalls = 0;
+  /** Set to make side calls fail, as an unreachable local model would. */
+  taskFails = false;
   /** Resolves once generate() has actually been entered. */
   readonly started: Promise<void>;
 
@@ -193,10 +193,13 @@ export class ScriptedAdapter implements Adapter {
   ): AsyncIterable<TokenChunk> {
     this.prompts.push(prompt);
 
-    if (prompt.debug.blocks[0]?.source === "turn director") {
-      this.classifierCalls += 1;
-      if (this.classifierFails) throw new Error("the director's model is unreachable");
-      if (this.classifierReply !== null) yield { text: this.classifierReply };
+    // A side call builds its own small prompt and names itself as the source;
+    // a turn's prompt is assembled from §3's blocks and never looks like this.
+    const source = prompt.debug.blocks[0]?.source;
+    if (source === "turn director" || source === "guided op") {
+      this.taskCalls += 1;
+      if (this.taskFails) throw new Error("the model is unreachable");
+      if (this.taskReply !== null) yield { text: this.taskReply };
       return;
     }
 
