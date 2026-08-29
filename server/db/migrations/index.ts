@@ -1,5 +1,6 @@
 import foundation from "./0001_foundation.sql" with { type: "text" };
 import history from "./0002_history.sql" with { type: "text" };
+import generation from "./0003_generation.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -17,4 +18,5 @@ export interface Migration {
 export const migrations: readonly Migration[] = [
   { version: 1, name: "foundation", sql: foundation },
   { version: 2, name: "history", sql: history },
+  { version: 3, name: "generation", sql: generation },
 ];
