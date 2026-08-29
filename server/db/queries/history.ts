@@ -1,0 +1,514 @@
+import type { Database } from "bun:sqlite";
+import { ulid } from "../../lib/ulid.ts";
+import type {
+  CheckpointDto,
+  MessageAuthorType,
+  MessageDto,
+  MessageKind,
+  SceneDto,
+} from "../../../shared/types.ts";
+
+/**
+ * The history tree (SPEC §0.3, §2).
+ *
+ * History is a tree, never an array. Siblings under one parent are swipes;
+ * `scenes.active_leaf_id` names the current leaf, and walking parents from it to
+ * a root yields the active history. Every operation here preserves what it moves
+ * away from: swiping, rewinding, and branching only move the leaf pointer, and
+ * nothing but an explicit delete removes a node.
+ */
+
+/* ------------------------------------------------------------------ */
+/* Row shapes                                                          */
+/* ------------------------------------------------------------------ */
+
+export interface SceneRow {
+  id: number;
+  ulid: string;
+  title: string;
+  preset_id: number | null;
+  connection_profile_id: number | null;
+  active_leaf_id: number | null;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface MessageRow {
+  id: number;
+  ulid: string;
+  scene_id: number;
+  parent_id: number | null;
+  kind: MessageKind;
+  author_type: MessageAuthorType;
+  content: string;
+  is_hidden: number;
+  token_count: number | null;
+  created_at: number;
+  edited_at: number | null;
+}
+
+/** A message row plus its position among its siblings — the swipe counter. */
+export interface MessageRowWithSiblings extends MessageRow {
+  sibling_index: number;
+  sibling_count: number;
+}
+
+export interface CheckpointRow {
+  id: number;
+  ulid: string;
+  scene_id: number;
+  message_id: number;
+  name: string;
+  created_at: number;
+}
+
+/** Depth cap on tree walks: a guard against a cycle, not an expected limit. */
+const MAX_DEPTH = 100_000;
+
+/* ------------------------------------------------------------------ */
+/* Mappers                                                             */
+/* ------------------------------------------------------------------ */
+
+export function toMessageDto(row: MessageRowWithSiblings, sceneUlid: string, parentUlid: string | null): MessageDto {
+  return {
+    id: row.ulid,
+    sceneId: sceneUlid,
+    parentId: parentUlid,
+    kind: row.kind,
+    authorType: row.author_type,
+    content: row.content,
+    isHidden: row.is_hidden === 1,
+    tokenCount: row.token_count,
+    createdAt: row.created_at,
+    editedAt: row.edited_at,
+    siblingIndex: row.sibling_index,
+    siblingCount: row.sibling_count,
+  };
+}
+
+export function toSceneDto(row: SceneRow, extras: {
+  presetUlid: string | null;
+  profileUlid: string | null;
+  activeLeafUlid: string | null;
+  messageCount: number;
+}): SceneDto {
+  return {
+    id: row.ulid,
+    title: row.title,
+    presetId: extras.presetUlid,
+    connectionProfileId: extras.profileUlid,
+    activeLeafId: extras.activeLeafUlid,
+    messageCount: extras.messageCount,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function toCheckpointDto(
+  row: CheckpointRow,
+  sceneUlid: string,
+  messageUlid: string,
+): CheckpointDto {
+  return {
+    id: row.ulid,
+    sceneId: sceneUlid,
+    messageId: messageUlid,
+    name: row.name,
+    createdAt: row.created_at,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Scenes                                                              */
+/* ------------------------------------------------------------------ */
+
+export interface NewScene {
+  title: string;
+  presetId?: number | null;
+  connectionProfileId?: number | null;
+}
+
+export function insertScene(db: Database, input: NewScene): SceneRow {
+  const now = Date.now();
+  return db
+    .query(
+      `INSERT INTO scenes (ulid, title, preset_id, connection_profile_id, created_at, updated_at)
+       VALUES ($ulid, $title, $preset_id, $connection_profile_id, $now, $now)
+       RETURNING *`,
+    )
+    .get({
+      ulid: ulid(),
+      title: input.title,
+      preset_id: input.presetId ?? null,
+      connection_profile_id: input.connectionProfileId ?? null,
+      now,
+    }) as SceneRow;
+}
+
+export function findScene(db: Database, sceneUlid: string): SceneRow | null {
+  return (db.query("SELECT * FROM scenes WHERE ulid = $ulid").get({ ulid: sceneUlid }) ??
+    null) as SceneRow | null;
+}
+
+export function findSceneById(db: Database, id: number): SceneRow | null {
+  return (db.query("SELECT * FROM scenes WHERE id = $id").get({ id }) ?? null) as SceneRow | null;
+}
+
+/** Most recently touched first — the scenes list is recent-first (SPEC §16). */
+export function listScenes(db: Database): SceneRow[] {
+  return db.query("SELECT * FROM scenes ORDER BY updated_at DESC, id DESC").all() as SceneRow[];
+}
+
+export function updateScene(
+  db: Database,
+  id: number,
+  patch: { title?: string; presetId?: number | null; connectionProfileId?: number | null },
+): SceneRow {
+  const current = findSceneById(db, id);
+  if (current === null) throw new Error(`no such scene: ${id}`);
+  return db
+    .query(
+      `UPDATE scenes
+          SET title = $title,
+              preset_id = $preset_id,
+              connection_profile_id = $connection_profile_id,
+              updated_at = $now
+        WHERE id = $id
+        RETURNING *`,
+    )
+    .get({
+      id,
+      title: patch.title ?? current.title,
+      preset_id: patch.presetId === undefined ? current.preset_id : patch.presetId,
+      connection_profile_id:
+        patch.connectionProfileId === undefined
+          ? current.connection_profile_id
+          : patch.connectionProfileId,
+      now: Date.now(),
+    }) as SceneRow;
+}
+
+export function deleteScene(db: Database, id: number): void {
+  db.query("DELETE FROM scenes WHERE id = $id").run({ id });
+}
+
+export function countMessages(db: Database, sceneId: number): number {
+  return (
+    db.query("SELECT count(*) AS n FROM messages WHERE scene_id = $scene_id").get({
+      scene_id: sceneId,
+    }) as { n: number }
+  ).n;
+}
+
+function touchScene(db: Database, sceneId: number): void {
+  db.query("UPDATE scenes SET updated_at = $now WHERE id = $id").run({
+    id: sceneId,
+    now: Date.now(),
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Messages                                                            */
+/* ------------------------------------------------------------------ */
+
+export function findMessage(db: Database, messageUlid: string): MessageRow | null {
+  return (db.query("SELECT * FROM messages WHERE ulid = $ulid").get({ ulid: messageUlid }) ??
+    null) as MessageRow | null;
+}
+
+export function findMessageById(db: Database, id: number): MessageRow | null {
+  return (db.query("SELECT * FROM messages WHERE id = $id").get({ id }) ??
+    null) as MessageRow | null;
+}
+
+export interface NewMessage {
+  sceneId: number;
+  parentId: number | null;
+  kind: MessageKind;
+  authorType: MessageAuthorType;
+  content: string;
+  isHidden?: boolean;
+}
+
+/**
+ * Add a node and make it the active leaf. Attaching to something other than the
+ * current leaf is not an error — it forks the timeline there, which is exactly
+ * what branching is.
+ */
+export function appendMessage(db: Database, input: NewMessage): MessageRow {
+  const now = Date.now();
+  const row = db
+    .query(
+      `INSERT INTO messages (ulid, scene_id, parent_id, kind, author_type, content, is_hidden, created_at)
+       VALUES ($ulid, $scene_id, $parent_id, $kind, $author_type, $content, $is_hidden, $now)
+       RETURNING *`,
+    )
+    .get({
+      ulid: ulid(),
+      scene_id: input.sceneId,
+      parent_id: input.parentId,
+      kind: input.kind,
+      author_type: input.authorType,
+      content: input.content,
+      is_hidden: input.isHidden ? 1 : 0,
+      now,
+    }) as MessageRow;
+
+  db.query("UPDATE scenes SET active_leaf_id = $leaf, updated_at = $now WHERE id = $id").run({
+    id: input.sceneId,
+    leaf: row.id,
+    now,
+  });
+
+  return row;
+}
+
+/**
+ * Edit in place. A content change invalidates the cached token count — the
+ * whole point of caching it on the row is that it must never go stale
+ * (SPEC §2, §3).
+ */
+export function updateMessage(
+  db: Database,
+  id: number,
+  patch: { content?: string; isHidden?: boolean },
+): MessageRow {
+  const current = findMessageById(db, id);
+  if (current === null) throw new Error(`no such message: ${id}`);
+
+  const contentChanged = patch.content !== undefined && patch.content !== current.content;
+  const row = db
+    .query(
+      `UPDATE messages
+          SET content = $content,
+              is_hidden = $is_hidden,
+              token_count = $token_count,
+              edited_at = $edited_at
+        WHERE id = $id
+        RETURNING *`,
+    )
+    .get({
+      id,
+      content: patch.content ?? current.content,
+      is_hidden: patch.isHidden === undefined ? current.is_hidden : patch.isHidden ? 1 : 0,
+      token_count: contentChanged ? null : current.token_count,
+      edited_at: contentChanged ? Date.now() : current.edited_at,
+    }) as MessageRow;
+
+  touchScene(db, current.scene_id);
+  return row;
+}
+
+/**
+ * Siblings under one parent, in creation order — the swipe carousel. Handles a
+ * null parent, because a scene's alternate greetings are root siblings.
+ */
+export function siblingsOf(db: Database, row: MessageRow): MessageRow[] {
+  return db
+    .query(
+      `SELECT * FROM messages
+        WHERE scene_id = $scene_id AND parent_id IS $parent_id
+        ORDER BY id`,
+    )
+    .all({ scene_id: row.scene_id, parent_id: row.parent_id }) as MessageRow[];
+}
+
+/** Follow the most recent child down to a leaf. */
+export function descendToLeaf(db: Database, messageId: number): number {
+  const query = db.query(
+    "SELECT id FROM messages WHERE parent_id = $parent_id ORDER BY id DESC LIMIT 1",
+  );
+  let current = messageId;
+  for (let depth = 0; depth < MAX_DEPTH; depth++) {
+    const child = query.get({ parent_id: current }) as { id: number } | null;
+    if (child === null) return current;
+    current = child.id;
+  }
+  throw new Error(`message tree walk exceeded ${MAX_DEPTH} levels — cycle?`);
+}
+
+/** The leaf of the newest root branch, or null in an empty scene. */
+export function latestLeaf(db: Database, sceneId: number): number | null {
+  const root = db
+    .query(
+      "SELECT id FROM messages WHERE scene_id = $scene_id AND parent_id IS NULL ORDER BY id DESC LIMIT 1",
+    )
+    .get({ scene_id: sceneId }) as { id: number } | null;
+  return root === null ? null : descendToLeaf(db, root.id);
+}
+
+/**
+ * The active history: every message from a root down to the leaf, in reading
+ * order, each carrying its swipe position.
+ */
+export function activePath(db: Database, sceneId: number): MessageRowWithSiblings[] {
+  const scene = findSceneById(db, sceneId);
+  if (scene === null || scene.active_leaf_id === null) return [];
+
+  return db
+    .query(
+      `WITH RECURSIVE ancestry(id, depth) AS (
+           SELECT id, 0 FROM messages WHERE id = $leaf
+           UNION ALL
+           SELECT m.parent_id, ancestry.depth + 1
+             FROM messages m JOIN ancestry ON m.id = ancestry.id
+            WHERE m.parent_id IS NOT NULL
+         )
+         SELECT m.*,
+                (SELECT count(*) FROM messages s
+                  WHERE s.scene_id = m.scene_id AND s.parent_id IS m.parent_id) AS sibling_count,
+                (SELECT count(*) FROM messages s
+                  WHERE s.scene_id = m.scene_id AND s.parent_id IS m.parent_id
+                    AND s.id < m.id) AS sibling_index
+           FROM ancestry JOIN messages m ON m.id = ancestry.id
+          ORDER BY ancestry.depth DESC`,
+    )
+    .all({ leaf: scene.active_leaf_id }) as MessageRowWithSiblings[];
+}
+
+/** Attach sibling position to a single row, for responses about one message. */
+export function withSiblings(db: Database, row: MessageRow): MessageRowWithSiblings {
+  const siblings = siblingsOf(db, row);
+  return {
+    ...row,
+    sibling_index: siblings.findIndex((sibling) => sibling.id === row.id),
+    sibling_count: siblings.length,
+  };
+}
+
+/** True when `candidate` is `ancestor`, or lies below it. */
+export function isSelfOrDescendant(db: Database, candidate: number, ancestor: number): boolean {
+  const query = db.query("SELECT parent_id FROM messages WHERE id = $id");
+  let current: number | null = candidate;
+  for (let depth = 0; depth < MAX_DEPTH && current !== null; depth++) {
+    if (current === ancestor) return true;
+    const row = query.get({ id: current }) as { parent_id: number | null } | null;
+    if (row === null) return false;
+    current = row.parent_id;
+  }
+  return false;
+}
+
+/**
+ * Move the leaf pointer. This one operation is swipe, rewind, branch, and
+ * checkpoint restore: none of them create or destroy anything, they choose
+ * which path through the tree is current.
+ *
+ * `descend` follows the most recent child down to a leaf, which is what makes
+ * swiping away from a sibling and back again restore that sibling's own
+ * continuation instead of truncating it. Rewinding and restoring a checkpoint
+ * pass false, so the next message forks at exactly the chosen point.
+ */
+export function setActiveLeaf(
+  db: Database,
+  sceneId: number,
+  messageId: number,
+  descend = true,
+): number {
+  const leaf = descend ? descendToLeaf(db, messageId) : messageId;
+  db.query("UPDATE scenes SET active_leaf_id = $leaf, updated_at = $now WHERE id = $id").run({
+    id: sceneId,
+    leaf,
+    now: Date.now(),
+  });
+  return leaf;
+}
+
+/**
+ * Delete a message and everything below it — the subtree goes with it, by
+ * cascade. If the active leaf was inside the deleted subtree the pointer moves
+ * to the surviving parent branch rather than being left dangling.
+ */
+export function deleteMessage(db: Database, row: MessageRow): void {
+  const scene = findSceneById(db, row.scene_id);
+  const leafWasInside =
+    scene?.active_leaf_id != null && isSelfOrDescendant(db, scene.active_leaf_id, row.id);
+  const parentId = row.parent_id;
+
+  db.query("DELETE FROM messages WHERE id = $id").run({ id: row.id });
+
+  if (leafWasInside) {
+    const replacement = parentId === null ? latestLeaf(db, row.scene_id) : descendToLeaf(db, parentId);
+    db.query("UPDATE scenes SET active_leaf_id = $leaf, updated_at = $now WHERE id = $id").run({
+      id: row.scene_id,
+      leaf: replacement,
+      now: Date.now(),
+    });
+  } else {
+    touchScene(db, row.scene_id);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Checkpoints                                                         */
+/* ------------------------------------------------------------------ */
+
+export function insertCheckpoint(
+  db: Database,
+  input: { sceneId: number; messageId: number; name: string },
+): CheckpointRow {
+  return db
+    .query(
+      `INSERT INTO checkpoints (ulid, scene_id, message_id, name, created_at)
+       VALUES ($ulid, $scene_id, $message_id, $name, $now)
+       RETURNING *`,
+    )
+    .get({
+      ulid: ulid(),
+      scene_id: input.sceneId,
+      message_id: input.messageId,
+      name: input.name,
+      now: Date.now(),
+    }) as CheckpointRow;
+}
+
+export function listCheckpoints(db: Database, sceneId: number): CheckpointRow[] {
+  return db
+    .query("SELECT * FROM checkpoints WHERE scene_id = $scene_id ORDER BY id")
+    .all({ scene_id: sceneId }) as CheckpointRow[];
+}
+
+export function findCheckpoint(db: Database, checkpointUlid: string): CheckpointRow | null {
+  return (db.query("SELECT * FROM checkpoints WHERE ulid = $ulid").get({ ulid: checkpointUlid }) ??
+    null) as CheckpointRow | null;
+}
+
+export function deleteCheckpoint(db: Database, id: number): void {
+  db.query("DELETE FROM checkpoints WHERE id = $id").run({ id });
+}
+
+/* ------------------------------------------------------------------ */
+/* Composition into DTOs                                               */
+/* ------------------------------------------------------------------ */
+
+function ulidOf(db: Database, table: "presets" | "connection_profiles" | "messages", id: number | null): string | null {
+  if (id === null) return null;
+  const row = db.query(`SELECT ulid FROM ${table} WHERE id = $id`).get({ id }) as
+    | { ulid: string }
+    | null;
+  return row?.ulid ?? null;
+}
+
+export function sceneDto(db: Database, row: SceneRow): SceneDto {
+  return toSceneDto(row, {
+    presetUlid: ulidOf(db, "presets", row.preset_id),
+    profileUlid: ulidOf(db, "connection_profiles", row.connection_profile_id),
+    activeLeafUlid: ulidOf(db, "messages", row.active_leaf_id),
+    messageCount: countMessages(db, row.id),
+  });
+}
+
+/**
+ * The active path as DTOs. Each message's parent is its predecessor on the
+ * path, so no extra lookups are needed to resolve parent identifiers.
+ */
+export function activePathDtos(db: Database, scene: SceneRow): MessageDto[] {
+  const rows = activePath(db, scene.id);
+  return rows.map((row, index) =>
+    toMessageDto(row, scene.ulid, index === 0 ? null : (rows[index - 1]?.ulid ?? null)),
+  );
+}
+
+export function messageDto(db: Database, row: MessageRow, sceneUlid: string): MessageDto {
+  return toMessageDto(withSiblings(db, row), sceneUlid, ulidOf(db, "messages", row.parent_id));
+}

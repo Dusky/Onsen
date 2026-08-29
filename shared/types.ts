@@ -140,3 +140,138 @@ export interface ApiError {
 
 /** Password rules are enforced on the server; the client mirrors them for UX. */
 export const MIN_PASSWORD_LENGTH = 8;
+
+/* ------------------------------------------------------------------ */
+/* History tree (SPEC §0.3, §2)                                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * What a turn is. A *spotlight* voices exactly one cast member; a *beat* is one
+ * generation in which the author writes several characters interacting
+ * (SPEC §0.4, §3.5). Both are meant to be switched on exhaustively.
+ */
+export type MessageKind = "spotlight" | "beat" | "user" | "system" | "narrator" | "ooc";
+
+export type MessageAuthorType = "user" | "character" | "system" | "narrator" | "ooc";
+
+export const MESSAGE_KINDS: readonly MessageKind[] = [
+  "spotlight",
+  "beat",
+  "user",
+  "system",
+  "narrator",
+  "ooc",
+];
+
+export const MESSAGE_AUTHOR_TYPES: readonly MessageAuthorType[] = [
+  "user",
+  "character",
+  "system",
+  "narrator",
+  "ooc",
+];
+
+export function isMessageKind(value: unknown): value is MessageKind {
+  return typeof value === "string" && (MESSAGE_KINDS as readonly string[]).includes(value);
+}
+
+export function isMessageAuthorType(value: unknown): value is MessageAuthorType {
+  return (
+    typeof value === "string" && (MESSAGE_AUTHOR_TYPES as readonly string[]).includes(value)
+  );
+}
+
+export interface MessageDto {
+  id: string;
+  sceneId: string;
+  parentId: string | null;
+  kind: MessageKind;
+  authorType: MessageAuthorType;
+  content: string;
+  /** Excluded from the prompt, still rendered in the log. */
+  isHidden: boolean;
+  /** Null when never counted, or invalidated by an edit. */
+  tokenCount: number | null;
+  createdAt: number;
+  editedAt: number | null;
+
+  /**
+   * Position among siblings, and how many there are. Siblings under one parent
+   * are swipes; the UI shows the counter only when `siblingCount > 1`, never an
+   * empty 1/1.
+   */
+  siblingIndex: number;
+  siblingCount: number;
+}
+
+export interface SceneDto {
+  id: string;
+  title: string;
+  presetId: string | null;
+  connectionProfileId: string | null;
+  /** Null while the scene is empty. */
+  activeLeafId: string | null;
+  messageCount: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** A scene together with its active path, root first. */
+export interface SceneWithHistoryDto {
+  scene: SceneDto;
+  messages: MessageDto[];
+}
+
+export interface CheckpointDto {
+  id: string;
+  sceneId: string;
+  messageId: string;
+  name: string;
+  createdAt: number;
+}
+
+export interface CreateSceneRequest {
+  title?: string;
+  presetId?: string | null;
+  connectionProfileId?: string | null;
+}
+
+export interface UpdateSceneRequest {
+  title?: string;
+  presetId?: string | null;
+  connectionProfileId?: string | null;
+}
+
+export interface AppendMessageRequest {
+  kind: MessageKind;
+  authorType: MessageAuthorType;
+  content: string;
+  /**
+   * Where to attach. Omitted means the scene's active leaf, which is the normal
+   * case. Naming an earlier message forks the timeline there — that is what
+   * "branch" is, and what a swipe produces when it lands on a parent.
+   */
+  parentId?: string | null;
+  isHidden?: boolean;
+}
+
+export interface UpdateMessageRequest {
+  content?: string;
+  isHidden?: boolean;
+}
+
+export interface SetActiveLeafRequest {
+  messageId: string;
+  /**
+   * When the target has descendants, follow the most recent child down to a
+   * leaf rather than stopping on the target. This is what makes swiping back
+   * and forth restore each sibling's own continuation. Defaults to true.
+   */
+  descend?: boolean;
+}
+
+export interface CreateCheckpointRequest {
+  name: string;
+  /** Defaults to the scene's active leaf. */
+  messageId?: string;
+}
