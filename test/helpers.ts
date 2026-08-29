@@ -11,6 +11,7 @@ import type { AppContext } from "../server/context.ts";
 import type { Hono } from "hono";
 import type { AppEnv } from "../server/context.ts";
 import type { Adapter, TokenChunk } from "../server/adapters/index.ts";
+import type { BuiltPrompt } from "../server/prompt/index.ts";
 import { OPENAI_COMPATIBLE_CAPABILITIES } from "../server/adapters/index.ts";
 
 export interface TestHarness {
@@ -120,6 +121,8 @@ export class ScriptedAdapter implements Adapter {
 
   /** Set when the generation service aborted this adapter. */
   aborted = false;
+  /** Every prompt this adapter was handed, so tests can read what was sent. */
+  readonly prompts: BuiltPrompt[] = [];
   /** Resolves once generate() has actually been entered. */
   readonly started: Promise<void>;
 
@@ -159,11 +162,18 @@ export class ScriptedAdapter implements Adapter {
     });
   }
 
+  get lastPrompt(): BuiltPrompt {
+    const prompt = this.prompts.at(-1);
+    if (prompt === undefined) throw new Error("nothing has been generated yet");
+    return prompt;
+  }
+
   async *generate(
-    _prompt: unknown,
+    prompt: BuiltPrompt,
     _settings: unknown,
     signal: AbortSignal,
   ): AsyncIterable<TokenChunk> {
+    this.prompts.push(prompt);
     this.markStarted();
     signal.addEventListener("abort", () => {
       this.aborted = true;

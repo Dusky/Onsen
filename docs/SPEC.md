@@ -209,6 +209,7 @@ per-character editing, and expression attribution.
 id, message_id, ordinal
 speaker_type       -- character | narration
 character_id       -- nullable
+speaker_label      -- the name as written; nullable
 content
 expression         -- nullable
 char_start, char_end   -- offsets into the parent message content
@@ -217,6 +218,19 @@ char_start, char_end   -- offsets into the parent message content
 A spotlight message has exactly one segment. A beat has several. Re-parsing is
 idempotent: edit the canonical content and segments are rebuilt; edit a segment
 and the canonical content is spliced at its offsets.
+
+Settled while building phase 9:
+
+- **`speaker_label` is stored** as well as `character_id`. A strictly labelled
+  speaker who is not in the cast — a character written in, or one written out
+  mid-scene — resolves to no id, and without the label their name is lost.
+  Rendering the resolved name would also mean a character lookup per segment.
+- **Rows exist for beats only.** A spotlight message's single segment is its own
+  content, so storing it would be a copy to keep in step for no reader; the read
+  path derives it, and callers still see one uniform shape.
+- **The offsets cover the prose, not the label.** Replacing `[char_start,
+  char_end)` is what recast does; keeping the label outside the range is what
+  makes the splice re-parse to the same segmentation.
 
 Siblings under the same parent are swipes. `active_leaf_id` on the scene defines
 the current path; walking parents from the leaf to the root yields the active
@@ -545,6 +559,36 @@ parse.
 - Expressions are attributed per segment, so VN staging updates through a beat.
 - History rendering emits a beat as one `assistant` turn — its natural shape.
 - Presence and knowledge scoping apply per participant within the beat.
+
+**Settled while building phase 9.**
+
+- **Who is in a beat: every active cast member.** Benched members are not, and a
+  cast with fewer than two active members degrades to a spotlight rather than
+  instructing the author to stage a conversation alone. Whoever the turn
+  director picked *opens* the beat rather than being its only voice, so a cue is
+  still meaningful in a beat — it chooses who starts.
+- **A beat's participants each get a full definition, voice notes included.**
+  Everyone else in the scene stays in the compact cast block. §3's rule that
+  voice notes go to the spotlighted character alone generalises to "the
+  characters this turn is writing", which is what it was protecting.
+- **Spotlight, beat and recast share one near-turn instruction slot** rather than
+  each adding a block to the assembly order. They are the same thing — the last
+  word before the model writes — and a preset reordering the assembly should not
+  have to know which of the three a given turn is. The inspector labels them
+  apart.
+- **Recast edits the beat; it does not fork it.** Correcting one character's
+  part is a correction to that beat, and swiping is what makes a sibling. A
+  recast therefore generates from the beat's own parent, with the beat itself
+  supplied as context in the instruction.
+- **Split beat branches rather than converts.** The new messages are a chain
+  under the beat's *parent*, which makes them a sibling branch of it: the beat
+  survives and can be swiped back to, exactly as every other tree operation
+  preserves what it moves away from (§2).
+- **Parsing accepts three label forms**, not one: `**Name:**` as specified,
+  `**Name**:` because models put the colon outside the bold constantly, and a
+  bare `Name:` *only* when the name is in the cast — without that restriction
+  every line of dialogue containing a colon would start a segment. A strict bold
+  label is authoritative even for a name the cast does not contain.
 
 **Failure modes and required mitigations.** Every one of these is a known,
 observed failure with multi-character generation:
@@ -1839,8 +1883,17 @@ Things existing frontends do that this project should not.
   when something needs a character to stop knowing things.
 - Should beats be the default turn type, with spotlight as the exception? Group
   scenes probably want beats most of the time; single-character scenes never do.
-- Does a beat swipe reroll the whole exchange, or should swipe be disabled on
-  beats in favor of recast-per-segment?
+  Phase 9 ships with spotlight as the default and the scope control offered only
+  when two or more characters are in play, which is the reversible choice — the
+  right answer is a matter of use, and `auto` (phase 10) may make it moot.
+- Should a beat include the whole active cast when the cast is large? Five
+  characters in full, plus the beat instruction, is a lot of prefix for one
+  turn, and a beat with five voices is unlikely to give any of them much. A cap
+  needs a rule for *who* to drop, and inventing one before the problem is
+  observed seemed worse than shipping without it.
+- Whose example dialogue goes in a beat? Currently the character who opens it,
+  which is arbitrary; everyone's would be large, and nobody's loses the one
+  block that most directly demonstrates a voice.
 - Should dossiers be a distinct entity, or just characters with a `provisional`
   flag? The latter is simpler and probably right.
 - Do packs need dependency declarations (this pack expects that lorebook), or is
@@ -1848,3 +1901,8 @@ Things existing frontends do that this project should not.
 
 Resolved: cross-scene author memory is optional, off by default, implemented as
 an author-scoped lorebook (§11). Not part of the initial build.
+
+Resolved in phase 9: a beat swipe rerolls the whole exchange *and* recast fixes
+one part — they are different things to want, and having both is what makes the
+distinction legible. Disabling swipe on beats would have made the one blunt
+correction unavailable when the whole exchange is wrong.

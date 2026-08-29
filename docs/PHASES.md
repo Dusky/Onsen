@@ -673,3 +673,100 @@ the deviation.
 Also worth noting as a product fix rather than a bug: importing a card used to
 jump straight into its editor, which makes importing several cards in a row
 tedious. The library now stays put and says what it imported.
+
+---
+
+## Phase 9 — Beats
+
+The other headline differentiator, and the one nobody does natively: a single
+generation in which the author writes several characters interacting, rather
+than one card producing one turn per call.
+
+### What was built
+
+**The parser** (`server/generation/segments.ts`), pure and fixture-tested. It
+accepts three label forms rather than the one the prompt asks for — `**Name:**`,
+`**Name**:` because models put the colon outside the bold constantly, and a bare
+`Name:` only when the name is in the cast, because without that restriction
+every line of dialogue containing a colon starts a segment. Two rules govern it:
+never lose text, and re-parse to the same shape after a splice.
+
+**Segments** (migration 0007), the parsed view of a beat: who spoke, what they
+said, and the offsets in the canonical content their prose occupies. Stored for
+beats only; a spotlight message's single segment is derived, because storing a
+copy of the message's own content is one more thing to keep in step for no
+reader. `messages.parse_degraded` marks a beat whose labels could not be read —
+the text is kept whole as narration and the UI says so, rather than presenting
+a failed parse as deliberate narration.
+
+**The beat instruction**, which is where the phase's real content is. Every line
+of it is a named failure mode from §3.5's table: full definitions with voice
+notes for every participant, an explicit exchange bound, equal initiative, an
+anti-echo rule, the prohibition on ending by asking the reader a question, the
+user-lock restated, and the label format given by example. Spotlight, beat and
+recast share one near-turn instruction slot rather than each adding a block to
+the assembly order — they are the same thing, and a preset reordering the
+assembly should not have to know which one a turn is.
+
+**Recast** (§7): rewrite one character's part, holding the rest fixed. The beat
+is handed to the model as context, the reply is scoped to that part alone, and
+the result is spliced at the segment's offsets. It edits the beat rather than
+forking it — swiping is what makes a sibling — and it is drawn in place in the
+log, under the character's own name with the red rail, rather than arriving at
+the bottom and then vanishing into a message above.
+
+**Split beat** (§7): one message per part, as a chain under the beat's *parent*.
+That makes them a sibling branch, so the beat survives and can be swiped back
+to — the same rule every other tree operation follows.
+
+**The scope control** lives in the cast strip rather than the composer, because
+it is a decision about the same thing the strip is about and because it only
+means anything with two or more characters in play. In a beat the cued card's
+caption changes from "auto · next" to "auto · opens", since the director's pick
+becomes who starts the exchange rather than its only voice.
+
+**Verified end to end in a browser** at 390×844, dark and light: a three-hander
+generated as one beat and rendered as one continuous passage with quiet speaker
+labels; Mira's part recast in place with the red rail and no new message in the
+log; the beat split into four messages with the beat itself still there as a
+2/2 sibling; and the turn director correctly saying "after Sister Bell" — the
+character the *beat ended on*, not the one it is filed under.
+
+**Tests.** 42 new: 20 on the parser's fixtures, 22 on beats over HTTP.
+
+### Deliberately not built
+
+- **`auto` scope** — the director deciding beat versus spotlight. That is the
+  classifier, phase 10. Offering a third button that secretly meant "spotlight"
+  would have been worse than two honest ones.
+- **Extend beat** (§7). Listed in the ops table, not in phase 9's line.
+- **Expression per segment.** The column exists because the offsets and speaker
+  do; nothing sets it until expressions land (phase 30).
+- **A cap on beat participants.** See the spec changes below.
+
+### Spec changes
+
+§2's MessageSegment gains `speaker_label` and three settled notes. §3.5 gains a
+"settled while building phase 9" block: who is in a beat, the shared instruction
+slot, recast editing rather than forking, split branching rather than
+converting, and the label forms accepted. §24 resolves the beat-swipe question
+(both, because they are different things to want) and adds two: whether a large
+cast should be capped in a beat, and whose example dialogue a beat should carry.
+
+### Surprises
+
+Two, both about attribution.
+
+The first: the turn director's "never twice consecutively" rule reads the last
+message's `character_id`, and a beat is filed under whoever *opened* it. So a
+beat that ended on Sister Bell would let Sister Bell speak again immediately.
+The fix is not in the director — it stays pure and unchanged — but at the
+database seam, which now reports a beat's last *character segment* as who spoke
+last. Better behaviour and a smaller change than the alternative of giving every
+history entry a list of speakers.
+
+The second: the obvious place for "rewrite this part" is a long-press on the
+part. That nests a gesture target inside the beat's own, so both long-presses
+fire and the beat loses its swipe. Recast is reached from the message's action
+sheet instead, which opens a picker of the parts — which is also where a reader
+would look for it.
