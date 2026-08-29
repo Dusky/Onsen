@@ -1,0 +1,188 @@
+/*
+ * Design tokens, transcribed from the design handoff.
+ *
+ * Three rules generate the whole system:
+ *   1. Two voices, two typefaces — Spectral is the user's material, IBM Plex
+ *      Mono is the app speaking. Never the other way round.
+ *   2. Two pencils — red for live/active/destructive/now, blue for the author's
+ *      own voice and injected state. Nothing else is coloured.
+ *   3. Everything is a page being marked up — sharp corners, 1px hairlines,
+ *      and no shadows anywhere.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --onsen-color-bg: #14120f;
+  --onsen-color-bg-sunken: #100e0b;
+  --onsen-color-bg-raised: #16130f;
+  --onsen-color-bg-inset: #1a1611;
+  --onsen-color-bg-input: #14120f;
+
+  /* Rules and borders */
+  --onsen-color-rule: #221e18;
+  --onsen-color-rule-strong: #2f2a22;
+  --onsen-color-border-quiet: #2a251e;
+
+  /* Ink */
+  --onsen-color-text: #e8e2d6;
+  --onsen-color-text-bright: #f0e9dc;
+  --onsen-color-text-label: #c9c1b1;
+  --onsen-color-text-muted: #8b8477;
+  --onsen-color-text-dim: #6f6a5f;
+  --onsen-color-text-prose-muted: #9a9284;
+  --onsen-color-text-placeholder: #6f6a5f;
+
+  /* Red pencil — live, active, destructive, now */
+  --onsen-color-red: #c0503c;
+  --onsen-color-red-bg: #1e1712;
+  --onsen-color-red-border: #4a3129;
+  --onsen-color-red-text: #d78872;
+
+  /* Blue pencil — the author's own voice and injected state */
+  --onsen-color-blue: #5b7fa6;
+  --onsen-color-blue-bg: #191d22;
+  --onsen-color-blue-bg-sheet: #171b20;
+  --onsen-color-blue-border: #232a31;
+  --onsen-color-blue-border-strong: #2f3a45;
+  --onsen-color-blue-text: #b9c3ce;
+  --onsen-color-blue-text-muted: #6f7d8c;
+  --onsen-color-blue-prose: #cdd5de;
+
+  /* Connection OK. Settings only — nothing else in the app is green. */
+  --onsen-color-green: #7fa65b;
+
+  /* Placeholder fill standing in for user-supplied imagery. */
+  --onsen-stripe: repeating-linear-gradient(45deg, #221e18 0 6px, #1c1913 6px 12px);
+  --onsen-stripe-cued: repeating-linear-gradient(45deg, #33231c 0 6px, #2b1e17 6px 12px);
+
+  /* Typefaces */
+  --onsen-font-prose: "Spectral", Georgia, "Times New Roman", serif;
+  --onsen-font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /*
+   * Prose is user-scalable and chrome is not, so only prose sizes multiply by
+   * this. See the Reading section of Settings.
+   */
+  --onsen-prose-scale: 1;
+  --onsen-text-prose: calc(17px * var(--onsen-prose-scale));
+  --onsen-text-prose-desktop: calc(17.5px * var(--onsen-prose-scale));
+  --onsen-text-prose-excerpt: calc(14.5px * var(--onsen-prose-scale));
+  --onsen-text-field: calc(15.5px * var(--onsen-prose-scale));
+
+  --onsen-leading-prose: 1.64;
+
+  /* Chrome sizes are fixed. */
+  --onsen-text-title: 26px;
+  --onsen-text-header: 19px;
+  --onsen-text-attribution: 10px;
+  --onsen-text-section-label: 9px;
+  --onsen-text-button: 9.5px;
+  --onsen-text-token-count: 8.5px;
+
+  --onsen-tracking-attribution: 0.18em;
+  --onsen-tracking-label: 0.18em;
+  --onsen-tracking-kicker: 0.16em;
+  --onsen-tracking-button: 0.12em;
+
+  /* Layout */
+  --onsen-screen-padding: 22px;
+  --onsen-screen-padding-desktop: 28px;
+  --onsen-tap-target: 44px;
+  --onsen-prose-measure: 620px;
+}
+
+/*
+ * Light is designed, not inverted: warm paper, warm near-black ink. The eight
+ * supporting screens were drawn dark-only; the roles below that the handoff did
+ * not specify are marked, and are the subject of its open question 2.
+ */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+
+    --onsen-color-bg: #f4efe4;
+    --onsen-color-bg-raised: #efe9dc;
+    --onsen-color-bg-input: #fdfaf3;
+    --onsen-color-bg-card: #f7f3ea;
+    --onsen-color-bg-sunken: #ece6d8; /* derived */
+    --onsen-color-bg-inset: #e8e1d1; /* derived */
+
+    --onsen-color-rule: #e2dacb;
+    --onsen-color-rule-strong: #ddd4c3;
+    --onsen-color-rule-quiet: #cfc5b2;
+    --onsen-color-border-quiet: #d8cfbd; /* derived */
+
+    --onsen-color-text: #1e1a15;
+    --onsen-color-text-label: #4a4237;
+    --onsen-color-text-muted: #7a7263;
+    --onsen-color-text-dim: #8b8271;
+    --onsen-color-text-placeholder: #9a9180;
+    --onsen-color-text-bright: #14110d; /* derived */
+    --onsen-color-text-prose-muted: #6d6557; /* derived */
+
+    --onsen-color-red: #b0402c;
+    --onsen-color-red-bg: #f8e9e3;
+    --onsen-color-red-border: #d9b3a6;
+    --onsen-color-red-text: #8f3524; /* derived */
+
+    --onsen-color-blue: #3f6486;
+    --onsen-color-blue-bg: #e9edf2;
+    --onsen-color-blue-border: #d5dde6;
+    --onsen-color-blue-text: #3d4c5c;
+    --onsen-color-blue-bg-sheet: #e4e9ef; /* derived */
+    --onsen-color-blue-border-strong: #c3cfdb; /* derived */
+    --onsen-color-blue-text-muted: #6b7a8a; /* derived */
+    --onsen-color-blue-prose: #33414f; /* derived */
+
+    --onsen-color-green: #5d7f3f; /* derived */
+
+    --onsen-stripe: repeating-linear-gradient(45deg, #e4dccb 0 6px, #ddd4c1 6px 12px);
+    --onsen-stripe-cued: repeating-linear-gradient(45deg, #f0ddd4 0 6px, #e8d2c7 6px 12px);
+  }
+}
+
+/* An explicit theme choice wins over the system preference in both directions. */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --onsen-color-bg: #f4efe4;
+  --onsen-color-bg-raised: #efe9dc;
+  --onsen-color-bg-input: #fdfaf3;
+  --onsen-color-bg-card: #f7f3ea;
+  --onsen-color-bg-sunken: #ece6d8;
+  --onsen-color-bg-inset: #e8e1d1;
+
+  --onsen-color-rule: #e2dacb;
+  --onsen-color-rule-strong: #ddd4c3;
+  --onsen-color-rule-quiet: #cfc5b2;
+  --onsen-color-border-quiet: #d8cfbd;
+
+  --onsen-color-text: #1e1a15;
+  --onsen-color-text-label: #4a4237;
+  --onsen-color-text-muted: #7a7263;
+  --onsen-color-text-dim: #8b8271;
+  --onsen-color-text-placeholder: #9a9180;
+  --onsen-color-text-bright: #14110d;
+  --onsen-color-text-prose-muted: #6d6557;
+
+  --onsen-color-red: #b0402c;
+  --onsen-color-red-bg: #f8e9e3;
+  --onsen-color-red-border: #d9b3a6;
+  --onsen-color-red-text: #8f3524;
+
+  --onsen-color-blue: #3f6486;
+  --onsen-color-blue-bg: #e9edf2;
+  --onsen-color-blue-border: #d5dde6;
+  --onsen-color-blue-text: #3d4c5c;
+  --onsen-color-blue-bg-sheet: #e4e9ef;
+  --onsen-color-blue-border-strong: #c3cfdb;
+  --onsen-color-blue-text-muted: #6b7a8a;
+  --onsen-color-blue-prose: #33414f;
+
+  --onsen-color-green: #5d7f3f;
+
+  --onsen-stripe: repeating-linear-gradient(45deg, #e4dccb 0 6px, #ddd4c1 6px 12px);
+  --onsen-stripe-cued: repeating-linear-gradient(45deg, #f0ddd4 0 6px, #e8d2c7 6px 12px);
+}

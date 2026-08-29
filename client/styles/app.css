@@ -1,0 +1,184 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+/*
+ * Expose the design tokens as Tailwind utilities. `inline` means the generated
+ * utilities reference the custom properties rather than copying their values,
+ * so a theme switch on :root re-colours the whole app with no rebuild.
+ */
+@theme inline {
+  --color-bg: var(--onsen-color-bg);
+  --color-bg-sunken: var(--onsen-color-bg-sunken);
+  --color-bg-raised: var(--onsen-color-bg-raised);
+  --color-bg-inset: var(--onsen-color-bg-inset);
+  --color-bg-input: var(--onsen-color-bg-input);
+
+  --color-rule: var(--onsen-color-rule);
+  --color-rule-strong: var(--onsen-color-rule-strong);
+  --color-border-quiet: var(--onsen-color-border-quiet);
+
+  --color-ink: var(--onsen-color-text);
+  --color-ink-bright: var(--onsen-color-text-bright);
+  --color-ink-label: var(--onsen-color-text-label);
+  --color-ink-muted: var(--onsen-color-text-muted);
+  --color-ink-dim: var(--onsen-color-text-dim);
+  --color-ink-prose-muted: var(--onsen-color-text-prose-muted);
+
+  --color-red: var(--onsen-color-red);
+  --color-red-bg: var(--onsen-color-red-bg);
+  --color-red-border: var(--onsen-color-red-border);
+  --color-red-text: var(--onsen-color-red-text);
+
+  --color-blue: var(--onsen-color-blue);
+  --color-blue-bg: var(--onsen-color-blue-bg);
+  --color-blue-border: var(--onsen-color-blue-border);
+  --color-blue-text: var(--onsen-color-blue-text);
+
+  --color-green: var(--onsen-color-green);
+
+  --font-prose: var(--onsen-font-prose);
+  --font-mono: var(--onsen-font-mono);
+
+  /* Everything is a page being marked up: sharp corners by default. */
+  --radius-none: 0;
+}
+
+@layer base {
+  * {
+    /* No rounded corners anywhere except the three documented exceptions:
+       OOC bubbles, bottom sheets, and the iOS home indicator. */
+    border-radius: 0;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--onsen-color-bg);
+    color: var(--onsen-color-text);
+    font-family: var(--onsen-font-prose);
+    font-size: var(--onsen-text-prose);
+    line-height: var(--onsen-leading-prose);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  /*
+   * The design system draws no focus treatment. A 2px red outline offset 2px is
+   * what the language implies, and keyboard focus must be visible.
+   */
+  :focus-visible {
+    outline: 2px solid var(--onsen-color-red);
+    outline-offset: 2px;
+  }
+
+  /* Suppress motion, never the state change itself. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--onsen-color-text-placeholder);
+  }
+}
+
+@layer components {
+  /* The app speaking: labels, attribution, state, buttons — all chrome. */
+  .chrome {
+    font-family: var(--onsen-font-mono);
+  }
+
+  .section-label {
+    font-family: var(--onsen-font-mono);
+    font-size: var(--onsen-text-section-label);
+    letter-spacing: var(--onsen-tracking-label);
+    text-transform: uppercase;
+    color: var(--onsen-color-text-muted);
+  }
+
+  .screen-kicker {
+    font-family: var(--onsen-font-mono);
+    font-size: 10px;
+    letter-spacing: var(--onsen-tracking-kicker);
+    text-transform: uppercase;
+    color: var(--onsen-color-text-dim);
+  }
+
+  .screen-title {
+    font-family: var(--onsen-font-prose);
+    font-size: var(--onsen-text-title);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    color: var(--onsen-color-text);
+  }
+
+  /* A field the user types their own material into: Spectral, hairline box. */
+  .field {
+    width: 100%;
+    min-height: var(--onsen-tap-target);
+    padding: 12px 14px;
+    background: var(--onsen-color-bg-input);
+    border: 1px solid var(--onsen-color-rule-strong);
+    font-family: var(--onsen-font-prose);
+    font-size: var(--onsen-text-field);
+    color: var(--onsen-color-text);
+  }
+
+  .field:focus {
+    border-color: var(--onsen-color-text-dim);
+  }
+
+  /* Buttons are the app speaking, so they are always mono. */
+  .btn {
+    min-height: var(--onsen-tap-target);
+    padding: 0 16px;
+    font-family: var(--onsen-font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: var(--onsen-tracking-button);
+    text-transform: uppercase;
+    border: 1px solid var(--onsen-color-rule-strong);
+    background: transparent;
+    color: var(--onsen-color-text-label);
+    cursor: pointer;
+  }
+
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  /* Primary actions take the red pencil. */
+  .btn-primary {
+    background: var(--onsen-color-red);
+    border-color: var(--onsen-color-red);
+    color: #fdf6ef;
+  }
+
+  .hairline {
+    border-bottom: 1px solid var(--onsen-color-rule);
+  }
+}
