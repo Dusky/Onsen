@@ -266,3 +266,98 @@ history block's placeholder string, which made the file read as binary to grep.
 The placeholder was also leaking into the system prompt, because the history
 block sits in the prefix and its marker was being joined with the rest. Both are
 fixed, and there is a test that the marker never appears in a built prompt.
+
+---
+
+## Phase 4 — First adapter and the generation service
+
+> OpenAI-compatible adapter, resumable SSE, cancellation, per-call profile
+> override.
+
+### Built
+
+**The OpenAI-compatible adapter** (§4): OpenAI, OpenRouter, and the
+OpenAI-shaped endpoints llama.cpp, KoboldCpp, TabbyAPI, Ollama and
+text-generation-webui all expose. The modern samplers from §13 — min-P, DRY,
+XTC — are sent as top-level fields, which is where local shims read them; a
+provider that does not know them ignores them. Shipping §13's defaults is only
+worth anything if they actually reach the backend.
+
+**An SSE parser that does not assume chunk boundaries are line boundaries.**
+One `data:` line routinely arrives split across two reads and two events
+routinely arrive in one. A parser that gets this wrong drops tokens precisely
+when the network is bad, which is the condition this whole app is designed for.
+CRLF, multi-line data, comments and a trailing event with no closing blank line
+are all covered.
+
+**The generation service** (§5). A generation is a persistent record with a
+resumable buffer, not a request-scoped operation. `POST /scenes/:id/generate`
+returns an identifier immediately and the work continues with nobody attached;
+`GET /generations/:id/stream?offset=N` replays everything past N and then
+continues live. Disconnecting never stops a generation — it only stops us
+writing to a socket that is gone.
+
+Three decisions worth naming:
+
+- **The parent is captured at start, not read at completion.** Otherwise a leaf
+  move mid-generation silently reparents the result.
+- **One generation per scene at a time.** Two in flight would race to attach to
+  the same parent and the second would become a swipe the user never asked for.
+- **A cancelled generation keeps what it produced.** Partial output is still
+  the user's text, and discarding it loses work they watched arrive.
+
+**Per-call profile override** — the mechanism per-operation model routing
+(§0.11, §7) is built on. An explicit profile wins over the scene's for that one
+call, and control returns afterwards.
+
+**Verified end to end against a real HTTP provider**, not only the injected
+fake: started a generation, disconnected mid-stream, confirmed it kept going,
+reconnected from the offset, and reassembled output byte-identical to what was
+stored in the tree. Cancellation was confirmed by the provider itself logging
+that its client aborted — which is the §4 requirement that a leaked generation
+must not pin a GPU.
+
+**Tests.** 50 new: 25 for the adapter and SSE parser against recorded fixtures
+rather than live APIs, 25 for the service and its routes.
+
+### The place the phase order bites
+
+Phase 4 needs a prompt, a prompt needs a spotlight, and characters are phase 6.
+`server/generation/context.ts` therefore carries a documented
+`PLACEHOLDER_SPOTLIGHT` and runs in single-character mode against it. It is
+deliberately plain rather than a fake character card, so nothing grows a
+dependency on it.
+
+This is worth flagging rather than burying: **§20 phase 5 is "minimum usable
+chat UI — single character", but the character entity does not arrive until
+phase 6.** Either phase 5 ships against this placeholder and looks odd, or a
+minimal `characters` table lands before it, with phase 6 adding what it is
+actually about — lossless card import/export, CCv3 decorators, the editor and
+the parsed-card cache. The second reading seems right, and it is a question for
+the spec's author rather than something to decide silently.
+
+### Deliberately not built
+
+- **Anthropic and text-completion adapters.** Phase 20. Asking for one now
+  fails with a message that says so, rather than silently using another
+  provider's wire format.
+- **Reasoning extraction.** `TokenChunk` carries text only; phase 17.
+- **Retry and backoff.** `AdapterError.retryable` is set correctly, but nothing
+  acts on it yet.
+- **Multi-device head sync** (§5) and the background generation indicator.
+  Phase 34.
+- **Any UI.** Phase 5.
+
+### Surprises
+
+Mounting the generation router at the API root made its `app.use("*",
+requireAuth())` a global guard, so `/api/nope` started returning 401 instead of
+404. A router's wildcard middleware applies to everything under its prefix, and
+at the root that is everything. The fix was to split it into two routers mounted
+under `/scenes` and `/generations`. The existing 404 test caught it — one worth
+keeping in mind for every future router.
+
+The tests also caught a genuine production bug: `shutdown()` aborts in-flight
+generations, but an abort resolves asynchronously, so a run loop could reach its
+completion path after the database had already closed. That is the SIGTERM path,
+not just a test artefact. The service now stops writing once it is stopping.

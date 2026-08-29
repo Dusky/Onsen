@@ -4,10 +4,10 @@ A self-hosted, mobile-first AI roleplay frontend. Group scenes are the primary
 case: one AI **author** with its own personality plays the whole cast, like a GM
 running a table, while you direct.
 
-> **Status: phase 3 of 41.** The server boots, migrates, authenticates, runs its
-> setup wizard, owns a full history tree over HTTP, and assembles prompts —
-> both rendering modes, budgeting, eviction reporting, macros. Nothing calls a
-> model yet; that is phase 4, and the chat screen is phase 5. See
+> **Status: phase 4 of 41.** The server boots, migrates, authenticates, runs its
+> setup wizard, owns a full history tree, assembles prompts, and generates
+> against any OpenAI-compatible provider with resumable streaming that survives
+> a phone suspending its tab. There is no chat screen yet; that is phase 5. See
 > [`docs/SPEC.md` §20](docs/SPEC.md) for the build order and
 > [`docs/PHASES.md`](docs/PHASES.md) for what exists today.
 
@@ -101,6 +101,8 @@ because later phases depend on earlier ones being correct, not merely present.
 /server        Bun + Hono. Routes are thin; logic lives in modules.
   /db          schema, migrations, queries
   /prompt      the pure prompt builder - no imports from /db or /routes
+  /adapters    provider adapters
+  /generation  generation service, resumable streaming
   /lib         ULIDs, crypto
   /middleware  session, rate limiting
   /routes
