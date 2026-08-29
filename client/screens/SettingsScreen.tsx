@@ -312,6 +312,26 @@ function OpEditor({
           ) : null}
         </div>
 
+        {/* A pass can be put on the automatic list, which is what SPEC §7's
+            `auto_trigger` means. What it does when it runs is fixed by the
+            pass, and worth saying: only one of them rewrites anything. */}
+        {task.effect === null ? null : (
+          <>
+            <button
+              type="button"
+              className={`btn mb-[10px] w-full ${task.autoTrigger ? "btn-primary" : ""}`}
+              onClick={() => update.mutate({ key: task.key, autoTrigger: !task.autoTrigger })}
+            >
+              {strings.settings.opAutoTrigger}
+            </button>
+            <p className="chrome mb-[16px] text-[9px] leading-[1.5] text-ink-dim">
+              {task.effect === "replace"
+                ? strings.settings.opEffectReplace
+                : strings.settings.opEffectFlag}
+            </p>
+          </>
+        )}
+
         {/* Routing only means something for an op that makes its own call. */}
         {task.runs === "side_call" ? (
           <>

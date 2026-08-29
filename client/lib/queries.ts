@@ -156,6 +156,15 @@ export function useScene(sceneId: string) {
   return useQuery({
     queryKey: keys.scene(sceneId),
     queryFn: () => api.get<SceneWithHistoryDto>(`/scenes/${sceneId}`),
+    /**
+     * The post-generation passes run behind the turn rather than delaying it
+     * (SPEC §7.5), so their notes arrive after the message does. Polling while
+     * any message says it is still being read is the smallest thing that works;
+     * it stops on its own, and a per-scene channel (§5) would close the seam
+     * properly when multi-device sync arrives.
+     */
+    refetchInterval: (query) =>
+      (query.state.data?.messages ?? []).some((message) => message.passesPending) ? 1200 : false,
   });
 }
 
@@ -219,6 +228,20 @@ export function useDeleteMessage(sceneId: string) {
 export function useSplitBeat(sceneId: string) {
   return useSceneMutation(sceneId, (messageId: string) =>
     api.post<SceneWithHistoryDto>(`/scenes/${sceneId}/messages/${messageId}/split`, {}),
+  );
+}
+
+/** Read a finished turn back and leave notes on it (SPEC §7.5). */
+export function useRunPasses(sceneId: string) {
+  return useSceneMutation(sceneId, (messageId: string) =>
+    api.post<MessageDto>(`/scenes/${sceneId}/messages/${messageId}/passes`, {}),
+  );
+}
+
+/** Put back what a pass changed. The original is always retained (§7.5). */
+export function useRevertAnnotation(sceneId: string) {
+  return useSceneMutation(sceneId, (annotationId: string) =>
+    api.post<MessageDto>(`/scenes/${sceneId}/annotations/${annotationId}/revert`, {}),
   );
 }
 

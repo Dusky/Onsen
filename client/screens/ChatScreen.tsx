@@ -16,7 +16,14 @@ import { Composer } from "../components/Composer.tsx";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
 import { CastStrip } from "../components/CastStrip.tsx";
 import { OpsGrid, OpPrompt, type Op } from "../components/OpsGrid.tsx";
-import { useBenchMember, useSceneSetup, useSplitBeat, useTasks } from "../lib/queries.ts";
+import {
+  useBenchMember,
+  useRevertAnnotation,
+  useRunPasses,
+  useSceneSetup,
+  useSplitBeat,
+  useTasks,
+} from "../lib/queries.ts";
 import type {
   ImpersonateResponse,
   NextSpeakerDto,
@@ -72,6 +79,8 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   // Per-op configuration (SPEC §7): a hidden button is not a disabled op, so
   // this only decides what the grid shows.
   const tasks = useTasks();
+  const runPasses = useRunPasses(sceneId);
+  const revert = useRevertAnnotation(sceneId);
   const [acting, setActing] = useState<MessageDto | null>(null);
   /** The beat whose parts are being picked from, for a recast. */
   const [recasting, setRecasting] = useState<MessageDto | null>(null);
@@ -506,6 +515,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                 onReroll={() => void reroll(message)}
                 onOpenVersions={() => setVersionsFor(message)}
                 onLongPress={() => setActing(message)}
+                onRevert={(note) => revert.mutate(note.id)}
                 {...(recastInFlight?.messageId === message.id
                   ? { recasting: { ordinal: recastInFlight.ordinal, text: recastInFlight.text } }
                   : {})}
@@ -641,6 +651,15 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             label={strings.chat.branch}
             onClick={() => {
               setLeaf.mutate({ messageId: acting.id, descend: false });
+              setActing(null);
+            }}
+          />
+          {/* SPEC §7.5: auto-run per scene, or manual per message. This is the
+              per-message half — a second read of one turn you are unsure about. */}
+          <SheetAction
+            label={runPasses.isPending ? strings.chat.checking : strings.chat.checkTurn}
+            onClick={() => {
+              runPasses.mutate(acting.id);
               setActing(null);
             }}
           />

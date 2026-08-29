@@ -260,6 +260,25 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
             </>
           ) : null}
 
+          {/* SPEC §7.5: auto-run per scene, or manual per message. Which passes
+              take part is the per-op switch, in Settings. */}
+          <p className="section-label mb-[8px]">{strings.sceneSetup.autoPasses}</p>
+          <div className="mb-[8px] flex gap-[6px]">
+            {[false, true].map((on) => (
+              <button
+                key={String(on)}
+                type="button"
+                onClick={() => setup.mutate({ autoPasses: on })}
+                className={`btn flex-1 ${scene.autoPasses === on ? "btn-primary" : ""}`}
+              >
+                {on ? strings.sceneSetup.autoPassesOn : strings.sceneSetup.autoPassesOff}
+              </button>
+            ))}
+          </div>
+          <p className="chrome mb-[22px] text-[9.5px] leading-[1.5] text-ink-dim">
+            {strings.sceneSetup.autoPassesHint}
+          </p>
+
           <p className="section-label mb-[8px]">{strings.sceneSetup.cast}</p>
           {scene.cast.length === 0 ? (
             <p className="chrome mb-[10px] text-[10px] tracking-[0.12em] text-ink-dim uppercase">

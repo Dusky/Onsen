@@ -178,6 +178,15 @@ export const strings = {
     cueBeat: (count: number) => `Cued: the room · ${count} in play`,
     cueUndecided: "Cued: chosen when you send",
 
+    /** Post-generation passes (SPEC §7.5). A note in the margin, not a modal. */
+    checkTurn: "Check this turn",
+    checking: "Reading it back…",
+    passesPending: "Reading it back…",
+    passOk: (label: string) => `${label} · ok`,
+    passFailed: (label: string) => `${label} · could not run`,
+    passRevert: "Put it back",
+    passPart: (name: string) => `${name} —`,
+
     you: "You",
     /** Cast strip captions (design handoff). */
     autoNext: "Auto · next",
@@ -231,6 +240,9 @@ export const strings = {
     opEnabled: "On",
     opDisabled: "Off",
     opHidden: "Button hidden",
+    opAutoTrigger: "Runs after every reply",
+    opEffectFlag: "Reports what it finds",
+    opEffectReplace: "Rewrites the turn, keeping the original",
     opWords: "Words",
     opWordsDefault: "Built-in",
     opWordsOverridden: "Yours",
@@ -378,6 +390,13 @@ export const strings = {
       }
     },
     directorRunTiming: (ms: number) => `${(ms / 1000).toFixed(1)}s`,
+
+    /** The post-generation pipeline (SPEC §7.5). */
+    autoPasses: "Read every turn back",
+    autoPassesHint:
+      "After each reply, the passes you have switched on read it and leave a note. They never delay the turn.",
+    autoPassesOn: "On",
+    autoPassesOff: "Off",
 
     /** Where the classifier runs (SPEC §6). */
     directorProfile: "Where the director runs",

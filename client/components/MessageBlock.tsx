@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { MessageDto, MessageSegmentDto } from "@shared/types.ts";
+import type { AnnotationDto, MessageDto, MessageSegmentDto } from "@shared/types.ts";
 import { useSwipe } from "../lib/gestures.ts";
 import { strings } from "../strings.ts";
 
@@ -27,6 +27,8 @@ interface MessageBlockProps {
    * up rather than arriving at the bottom of the log and then vanishing.
    */
   recasting?: { ordinal: number; text: string };
+  /** Put back what a pass changed (SPEC §7.5). */
+  onRevert?(annotation: AnnotationDto): void;
 }
 
 /**
@@ -73,7 +75,6 @@ function Segment({
 }) {
   return (
     <div
-      className="mt-[16px] first:mt-0"
       // Red is the live pencil: the part being rewritten is the only thing on
       // the screen that is happening now.
       style={
@@ -92,6 +93,55 @@ function Segment({
   );
 }
 
+/**
+ * What a post-generation pass found (SPEC §7.5).
+ *
+ * "Show pass results as a small annotation on the message, not a modal" — a
+ * pass is a second reader's note in the margin. Entirely mono, like the
+ * reasoning strip: it reads as an annotation rather than as another voice in
+ * the scene. A clean verdict is quieter still, because a pipeline that reports
+ * every success as loudly as every failure is a pipeline you stop reading.
+ */
+function Annotation({
+  annotation,
+  onRevert,
+}: {
+  annotation: AnnotationDto;
+  onRevert?: ((annotation: AnnotationDto) => void) | undefined;
+}) {
+  const flagged = annotation.status === "flagged";
+  const failed = annotation.status === "failed";
+  return (
+    <p
+      className="chrome mt-[7px] flex gap-[7px] text-[9px] leading-[1.55] tracking-[0.04em]"
+      style={{
+        color: flagged ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)",
+        opacity: annotation.status === "ok" ? 0.7 : 1,
+      }}
+    >
+      <span className="flex-none uppercase">
+        {failed
+          ? strings.chat.passFailed(annotation.passLabel)
+          : annotation.status === "ok"
+            ? strings.chat.passOk(annotation.passLabel)
+            : annotation.passLabel}
+      </span>
+      {annotation.detail === null ? null : (
+        <span className="min-w-0 flex-1">{annotation.detail}</span>
+      )}
+      {annotation.revertable && onRevert !== undefined ? (
+        <button
+          type="button"
+          onClick={() => onRevert(annotation)}
+          className="flex-none uppercase underline"
+        >
+          {strings.chat.passRevert}
+        </button>
+      ) : null}
+    </p>
+  );
+}
+
 export function MessageBlock({
   message,
   speakerName,
@@ -100,6 +150,7 @@ export function MessageBlock({
   onLongPress,
   streamingText,
   recasting,
+  onRevert,
 }: MessageBlockProps) {
   const swipe = useSwipe({
     // Opposite directions by design (design handoff, Gestures).
@@ -151,15 +202,37 @@ export function MessageBlock({
           <Prose text={text} />
         ) : (
           segments.map((segment) => (
-            <Segment
-              key={segment.ordinal}
-              segment={segment}
-              {...(recasting?.ordinal === segment.ordinal
-                ? { replacement: recasting.text }
-                : {})}
-            />
+            // The spacing lives on the wrapper, not the part: each part now has
+            // its own notes under it, and `first:` on the inner element would
+            // match every one of them.
+            <div key={segment.ordinal} className="mt-[16px] first:mt-0">
+              <Segment
+                segment={segment}
+                {...(recasting?.ordinal === segment.ordinal
+                  ? { replacement: recasting.text }
+                  : {})}
+              />
+              {/* A voice check reads a beat part by part, so its note belongs
+                  under the part it is about — naming which line drifted is the
+                  whole point of the pass (SPEC §7.5). */}
+              {message.annotations
+                .filter((note) => note.segmentOrdinal === segment.ordinal)
+                .map((note) => (
+                  <Annotation key={note.id} annotation={note} onRevert={onRevert} />
+                ))}
+            </div>
           ))
         )}
+        {message.annotations
+          .filter((note) => note.segmentOrdinal === null)
+          .map((note) => (
+            <Annotation key={note.id} annotation={note} onRevert={onRevert} />
+          ))}
+        {message.passesPending ? (
+          <p className="chrome mt-[6px] text-[9px] leading-[1.55] tracking-[0.04em] text-ink-dim uppercase">
+            {strings.chat.passesPending}
+          </p>
+        ) : null}
         {message.parseDegraded ? (
           <p className="chrome mt-[8px] text-[8.5px] leading-[1.5] tracking-[0.06em] text-ink-dim uppercase">
             {strings.chat.beatUnparsed}
