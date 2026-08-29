@@ -101,6 +101,43 @@ export interface ConnectionProfileDto {
 /* ------------------------------------------------------------------ */
 
 /** What the client needs before deciding which screen to show. */
+export interface CreateProviderRequest {
+  name: string;
+  kind: ProviderKind;
+  baseUrl?: string | null;
+  apiKey?: string | null;
+  model?: string | null;
+}
+
+export interface UpdateProviderRequest {
+  name?: string;
+  baseUrl?: string | null;
+  /**
+   * Omitted leaves the stored key alone; null clears it; a string replaces it.
+   * Three states, because a form that came back empty must not silently delete
+   * a credential nobody touched (SPEC §17).
+   */
+  apiKey?: string | null;
+  model?: string | null;
+  enabled?: boolean;
+}
+
+export interface CreateConnectionProfileRequest {
+  name: string;
+  providerId: string;
+  model?: string | null;
+  presetId?: string | null;
+  isDefault?: boolean;
+}
+
+export interface UpdateConnectionProfileRequest {
+  name?: string;
+  providerId?: string;
+  model?: string | null;
+  presetId?: string | null;
+  isDefault?: boolean;
+}
+
 export interface BootstrapDto {
   /** False until the setup wizard has completed (SPEC §17). */
   setupCompleted: boolean;
@@ -393,16 +430,40 @@ export type TaskStage = "pre_generation" | "sidecar" | "post_generation";
  * The configuration of one kind of side call. The kind itself is code; this is
  * what a user gets to change about it (SPEC §7's per-op row).
  */
+export type InjectionRole = "system" | "user" | "assistant";
+
+export const INJECTION_ROLES: readonly InjectionRole[] = ["system", "user", "assistant"];
+
+export function isInjectionRole(value: unknown): value is InjectionRole {
+  return typeof value === "string" && (INJECTION_ROLES as readonly string[]).includes(value);
+}
+
 export interface TaskDto {
   key: string;
   label: string;
   description: string;
   stage: TaskStage;
+  /**
+   * A side call runs off the main path on its own model; a turn instruction is
+   * words inside a user-facing generation's prompt. Routing and a timeout only
+   * mean something for the first.
+   */
+  runs: "side_call" | "turn";
   enabled: boolean;
   /** Null means the scene's own model, which works and costs more. */
   connectionProfileId: string | null;
   /** Null means the built-in prompt. */
   promptTemplate: string | null;
+  /** The built-in words, so an editor can start from them rather than blank. */
+  defaultTemplate: string;
+  /** This op's own variables, beyond the ordinary macro set. */
+  variables: readonly string[];
+  /** Where the op's text lands. Which works best varies by model (§7). */
+  injectionRole: InjectionRole;
+  /** Whether its button is shown. Hidden is not the same as turned off. */
+  buttonVisible: boolean;
+  /** False when hiding this op's button would mean nothing. */
+  hideable: boolean;
   timeoutMs: number;
 }
 
@@ -438,6 +499,8 @@ export interface UpdateTaskRequest {
   enabled?: boolean;
   connectionProfileId?: string | null;
   promptTemplate?: string | null;
+  injectionRole?: InjectionRole;
+  buttonVisible?: boolean;
 }
 
 /* ------------------------------------------------------------------ */

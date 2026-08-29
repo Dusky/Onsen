@@ -214,6 +214,12 @@ export function insertConnectionProfile(
   input: NewConnectionProfile,
 ): ConnectionProfileRow {
   const now = Date.now();
+  // A partial unique index enforces one default, so the old one is cleared
+  // first — otherwise adding a profile and asking for it to be the default is
+  // a constraint violation rather than the obvious thing happening.
+  if (input.isDefault === true) {
+    db.query("UPDATE connection_profiles SET is_default = 0").run();
+  }
   return db
     .query(
       `INSERT INTO connection_profiles (ulid, name, provider_id, model, preset_id, is_default, created_at, updated_at)
@@ -242,3 +248,121 @@ export function ulidLookup(db: Database, table: "providers" | "presets"): Map<nu
 }
 
 export type { ProviderRow, PresetRow, ConnectionProfileRow };
+
+/* ------------------------------------------------------------------ */
+/* Editing (SPEC §20 phase 13)                                         */
+/* ------------------------------------------------------------------ */
+
+export interface ProviderPatch {
+  name?: string;
+  baseUrl?: string | null;
+  /**
+   * Undefined leaves the stored key alone, null clears it, a string replaces
+   * it. Three states, because "the field came back empty" must not silently
+   * delete a credential the user never touched (SPEC §17).
+   */
+  apiKeyEncrypted?: string | null;
+  model?: string | null;
+  enabled?: boolean;
+}
+
+export function updateProvider(db: Database, id: number, patch: ProviderPatch): ProviderRow {
+  const current = db.query("SELECT * FROM providers WHERE id = $id").get({ id }) as ProviderRow;
+  return db
+    .query(
+      `UPDATE providers
+          SET name = $name, base_url = $base_url, api_key_encrypted = $key,
+              model = $model, enabled = $enabled, updated_at = $now
+        WHERE id = $id
+        RETURNING *`,
+    )
+    .get({
+      id,
+      name: patch.name ?? current.name,
+      base_url: patch.baseUrl === undefined ? current.base_url : patch.baseUrl,
+      key: patch.apiKeyEncrypted === undefined ? current.api_key_encrypted : patch.apiKeyEncrypted,
+      model: patch.model === undefined ? current.model : patch.model,
+      enabled: patch.enabled === undefined ? current.enabled : patch.enabled ? 1 : 0,
+      now: Date.now(),
+    }) as ProviderRow;
+}
+
+export function findProviderById(db: Database, id: number): ProviderRow | null {
+  return (db.query("SELECT * FROM providers WHERE id = $id").get({ id }) ?? null) as
+    | ProviderRow
+    | null;
+}
+
+/**
+ * Deleting a provider takes its profiles with it — a profile with no provider
+ * has nowhere to send a request. Scenes pointing at those profiles survive with
+ * a null, which is the state a scene created before any profile is already in.
+ */
+export function deleteProvider(db: Database, id: number): void {
+  db.query("DELETE FROM providers WHERE id = $id").run({ id });
+}
+
+export function findConnectionProfileByUlid(
+  db: Database,
+  value: string,
+): ConnectionProfileRow | null {
+  return (db.query("SELECT * FROM connection_profiles WHERE ulid = $ulid").get({ ulid: value }) ??
+    null) as ConnectionProfileRow | null;
+}
+
+export interface ConnectionProfilePatch {
+  name?: string;
+  providerId?: number;
+  model?: string | null;
+  presetId?: number | null;
+  isDefault?: boolean;
+}
+
+export function updateConnectionProfile(
+  db: Database,
+  id: number,
+  patch: ConnectionProfilePatch,
+): ConnectionProfileRow {
+  const current = db
+    .query("SELECT * FROM connection_profiles WHERE id = $id")
+    .get({ id }) as ConnectionProfileRow;
+
+  // One default at a time, cleared before the new one is set so the two can
+  // never both be true even for an instant.
+  if (patch.isDefault === true) {
+    db.query("UPDATE connection_profiles SET is_default = 0").run();
+  }
+
+  return db
+    .query(
+      `UPDATE connection_profiles
+          SET name = $name, provider_id = $provider, model = $model, preset_id = $preset,
+              is_default = $is_default, updated_at = $now
+        WHERE id = $id
+        RETURNING *`,
+    )
+    .get({
+      id,
+      name: patch.name ?? current.name,
+      provider: patch.providerId ?? current.provider_id,
+      model: patch.model === undefined ? current.model : patch.model,
+      preset: patch.presetId === undefined ? current.preset_id : patch.presetId,
+      is_default: patch.isDefault === undefined ? current.is_default : patch.isDefault ? 1 : 0,
+      now: Date.now(),
+    }) as ConnectionProfileRow;
+}
+
+/**
+ * Deleting a profile leaves the scenes that used it pointing at nothing, which
+ * the schema handles with ON DELETE SET NULL and the generation service reports
+ * as "this scene has no connection profile". Losing the setting is recoverable;
+ * losing the scene would not be.
+ */
+export function deleteConnectionProfile(db: Database, id: number): void {
+  db.query("DELETE FROM connection_profiles WHERE id = $id").run({ id });
+}
+
+/** How many profiles exist, so the last one is not deleted out from under a scene. */
+export function countConnectionProfiles(db: Database): number {
+  return (db.query("SELECT COUNT(*) AS n FROM connection_profiles").get() as { n: number }).n;
+}
