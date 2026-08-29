@@ -167,3 +167,102 @@ Nothing structural. Worth noting for later phases: SQLite's `IS` rather than `=`
 is what makes root siblings work, since `parent_id = NULL` matches nothing — a
 sibling query written with `=` silently reports that every alternate greeting is
 the only one of its kind.
+
+---
+
+## Phase 3 — Prompt builder
+
+> Both rendering modes, budget allocation with eviction reporting, macros, debug
+> output. Heavy unit tests. No provider yet.
+
+The handoff calls this the most important module in the codebase, and warns that
+building it before any UI feels premature and is not. Everything downstream —
+generation, guided ops, the inspector, the outbound API — is a client of it.
+
+### Built
+
+**Purity, enforced structurally.** `buildPrompt(ctx)` takes a plain object and
+returns a plain object. Everything variable is passed in: the tokenizer, `now`,
+and `seed`. A test reads the source of every file under `/prompt` and fails on an
+import from `/db`, `/routes` or `/middleware`, and on `Date.now`, `new Date()`,
+`Math.random`, `fetch`, `process.env` or `bun:sqlite`. A second test asserts the
+same context builds a byte-identical prompt twice and that building mutates
+nothing it was given.
+
+**Both rendering modes.** Author mode puts the author in the system prompt and
+renders every non-user turn as an `assistant` turn prefixed with its speaker's
+name — one point of view, no per-speaker re-render, so the prefix stays stable
+and prompt caching survives (§0.6). There is a test asserting the prefix is
+unchanged when only the spotlight moves. Single-character mode drops the author
+block and labels nothing.
+
+**The user-lock, twice.** §0.5 makes it the single most important constraint, so
+it is asserted in the author identity block and restated in the spotlight
+instruction at depth 0, and both assertions are tested.
+
+**The assembly order** of §3, overridable per preset, with one guard: a preset
+that omits `history` or `spotlight_instruction` gets them back. Dropping the
+cast block is a choice; dropping the user-lock is a bug.
+
+**Depth placement.** Depth 0 is immediately before the response, depth 2 is two
+turns earlier, and a depth deeper than the history lands at its start rather
+than falling out. This is the distinction §18 warns importers about: a near-turn
+nudge behaves nothing like the same text in the prefix.
+
+**Budget and eviction.** Reserve the response allowance, cost every fixed block,
+fail loudly with a `PromptBudgetError` naming what to change if they do not fit,
+then give history the remainder and trim oldest-first, whole messages only. The
+debug output accounts for every message: included or evicted, with the reason
+and the cost. Hidden messages are reported as evictions too, so "why did it
+forget" has an answer either way.
+
+**The macro engine**, all sixteen macros, with the rules now recorded in SPEC §3
+under "Macro resolution rules".
+
+**Capability branching** for the three v1 adapter shapes: separate system role
+or not, prefill or dropped, strict alternation with system turns folded into user
+turns and merged, and a raw transcript in text mode.
+
+**Tests.** 71 new across four files: modes and assembly, macros and outlets,
+budget and eviction, purity and determinism.
+
+### Deliberately not built
+
+- **Beats.** §3.5 is phase 9. `PromptContext.spotlight` is a single character,
+  exactly as §3 declares it.
+- **Instruct templates.** Text mode emits a plain labelled transcript. ChatML,
+  Llama 3, Mistral and the rest ship as data with the text-completion adapter in
+  phase 20, and wrap this rather than replace it.
+- **Fine-grained lore prefix positions.** `before_character` / `after_examples`
+  and the rest currently collapse into one prefix group ordered by
+  `insertion_order`; `at_depth` and outlets are honoured exactly. The full
+  activation and placement model is phase 19.
+- **Real tokenizers.** The interface accepts one; only the estimator ships.
+- **Any caller.** Nothing invokes the builder yet — no provider until phase 4.
+
+### Spec changes
+
+SPEC §3 gains three subsections: "Purity and injected inputs" (the four context
+fields the published interface omitted, and the test that enforces purity),
+"Macro resolution rules" (five decisions, notably that `{{pick}}` anchors to the
+turn rather than the seed), and "Invented text is always a block". §24's
+tokenizer question is narrowed: the architecture is settled, the bundle-or-
+estimate choice stays open per adapter.
+
+### Surprises
+
+Two bugs the tests caught, both of the kind that would have been invisible in
+production:
+
+- Outlet text that was filled but never referenced was still being charged
+  against the budget. Being filled is not the same as reaching the prompt, and
+  the fix was to track what a placeholder actually consumed.
+- Outlet content was spliced in before its own macros were resolved. Macro
+  substitution is a single scan, so `{{char}}` inside an outlet would have
+  reached the model literally. Outlets now resolve in their own pass first.
+
+And one embarrassment worth recording: a NUL byte reached `blocks.ts` in the
+history block's placeholder string, which made the file read as binary to grep.
+The placeholder was also leaking into the system prompt, because the history
+block sits in the prefix and its marker was being joined with the rest. Both are
+fixed, and there is a test that the marker never appears in a built prompt.

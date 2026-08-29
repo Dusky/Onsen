@@ -414,6 +414,49 @@ function buildPrompt(ctx: PromptContext): BuiltPrompt;
 just what was included. "The character forgot" is almost always "the model never
 saw it," and the inspector is the only way a user can discover that.
 
+### Purity and injected inputs
+
+Settled while building phase 3. The interface above omits four fields the
+implementation needs, all of them there to keep the module pure — same context
+in, same prompt out:
+
+- **`tokenizer: Tokenizer`** — `{ id, isEstimate, count }`. Passed in rather than
+  imported, per the handoff. `isEstimate` reaches the inspector, because an
+  estimate a user trusts and overflows on is worse than no number.
+- **`now: number`** — resolves `{{time}}` and `{{date}}`. A `Date.now()` inside
+  the builder would make the same context produce different prompts.
+- **`seed: number`** — resolves `{{random}}` and `{{roll}}`.
+- **`idleDuration?: number`** and **`oocDue?: boolean`** — inputs to
+  `{{idle_duration}}` and the OOC invitation block.
+
+A test reads the source of every file under `/prompt` and fails on an import
+from `/db`, `/routes` or `/middleware`, and on `Date.now`, `new Date()`,
+`Math.random`, `fetch`, `process.env` or `bun:sqlite`.
+
+### Macro resolution rules
+
+- **`{{pick}}` is anchored to the turn, not the seed.** It hashes the last
+  message's id, so rebuilding a turn picks the same option while `{{random}}`
+  varies per generation. Anchoring it to the seed would let every swipe silently
+  rewrite the prompt's fixed choices, and take prompt caching with it.
+- **Unknown macros are left in the text and reported.** §18 requires visible
+  degradation: a suite carrying state in `{{setvar}}` leaks the literal text, and
+  the inspector names it. Deleting it silently would hide the failure.
+- **An unresolved outlet collapses to nothing and is reported.** Unlike an
+  unknown macro, an empty slot is a normal state rather than a misconfiguration.
+- **Outlet contents are resolved in their own pass first.** Substitution is a
+  single scan, so an outlet spliced in unresolved would carry its own macros into
+  the prompt verbatim.
+- **Outlet text nothing referenced costs nothing.** Being filled is not enough;
+  a placeholder has to have consumed it.
+
+### Invented text is always a block
+
+Where a provider's rules force text the user did not write — currently only the
+filler turn a strict-alternation provider needs when a scene opens on a greeting
+— it is recorded as a block with its own id and token cost. Nothing reaches the
+model without appearing in the inspector.
+
 ### Two rendering modes
 
 **Author mode (default).** There is one POV — the author's.
@@ -1735,8 +1778,13 @@ Things existing frontends do that this project should not.
 
 ## 24. Open decisions
 
-- Tokenizer strategy: bundle tokenizers per model family, or estimate with a
-  margin and label estimates as such?
+- Tokenizer strategy: **architecture settled, choice still open.** The builder
+  takes a `Tokenizer` — `{ id, isEstimate, count }` — so either answer plugs in.
+  The shipped fallback estimates at 3.6 characters per token, which deliberately
+  over-counts (an underestimate overflows the context; an overestimate costs a
+  little headroom) and flags itself as an estimate all the way to the inspector.
+  Whether to also bundle real per-family tokenizers is a size-versus-accuracy
+  decision that can be made per adapter.
 - Vector store: **investigated, not yet decided.** `sqlite-vec` 0.1.9 satisfies
   the literal constraint — its platform builds are `optionalDependencies`
   carrying a prebuilt `vec0.so`/`.dylib`/`.dll`, it declares no install scripts,

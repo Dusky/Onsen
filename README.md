@@ -4,9 +4,10 @@ A self-hosted, mobile-first AI roleplay frontend. Group scenes are the primary
 case: one AI **author** with its own personality plays the whole cast, like a GM
 running a table, while you direct.
 
-> **Status: phase 2 of 41.** The server boots, migrates, authenticates, runs its
-> setup wizard, and owns a full history tree over HTTP — branching, swipes,
-> rewind and checkpoints. There is no chat screen yet; that is phase 5. See
+> **Status: phase 3 of 41.** The server boots, migrates, authenticates, runs its
+> setup wizard, owns a full history tree over HTTP, and assembles prompts —
+> both rendering modes, budgeting, eviction reporting, macros. Nothing calls a
+> model yet; that is phase 4, and the chat screen is phase 5. See
 > [`docs/SPEC.md` §20](docs/SPEC.md) for the build order and
 > [`docs/PHASES.md`](docs/PHASES.md) for what exists today.
 
@@ -99,6 +100,7 @@ because later phases depend on earlier ones being correct, not merely present.
 ```
 /server        Bun + Hono. Routes are thin; logic lives in modules.
   /db          schema, migrations, queries
+  /prompt      the pure prompt builder - no imports from /db or /routes
   /lib         ULIDs, crypto
   /middleware  session, rate limiting
   /routes
@@ -108,7 +110,8 @@ because later phases depend on earlier ones being correct, not merely present.
 /test
 ```
 
-Two structural rules, enforced by review: `/prompt` (arriving in phase 3) never
-imports from `/db` or `/routes`, and every user-facing string goes through
-`client/strings.ts` — the product nouns in the design are provisional and will
-be renamed.
+Two structural rules. `/prompt` never imports from `/db` or `/routes`, and is
+pure — no clock, no randomness, no I/O; `test/prompt-purity.test.ts` enforces
+both by reading the source. And every user-facing string goes through
+`client/strings.ts`: the product nouns in the design are provisional and will be
+renamed.
