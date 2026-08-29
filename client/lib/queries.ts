@@ -7,6 +7,7 @@ import type {
   CreateConnectionProfileRequest,
   CreateProviderRequest,
   ProviderDto,
+  RebuildGuidesRequest,
   TaskDto,
   TaskRunDto,
   UpdateConnectionProfileRequest,
@@ -17,6 +18,8 @@ import type {
   SceneSetupRequest,
   UpdateAuthorRequest,
   UpdatePersonaRequest,
+  GuideDto,
+  GuideKind,
   ImportCharacterResponse,
   UpdateCharacterRequest,
   MessageDto,
@@ -235,6 +238,38 @@ export function useSplitBeat(sceneId: string) {
 export function useRunPasses(sceneId: string) {
   return useSceneMutation(sceneId, (messageId: string) =>
     api.post<MessageDto>(`/scenes/${sceneId}/messages/${messageId}/passes`, {}),
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Persistent guides (SPEC §8)                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Guides are read off the scene rather than a list of their own: they are
+ * versioned per message and the set in force follows the active path, so
+ * re-reading the scene is the only honest way to know what is being injected.
+ * Every one of these returns the new set, and every one invalidates the scene.
+ */
+
+/** Write or rewrite one guide, or every guide that is switched on (§8). */
+export function useRebuildGuides(sceneId: string) {
+  return useSceneMutation(sceneId, (body: RebuildGuidesRequest) =>
+    api.post<GuideDto[]>(`/scenes/${sceneId}/guides/rebuild`, body),
+  );
+}
+
+/** Hand-edit a guide, which pins it against the next refresh (§8). */
+export function useEditGuide(sceneId: string) {
+  return useSceneMutation(sceneId, ({ guideId, content }: { guideId: string; content: string }) =>
+    api.patch<GuideDto>(`/scenes/${sceneId}/guides/${guideId}`, { content }),
+  );
+}
+
+/** Stop injecting one guide, or all of them. Every version goes (§8). */
+export function useFlushGuides(sceneId: string) {
+  return useSceneMutation(sceneId, (kind: GuideKind | "all") =>
+    api.delete<GuideDto[]>(`/scenes/${sceneId}/guides/${kind}`),
   );
 }
 

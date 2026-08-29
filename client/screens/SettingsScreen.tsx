@@ -312,10 +312,11 @@ function OpEditor({
           ) : null}
         </div>
 
-        {/* A pass can be put on the automatic list, which is what SPEC §7's
-            `auto_trigger` means. What it does when it runs is fixed by the
-            pass, and worth saying: only one of them rewrites anything. */}
-        {task.effect === null ? null : (
+        {/* Anything that runs behind a finished turn can go on the automatic
+            list — SPEC §7.5's passes and §8's guides both make `auto_trigger` a
+            per-op switch. What it does when it runs is fixed by the op, and
+            worth saying: only some of them rewrite anything. */}
+        {task.stage === "post_generation" ? (
           <>
             <button
               type="button"
@@ -327,10 +328,12 @@ function OpEditor({
             <p className="chrome mb-[16px] text-[9px] leading-[1.5] text-ink-dim">
               {task.effect === "replace"
                 ? strings.settings.opEffectReplace
-                : strings.settings.opEffectFlag}
+                : task.effect === "flag"
+                  ? strings.settings.opEffectFlag
+                  : strings.settings.opEffectGuide}
             </p>
           </>
-        )}
+        ) : null}
 
         {/* Routing only means something for an op that makes its own call. */}
         {task.runs === "side_call" ? (

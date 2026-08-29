@@ -279,6 +279,25 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
             {strings.sceneSetup.autoPassesHint}
           </p>
 
+          {/* SPEC §8's sixth guide. It is the only one with nothing built in to
+              ask, so its question is scene configuration and lives here; the
+              other five are switched on per op in Settings. */}
+          <p className="section-label mb-[8px]">{strings.sceneSetup.customGuide}</p>
+          <textarea
+            rows={2}
+            className="field mb-[8px] resize-none py-[10px]"
+            placeholder={strings.sceneSetup.customGuidePlaceholder}
+            defaultValue={scene.customGuidePrompt ?? ""}
+            onBlur={(event) => {
+              const prompt = event.target.value.trim();
+              if (prompt === (scene.customGuidePrompt ?? "")) return;
+              setup.mutate({ customGuidePrompt: prompt === "" ? null : prompt });
+            }}
+          />
+          <p className="chrome mb-[22px] text-[9.5px] leading-[1.5] text-ink-dim">
+            {strings.sceneSetup.customGuideHint}
+          </p>
+
           <p className="section-label mb-[8px]">{strings.sceneSetup.cast}</p>
           {scene.cast.length === 0 ? (
             <p className="chrome mb-[10px] text-[10px] tracking-[0.12em] text-ink-dim uppercase">

@@ -9,13 +9,25 @@ import { useEffect, type ReactNode } from "react";
  */
 export function Sheet({
   title,
+  meta,
+  tone = "default",
   onClose,
   children,
 }: {
   title: string;
+  /** Right-aligned on the header row. A cost, usually. */
+  meta?: string | undefined;
+  /**
+   * Which pencil the sheet is in. `blue` is the author talking about their own
+   * machinery — the guides panel, and nothing else so far — and it takes the
+   * design's 2px blue top border rather than the usual hairline.
+   */
+  tone?: "default" | "blue";
   onClose(): void;
   children: ReactNode;
 }) {
+  const blue = tone === "blue";
+
   // Escape closes it, and the sheet takes focus so a keyboard user is not left
   // tabbing through the log underneath.
   useEffect(() => {
@@ -38,14 +50,34 @@ export function Sheet({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="relative border-t border-rule-strong bg-bg-raised"
+        className="relative"
         style={{
           borderRadius: "16px 16px 0 0",
+          borderTop: blue
+            ? "2px solid var(--onsen-color-blue)"
+            : "1px solid var(--onsen-color-rule-strong)",
+          background: blue ? "var(--onsen-color-blue-bg-sheet)" : "var(--onsen-color-bg-raised)",
           paddingBottom: "calc(14px + env(safe-area-inset-bottom))",
         }}
       >
-        <div className="hairline px-[22px] pt-[16px] pb-[12px]">
-          <p className="section-label">{title}</p>
+        <div
+          className="flex items-baseline justify-between px-[22px] pt-[16px] pb-[12px]"
+          style={{ borderBottom: `1px solid var(--onsen-color-${blue ? "blue-border" : "rule"})` }}
+        >
+          <p
+            className="section-label"
+            style={blue ? { color: "var(--onsen-color-blue-text)" } : undefined}
+          >
+            {title}
+          </p>
+          {meta === undefined ? null : (
+            <p
+              className="chrome text-[9px] tracking-[0.10em] uppercase"
+              style={{ color: `var(--onsen-color-${blue ? "blue-text-muted" : "text-dim"})` }}
+            >
+              {meta}
+            </p>
+          )}
         </div>
         <div className="max-h-[70dvh] overflow-y-auto px-[22px] py-[10px]">{children}</div>
       </div>

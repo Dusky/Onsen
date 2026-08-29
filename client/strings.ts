@@ -165,6 +165,27 @@ export const strings = {
     opContinue: "Continue",
     opContinueKey: "→",
     opContinueUnavailable: "This provider cannot continue a finished message.",
+    /** The guides panel (SPEC §8, design screen 3f). Blue: the author's own notes. */
+    opGuides: "Guides",
+    opGuidesKey: "G",
+    guides: "Guides · injected now",
+    guidesEmpty: "No guides yet. Writing one reads the scene so far and takes a note on it.",
+    guidesNone: "None",
+    guidesTotal: (n: number) => `${n} TOK`,
+    /** Marks a version somebody wrote themselves, which a refresh leaves alone. */
+    guidesPinned: "Yours",
+    guidesRebuild: "Rebuild",
+    guidesWrite: "Write it",
+    guidesRebuildAll: "Rebuild all",
+    guidesWorking: "Writing…",
+    guidesEdit: "Edit",
+    guidesSave: "Save",
+    guidesFlush: "Flush",
+    guidesFlushAll: "Flush all",
+    guidesFlushConfirm: (label: string) => `Stop injecting ${label}? Every version of it goes.`,
+    guidesFlushAllConfirm: "Stop injecting every guide? Every version of them goes.",
+    guidesDone: "Done",
+    guidesCustomHint: "Needs a question first, which is set in this roleplay's setup.",
     opExpand: "Write it longer",
     opCorrect: "Rewrite this…",
     opCorrectTitle: "What should change?",
@@ -243,6 +264,7 @@ export const strings = {
     opAutoTrigger: "Runs after every reply",
     opEffectFlag: "Reports what it finds",
     opEffectReplace: "Rewrites the turn, keeping the original",
+    opEffectGuide: "Rewrites this guide, and every turn carries it until you flush it",
     opWords: "Words",
     opWordsDefault: "Built-in",
     opWordsOverridden: "Yours",
@@ -397,6 +419,12 @@ export const strings = {
       "After each reply, the passes you have switched on read it and leave a note. They never delay the turn.",
     autoPassesOn: "On",
     autoPassesOff: "Off",
+
+    /** The custom guide's question, which is per scene (SPEC §8). */
+    customGuide: "Custom guide",
+    customGuideHint:
+      "One question, asked of the story after every turn. The answer rides on every prompt until you flush it. Leave it empty and the custom guide stays off.",
+    customGuidePlaceholder: "What does the crew believe about the captain?",
 
     /** Where the classifier runs (SPEC §6). */
     directorProfile: "Where the director runs",

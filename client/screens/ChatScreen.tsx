@@ -16,8 +16,12 @@ import { Composer } from "../components/Composer.tsx";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
 import { CastStrip } from "../components/CastStrip.tsx";
 import { OpsGrid, OpPrompt, type Op } from "../components/OpsGrid.tsx";
+import { GuidesPanel } from "../components/GuidesPanel.tsx";
 import {
   useBenchMember,
+  useEditGuide,
+  useFlushGuides,
+  useRebuildGuides,
   useRevertAnnotation,
   useRunPasses,
   useSceneSetup,
@@ -25,6 +29,7 @@ import {
   useTasks,
 } from "../lib/queries.ts";
 import type {
+  GuideKind,
   ImpersonateResponse,
   NextSpeakerDto,
   ReviseMode,
@@ -81,6 +86,12 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const tasks = useTasks();
   const runPasses = useRunPasses(sceneId);
   const revert = useRevertAnnotation(sceneId);
+  const rebuildGuides = useRebuildGuides(sceneId);
+  const editGuide = useEditGuide(sceneId);
+  const flushGuides = useFlushGuides(sceneId);
+  /** Whether the guides panel is up, and which guide is being written in it. */
+  const [guidesOpen, setGuidesOpen] = useState(false);
+  const [guideWorking, setGuideWorking] = useState<GuideKind | "all" | null>(null);
   const [acting, setActing] = useState<MessageDto | null>(null);
   /** The beat whose parts are being picked from, for a recast. */
   const [recasting, setRecasting] = useState<MessageDto | null>(null);
@@ -122,6 +133,10 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const title = scene.data?.scene.title ?? "";
   const authorName = scene.data?.scene.authorName ?? null;
   const cast = scene.data?.scene.cast ?? [];
+  // Versioned per message and read off the active path, so this changes when the
+  // reader rewinds — which is why it is read from the scene every time rather
+  // than cached anywhere (SPEC §8).
+  const guides = scene.data?.guides ?? [];
 
   // The server's decision, overridden locally while the user has cued someone.
   const serverChoice = scene.data?.nextSpeaker ?? null;
@@ -336,14 +351,18 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       onPress: () => setOpsPanel("steer"),
     },
     {
-      key: "continue",
-      glyph: strings.chat.opContinueKey,
-      label: strings.chat.opContinue,
-      // No adapter that ships can accept a partial assistant turn, so the op is
-      // present and says why rather than pretending (SPEC §7).
-      unavailable: strings.chat.opContinueUnavailable,
+      key: "guides",
+      glyph: strings.chat.opGuidesKey,
+      // The count is on the cell because a guide costs tokens on every single
+      // turn, and the design's rule is that cost is never hidden a level down.
+      label:
+        guides.length === 0
+          ? strings.chat.opGuides
+          : `${strings.chat.opGuides} · ${guides.length}`,
+      tone: "blue",
       onPress: () => {
-        if (lastReply !== null) void revise(lastReply, "continue");
+        setOpsPanel(null);
+        setGuidesOpen(true);
       },
     },
     {
@@ -664,6 +683,18 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             }}
           />
           <SheetAction label={strings.chat.opExpand} onClick={() => void revise(acting, "expand")} />
+          {/* Continue lives here rather than in the ops grid: no adapter that
+              ships can accept a partial assistant turn, and a permanently dark
+              cell in a six-cell grid spends a sixth of it on an apology. It is
+              still offered, and it still says why (SPEC §7). */}
+          <SheetAction
+            label={strings.chat.opContinue}
+            disabled
+            onClick={() => void revise(acting, "continue")}
+          />
+          <p className="chrome py-[8px] text-[9px] leading-[1.5] text-ink-dim">
+            {strings.chat.opContinueUnavailable}
+          </p>
           <SheetAction
             label={strings.chat.opCorrect}
             onClick={() => {
@@ -709,6 +740,24 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             }}
           />
         </Sheet>
+      ) : null}
+
+      {guidesOpen ? (
+        <GuidesPanel
+          guides={guides}
+          tasks={tasks.data ?? []}
+          customPrompt={scene.data?.scene.customGuidePrompt ?? null}
+          working={guideWorking}
+          onRebuild={(kind) => {
+            setGuideWorking(kind);
+            rebuildGuides.mutate(kind === "all" ? {} : { kind }, {
+              onSettled: () => setGuideWorking(null),
+            });
+          }}
+          onEdit={(guideId, content) => editGuide.mutate({ guideId, content })}
+          onFlush={(kind) => flushGuides.mutate(kind)}
+          onClose={() => setGuidesOpen(false)}
+        />
       ) : null}
 
       {correcting !== null ? (

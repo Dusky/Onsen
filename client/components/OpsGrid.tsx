@@ -29,8 +29,20 @@ export interface Op {
    * the grid. An op that is dark with no explanation reads as a bug.
    */
   unavailable?: string | undefined;
+  /**
+   * The blue pencil, for the one op in the grid that is not about the story but
+   * about the author's own notes (SPEC §8). Everything else is neutral chrome.
+   */
+  tone?: "blue" | undefined;
   onPress(): void;
 }
+
+/** The blue cell's three colours, so the glyph, caption and border agree. */
+const BLUE = {
+  border: "var(--onsen-color-blue-border-strong)",
+  glyph: "var(--onsen-color-blue)",
+  label: "var(--onsen-color-blue-text-muted)",
+};
 
 export function OpsGrid({ ops, cue }: { ops: Op[]; cue?: string | undefined }) {
   const blocked = ops.find((op) => op.unavailable !== undefined && op.unavailable !== "");
@@ -46,6 +58,7 @@ export function OpsGrid({ ops, cue }: { ops: Op[]; cue?: string | undefined }) {
         {ops.map((op) => {
           const disabled =
             op.disabled === true || (op.unavailable !== undefined && op.unavailable !== "");
+          const blue = op.tone === "blue" ? BLUE : undefined;
           return (
             <button
               key={op.key}
@@ -54,9 +67,18 @@ export function OpsGrid({ ops, cue }: { ops: Op[]; cue?: string | undefined }) {
               disabled={disabled}
               aria-label={op.label}
               className="chrome flex h-[52px] flex-col items-center justify-center gap-[3px] border border-border-quiet disabled:opacity-40"
+              style={blue === undefined ? undefined : { borderColor: blue.border }}
             >
-              <span className="text-[13px] leading-none text-ink-label">{op.glyph}</span>
-              <span className="text-[7.5px] leading-none tracking-[0.10em] text-ink-muted uppercase">
+              <span
+                className="text-[13px] leading-none text-ink-label"
+                style={blue === undefined ? undefined : { color: blue.glyph }}
+              >
+                {op.glyph}
+              </span>
+              <span
+                className="text-[7.5px] leading-none tracking-[0.10em] text-ink-muted uppercase"
+                style={blue === undefined ? undefined : { color: blue.label }}
+              >
                 {op.label}
               </span>
             </button>
