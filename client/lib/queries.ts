@@ -4,7 +4,14 @@ import type {
   AppendMessageRequest,
   AuthorDto,
   ConnectionProfileDto,
+  CreateConnectionProfileRequest,
+  CreateProviderRequest,
+  ProviderDto,
+  TaskDto,
   TaskRunDto,
+  UpdateConnectionProfileRequest,
+  UpdateProviderRequest,
+  UpdateTaskRequest,
   CharacterDto,
   PersonaDto,
   SceneSetupRequest,
@@ -37,6 +44,91 @@ export function useConnectionProfiles() {
   return useQuery({
     queryKey: ["connection-profiles"] as const,
     queryFn: () => api.get<ConnectionProfileDto[]>("/connections/profiles"),
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Connections and per-op configuration (SPEC §7, §20 phase 13)        */
+/* ------------------------------------------------------------------ */
+
+export const connectionKeys = {
+  providers: ["connection-providers"] as const,
+  profiles: ["connection-profiles"] as const,
+  tasks: ["tasks"] as const,
+};
+
+/** Invalidate everything a connection change can touch. */
+function useConnectionMutation<TArgs, TResult>(fn: (args: TArgs) => Promise<TResult>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: connectionKeys.providers });
+      void client.invalidateQueries({ queryKey: connectionKeys.profiles });
+      // A deleted profile can null a scene's routing, so scenes are stale too.
+      void client.invalidateQueries({ queryKey: keys.scenes });
+    },
+  });
+}
+
+export function useProviders() {
+  return useQuery({
+    queryKey: connectionKeys.providers,
+    queryFn: () => api.get<ProviderDto[]>("/connections/providers"),
+  });
+}
+
+export function useCreateProvider() {
+  return useConnectionMutation((body: CreateProviderRequest) =>
+    api.post<ProviderDto>("/connections/providers", body),
+  );
+}
+
+export function useUpdateProvider() {
+  return useConnectionMutation(({ id, ...body }: UpdateProviderRequest & { id: string }) =>
+    api.patch<ProviderDto>(`/connections/providers/${id}`, body),
+  );
+}
+
+export function useDeleteProvider() {
+  return useConnectionMutation((id: string) =>
+    api.delete<ProviderDto[]>(`/connections/providers/${id}`),
+  );
+}
+
+export function useCreateProfile() {
+  return useConnectionMutation((body: CreateConnectionProfileRequest) =>
+    api.post<ConnectionProfileDto>("/connections/profiles", body),
+  );
+}
+
+export function useUpdateProfile() {
+  return useConnectionMutation(
+    ({ id, ...body }: UpdateConnectionProfileRequest & { id: string }) =>
+      api.patch<ConnectionProfileDto>(`/connections/profiles/${id}`, body),
+  );
+}
+
+export function useDeleteProfile() {
+  return useConnectionMutation((id: string) =>
+    api.delete<ConnectionProfileDto[]>(`/connections/profiles/${id}`),
+  );
+}
+
+/** Every op's configuration row (SPEC §7). */
+export function useTasks() {
+  return useQuery({
+    queryKey: connectionKeys.tasks,
+    queryFn: () => api.get<TaskDto[]>("/tasks"),
+  });
+}
+
+export function useUpdateTask() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ key, ...body }: UpdateTaskRequest & { key: string }) =>
+      api.patch<TaskDto>(`/tasks/${key}`, body),
+    onSuccess: () => void client.invalidateQueries({ queryKey: connectionKeys.tasks }),
   });
 }
 

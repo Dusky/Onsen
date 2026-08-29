@@ -5,16 +5,17 @@ import { strings } from "../strings.ts";
  * The bottom tab bar. Mono, uppercase, the active item in red — the design's
  * one use of colour for navigation state.
  *
- * Three tabs for now. The design draws five; the other two are screens that
- * arrive with later phases, and a tab that leads nowhere is worse than no tab.
+ * Four tabs. The design draws five; the fifth is a screen that arrives with a
+ * later phase, and a tab that leads nowhere is worse than no tab.
  */
-type TabKey = "scenes" | "characters" | "authors";
+type TabKey = "scenes" | "characters" | "authors" | "settings";
 
 export function TabBar({ active }: { active: TabKey }) {
   const items: { key: TabKey; label: string; route: Route }[] = [
     { key: "scenes", label: strings.nav.roleplays, route: { name: "scenes" } },
     { key: "characters", label: strings.nav.characters, route: { name: "characters" } },
     { key: "authors", label: strings.nav.authors, route: { name: "authors" } },
+    { key: "settings", label: strings.nav.settings, route: { name: "settings" } },
   ];
 
   return (

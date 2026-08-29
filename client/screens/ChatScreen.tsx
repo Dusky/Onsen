@@ -16,7 +16,7 @@ import { Composer } from "../components/Composer.tsx";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
 import { CastStrip } from "../components/CastStrip.tsx";
 import { OpsGrid, OpPrompt, type Op } from "../components/OpsGrid.tsx";
-import { useBenchMember, useSceneSetup, useSplitBeat } from "../lib/queries.ts";
+import { useBenchMember, useSceneSetup, useSplitBeat, useTasks } from "../lib/queries.ts";
 import type {
   ImpersonateResponse,
   NextSpeakerDto,
@@ -69,6 +69,9 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const bench = useBenchMember(sceneId);
   const split = useSplitBeat(sceneId);
   const setup = useSceneSetup(sceneId);
+  // Per-op configuration (SPEC §7): a hidden button is not a disabled op, so
+  // this only decides what the grid shows.
+  const tasks = useTasks();
   const [acting, setActing] = useState<MessageDto | null>(null);
   /** The beat whose parts are being picked from, for a recast. */
   const [recasting, setRecasting] = useState<MessageDto | null>(null);
@@ -344,12 +347,21 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     },
   ];
 
+  /**
+   * The ops a user has asked to see. Hiding a button is not turning the op off:
+   * something else asking for it still gets it (SPEC §7).
+   */
+  const shownOps = ops.filter((op) => {
+    const task = (tasks.data ?? []).find((row) => row.key === op.key);
+    return task === undefined || !task.hideable || task.buttonVisible;
+  });
+
   function opsDrawer() {
     switch (opsPanel) {
       case null:
         return undefined;
       case "grid":
-        return <OpsGrid ops={ops} cue={cueSummary()} />;
+        return <OpsGrid ops={shownOps} cue={cueSummary()} />;
       case "nudge":
         return (
           <OpPrompt

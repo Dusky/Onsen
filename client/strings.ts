@@ -196,6 +196,57 @@ export const strings = {
     narratorName: "Author",
   },
 
+  settings: {
+    kicker: "Settings",
+    title: "Connections",
+
+    /** Connections group (design handoff, screen 3i). */
+    providers: "Providers",
+    providersHint: "Where the models are. One box or twenty.",
+    addProvider: "Add a provider",
+    providerName: "Name",
+    providerKind: "Kind",
+    providerBaseUrl: "Address",
+    providerModel: "Model",
+    providerKey: "API key",
+    providerKeyHeld: (mask: string) => `Key held · ${mask}`,
+    providerKeyNone: "No key",
+    providerKeyKeep: "Leave blank to keep the stored key",
+    providerDisabled: "Disabled",
+    lastProvider: "The only provider. Add another before removing this one.",
+
+    profiles: "Profiles",
+    profilesHint: "A provider, a model and a preset under one name. What an operation is routed at.",
+    addProfile: "Add a profile",
+    profileName: "Name",
+    profileDefault: "Default",
+    makeDefault: "Make default",
+    lastProfile: "The only profile. Add another before removing this one.",
+
+    /** Routing by operation — the headline of this screen (design handoff). */
+    routing: "Routing by operation",
+    routingHint:
+      "Bookkeeping on a cheap local model, prose on an expensive one. Each operation goes where you send it.",
+    routingSame: "Scene's own",
+    opEnabled: "On",
+    opDisabled: "Off",
+    opHidden: "Button hidden",
+    opWords: "Words",
+    opWordsDefault: "Built-in",
+    opWordsOverridden: "Yours",
+    opWordsHint: (variables: string) =>
+      variables === ""
+        ? "The usual macros work here."
+        : `${variables} — plus the usual macros.`,
+    opWordsReset: "Use the built-in",
+    opRole: "Injected as",
+    opTurnOnly: "Part of the turn's own prompt, so it has no model of its own.",
+
+    save: "Save",
+    remove: "Remove",
+    removeConfirm: "Remove this? Anything using it falls back to nothing.",
+  },
+
   characters: {
     kicker: "Library",
     title: "Cast",
@@ -336,6 +387,7 @@ export const strings = {
   },
 
   nav: {
+    settings: "Settings",
     roleplays: "Roleplays",
     characters: "Cast",
     authors: "Author",
