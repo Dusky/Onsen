@@ -16,7 +16,7 @@ if (result.applied.length > 0) {
 }
 
 const ctx: AppContext = { db, config, keyring: loadOrCreateKeyring(config) };
-const { app, generation, tasks } = createServer(ctx);
+const { app, generation, tasks, passes } = createServer(ctx);
 
 const server = Bun.serve({
   port: config.port,
@@ -37,6 +37,7 @@ function shutdown(signal: string): void {
   // after it is closed is the SIGTERM path, not a test artefact (§7).
   generation.shutdown();
   tasks.shutdown();
+  passes.shutdown();
   void server.stop();
   db.close();
   process.exit(0);

@@ -13,6 +13,9 @@ import { buildImpersonatePrompt, cleanImpersonation } from "../generation/impers
 import { createEstimatingTokenizer } from "../prompt/index.ts";
 import { IMPERSONATE, taskKind } from "../tasks/registry.ts";
 import type { TaskRunner } from "../tasks/runner.ts";
+import type { PassPipeline } from "../passes/pipeline.ts";
+import { findAnnotation, revertAnnotation } from "../db/queries/annotations.ts";
+import { messageDto } from "../db/queries/history.ts";
 import { capabilitiesFor } from "../adapters/index.ts";
 import type { ProviderKind } from "../../shared/types.ts";
 import type { SceneRow } from "../db/queries/history.ts";
@@ -79,6 +82,7 @@ export function sceneGenerationRoutes(
   ctx: AppContext,
   service: GenerationService,
   tasks: TaskRunner,
+  passes: PassPipeline,
 ): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
   app.use("*", requireAuth());
@@ -341,6 +345,69 @@ export function sceneGenerationRoutes(
       ? { text: cleanImpersonation(outcome.text), detail: null }
       : { text: null, detail: outcome.detail };
     return c.json(response, outcome.ok ? 200 : 502);
+  });
+
+  /**
+   * Read a finished turn by hand (SPEC §7.5: auto-run per scene, or manual per
+   * message).
+   *
+   * Awaited, unlike the automatic run — the user asked and is waiting, so the
+   * response carries the findings rather than making them poll for something
+   * they just pressed a button for.
+   */
+  app.post("/:sceneId/messages/:messageId/passes", async (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    const message = findMessage(ctx.db, c.req.param("messageId"));
+    if (message === null || message.scene_id !== scene.id) {
+      return c.json({ error: { code: "not_found", message: "No such message." } }, 404);
+    }
+    if (message.author_type === "user") {
+      return c.json(
+        {
+          error: {
+            code: "bad_request",
+            message: "These passes read what the author wrote, not what you wrote.",
+          },
+        },
+        400,
+      );
+    }
+
+    await passes.run({ scene, message, automatic: false });
+    return c.json(messageDto(ctx.db, findMessage(ctx.db, message.ulid)!, scene.ulid));
+  });
+
+  /**
+   * Put back what a pass changed (SPEC §7.5: the original is always retained so
+   * the user can see and revert).
+   */
+  app.post("/:sceneId/annotations/:annotationId/revert", (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    const annotation = findAnnotation(ctx.db, c.req.param("annotationId"));
+    if (annotation === null) {
+      return c.json({ error: { code: "not_found", message: "No such note." } }, 404);
+    }
+    const message = ctx.db
+      .query("SELECT * FROM messages WHERE id = $id")
+      .get({ id: annotation.message_id }) as { ulid: string; scene_id: number } | null;
+    if (message === null || message.scene_id !== scene.id) {
+      return c.json({ error: { code: "not_found", message: "No such note." } }, 404);
+    }
+    if (annotation.original_content === null) {
+      return c.json(
+        { error: { code: "bad_request", message: "That note did not change anything." } },
+        400,
+      );
+    }
+
+    revertAnnotation(ctx.db, annotation, findMessage(ctx.db, message.ulid)!);
+    return c.json(messageDto(ctx.db, findMessage(ctx.db, message.ulid)!, scene.ulid));
   });
 
   /**

@@ -82,6 +82,15 @@ export function taskRoutes(ctx: AppContext): Hono<AppEnv> {
       }
       patch.injectionRole = body.injectionRole;
     }
+    if (body.autoTrigger !== undefined) {
+      if (typeof body.autoTrigger !== "boolean") {
+        return c.json(
+          { error: { code: "bad_request", message: "autoTrigger must be a boolean." } },
+          400,
+        );
+      }
+      patch.autoTrigger = body.autoTrigger;
+    }
     if (body.buttonVisible !== undefined) {
       if (typeof body.buttonVisible !== "boolean") {
         return c.json(

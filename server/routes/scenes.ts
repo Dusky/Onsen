@@ -34,6 +34,7 @@ import {
   findAuthor,
   findPersona,
   removeSceneMember,
+  setAutoPasses,
   setDirectorNote,
   setDirectorProfile,
   setMemberActive,
@@ -205,6 +206,14 @@ export function sceneRoutes(ctx: AppContext): Hono<AppEnv> {
         return c.json(badRequest("The steer must be text, or nothing."), 400);
       }
       setDirectorNote(ctx.db, row.id, note === null || note.trim() === "" ? null : note.trim());
+    }
+    // Whether a finished turn gets read by the passes without being asked
+    // (SPEC §7.5). Which passes take part is the per-op switch.
+    if ("autoPasses" in input) {
+      if (typeof input.autoPasses !== "boolean") {
+        return c.json(badRequest("autoPasses must be a boolean."), 400);
+      }
+      setAutoPasses(ctx.db, row.id, input.autoPasses);
     }
     // Where the classifier runs (SPEC §6). Null is meaningful: it means the
     // scene's own profile, which is correct but spends a roleplay model on a

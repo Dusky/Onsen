@@ -35,6 +35,7 @@ import {
 import { castRowsOf } from "../db/queries/authors.ts";
 import { taskKind, TURN_CLASSIFIER } from "../tasks/registry.ts";
 import type { TaskRunner } from "../tasks/runner.ts";
+import type { PassPipeline } from "../passes/pipeline.ts";
 import type { TaskRunStatus } from "../../shared/types.ts";
 
 /**
@@ -126,6 +127,8 @@ interface ActiveGeneration {
   turn: ResolvedTurn;
   /** Announced once, before streaming, and replayed to anyone who joins late. */
   director: DirectorEvent | null;
+  /** The message this turn produced, for the passes that read it afterwards. */
+  landedMessageId: number | null;
   /** One-shot direction for this generation, never stored as a message (§7). */
   nudge: string | null;
   abort: AbortController;
@@ -151,6 +154,8 @@ export interface GenerationServiceOptions {
   createAdapter?: typeof defaultCreateAdapter;
   /** Runs the side calls a turn needs, off the main path (SPEC §7). */
   tasks: TaskRunner;
+  /** Reads a finished turn and can revise it (SPEC §7.5). */
+  passes: PassPipeline;
 }
 
 /**
@@ -267,6 +272,7 @@ export class GenerationService {
   private readonly now: () => number;
   private readonly makeAdapter: typeof defaultCreateAdapter;
   private readonly tasks: TaskRunner;
+  private readonly passes: PassPipeline;
   private readonly active = new Map<string, ActiveGeneration>();
   /**
    * Set once the process is shutting down. Aborting a generation resolves
@@ -282,6 +288,7 @@ export class GenerationService {
     this.now = options.now ?? Date.now;
     this.makeAdapter = options.createAdapter ?? defaultCreateAdapter;
     this.tasks = options.tasks;
+    this.passes = options.passes;
   }
 
   /* ---------------- lifecycle ---------------- */
@@ -372,6 +379,7 @@ export class GenerationService {
       requestedSpotlightId: options.spotlightId ?? null,
       turn,
       director: null,
+      landedMessageId: null,
       nudge: options.nudge?.trim() === "" ? null : (options.nudge ?? null),
       abort: new AbortController(),
       listeners: new Set(),
@@ -522,6 +530,26 @@ export class GenerationService {
     }
 
     this.finish(generation, dispatchedAt);
+  }
+
+  /**
+   * Read the finished turn, if the scene asked for that (SPEC §7.5).
+   *
+   * Deliberately not awaited by `finish` and deliberately swallowing
+   * everything: a pass is a second reader's note, and a note that could break
+   * the turn it is about would not be worth having.
+   */
+  private async runPasses(sceneId: number, messageId: number): Promise<void> {
+    if (this.stopped) return;
+    try {
+      const scene = findSceneById(this.db, sceneId);
+      const message = findMessageById(this.db, messageId);
+      if (scene === null || message === null) return;
+      if (!this.passes.willRunAutomatically(scene)) return;
+      await this.passes.run({ scene, message, automatic: true });
+    } catch {
+      /* Never reaches the turn. */
+    }
   }
 
   /* ---------------- the turn director ---------------- */
@@ -780,6 +808,7 @@ export class GenerationService {
           .query("UPDATE messages SET generation_meta = $meta WHERE id = $id")
           .run({ id: message.id, meta: JSON.stringify(generation.meta) });
         generation.messageUlid = message.ulid;
+        generation.landedMessageId = message.id;
         this.db
           .query("UPDATE generations SET target_message_id = $target WHERE id = $id")
           .run({ id: generation.rowId, target: message.id });
@@ -796,6 +825,15 @@ export class GenerationService {
         ? { type: "cancelled", messageId: generation.messageUlid, meta: generation.meta }
         : { type: "done", messageId: generation.messageUlid ?? "", meta: generation.meta },
     );
+
+    // The pipeline starts *after* the turn is finished and announced. SPEC §7
+    // is absolute that a background task must never block a user-facing
+    // generation, and three extra model calls in front of every reply would be
+    // a worse product than no pipeline at all (§7.5).
+    if (!cancelled && generation.landedMessageId !== null) {
+      void this.runPasses(generation.sceneId, generation.landedMessageId);
+    }
+
     this.scheduleEviction(generation);
   }
 
