@@ -55,7 +55,72 @@ Carry straight on from where it stops. Do not repeat any of it, do not start aga
  */
 const PASSTHROUGH_TEMPLATE = `{{input}}`;
 
+/* ------------------------------------------------------------------ */
+/* Persistent guides (SPEC §8)                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A guide is written once by a side call and injected every turn until it is
+ * flushed, so its question has a shape all six share: here is the scene, here
+ * is what you wrote last time, write it again from what has happened since.
+ *
+ * `{{previous}}` is why a refresh updates rather than restarting. A guide that
+ * forgot everything each time it ran would lose exactly the state it exists to
+ * carry — a coat somebody took off three turns ago stays off.
+ */
+function guideTemplate(subject: string, instruction: string): string {
+  return `${subject}
+
+What has happened, oldest first:
+{{transcript}}
+
+{{previous}}
+
+${instruction}
+
+Write it as plain prose a person could edit — a few short lines, no headings, no bullet list, no preamble. Write only what the story has actually established: if something has not come up, leave it out rather than inventing it.`;
+}
+
+const SITUATIONAL_TEMPLATE = guideTemplate(
+  "You are keeping a note of where this scene currently stands, so the author can pick it up without rereading.",
+  "Write the situation as it stands now: where everyone is, what is going on, and what is unresolved.",
+);
+
+const THINKING_TEMPLATE = guideTemplate(
+  "You are keeping a note of what each character is privately thinking — the things they have not said.",
+  "Write what each character currently wants, suspects or is holding back. One short line each. This is never spoken aloud; it is what the author knows and the characters do not say.",
+);
+
+const CLOTHES_TEMPLATE = guideTemplate(
+  "You are keeping a note of what each character is currently wearing.",
+  "Write what each character has on now, including anything they have removed, put on, or ruined since. One short line each.",
+);
+
+const STATE_TEMPLATE = guideTemplate(
+  "You are keeping a note of where everyone physically is and what condition they are in.",
+  "Write where each character is standing or sitting, what they are holding or touching, and any injury or physical state that would still be true a minute from now. One short line each.",
+);
+
+const RULES_TEMPLATE = guideTemplate(
+  "You are keeping a note of the rules this world runs on, so the story does not contradict itself.",
+  "Write the in-world rules the story has established — how things work here, what is possible, what is forbidden, and by whom. Only rules the story has actually stated or demonstrated.",
+);
+
+/** The custom guide's question is the user's own; there is no built-in. */
+const CUSTOM_TEMPLATE = `{{input}}
+
+What has happened, oldest first:
+{{transcript}}
+
+{{previous}}`;
+
 const DEFAULTS: Record<string, string> = {
+  guide_situational: SITUATIONAL_TEMPLATE,
+  guide_thinking: THINKING_TEMPLATE,
+  guide_clothes: CLOTHES_TEMPLATE,
+  guide_state: STATE_TEMPLATE,
+  guide_rules: RULES_TEMPLATE,
+  guide_custom: CUSTOM_TEMPLATE,
   [EXPAND]: EXPAND_TEMPLATE,
   [CORRECT]: CORRECT_TEMPLATE,
   [CONTINUE]: CONTINUE_TEMPLATE,

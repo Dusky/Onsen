@@ -323,6 +323,8 @@ export interface SceneDto {
   directorNote: string | null;
   /** Whether the post-generation passes run without being asked (§7.5). */
   autoPasses: boolean;
+  /** The question the custom guide asks. Null when it has not been written. */
+  customGuidePrompt: string | null;
   /** The cast, in display order. One member until group scenes (phase 8). */
   cast: SceneMemberDto[];
   /** Null while the scene is empty. */
@@ -336,6 +338,9 @@ export interface SceneDto {
 export interface SceneWithHistoryDto {
   scene: SceneDto;
   messages: MessageDto[];
+  /** The guides in force right now — versioned per message, so this follows
+   * the active path (SPEC §8). */
+  guides: GuideDto[];
   /** Null when the cast is empty or entirely benched. */
   nextSpeaker: NextSpeakerDto | null;
 }
@@ -539,6 +544,51 @@ export interface UpdateTaskRequest {
   injectionRole?: InjectionRole;
   buttonVisible?: boolean;
   autoTrigger?: boolean;
+}
+
+/* ------------------------------------------------------------------ */
+/* Persistent guides (SPEC §8)                                         */
+/* ------------------------------------------------------------------ */
+
+export type GuideKind = "situational" | "thinking" | "clothes" | "state" | "rules" | "custom";
+
+export const GUIDE_KINDS: readonly GuideKind[] = [
+  "situational",
+  "thinking",
+  "clothes",
+  "state",
+  "rules",
+  "custom",
+];
+
+export function isGuideKind(value: unknown): value is GuideKind {
+  return typeof value === "string" && (GUIDE_KINDS as readonly string[]).includes(value);
+}
+
+/**
+ * State a side call writes once and the prompt injects every turn until it is
+ * flushed (SPEC §8). Free-form prose on purpose: there is no parse step, so
+ * there is nothing to fail.
+ */
+export interface GuideDto {
+  id: string;
+  kind: GuideKind;
+  label: string;
+  content: string;
+  /** Cached: SPEC §8 requires Show to state what a guide costs. */
+  tokenCount: number;
+  /** A person wrote this version, so a refresh leaves it alone. */
+  isPinned: boolean;
+  updatedAt: number;
+}
+
+export interface UpdateGuideRequest {
+  content: string;
+}
+
+export interface RebuildGuidesRequest {
+  /** Omitted rebuilds every guide that is switched on. */
+  kind?: GuideKind;
 }
 
 /* ------------------------------------------------------------------ */
@@ -799,5 +849,7 @@ export interface SceneSetupRequest {
   directorNote?: string | null;
   /** Whether the post-generation passes run without being asked (§7.5). */
   autoPasses?: boolean;
+  /** The question the custom guide asks (SPEC §8). */
+  customGuidePrompt?: string | null;
   title?: string;
 }

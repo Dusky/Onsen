@@ -41,6 +41,7 @@ import {
   setTurnStrategy,
 } from "../db/queries/authors.ts";
 import { findCharacter } from "../db/queries/characters.ts";
+import { activeGuides, editGuide, findGuide, flushGuides, toGuideDto } from "../db/queries/guides.ts";
 import { resolveNextSpeaker } from "../generation/turn.ts";
 import {
   isMessageAuthorType,
@@ -123,6 +124,9 @@ export function sceneRoutes(ctx: AppContext): Hono<AppEnv> {
       // second request: the composer has to know who the send button will
       // speak as before the user presses it.
       nextSpeaker: resolveNextSpeaker(ctx.db, sceneRow),
+      // Versioned per message, so what comes back follows the active path
+      // (SPEC §8) — rewinding rewinds them.
+      guides: activeGuides(ctx.db, sceneRow.id).map(toGuideDto),
     };
   }
 
@@ -206,6 +210,18 @@ export function sceneRoutes(ctx: AppContext): Hono<AppEnv> {
         return c.json(badRequest("The steer must be text, or nothing."), 400);
       }
       setDirectorNote(ctx.db, row.id, note === null || note.trim() === "" ? null : note.trim());
+    }
+    // The custom guide's question is the user's own (SPEC §8). An empty string
+    // clears it, which turns the guide off — there is nothing to ask.
+    if ("customGuidePrompt" in input) {
+      const prompt = input.customGuidePrompt;
+      if (prompt !== null && typeof prompt !== "string") {
+        return c.json(badRequest("The custom guide's question must be text, or nothing."), 400);
+      }
+      ctx.db.query("UPDATE scenes SET custom_guide_prompt = $prompt WHERE id = $id").run({
+        id: row.id,
+        prompt: prompt === null || prompt.trim() === "" ? null : prompt.trim(),
+      });
     }
     // Whether a finished turn gets read by the passes without being asked
     // (SPEC §7.5). Which passes take part is the per-op switch.

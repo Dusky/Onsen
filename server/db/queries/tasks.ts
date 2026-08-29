@@ -69,13 +69,16 @@ export function taskConfig(db: Database, kind: OpKind): TaskRow {
     .query(
       `INSERT INTO tasks
          (key, stage, enabled, timeout_ms, run_order, injection_role, button_visible,
-          created_at, updated_at)
-       VALUES ($key, $stage, 1, $timeout, 0, $role, 1, $now, $now)
+          auto_trigger, created_at, updated_at)
+       VALUES ($key, $stage, 1, $timeout, 0, $role, 1, $auto, $now, $now)
        RETURNING *`,
     )
     .get({
       key: kind.key,
       stage: kind.stage,
+      // SPEC §8 names three guides that arrive switched on; everything else
+      // waits to be asked for.
+      auto: kind.runs === "side_call" && kind.autoByDefault === true ? 1 : 0,
       // A turn instruction has a default role; a side call is its own prompt and
       // the column does not apply to it.
       timeout: kind.runs === "side_call" ? kind.timeoutMs : 0,

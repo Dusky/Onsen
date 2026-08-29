@@ -14,6 +14,15 @@ import { createEstimatingTokenizer } from "../prompt/index.ts";
 import { IMPERSONATE, taskKind } from "../tasks/registry.ts";
 import type { TaskRunner } from "../tasks/runner.ts";
 import type { PassPipeline } from "../passes/pipeline.ts";
+import type { GuideRunner } from "../guides/runner.ts";
+import {
+  activeGuides,
+  editGuide,
+  findGuide,
+  flushGuides,
+  toGuideDto,
+} from "../db/queries/guides.ts";
+import { isGuideKind } from "../../shared/types.ts";
 import { findAnnotation, revertAnnotation } from "../db/queries/annotations.ts";
 import { messageDto } from "../db/queries/history.ts";
 import { capabilitiesFor } from "../adapters/index.ts";
@@ -83,6 +92,7 @@ export function sceneGenerationRoutes(
   service: GenerationService,
   tasks: TaskRunner,
   passes: PassPipeline,
+  guides: GuideRunner,
 ): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
   app.use("*", requireAuth());
@@ -345,6 +355,90 @@ export function sceneGenerationRoutes(
       ? { text: cleanImpersonation(outcome.text), detail: null }
       : { text: null, detail: outcome.detail };
     return c.json(response, outcome.ok ? 200 : 502);
+  });
+
+  /* -------------------------------------------------------------- */
+  /* Persistent guides (SPEC §8)                                     */
+  /* -------------------------------------------------------------- */
+
+  /**
+   * Write or rewrite one guide, or every guide that is switched on.
+   *
+   * Awaited: the user pressed rebuild and is looking at the panel, so the
+   * answer comes back with the response rather than making them poll.
+   */
+  app.post("/:sceneId/guides/rebuild", async (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+
+    let kind: unknown;
+    try {
+      const parsed: unknown = await c.req.json();
+      if (typeof parsed === "object" && parsed !== null) kind = (parsed as { kind?: unknown }).kind;
+    } catch {
+      /* No body means every guide that is on. */
+    }
+    if (kind !== undefined && !isGuideKind(kind)) {
+      return c.json({ error: { code: "bad_request", message: "No such guide." } }, 400);
+    }
+
+    await guides.refresh(scene, {
+      automatic: false,
+      ...(kind === undefined ? {} : { kinds: [kind] }),
+    });
+    return c.json(activeGuides(ctx.db, scene.id).map(toGuideDto));
+  });
+
+  /** Hand-edit a guide, which pins it against the next refresh (SPEC §8). */
+  app.patch("/:sceneId/guides/:guideId", async (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    const guide = findGuide(ctx.db, c.req.param("guideId"));
+    if (guide === null || guide.scene_id !== scene.id) {
+      return c.json({ error: { code: "not_found", message: "No such guide." } }, 404);
+    }
+
+    let content: unknown;
+    try {
+      const parsed: unknown = await c.req.json();
+      if (typeof parsed === "object" && parsed !== null) {
+        content = (parsed as { content?: unknown }).content;
+      }
+    } catch {
+      /* Falls through to the check below. */
+    }
+    if (typeof content !== "string" || content.trim() === "") {
+      return c.json(
+        { error: { code: "bad_request", message: "A guide with nothing in it is a flush." } },
+        400,
+      );
+    }
+
+    return c.json(toGuideDto(editGuide(ctx.db, guide.id, content.trim())));
+  });
+
+  /**
+   * Flush one guide, or all of them (SPEC §8).
+   *
+   * Every version goes, not just the one in force: a flush means "stop
+   * injecting this", and leaving older versions behind would resurrect one the
+   * moment the reader rewound.
+   */
+  app.delete("/:sceneId/guides/:kind", (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    const raw = c.req.param("kind");
+    if (raw !== "all" && !isGuideKind(raw)) {
+      return c.json({ error: { code: "not_found", message: "No such guide." } }, 404);
+    }
+    flushGuides(ctx.db, scene.id, raw === "all" ? null : raw);
+    return c.json(activeGuides(ctx.db, scene.id).map(toGuideDto));
   });
 
   /**

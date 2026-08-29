@@ -36,6 +36,7 @@ import { castRowsOf } from "../db/queries/authors.ts";
 import { taskKind, TURN_CLASSIFIER } from "../tasks/registry.ts";
 import type { TaskRunner } from "../tasks/runner.ts";
 import type { PassPipeline } from "../passes/pipeline.ts";
+import type { GuideRunner } from "../guides/runner.ts";
 import type { TaskRunStatus } from "../../shared/types.ts";
 
 /**
@@ -156,6 +157,8 @@ export interface GenerationServiceOptions {
   tasks: TaskRunner;
   /** Reads a finished turn and can revise it (SPEC §7.5). */
   passes: PassPipeline;
+  /** Keeps the persistent guides current (SPEC §8). */
+  guides: GuideRunner;
 }
 
 /**
@@ -273,6 +276,7 @@ export class GenerationService {
   private readonly makeAdapter: typeof defaultCreateAdapter;
   private readonly tasks: TaskRunner;
   private readonly passes: PassPipeline;
+  private readonly guides: GuideRunner;
   private readonly active = new Map<string, ActiveGeneration>();
   /**
    * Set once the process is shutting down. Aborting a generation resolves
@@ -289,6 +293,7 @@ export class GenerationService {
     this.makeAdapter = options.createAdapter ?? defaultCreateAdapter;
     this.tasks = options.tasks;
     this.passes = options.passes;
+    this.guides = options.guides;
   }
 
   /* ---------------- lifecycle ---------------- */
@@ -545,8 +550,15 @@ export class GenerationService {
       const scene = findSceneById(this.db, sceneId);
       const message = findMessageById(this.db, messageId);
       if (scene === null || message === null) return;
-      if (!this.passes.willRunAutomatically(scene)) return;
-      await this.passes.run({ scene, message, automatic: true });
+      if (this.passes.willRunAutomatically(scene)) {
+        await this.passes.run({ scene, message, automatic: true });
+      }
+      // Guides are refreshed after the passes, not before: a pass may have
+      // rewritten the turn a guide is about to read (SPEC §7.5, §8).
+      if (this.guides.willRunAutomatically()) {
+        const current = findSceneById(this.db, sceneId);
+        if (current !== null) await this.guides.refresh(current, { automatic: true });
+      }
     } catch {
       /* Never reaches the turn. */
     }

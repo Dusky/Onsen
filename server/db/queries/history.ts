@@ -45,6 +45,8 @@ export interface SceneRow {
   director_note: string | null;
   /** Whether the post-generation passes run without being asked (§7.5). */
   auto_passes: number;
+  /** The question the custom guide asks (SPEC §8). Null until written. */
+  custom_guide_prompt: string | null;
   active_leaf_id: number | null;
   created_at: number;
   updated_at: number;
@@ -174,6 +176,7 @@ export function toSceneDto(
     directorProfileId: extras.directorProfileUlid,
     directorNote: row.director_note,
     autoPasses: row.auto_passes === 1,
+    customGuidePrompt: row.custom_guide_prompt,
     authorId: extras.authorUlid,
     authorName: extras.authorName,
     personaId: extras.personaUlid,

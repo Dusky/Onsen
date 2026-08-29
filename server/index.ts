@@ -16,7 +16,7 @@ if (result.applied.length > 0) {
 }
 
 const ctx: AppContext = { db, config, keyring: loadOrCreateKeyring(config) };
-const { app, generation, tasks, passes } = createServer(ctx);
+const { app, generation, tasks, passes, guides } = createServer(ctx);
 
 const server = Bun.serve({
   port: config.port,
@@ -38,6 +38,7 @@ function shutdown(signal: string): void {
   generation.shutdown();
   tasks.shutdown();
   passes.shutdown();
+  guides.shutdown();
   void server.stop();
   db.close();
   process.exit(0);

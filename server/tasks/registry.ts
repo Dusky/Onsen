@@ -61,6 +61,11 @@ export interface SideCallOp extends OpBase {
   /** Order within the pipeline. Lower runs first. */
   passOrder?: number;
   /**
+   * Whether this op runs unasked the first time its row is created. SPEC §8
+   * names three guides that default on; everything else waits to be switched on.
+   */
+  autoByDefault?: boolean;
+  /**
    * Samplers for this op. Deliberately not the scene's: a side call is a
    * decision or a summary, and §13's defaults exist to make prose less
    * predictable, which is the opposite of what is wanted here.
@@ -95,6 +100,73 @@ export const PROSE_REFINE = "prose_refine";
 
 /** The post-generation pipeline, in the order §7.5 runs it. */
 export const PASS_KEYS: readonly string[] = [VOICE_CHECK, LOCK_CHECK, PROSE_REFINE];
+
+/**
+ * The six persistent guides (SPEC §8), each its own op because each is
+ * separately routable and separately auto-triggered — the spec is specific that
+ * Thinking, Clothes and State default on and the rest do not.
+ */
+export const GUIDE_KINDS = [
+  "situational",
+  "thinking",
+  "clothes",
+  "state",
+  "rules",
+  "custom",
+] as const;
+
+export type GuideKind = (typeof GUIDE_KINDS)[number];
+
+export function guideOpKey(kind: GuideKind): string {
+  return `guide_${kind}`;
+}
+
+export function guideKindOf(key: string): GuideKind | null {
+  const kind = key.startsWith("guide_") ? key.slice("guide_".length) : null;
+  return kind !== null && (GUIDE_KINDS as readonly string[]).includes(kind)
+    ? (kind as GuideKind)
+    : null;
+}
+
+/** SPEC §8: auto-trigger defaults on for Thinking, Clothes and State. */
+const GUIDES_ON_BY_DEFAULT: readonly GuideKind[] = ["thinking", "clothes", "state"];
+
+const GUIDE_LABELS: Record<GuideKind, { label: string; description: string }> = {
+  situational: {
+    label: "Situational",
+    description: "Where the scene stands now, so the author can pick it up without rereading.",
+  },
+  thinking: {
+    label: "Thinking",
+    description: "What each character is privately thinking. Never spoken aloud.",
+  },
+  clothes: { label: "Clothes", description: "What each character is currently wearing." },
+  state: {
+    label: "Positions",
+    description: "Where everyone is, what they are holding, and what condition they are in.",
+  },
+  rules: { label: "Rules", description: "The in-world rules the story has established." },
+  custom: {
+    label: "Custom",
+    description: "Anything else you want kept and injected. You write the question.",
+  },
+};
+
+const GUIDE_OPS: readonly SideCallOp[] = GUIDE_KINDS.map((kind) => ({
+  key: guideOpKey(kind),
+  runs: "side_call" as const,
+  label: GUIDE_LABELS[kind].label,
+  description: GUIDE_LABELS[kind].description,
+  stage: "post_generation" as const,
+  // A guide is a note the author keeps, not a verdict: warm enough to write
+  // readable prose, cool enough not to invent.
+  samplers: { temperature: 0.5, min_p: 0.05 },
+  timeoutMs: 45_000,
+  replyLimit: 3_000,
+  variables: kind === "custom" ? ["input", "transcript", "previous"] : ["transcript", "previous"],
+  hideable: false,
+  autoByDefault: GUIDES_ON_BY_DEFAULT.includes(kind),
+}));
 
 export const OP_KINDS: readonly OpKind[] = [
   {
@@ -221,6 +293,7 @@ export const OP_KINDS: readonly OpKind[] = [
     variables: ["text", "speaker"],
     hideable: false,
   },
+  ...GUIDE_OPS,
 ];
 
 export function opKind(key: string): OpKind | null {
