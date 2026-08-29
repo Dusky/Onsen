@@ -16,14 +16,22 @@ export type Route =
   | { name: "chat"; sceneId: string }
   | { name: "characters" }
   | { name: "character"; characterId: string }
+  | { name: "authors" }
+  | { name: "author"; authorId: string }
+  | { name: "setup"; sceneId: string }
   /** Anything unrecognised lands on the scenes list. */
   | { name: "unknown" };
 
 export function parseRoute(pathname: string): Route {
   if (pathname === "/" || pathname === "/scenes") return { name: "scenes" };
+  const setup = /^\/scenes\/([^/]+)\/setup\/?$/.exec(pathname);
+  if (setup !== null) return { name: "setup", sceneId: decodeURIComponent(setup[1]!) };
   const scene = /^\/scenes\/([^/]+)\/?$/.exec(pathname);
   if (scene !== null) return { name: "chat", sceneId: decodeURIComponent(scene[1]!) };
   if (pathname === "/characters") return { name: "characters" };
+  if (pathname === "/authors") return { name: "authors" };
+  const author = /^\/authors\/([^/]+)\/?$/.exec(pathname);
+  if (author !== null) return { name: "author", authorId: decodeURIComponent(author[1]!) };
   const character = /^\/characters\/([^/]+)\/?$/.exec(pathname);
   if (character !== null) {
     return { name: "character", characterId: decodeURIComponent(character[1]!) };
@@ -39,6 +47,12 @@ export function pathFor(route: Route): string {
       return "/characters";
     case "character":
       return `/characters/${encodeURIComponent(route.characterId)}`;
+    case "authors":
+      return "/authors";
+    case "author":
+      return `/authors/${encodeURIComponent(route.authorId)}`;
+    case "setup":
+      return `/scenes/${encodeURIComponent(route.sceneId)}/setup`;
     case "scenes":
     case "unknown":
       return "/";

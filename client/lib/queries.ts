@@ -2,7 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api.ts";
 import type {
   AppendMessageRequest,
+  AuthorDto,
   CharacterDto,
+  PersonaDto,
+  SceneSetupRequest,
+  UpdateAuthorRequest,
+  UpdatePersonaRequest,
   ImportCharacterResponse,
   UpdateCharacterRequest,
   MessageDto,
@@ -165,4 +170,94 @@ export function useDeleteCharacter() {
     mutationFn: (id: string) => api.delete<void>(`/characters/${id}`),
     onSuccess: () => void client.invalidateQueries({ queryKey: characterKeys.all }),
   });
+}
+
+/* ------------------------------------------------------------------ */
+/* Authors, personas and cast (SPEC §2, §20 phase 7)                   */
+/* ------------------------------------------------------------------ */
+
+export const authorKeys = {
+  all: ["authors"] as const,
+  one: (id: string) => ["authors", id] as const,
+  personas: ["personas"] as const,
+};
+
+export function useAuthors() {
+  return useQuery({ queryKey: authorKeys.all, queryFn: () => api.get<AuthorDto[]>("/authors") });
+}
+
+export function useAuthor(id: string) {
+  return useQuery({
+    queryKey: authorKeys.one(id),
+    queryFn: () => api.get<AuthorDto>(`/authors/${id}`),
+  });
+}
+
+export function useCreateAuthor() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name?: string }) => api.post<AuthorDto>("/authors", body),
+    onSuccess: () => void client.invalidateQueries({ queryKey: authorKeys.all }),
+  });
+}
+
+export function useUpdateAuthor(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: UpdateAuthorRequest) => api.patch<AuthorDto>(`/authors/${id}`, patch),
+    onSuccess: (author) => {
+      client.setQueryData(authorKeys.one(id), author);
+      void client.invalidateQueries({ queryKey: authorKeys.all });
+    },
+  });
+}
+
+export function useDeleteAuthor() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/authors/${id}`),
+    onSuccess: () => void client.invalidateQueries({ queryKey: authorKeys.all }),
+  });
+}
+
+export function usePersonas() {
+  return useQuery({
+    queryKey: authorKeys.personas,
+    queryFn: () => api.get<PersonaDto[]>("/personas"),
+  });
+}
+
+export function useCreatePersona() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name?: string }) => api.post<PersonaDto>("/personas", body),
+    onSuccess: () => void client.invalidateQueries({ queryKey: authorKeys.personas }),
+  });
+}
+
+export function useUpdatePersona(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: UpdatePersonaRequest) => api.patch<PersonaDto>(`/personas/${id}`, patch),
+    onSuccess: () => void client.invalidateQueries({ queryKey: authorKeys.personas }),
+  });
+}
+
+/** Author, persona, preset and profile all live on the scene itself. */
+export function useSceneSetup(sceneId: string) {
+  return useSceneMutation(sceneId, (body: SceneSetupRequest) =>
+    api.patch<SceneDto>(`/scenes/${sceneId}`, body),
+  );
+}
+
+export function useAddToCast(sceneId: string) {
+  return useSceneMutation(sceneId, (characterId: string) =>
+    api.put<SceneDto>(`/scenes/${sceneId}/cast/${characterId}`),
+  );
+}
+
+export function useRemoveFromCast(sceneId: string) {
+  return useSceneMutation(sceneId, (characterId: string) =>
+    api.delete<SceneDto>(`/scenes/${sceneId}/cast/${characterId}`),
+  );
 }

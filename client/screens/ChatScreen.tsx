@@ -26,8 +26,13 @@ import { Sheet, SheetAction } from "../components/Sheet.tsx";
  * spinner in a corner.
  */
 
-function speakerFor(message: MessageDto): string {
-  return message.authorType === "user" ? strings.chat.you : strings.chat.narratorName;
+/**
+ * Who a turn is attributed to. A character voices the turn; the author is the
+ * one writing them, and is named only when there is no cast member to name.
+ */
+function speakerFor(message: MessageDto, authorName: string | null): string {
+  if (message.authorType === "user") return strings.chat.you;
+  return message.speakerName ?? authorName ?? strings.chat.narratorName;
 }
 
 function initialsOf(name: string): string {
@@ -55,6 +60,11 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const log = useRef<HTMLDivElement>(null);
   const messages = scene.data?.messages ?? [];
   const title = scene.data?.scene.title ?? "";
+  const authorName = scene.data?.scene.authorName ?? null;
+  // Whoever is next to speak: the first cast member until the turn director
+  // arrives in phase 8.
+  const nextSpeaker =
+    scene.data?.scene.cast[0]?.name ?? authorName ?? strings.chat.narratorName;
 
   const active = generation.active;
   const isGenerating =
@@ -83,7 +93,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
 
   async function sendAndReply(text: string) {
     await send.mutateAsync({ kind: "user", authorType: "user", content: text });
-    await generation.start({ sceneId, sceneTitle: title, speaker: strings.chat.narratorName });
+    await generation.start({ sceneId, sceneTitle: title, speaker: nextSpeaker });
   }
 
   /** Reroll: generate a sibling under the same parent, keeping the original. */
@@ -115,6 +125,13 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           <p className="screen-kicker">{strings.chat.kicker}</p>
           <h1 className="truncate text-[19px] font-medium tracking-[-0.01em]">{title}</h1>
         </div>
+        <button
+          type="button"
+          onClick={() => navigate({ name: "setup", sceneId })}
+          className="chrome flex-none border border-border-quiet px-[9px] py-[6px] text-[9px] tracking-[0.12em] text-ink-muted uppercase"
+        >
+          {strings.chat.setup}
+        </button>
       </header>
 
       {/* The log is bottom-anchored: content grows up from the composer. */}
@@ -149,7 +166,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
               <MessageBlock
                 key={message.id}
                 message={message}
-                speakerName={speakerFor(message)}
+                speakerName={speakerFor(message, authorName)}
                 onReroll={() => void reroll(message)}
                 onOpenVersions={() => setVersionsFor(message)}
                 onLongPress={() => setActing(message)}
@@ -208,14 +225,10 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       <Composer
         onSend={(text) => void sendAndReply(text)}
         onGenerate={() =>
-          void generation.start({
-            sceneId,
-            sceneTitle: title,
-            speaker: strings.chat.narratorName,
-          })
+          void generation.start({ sceneId, sceneTitle: title, speaker: nextSpeaker })
         }
         disabled={isGenerating}
-        speakerInitials={initialsOf(strings.chat.narratorName)}
+        speakerInitials={initialsOf(nextSpeaker)}
       />
 
       {acting !== null ? (

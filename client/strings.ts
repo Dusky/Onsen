@@ -99,6 +99,7 @@ export const strings = {
     save: "Save",
     versionCounter: (index: number, total: number) => `◂ ${index}/${total} ▸`,
     versions: "Versions",
+    setup: "Setup",
     back: "‹",
 
     /** Long-press action sheet (§16). */
@@ -170,9 +171,59 @@ export const strings = {
     saved: "Saved",
   },
 
+  authors: {
+    kicker: "Writing partner",
+    listTitle: "Authors",
+    empty: "No writing partner yet. Create one to switch on author mode.",
+    create: "New author",
+    /** The defining bet, said plainly on the screen that introduces it. */
+    explainer:
+      "An author is the AI's own identity: one writing partner who plays every character in a scene, rather than a separate bot per character.",
+
+    name: "Name",
+    personality: "Personality",
+    personalityHint: "Who this partner is as a collaborator.",
+    writingStyle: "Writing style",
+    writingStyleHint: "Prose style, tense, point of view, paragraph length.",
+    directingStyle: "Directing style",
+    directingStyleHint: "Pacing, how much it escalates, how it handles silence.",
+    oocVoice: "Out-of-character voice",
+    boundaries: "Boundaries",
+    boundariesHint: "What it steers toward, and away from.",
+
+    sampleVoice: "How this sounds",
+    sampleVoiceEmpty: "Write an out-of-character voice to see it here.",
+    memory: "Remember across roleplays",
+    memoryHint:
+      "Off by default. An author that quietly accumulates notes about you is a different thing, so this stays a choice.",
+    makeDefault: "Use by default",
+    isDefault: "Default",
+    cardTotal: "Author total",
+    deleteAuthor: "Delete author",
+    deleteConfirm: (name: string) =>
+      `Delete ${name}? Roleplays that used them keep their history and fall back to single-character mode.`,
+  },
+
+  sceneSetup: {
+    kicker: "Setup",
+    title: "Roleplay setup",
+    author: "Author",
+    authorNone: "No author — single character",
+    authorHint: "With an author, one partner plays the whole cast.",
+    persona: "You",
+    personaNone: "Not set",
+    cast: "Cast",
+    castEmpty: "Nobody yet. Add a character.",
+    addToCast: "Add character",
+    remove: "Remove",
+    title_: "Title",
+    done: "Done",
+  },
+
   nav: {
     roleplays: "Roleplays",
     characters: "Cast",
+    authors: "Author",
   },
 
   errors: {

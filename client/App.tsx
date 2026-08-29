@@ -6,6 +6,8 @@ import { ScenesScreen } from "./screens/ScenesScreen.tsx";
 import { ChatScreen } from "./screens/ChatScreen.tsx";
 import { CharactersScreen } from "./screens/CharactersScreen.tsx";
 import { CharacterEditorScreen } from "./screens/CharacterEditorScreen.tsx";
+import { AuthorsScreen, AuthorEditorScreen } from "./screens/AuthorsScreen.tsx";
+import { SceneSetupScreen } from "./screens/SceneSetupScreen.tsx";
 import { api } from "./lib/api.ts";
 import { strings } from "./strings.ts";
 import { useRoute } from "./lib/router.ts";
@@ -88,6 +90,12 @@ function Routed() {
       return <CharactersScreen />;
     case "character":
       return <CharacterEditorScreen characterId={route.characterId} />;
+    case "authors":
+      return <AuthorsScreen />;
+    case "author":
+      return <AuthorEditorScreen authorId={route.authorId} />;
+    case "setup":
+      return <SceneSetupScreen sceneId={route.sceneId} />;
     case "scenes":
     case "unknown":
       return <ScenesScreen />;
