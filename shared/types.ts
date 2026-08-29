@@ -382,6 +382,63 @@ export interface CreateCheckpointRequest {
 }
 
 /* ------------------------------------------------------------------ */
+/* Background tasks (SPEC §7)                                          */
+/* ------------------------------------------------------------------ */
+
+export type TaskStage = "pre_generation" | "sidecar" | "post_generation";
+
+/**
+ * The configuration of one kind of side call. The kind itself is code; this is
+ * what a user gets to change about it (SPEC §7's per-op row).
+ */
+export interface TaskDto {
+  key: string;
+  label: string;
+  description: string;
+  stage: TaskStage;
+  enabled: boolean;
+  /** Null means the scene's own model, which works and costs more. */
+  connectionProfileId: string | null;
+  /** Null means the built-in prompt. */
+  promptTemplate: string | null;
+  timeoutMs: number;
+}
+
+/**
+ * How one run went.
+ *
+ * `skipped` means the task decided there was nothing to ask. `unusable` means
+ * an answer came back that could not be read — which is a different problem
+ * from `failed`, and worth telling apart when a cheap model is misbehaving.
+ */
+export type TaskRunStatus = "ok" | "skipped" | "unusable" | "failed" | "timeout" | "cancelled";
+
+/**
+ * A record of one side call. Background tasks must never fail a user-facing
+ * generation (SPEC §7), so every failure they have is swallowed by design;
+ * this is where the swallowed ones can still be read.
+ */
+export interface TaskRunDto {
+  id: string;
+  taskKey: string;
+  sceneId: string | null;
+  status: TaskRunStatus;
+  provider: string | null;
+  model: string | null;
+  prompt: string | null;
+  output: string | null;
+  detail: string | null;
+  durationMs: number;
+  createdAt: number;
+}
+
+export interface UpdateTaskRequest {
+  enabled?: boolean;
+  connectionProfileId?: string | null;
+  promptTemplate?: string | null;
+}
+
+/* ------------------------------------------------------------------ */
 /* Characters (SPEC §2, §9)                                            */
 /* ------------------------------------------------------------------ */
 

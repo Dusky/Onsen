@@ -6,6 +6,7 @@ import authors from "./0005_authors.sql" with { type: "text" };
 import groupScenes from "./0006_group_scenes.sql" with { type: "text" };
 import segments from "./0007_segments.sql" with { type: "text" };
 import director from "./0008_director.sql" with { type: "text" };
+import tasks from "./0009_tasks.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -29,4 +30,5 @@ export const migrations: readonly Migration[] = [
   { version: 6, name: "group_scenes", sql: groupScenes },
   { version: 7, name: "segments", sql: segments },
   { version: 8, name: "director", sql: director },
+  { version: 9, name: "tasks", sql: tasks },
 ];
