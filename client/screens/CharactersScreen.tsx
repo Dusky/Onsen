@@ -60,10 +60,12 @@ export function CharactersScreen() {
     setNotice(null);
     importCard.mutate(file, {
       onSuccess: (result) => {
-        // Warnings name what was preserved but is not shown, so an import is
-        // never silently partial (SPEC §18).
-        if (result.warnings.length > 0) setNotice(result.warnings.join(" "));
-        else navigate({ name: "character", characterId: result.character.id });
+        // Stay on the library rather than jumping into the editor: importing
+        // several cards in a row is the common case, and being thrown into an
+        // editor after each one makes that tedious.
+        setNotice(
+          [strings.characters.imported(result.character.name), ...result.warnings].join(" "),
+        );
       },
       onError: (error) => setNotice(error.message),
     });

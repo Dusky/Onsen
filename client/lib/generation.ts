@@ -19,6 +19,8 @@ interface StartArgs {
   speaker: string;
   /** Names a parent to fork from — how a reroll asks for a sibling. */
   parentId?: string | null;
+  /** Forces who speaks, overriding the turn director for this turn. */
+  characterId?: string | null;
 }
 
 interface ServerEvent {
@@ -125,7 +127,9 @@ export function useGeneration() {
 
   const start = useCallback(
     async (args: StartArgs) => {
-      const body = args.parentId === undefined ? {} : { parentId: args.parentId };
+      const body: Record<string, unknown> = {};
+      if (args.parentId !== undefined) body["parentId"] = args.parentId;
+      if (args.characterId != null) body["characterId"] = args.characterId;
       const started = await api.post<{ id: string }>(`/scenes/${args.sceneId}/generate`, body);
       useGenerationStore.getState().begin({
         generationId: started.id,

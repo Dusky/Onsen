@@ -113,6 +113,16 @@ export const strings = {
     deleteConfirm: "Delete this and everything after it?",
 
     you: "You",
+    /** Cast strip captions (design handoff). */
+    autoNext: "Auto · next",
+    youCued: "You cued",
+    yourPickOverrides: "Your pick overrides the director this turn",
+    benched: "Benched",
+    bench: "Bench",
+    unbench: "Bring back",
+    viewCard: "View card",
+    castMember: "Cast member",
+
     /** Provisional: the AI has no character until characters land. */
     narratorName: "Author",
   },
@@ -126,6 +136,7 @@ export const strings = {
     import: "Import card",
     create: "New card",
     importing: "Reading card…",
+    imported: (name: string) => `Imported ${name}.`,
     noResults: "Nothing matches that.",
     tokens: (n: number) => `${n} TOK`,
     /** Cost is always a share of the context window (design handoff). */
@@ -218,6 +229,12 @@ export const strings = {
     remove: "Remove",
     title_: "Title",
     done: "Done",
+    turnStrategy: "Who speaks next",
+    strategyManual: "I choose",
+    strategyRoundRobin: "Round robin",
+    strategyMention: "By mention",
+    strategyClassifier: "Let a model decide",
+    strategyNotReady: "Not built yet — falls back to round robin",
   },
 
   nav: {

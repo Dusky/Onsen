@@ -261,3 +261,12 @@ export function useRemoveFromCast(sceneId: string) {
     api.delete<SceneDto>(`/scenes/${sceneId}/cast/${characterId}`),
   );
 }
+
+/** Cue a character for the next turn. Client-side: the cue is not persisted. */
+export function useBenchMember(sceneId: string) {
+  return useSceneMutation(
+    sceneId,
+    ({ characterId, isActive }: { characterId: string; isActive: boolean }) =>
+      api.patch<SceneDto>(`/scenes/${sceneId}/cast/${characterId}`, { isActive }),
+  );
+}

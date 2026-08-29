@@ -12,6 +12,7 @@ import {
   useSceneSetup,
 } from "../lib/queries.ts";
 import { Sheet } from "../components/Sheet.tsx";
+import { TURN_STRATEGIES, type TurnStrategy } from "@shared/types.ts";
 
 /**
  * Scene setup: who is writing, who you are, and who is in it.
@@ -20,10 +21,22 @@ import { Sheet } from "../components/Sheet.tsx";
  * that changes what the app is — with an author, one partner plays the whole
  * cast; without one, it is a single character in a system prompt.
  *
- * The model profile, turn strategy, lorebooks and guides rows the design draws
- * belong to phases that have not happened yet, and are left out rather than
- * stubbed.
+ * The model profile, lorebook and guide rows the design draws belong to phases
+ * that have not happened yet, and are left out rather than stubbed.
  */
+
+function labelFor(strategy: TurnStrategy): string {
+  switch (strategy) {
+    case "manual":
+      return strings.sceneSetup.strategyManual;
+    case "round_robin":
+      return strings.sceneSetup.strategyRoundRobin;
+    case "mention":
+      return strings.sceneSetup.strategyMention;
+    case "classifier":
+      return strings.sceneSetup.strategyClassifier;
+  }
+}
 
 export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
   const query = useScene(sceneId);
@@ -134,6 +147,30 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               </button>
             ) : null}
           </div>
+
+          <p className="section-label mb-[8px]">{strings.sceneSetup.turnStrategy}</p>
+          <div className="mb-[8px] flex flex-wrap gap-[6px]">
+            {TURN_STRATEGIES.map((strategy) => (
+              <button
+                key={strategy}
+                type="button"
+                onClick={() => setup.mutate({ turnStrategy: strategy })}
+                className={`btn ${scene.turnStrategy === strategy ? "btn-primary" : ""}`}
+              >
+                {labelFor(strategy)}
+              </button>
+            ))}
+          </div>
+          {/* Two strategies are accepted by the schema but not yet built; the
+              director falls back to round robin and says so rather than
+              silently doing something else. */}
+          {scene.turnStrategy === "mention" || scene.turnStrategy === "classifier" ? (
+            <p className="chrome mb-[22px] text-[9.5px] leading-[1.5] text-ink-dim">
+              {strings.sceneSetup.strategyNotReady}
+            </p>
+          ) : (
+            <div className="mb-[22px]" />
+          )}
 
           <p className="section-label mb-[8px]">{strings.sceneSetup.cast}</p>
           {scene.cast.length === 0 ? (

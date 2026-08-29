@@ -14,6 +14,9 @@ import { useGeneration } from "../lib/generation.ts";
 import { MessageBlock, MessageEditor } from "../components/MessageBlock.tsx";
 import { Composer } from "../components/Composer.tsx";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
+import { CastStrip } from "../components/CastStrip.tsx";
+import { useBenchMember } from "../lib/queries.ts";
+import type { NextSpeakerDto, SceneMemberDto } from "@shared/types.ts";
 
 /**
  * The chat screen. Everything else in the app is support.
@@ -52,7 +55,15 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const setLeaf = useSetLeaf(sceneId);
   const generation = useGeneration();
 
+  const bench = useBenchMember(sceneId);
   const [acting, setActing] = useState<MessageDto | null>(null);
+  const [castActing, setCastActing] = useState<SceneMemberDto | null>(null);
+  /**
+   * Who the user cued for this turn. Client-side and one-shot: a cue is a
+   * decision about the next turn, not scene configuration, so it is not
+   * persisted and it clears once it has been spent.
+   */
+  const [cued, setCued] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [versionsFor, setVersionsFor] = useState<MessageDto | null>(null);
   const siblings = useSiblings(sceneId, versionsFor?.id ?? null);
@@ -61,10 +72,22 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const messages = scene.data?.messages ?? [];
   const title = scene.data?.scene.title ?? "";
   const authorName = scene.data?.scene.authorName ?? null;
-  // Whoever is next to speak: the first cast member until the turn director
-  // arrives in phase 8.
-  const nextSpeaker =
-    scene.data?.scene.cast[0]?.name ?? authorName ?? strings.chat.narratorName;
+  const cast = scene.data?.scene.cast ?? [];
+
+  // The server's decision, overridden locally while the user has cued someone.
+  const serverChoice = scene.data?.nextSpeaker ?? null;
+  const cuedMember = cued === null ? null : cast.find((m) => m.characterId === cued);
+  const nextSpeaker: NextSpeakerDto | null =
+    cuedMember === undefined || cuedMember === null
+      ? serverChoice
+      : {
+          characterId: cuedMember.characterId,
+          name: cuedMember.name,
+          hasAvatar: cuedMember.hasAvatar,
+          source: "user",
+          reason: strings.chat.yourPickOverrides,
+        };
+  const speakerName = nextSpeaker?.name ?? authorName ?? strings.chat.narratorName;
 
   const active = generation.active;
   const isGenerating =
@@ -93,7 +116,14 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
 
   async function sendAndReply(text: string) {
     await send.mutateAsync({ kind: "user", authorType: "user", content: text });
-    await generation.start({ sceneId, sceneTitle: title, speaker: nextSpeaker });
+    await generation.start({
+      sceneId,
+      sceneTitle: title,
+      speaker: speakerName,
+      ...(nextSpeaker === null ? {} : { characterId: nextSpeaker.characterId }),
+    });
+    // A cue is spent once it has been used.
+    setCued(null);
   }
 
   /** Reroll: generate a sibling under the same parent, keeping the original. */
@@ -222,13 +252,33 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         </div>
       </div>
 
+      {cast.length > 0 && !isGenerating ? (
+        <div className="flex-none border-t border-rule bg-bg-raised px-[16px] pt-[2px]">
+          <div className="mx-auto w-full max-w-[var(--onsen-prose-measure)]">
+            <CastStrip
+              cast={cast}
+              nextSpeaker={nextSpeaker}
+              onCue={(characterId) => setCued(characterId)}
+              onLongPress={(member) => setCastActing(member)}
+            />
+          </div>
+        </div>
+      ) : null}
+
       <Composer
         onSend={(text) => void sendAndReply(text)}
         onGenerate={() =>
-          void generation.start({ sceneId, sceneTitle: title, speaker: nextSpeaker })
+          void generation
+            .start({
+              sceneId,
+              sceneTitle: title,
+              speaker: speakerName,
+              ...(nextSpeaker === null ? {} : { characterId: nextSpeaker.characterId }),
+            })
+            .then(() => setCued(null))
         }
         disabled={isGenerating}
-        speakerInitials={initialsOf(nextSpeaker)}
+        speakerInitials={initialsOf(speakerName)}
       />
 
       {acting !== null ? (
@@ -264,6 +314,27 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
               remove.mutate(acting.id);
               setActing(null);
             }}
+          />
+        </Sheet>
+      ) : null}
+
+      {castActing !== null ? (
+        <Sheet title={strings.chat.castMember} onClose={() => setCastActing(null)}>
+          <SheetAction
+            label={castActing.isActive ? strings.chat.bench : strings.chat.unbench}
+            onClick={() => {
+              bench.mutate({
+                characterId: castActing.characterId,
+                isActive: !castActing.isActive,
+              });
+              setCastActing(null);
+            }}
+          />
+          <SheetAction
+            label={strings.chat.viewCard}
+            onClick={() =>
+              navigate({ name: "character", characterId: castActing.characterId })
+            }
           />
         </Sheet>
       ) : null}
