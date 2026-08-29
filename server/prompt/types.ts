@@ -156,7 +156,23 @@ export type PromptTurn =
    * rest of it fixed. `spotlight` is the character being recast, and
    * `beatText` is the beat exactly as it stands.
    */
-  | { kind: "recast"; beatText: string };
+  | { kind: "recast"; beatText: string }
+  /**
+   * Producing a better version of a turn that already exists (SPEC §7).
+   *
+   * The three modes differ only in what is asked for, but they differ a lot in
+   * that: expanding a turn, correcting one, and continuing from where one
+   * stopped are three different instructions and reading them as one would
+   * blur all three.
+   */
+  | {
+      kind: "revise";
+      mode: "expand" | "correct" | "continue";
+      /** The turn as it stands. */
+      original: string;
+      /** What the user asked for. Only `correct` has any. */
+      instructions?: string;
+    };
 
 export interface PromptScene {
   title: string;

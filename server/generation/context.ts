@@ -183,7 +183,19 @@ export interface BuildContextOptions {
   turn?:
     | { kind: "spotlight" }
     | { kind: "beat"; bound: BeatBound }
-    | { kind: "recast"; beatText: string };
+    | { kind: "recast"; beatText: string }
+    | {
+        kind: "revise";
+        mode: "expand" | "correct" | "continue";
+        original: string;
+        instructions?: string;
+      };
+  /**
+   * A one-shot instruction for this generation only (SPEC §7). Never persisted
+   * as a message — that is what separates a nudge from something the reader
+   * said.
+   */
+  nudge?: string;
   now: number;
   seed: number;
 }
@@ -243,6 +255,11 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
 
   return {
     scene: { title: options.scene.title, scenarioOverride: null },
+    // Steer: a persistent note on the scene, applied until cleared (SPEC §7).
+    ...(options.scene.director_note === null
+      ? {}
+      : { directorNote: options.scene.director_note }),
+    ...(options.nudge === undefined ? {} : { nudge: options.nudge }),
     cast: cast.length === 0 ? [spotlight] : cast,
     spotlight,
     turn,

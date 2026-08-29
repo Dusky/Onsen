@@ -331,3 +331,12 @@ export function setDirectorProfile(db: Database, sceneId: number, profileId: num
     "UPDATE scenes SET director_profile_id = $profile, updated_at = $now WHERE id = $id",
   ).run({ id: sceneId, profile: profileId, now: Date.now() });
 }
+
+/** Steer: a persistent director note on the scene, until cleared (SPEC §7). */
+export function setDirectorNote(db: Database, sceneId: number, note: string | null): void {
+  db.query("UPDATE scenes SET director_note = $note, updated_at = $now WHERE id = $id").run({
+    id: sceneId,
+    note,
+    now: Date.now(),
+  });
+}

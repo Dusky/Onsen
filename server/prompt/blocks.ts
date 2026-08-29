@@ -362,6 +362,69 @@ function recastInstruction(ctx: PromptContext, beatText: string): string {
   ].join("\n");
 }
 
+/**
+ * Revising a turn that already exists (SPEC §7).
+ *
+ * All three modes hand the model the turn as it stands and ask for a different
+ * one. What separates them is what "different" means, and the wording is where
+ * the whole value is: "longer" produces padding unless it is told what to spend
+ * the length on, and "fix this" produces a rewrite of the parts that were
+ * already working unless it is told not to.
+ */
+function reviseInstruction(
+  ctx: PromptContext,
+  turn: Extract<PromptTurn, { kind: "revise" }>,
+): string {
+  const name = ctx.spotlight.name;
+  const lock =
+    `Do not write ${readersPossessive(ctx)} dialogue, actions, or thoughts, and do not decide ` +
+    `what they do next: that is the reader's to write.`;
+
+  switch (turn.mode) {
+    case "expand":
+      return [
+        `You wrote this turn as ${name}:`,
+        "",
+        turn.original.trim(),
+        "",
+        `Write it again, longer and with more in it. Not more words for the same content — ` +
+          `more that happens: what they do with their hands, what they notice, what they do not ` +
+          `say. Keep everything that is already there and keep the same ending.`,
+        "",
+        lock,
+      ].join("\n");
+
+    case "correct": {
+      const asked = turn.instructions?.trim() ?? "";
+      return [
+        `You wrote this turn as ${name}:`,
+        "",
+        turn.original.trim(),
+        "",
+        asked === ""
+          ? `Write it again, better.`
+          : `Write it again, with this changed: ${asked}`,
+        `Keep everything that was already working — the same moment, the same voice, the same ` +
+          `beats — and change only what has to change. This is a correction, not a fresh attempt.`,
+        "",
+        lock,
+      ].join("\n");
+    }
+
+    case "continue":
+      return [
+        `You were writing this turn as ${name} and stopped partway:`,
+        "",
+        turn.original.trim(),
+        "",
+        `Carry straight on from where it stops. Do not repeat any of it, do not start again, and ` +
+          `do not summarise what came before — write only what comes next, beginning mid-flow.`,
+        "",
+        lock,
+      ].join("\n");
+  }
+}
+
 /** The near-turn instruction for whichever kind of turn this is. */
 function turnInstruction(ctx: PromptContext): string {
   const turn: PromptTurn = ctx.turn ?? { kind: "spotlight" };
@@ -370,7 +433,9 @@ function turnInstruction(ctx: PromptContext): string {
       ? beatInstruction(ctx, turn.bound)
       : turn.kind === "recast"
         ? recastInstruction(ctx, turn.beatText)
-        : spotlightInstruction(ctx);
+        : turn.kind === "revise"
+          ? reviseInstruction(ctx, turn)
+          : spotlightInstruction(ctx);
 
   const presence = presenceConstraints(ctx);
   return presence === null ? base : `${base}\n\n${presence}`;
@@ -378,11 +443,18 @@ function turnInstruction(ctx: PromptContext): string {
 
 /** What the inspector calls the near-turn instruction, by kind. */
 function turnInstructionLabel(ctx: PromptContext): string {
-  switch (ctx.turn?.kind) {
+  const turn = ctx.turn;
+  switch (turn?.kind) {
     case "beat":
       return "Beat instruction";
     case "recast":
       return "Recast instruction";
+    case "revise":
+      return turn.mode === "expand"
+        ? "Expand instruction"
+        : turn.mode === "correct"
+          ? "Correction instruction"
+          : "Continue instruction";
     default:
       return "Spotlight instruction";
   }

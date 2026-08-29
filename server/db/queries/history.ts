@@ -38,6 +38,8 @@ export interface SceneRow {
   turn_strategy: "manual" | "round_robin" | "mention" | "classifier";
   /** Where the classifier runs; null falls back to the scene's own (SPEC §6). */
   director_profile_id: number | null;
+  /** Steer: a persistent director note, applied until cleared (SPEC §7). */
+  director_note: string | null;
   active_leaf_id: number | null;
   created_at: number;
   updated_at: number;
@@ -159,6 +161,7 @@ export function toSceneDto(
     connectionProfileId: extras.profileUlid,
     turnStrategy: extras.turnStrategy,
     directorProfileId: extras.directorProfileUlid,
+    directorNote: row.director_note,
     authorId: extras.authorUlid,
     authorName: extras.authorName,
     personaId: extras.personaUlid,

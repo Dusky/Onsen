@@ -255,6 +255,8 @@ export interface SceneDto {
   authorName: string | null;
   personaId: string | null;
   personaName: string | null;
+  /** Steer (SPEC §7): applied to every turn until cleared. Null when clear. */
+  directorNote: string | null;
   /** The cast, in display order. One member until group scenes (phase 8). */
   cast: SceneMemberDto[];
   /** Null while the scene is empty. */
@@ -639,6 +641,51 @@ export interface NextSpeakerDto {
 }
 
 /** Everything the scene setup screen edits. */
+/**
+ * Producing a better version of a turn that already exists (SPEC §7).
+ *
+ * The result is always a sibling of the target, so the original stays one swipe
+ * away — asking for a longer version and disliking it must cost nothing.
+ */
+export type ReviseMode = "expand" | "correct" | "continue";
+
+export const REVISE_MODES: readonly ReviseMode[] = ["expand", "correct", "continue"];
+
+export function isReviseMode(value: unknown): value is ReviseMode {
+  return typeof value === "string" && (REVISE_MODES as readonly string[]).includes(value);
+}
+
+export interface ReviseRequest {
+  mode: ReviseMode;
+  /** What to change. Only `correct` reads it. */
+  instructions?: string;
+}
+
+/**
+ * Expand a brief outline into a full message in the reader's own voice
+ * (SPEC §7). The result lands in the composer and never auto-sends — it is a
+ * draft for the user to accept, edit or throw away.
+ */
+export type ImpersonatePerson = "first" | "second" | "third";
+
+export const IMPERSONATE_PEOPLE: readonly ImpersonatePerson[] = ["first", "second", "third"];
+
+export function isImpersonatePerson(value: unknown): value is ImpersonatePerson {
+  return typeof value === "string" && (IMPERSONATE_PEOPLE as readonly string[]).includes(value);
+}
+
+export interface ImpersonateRequest {
+  /** The user's outline. May be empty: "write something for me" is a real ask. */
+  outline?: string;
+  person?: ImpersonatePerson;
+}
+
+export interface ImpersonateResponse {
+  /** Null when the model could not be reached; `detail` says what happened. */
+  text: string | null;
+  detail: string | null;
+}
+
 export interface SceneSetupRequest {
   authorId?: string | null;
   personaId?: string | null;
@@ -647,5 +694,7 @@ export interface SceneSetupRequest {
   turnStrategy?: TurnStrategy;
   /** Where the classifier runs. Null falls back to the scene's own profile. */
   directorProfileId?: string | null;
+  /** Steer: a persistent director note, applied until cleared (SPEC §7). */
+  directorNote?: string | null;
   title?: string;
 }
