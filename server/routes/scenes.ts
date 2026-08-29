@@ -21,6 +21,7 @@ import {
   setActiveLeaf,
   siblingsOf,
   speakerLookup,
+  splitBeat,
   toCheckpointDto,
   toMessageDto,
   updateMessage,
@@ -344,6 +345,33 @@ export function sceneRoutes(ctx: AppContext): Hono<AppEnv> {
     deleteMessage(ctx.db, row);
     // The caller needs the new leaf, so return the scene rather than 204.
     return c.json(sceneDto(ctx.db, findSceneById(ctx.db, sceneRow.id) as SceneRow));
+  });
+
+  /**
+   * Split a beat into one message per segment (SPEC §7).
+   *
+   * The new messages are a chain under the beat's own parent, so the beat
+   * survives as a sibling of them: this is a branch, not a conversion, and
+   * nothing is destroyed. The point of it is being able to branch from the
+   * middle of an exchange the author wrote in one go.
+   */
+  app.post("/:sceneId/messages/:messageId/split", (c) => {
+    const sceneRow = scene(c.req.param("sceneId"));
+    if (sceneRow === null) return c.json(notFound("scene"), 404);
+    const row = messageIn(sceneRow, c.req.param("messageId"));
+    if (row === null) return c.json(notFound("message"), 404);
+
+    if (row.kind !== "beat") {
+      return c.json(badRequest("Only a beat can be split — it is the one with parts."), 400);
+    }
+    const created = splitBeat(ctx.db, row);
+    if (created.length === 0) {
+      return c.json(
+        badRequest("This beat has only one part, so splitting it would change nothing."),
+        400,
+      );
+    }
+    return c.json(history(findSceneById(ctx.db, sceneRow.id) as SceneRow));
   });
 
   /** The swipe carousel: every version of this turn, in creation order. */

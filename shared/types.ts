@@ -181,6 +181,24 @@ export function isMessageAuthorType(value: unknown): value is MessageAuthorType 
   );
 }
 
+/**
+ * One speaker's part of a beat (SPEC §2, §3.5).
+ *
+ * Offsets address the parent message's canonical content and cover the prose
+ * alone, not the speaker label — replacing that range is what recast does.
+ */
+export interface MessageSegmentDto {
+  ordinal: number;
+  speakerType: "character" | "narration";
+  /** Null for narration, and for a speaker who is not in the cast. */
+  characterId: string | null;
+  /** The name as the author wrote it. Null for narration. */
+  speakerName: string | null;
+  content: string;
+  charStart: number;
+  charEnd: number;
+}
+
 export interface MessageDto {
   id: string;
   sceneId: string;
@@ -206,6 +224,18 @@ export interface MessageDto {
    */
   siblingIndex: number;
   siblingCount: number;
+
+  /**
+   * The parsed view of a beat, in order. Null for every other kind of message:
+   * a spotlight turn has exactly one segment and it is the message's own
+   * content, so sending it again would double the payload of every log.
+   */
+  segments: MessageSegmentDto[] | null;
+  /**
+   * True when a beat arrived with no usable speaker labels and was kept whole
+   * as narration (SPEC §3.5). The text is intact; the attribution is not.
+   */
+  parseDegraded: boolean;
 }
 
 export interface SceneDto {
@@ -269,6 +299,53 @@ export interface AppendMessageRequest {
   isHidden?: boolean;
 }
 
+/**
+ * What a generation is asked to produce (SPEC §3.5).
+ *
+ * `spotlight` voices one character; `beat` writes several interacting. The
+ * turn director deciding between them is `auto`, and belongs to the classifier
+ * (§20 phase 10) — it is not offered until it exists.
+ */
+export type TurnScope = "spotlight" | "beat";
+
+/**
+ * How long a beat runs. An unbounded beat is a stalling beat, so the bound is
+ * part of the request rather than a setting.
+ */
+export type BeatBound =
+  | { kind: "exchanges"; count: number }
+  | { kind: "until"; condition: string }
+  | { kind: "open" };
+
+export const DEFAULT_BEAT_BOUND: BeatBound = { kind: "exchanges", count: 2 };
+
+/** A beat longer than this is a scene, not a beat, and will not fit a budget. */
+export const MAX_BEAT_EXCHANGES = 6;
+
+export function isTurnScope(value: unknown): value is TurnScope {
+  return value === "spotlight" || value === "beat";
+}
+
+export function isBeatBound(value: unknown): value is BeatBound {
+  if (typeof value !== "object" || value === null) return false;
+  const bound = value as { kind?: unknown; count?: unknown; condition?: unknown };
+  switch (bound.kind) {
+    case "exchanges":
+      return (
+        typeof bound.count === "number" &&
+        Number.isInteger(bound.count) &&
+        bound.count >= 1 &&
+        bound.count <= MAX_BEAT_EXCHANGES
+      );
+    case "until":
+      return typeof bound.condition === "string" && bound.condition.trim() !== "";
+    case "open":
+      return true;
+    default:
+      return false;
+  }
+}
+
 export interface UpdateMessageRequest {
   content?: string;
   isHidden?: boolean;
@@ -282,6 +359,11 @@ export interface SetActiveLeafRequest {
    * and forth restore each sibling's own continuation. Defaults to true.
    */
   descend?: boolean;
+}
+
+/** Regenerate one character's part of a beat, holding the rest fixed (SPEC §7). */
+export interface RecastSegmentRequest {
+  ordinal: number;
 }
 
 export interface CreateCheckpointRequest {

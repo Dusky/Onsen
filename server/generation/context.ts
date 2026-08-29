@@ -2,11 +2,13 @@ import type { Database } from "bun:sqlite";
 import { MODERN_SAMPLER_DEFAULTS, type SamplerSettings } from "../../shared/types.ts";
 import { createEstimatingTokenizer } from "../prompt/index.ts";
 import type {
+  BeatBound,
   ProviderCapabilities,
   PromptCharacter,
   PromptContext,
   PromptMessage,
   PromptPreset,
+  PromptTurn,
 } from "../prompt/index.ts";
 import { activePath, type MessageRowWithSiblings, type SceneRow } from "../db/queries/history.ts";
 import {
@@ -173,6 +175,15 @@ export interface BuildContextOptions {
    * or branched generation passes the path it is attaching to instead.
    */
   history?: MessageRowWithSiblings[];
+  /**
+   * What is being asked for (SPEC §3.5). Omitted means an ordinary spotlight.
+   * A beat's participants are resolved here rather than passed in: they are the
+   * active cast, which only the database knows.
+   */
+  turn?:
+    | { kind: "spotlight" }
+    | { kind: "beat"; bound: BeatBound }
+    | { kind: "recast"; beatText: string };
   now: number;
   seed: number;
 }
@@ -216,10 +227,25 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
       ? null
       : findPersonaById(options.db, options.scene.persona_id);
 
+  // A beat writes everyone who is actually in play. Benched members are not in
+  // it, and a beat needs somebody to talk to, so a cast of one degrades to a
+  // spotlight rather than instructing the author to hold a conversation alone.
+  const participants = castRows
+    .filter((row) => row.is_active === 1)
+    .map((row) => toPromptCharacter(row, joinedAfterOf(row)));
+  const requested = options.turn ?? { kind: "spotlight" };
+  const turn: PromptTurn =
+    requested.kind === "beat"
+      ? participants.length < 2
+        ? { kind: "spotlight" }
+        : { kind: "beat", participants, bound: requested.bound }
+      : requested;
+
   return {
     scene: { title: options.scene.title, scenarioOverride: null },
     cast: cast.length === 0 ? [spotlight] : cast,
     spotlight,
+    turn,
     // A null author selects single-character mode: standard card-in-system-
     // prompt rendering rather than the co-author framing (SPEC §3).
     author: authorRow === null ? null : toPromptAuthor(authorRow),

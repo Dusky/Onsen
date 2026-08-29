@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { AppContext, AppEnv } from "../context.ts";
 import { requireAuth } from "../middleware/session.ts";
 import { findScene, findMessage } from "../db/queries/history.ts";
+import { isBeatBound, isTurnScope } from "../../shared/types.ts";
 import { GenerationError, type GenerationEvent, type GenerationService } from "../generation/service.ts";
 
 /**
@@ -50,6 +51,8 @@ export function sceneGenerationRoutes(
       parentId?: string | null;
       connectionProfileId?: string | null;
       characterId?: string | null;
+      scope?: unknown;
+      beatBound?: unknown;
     } = {};
     try {
       const parsed: unknown = await c.req.json();
@@ -104,17 +107,87 @@ export function sceneGenerationRoutes(
       spotlightId = member.id;
     }
 
+    // One character or several (SPEC §3.5). An unrecognised scope is a client
+    // sending something this server does not have; a spotlight is the safe read.
+    const scope = isTurnScope(body.scope) ? body.scope : undefined;
+    if (body.beatBound !== undefined && !isBeatBound(body.beatBound)) {
+      return c.json(
+        { error: { code: "bad_request", message: "That is not a beat bound." } },
+        400,
+      );
+    }
+    const beatBound = isBeatBound(body.beatBound) ? body.beatBound : undefined;
+
     try {
       const snapshot = service.start({
         scene,
         ...(parentId === undefined ? {} : { parentId }),
         ...(profileId === undefined ? {} : { connectionProfileId: profileId }),
         ...(spotlightId === undefined ? {} : { spotlightId }),
+        ...(scope === undefined ? {} : { scope }),
+        ...(beatBound === undefined ? {} : { beatBound }),
       });
       return c.json(snapshot, 201);
     } catch (caught) {
       if (caught instanceof GenerationError) {
         const status = caught.code === "already_generating" ? 409 : 400;
+        return c.json({ error: { code: caught.code, message: caught.message } }, status);
+      }
+      throw caught;
+    }
+  });
+
+  /**
+   * Recast one character's part of a beat (SPEC §7).
+   *
+   * The rest of the beat is held fixed and passed as context, and the result is
+   * spliced into that segment's offsets. This is the per-character correction
+   * affordance: swiping rerolls the whole exchange, which is a different and
+   * much blunter thing to want.
+   */
+  app.post("/:sceneId/messages/:messageId/recast", async (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    const message = findMessage(ctx.db, c.req.param("messageId"));
+    if (message === null || message.scene_id !== scene.id) {
+      return c.json({ error: { code: "not_found", message: "No such message." } }, 404);
+    }
+    if (message.kind !== "beat") {
+      return c.json(
+        {
+          error: {
+            code: "bad_request",
+            message: "Only a beat has parts to recast. Reroll the message instead.",
+          },
+        },
+        400,
+      );
+    }
+
+    let ordinal: unknown;
+    try {
+      const parsed: unknown = await c.req.json();
+      if (typeof parsed === "object" && parsed !== null) {
+        ordinal = (parsed as { ordinal?: unknown }).ordinal;
+      }
+    } catch {
+      // Falls through to the validation below.
+    }
+    if (typeof ordinal !== "number" || !Number.isInteger(ordinal) || ordinal < 0) {
+      return c.json(
+        { error: { code: "bad_request", message: "Which part of the beat?" } },
+        400,
+      );
+    }
+
+    try {
+      return c.json(service.start({ scene, recast: { message, ordinal } }), 201);
+    } catch (caught) {
+      if (caught instanceof GenerationError) {
+        const status =
+          caught.code === "already_generating" ? 409 : caught.code === "not_recastable" ? 422 : 400;
         return c.json({ error: { code: caught.code, message: caught.message } }, status);
       }
       throw caught;

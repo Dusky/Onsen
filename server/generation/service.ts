@@ -3,10 +3,16 @@ import { ulid } from "../lib/ulid.ts";
 import { decryptSecret, type Keyring } from "../lib/crypto.ts";
 import { createAdapter as defaultCreateAdapter, AdapterError, type Adapter } from "../adapters/index.ts";
 import { buildPrompt, createEstimatingTokenizer, PromptBudgetError } from "../prompt/index.ts";
-import type { ProviderKind, SamplerSettings } from "../../shared/types.ts";
+import { DEFAULT_BEAT_BOUND } from "../../shared/types.ts";
+import type { BeatBound, ProviderKind, SamplerSettings, TurnScope } from "../../shared/types.ts";
 import {
   appendMessage,
+  findMessageById,
   findSceneById,
+  reparseSegments,
+  replaceSegment,
+  segmentRowsOf,
+  type MessageRow,
   type MessageRowWithSiblings,
   type SceneRow,
 } from "../db/queries/history.ts";
@@ -76,6 +82,8 @@ interface ActiveGeneration {
   messageUlid: string | null;
   /** Which cast member this turn is voiced as, recorded on the message. */
   spotlightId: number | null;
+  /** What was asked for, and where the result lands (SPEC §3.5, §7). */
+  turn: ResolvedTurn;
   abort: AbortController;
   listeners: Set<(event: GenerationEvent) => void>;
   startedAt: number;
@@ -114,7 +122,33 @@ export interface StartOptions {
    * director picks in phase 8, and a guided op can force a speaker.
    */
   spotlightId?: number | null;
+  /**
+   * One character or several (SPEC §3.5). Defaults to a spotlight. A beat with
+   * fewer than two active cast members degrades to a spotlight in the context
+   * builder rather than being refused.
+   */
+  scope?: TurnScope;
+  /** How long a beat runs. Ignored for a spotlight. */
+  beatBound?: BeatBound;
+  /**
+   * Rewrite one character's part of an existing beat, holding the rest of it
+   * fixed (SPEC §7). The result is spliced into that beat rather than appended
+   * as a new message.
+   */
+  recast?: { message: MessageRow; ordinal: number };
 }
+
+/**
+ * What this generation produces and where it goes.
+ *
+ * A spotlight and a beat both append a message; a recast edits one that already
+ * exists. Keeping the three in one value is what lets `finish` land the output
+ * without re-deriving what was asked for half an hour after the request.
+ */
+type ResolvedTurn =
+  | { kind: "spotlight" }
+  | { kind: "beat"; bound: BeatBound }
+  | { kind: "recast"; messageId: number; ordinal: number; beatText: string; characterName: string };
 
 interface ResolvedRoute {
   kind: ProviderKind;
@@ -180,7 +214,16 @@ export class GenerationService {
     }
 
     const route = this.resolveRoute(scene, options.connectionProfileId ?? null);
-    const parentId = options.parentId === undefined ? scene.active_leaf_id : options.parentId;
+    const turn = resolveTurn(this.db, options);
+    // A recast rewrites part of a beat, so it generates from the history the
+    // beat itself was generated from: everything up to that beat's parent.
+    const beat = turn.kind === "recast" ? findMessageById(this.db, turn.messageId) : null;
+    const parentId =
+      beat !== null
+        ? beat.parent_id
+        : options.parentId === undefined
+          ? scene.active_leaf_id
+          : options.parentId;
     const startedAt = this.now();
     const id = ulid();
 
@@ -218,7 +261,11 @@ export class GenerationService {
       // Resolved now rather than at completion: the cast can change mid-turn,
       // and the message must record who actually spoke. An explicit choice
       // wins; otherwise the turn director decides (SPEC §6).
-      spotlightId: options.spotlightId ?? directorChoice(this.db, scene),
+      spotlightId:
+        turn.kind === "recast"
+          ? recastSpeakerId(this.db, turn)
+          : (options.spotlightId ?? directorChoice(this.db, scene)),
+      turn,
       abort: new AbortController(),
       listeners: new Set(),
       startedAt,
@@ -322,6 +369,10 @@ export class GenerationService {
         scene,
         capabilities: adapter.capabilities,
         spotlightId: generation.spotlightId,
+        turn:
+          generation.turn.kind === "recast"
+            ? { kind: "recast", beatText: generation.turn.beatText }
+            : generation.turn,
         now: this.now(),
         // The seed is derived from the generation's own identifier, so a reroll
         // is a genuinely different draw while one generation stays reproducible.
@@ -398,21 +449,16 @@ export class GenerationService {
       completionTokens === 0 ? null : Number((completionTokens / elapsedSeconds).toFixed(2));
 
     if (generation.buffer.trim() !== "") {
-      const message = appendMessage(this.db, {
-        sceneId: generation.sceneId,
-        parentId: generation.parentId,
-        kind: "spotlight",
-        authorType: "character",
-        content: generation.buffer,
-        characterId: generation.spotlightId,
-      });
-      this.db
-        .query("UPDATE messages SET generation_meta = $meta WHERE id = $id")
-        .run({ id: message.id, meta: JSON.stringify(generation.meta) });
-      generation.messageUlid = message.ulid;
-      this.db
-        .query("UPDATE generations SET target_message_id = $target WHERE id = $id")
-        .run({ id: generation.rowId, target: message.id });
+      const message = this.land(generation);
+      if (message !== null) {
+        this.db
+          .query("UPDATE messages SET generation_meta = $meta WHERE id = $id")
+          .run({ id: message.id, meta: JSON.stringify(generation.meta) });
+        generation.messageUlid = message.ulid;
+        this.db
+          .query("UPDATE generations SET target_message_id = $target WHERE id = $id")
+          .run({ id: generation.rowId, target: message.id });
+      }
     }
 
     generation.status = cancelled ? "cancelled" : "complete";
@@ -426,6 +472,39 @@ export class GenerationService {
         : { type: "done", messageId: generation.messageUlid ?? "", meta: generation.meta },
     );
     this.scheduleEviction(generation);
+  }
+
+  /**
+   * Put the finished text where it belongs.
+   *
+   * A spotlight and a beat append a new message; a beat also gets parsed into
+   * segments, because the parsed view is derived from the content and must
+   * never lag behind it. A recast splices into a beat that already exists —
+   * correcting one character's part is an edit to that beat, not a new version
+   * of it, which is what distinguishes recast from a swipe (SPEC §3.5, §7).
+   */
+  private land(generation: ActiveGeneration): MessageRow | null {
+    if (generation.turn.kind === "recast") {
+      const beat = findMessageById(this.db, generation.turn.messageId);
+      // The beat was deleted while this was generating. The text is kept on the
+      // generation row either way; there is nothing left to splice it into.
+      if (beat === null) return null;
+      return replaceSegment(this.db, beat, generation.turn.ordinal, generation.buffer);
+    }
+
+    const isBeat = generation.turn.kind === "beat";
+    const message = appendMessage(this.db, {
+      sceneId: generation.sceneId,
+      parentId: generation.parentId,
+      kind: isBeat ? "beat" : "spotlight",
+      authorType: "character",
+      content: generation.buffer,
+      // A beat is filed under whoever opened it, so the log has something to
+      // attribute it to; who spoke *last* in it comes from its segments (§6).
+      characterId: generation.spotlightId,
+    });
+    if (isBeat) reparseSegments(this.db, message);
+    return message;
   }
 
   private fail(generation: ActiveGeneration, caught: unknown): void {
@@ -689,6 +768,57 @@ function pathTo(db: Database, messageId: number): MessageRowWithSiblings[] {
           ORDER BY ancestry.depth DESC`,
     )
     .all({ leaf: messageId }) as MessageRowWithSiblings[];
+}
+
+/**
+ * What this generation was asked for, resolved once at the start.
+ *
+ * A recast reads the beat as it stands *now*, because that is the text the
+ * model is being asked to fit around; if the beat changes while this generates,
+ * the splice still lands at the segment's own offsets.
+ */
+function resolveTurn(db: Database, options: StartOptions): ResolvedTurn {
+  const recast = options.recast;
+  if (recast !== undefined) {
+    const segment = segmentRowsOf(db, recast.message.id).find(
+      (row) => row.ordinal === recast.ordinal,
+    );
+    if (segment === undefined || segment.speaker_type !== "character") {
+      throw new GenerationError(
+        "not_recastable",
+        "That part of the beat is narration, not a character, so there is nobody to recast.",
+      );
+    }
+    // A speaker the beat named but the cast does not contain has no card to
+    // write from. Recasting them would silently rewrite them as somebody else.
+    if (segment.character_id === null) {
+      throw new GenerationError(
+        "not_recastable",
+        `${segment.speaker_label ?? "That speaker"} is not in this roleplay's cast, so there is ` +
+          `no character to write them from.`,
+      );
+    }
+    return {
+      kind: "recast",
+      messageId: recast.message.id,
+      ordinal: recast.ordinal,
+      beatText: recast.message.content,
+      characterName: segment.speaker_label ?? "",
+    };
+  }
+
+  return options.scope === "beat"
+    ? { kind: "beat", bound: options.beatBound ?? DEFAULT_BEAT_BOUND }
+    : { kind: "spotlight" };
+}
+
+/** The character a recast is rewriting, which is the segment's own speaker. */
+function recastSpeakerId(
+  db: Database,
+  turn: Extract<ResolvedTurn, { kind: "recast" }>,
+): number | null {
+  const segment = segmentRowsOf(db, turn.messageId).find((row) => row.ordinal === turn.ordinal);
+  return segment?.character_id ?? null;
 }
 
 /** Who the turn director says speaks, as an internal id. */
