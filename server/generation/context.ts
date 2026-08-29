@@ -20,6 +20,10 @@ import {
   type PersonaRow,
 } from "../db/queries/authors.ts";
 import type { CharacterRow } from "../db/queries/characters.ts";
+import { taskConfig, templateOf } from "../db/queries/tasks.ts";
+import { fillTemplate } from "../prompt/index.ts";
+import { CONTINUE, CORRECT, EXPAND, NUDGE, opKind, STEER } from "../tasks/registry.ts";
+import type { PromptOpConfig } from "../prompt/index.ts";
 
 /**
  * Assembling a PromptContext from the database.
@@ -201,6 +205,50 @@ export interface BuildContextOptions {
 }
 
 /**
+ * Resolve the per-op configuration this turn's prompt honours (SPEC §7).
+ *
+ * Each op's own variables are filled here, because only the caller knows what
+ * `{{original}}` and `{{input}}` are. Everything else in a template is the
+ * ordinary macro set and is filled at assembly, so `{{char}}` inside an
+ * override resolves exactly as it does inside a preset.
+ */
+function resolveOps(options: BuildContextOptions): Partial<Record<string, PromptOpConfig>> {
+  const ops: Partial<Record<string, PromptOpConfig>> = {};
+  const turn = options.turn;
+
+  const put = (key: string, values: Record<string, string>) => {
+    const kind = opKind(key);
+    if (kind === null) return;
+    const row = taskConfig(options.db, kind);
+    const text = fillTemplate(templateOf(row, kind), values).trim();
+    ops[key] = {
+      enabled: row.enabled === 1,
+      role: row.injection_role,
+      ...(text === "" ? {} : { text }),
+    };
+  };
+
+  if (options.nudge !== undefined) put(NUDGE, { input: options.nudge });
+  if (options.scene.director_note !== null) {
+    put(STEER, { input: options.scene.director_note });
+  }
+  if (turn?.kind === "revise") {
+    const key = turn.mode === "expand" ? EXPAND : turn.mode === "correct" ? CORRECT : CONTINUE;
+    put(key, {
+      original: turn.original.trim(),
+      // The sentence the built-in template wraps around the user's words, so an
+      // empty correction still reads as an instruction rather than a fragment.
+      input:
+        turn.instructions === undefined || turn.instructions.trim() === ""
+          ? "Write it again, better."
+          : `Write it again, with this changed: ${turn.instructions.trim()}`,
+    });
+  }
+
+  return ops;
+}
+
+/**
  * Gather everything the builder needs. Lore, documents, summaries, memory,
  * trackers and guides are all empty here because their subsystems arrive in
  * later phases; the builder already handles each being absent.
@@ -260,6 +308,7 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
       ? {}
       : { directorNote: options.scene.director_note }),
     ...(options.nudge === undefined ? {} : { nudge: options.nudge }),
+    ops: resolveOps(options),
     cast: cast.length === 0 ? [spotlight] : cast,
     spotlight,
     turn,

@@ -18,6 +18,7 @@ export * from "./types.ts";
 export { createEstimatingTokenizer, createExactTokenizer } from "./tokenizer.ts";
 export { renderHistory } from "./history.ts";
 export { resolveMacros } from "./macros.ts";
+export { defaultTemplateOf, fillTemplate, TEMPLATED_OPS } from "./op-templates.ts";
 
 /**
  * The prompt builder (SPEC §3). Pure: same context in, same prompt out, with no

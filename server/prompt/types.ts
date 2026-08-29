@@ -174,6 +174,20 @@ export type PromptTurn =
       instructions?: string;
     };
 
+/** What a user may change about one op's contribution to a prompt (SPEC §7). */
+export interface PromptOpConfig {
+  /**
+   * The words, with this op's own variables already filled. Absent means the
+   * built-in. It is a resolved string rather than a template because filling
+   * `{{original}}` needs the message being revised, which is the caller's.
+   */
+  text?: string;
+  /** Where the text lands. Which works best varies by model. */
+  role?: PromptRole;
+  /** Off entirely — the block is omitted rather than emitted empty. */
+  enabled?: boolean;
+}
+
 export interface PromptScene {
   title: string;
   /** Overrides the spotlighted character's scenario when set (§2). */
@@ -292,6 +306,14 @@ export interface PromptContext {
   directorNote?: string;
   /** One-shot instruction for this generation only (§7). */
   nudge?: string;
+  /**
+   * Per-op configuration the builder honours, keyed by op (SPEC §7).
+   *
+   * Passed in rather than read, like everything else here — a template is
+   * stored configuration, and a builder that went and fetched it would stop
+   * being a pure function of its input.
+   */
+  ops?: Partial<Record<string, PromptOpConfig>>;
   /** True when an out-of-character check-in is due this turn (§16). */
   oocDue?: boolean;
   capabilities: ProviderCapabilities;

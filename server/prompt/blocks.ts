@@ -1,3 +1,4 @@
+import { defaultTemplateOf, fillTemplate } from "./op-templates.ts";
 import type {
   BeatBound,
   BlockPlacement,
@@ -365,64 +366,37 @@ function recastInstruction(ctx: PromptContext, beatText: string): string {
 /**
  * Revising a turn that already exists (SPEC §7).
  *
- * All three modes hand the model the turn as it stands and ask for a different
- * one. What separates them is what "different" means, and the wording is where
- * the whole value is: "longer" produces padding unless it is told what to spend
- * the length on, and "fix this" produces a rewrite of the parts that were
- * already working unless it is told not to.
+ * The words come from the op's template — the built-in one, or a user's
+ * override, filled and passed in by the caller. There is deliberately no second
+ * copy of them here: the template is the only place they are written.
+ *
+ * **The lock is appended outside the template.** SPEC §0.5 makes it a hard
+ * constraint restated near the turn, and a template a user can edit is not
+ * where a non-negotiable belongs.
  */
 function reviseInstruction(
   ctx: PromptContext,
   turn: Extract<PromptTurn, { kind: "revise" }>,
 ): string {
-  const name = ctx.spotlight.name;
   const lock =
     `Do not write ${readersPossessive(ctx)} dialogue, actions, or thoughts, and do not decide ` +
     `what they do next: that is the reader's to write.`;
 
-  switch (turn.mode) {
-    case "expand":
-      return [
-        `You wrote this turn as ${name}:`,
-        "",
-        turn.original.trim(),
-        "",
-        `Write it again, longer and with more in it. Not more words for the same content — ` +
-          `more that happens: what they do with their hands, what they notice, what they do not ` +
-          `say. Keep everything that is already there and keep the same ending.`,
-        "",
-        lock,
-      ].join("\n");
+  const configured = ctx.ops?.[turn.mode]?.text?.trim();
+  const body =
+    configured === undefined || configured === ""
+      ? // No configuration reached the builder — a caller assembling a context
+        // by hand, which the tests do. The built-in template still applies.
+        fillTemplate(defaultTemplateOf(turn.mode), {
+          original: turn.original.trim(),
+          input:
+            turn.instructions === undefined || turn.instructions.trim() === ""
+              ? "Write it again, better."
+              : `Write it again, with this changed: ${turn.instructions.trim()}`,
+        }).trim()
+      : configured;
 
-    case "correct": {
-      const asked = turn.instructions?.trim() ?? "";
-      return [
-        `You wrote this turn as ${name}:`,
-        "",
-        turn.original.trim(),
-        "",
-        asked === ""
-          ? `Write it again, better.`
-          : `Write it again, with this changed: ${asked}`,
-        `Keep everything that was already working — the same moment, the same voice, the same ` +
-          `beats — and change only what has to change. This is a correction, not a fresh attempt.`,
-        "",
-        lock,
-      ].join("\n");
-    }
-
-    case "continue":
-      return [
-        `You were writing this turn as ${name} and stopped partway:`,
-        "",
-        turn.original.trim(),
-        "",
-        `Carry straight on from where it stops. Do not repeat any of it, do not start again, and ` +
-          `do not summarise what came before — write only what comes next, beginning mid-flow.`,
-        "",
-        lock,
-      ].join("\n");
-  }
+  return `${body}\n\n${lock}`;
 }
 
 /** The near-turn instruction for whichever kind of turn this is. */
@@ -555,7 +529,15 @@ export function draftBlocks(ctx: PromptContext): Map<PromptBlockId, DraftBlock[]
     }, group.role);
   }
 
-  add("director_note", "Steer", "scene", ctx.directorNote ?? null, NEAR_TURN);
+  const steerOp = ctx.ops?.["steer"];
+  add(
+    "director_note",
+    "Steer",
+    "scene",
+    steerOp?.enabled === false ? null : (steerOp?.text ?? ctx.directorNote ?? null),
+    NEAR_TURN,
+    steerOp?.role ?? "system",
+  );
   add(
     "post_history",
     "Post-history instructions",
@@ -563,7 +545,15 @@ export function draftBlocks(ctx: PromptContext): Map<PromptBlockId, DraftBlock[]
     ctx.spotlight.postHistoryInstructions ?? ctx.preset.postHistoryInstructions,
     NEAR_TURN,
   );
-  add("nudge", "Nudge", "director", ctx.nudge ?? null, NEAR_TURN);
+  const nudgeOp = ctx.ops?.["nudge"];
+  add(
+    "nudge",
+    "Nudge",
+    "director",
+    nudgeOp?.enabled === false ? null : (nudgeOp?.text ?? ctx.nudge ?? null),
+    NEAR_TURN,
+    nudgeOp?.role ?? "system",
+  );
   add(
     "ooc_invitation",
     "Out-of-character invitation",
@@ -574,12 +564,14 @@ export function draftBlocks(ctx: PromptContext): Map<PromptBlockId, DraftBlock[]
       : null,
     NEAR_TURN,
   );
+  const reviseOp = ctx.turn?.kind === "revise" ? ctx.ops?.[ctx.turn.mode] : undefined;
   add(
     "spotlight_instruction",
     turnInstructionLabel(ctx),
     inTurn.map((member) => member.name).join(", "),
     turnInstruction(ctx),
     NEAR_TURN,
+    reviseOp?.role ?? "system",
   );
   add("jailbreak", "Final instruction", "preset", ctx.preset.jailbreak, NEAR_TURN);
 
