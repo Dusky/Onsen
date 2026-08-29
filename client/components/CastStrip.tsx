@@ -1,4 +1,4 @@
-import type { NextSpeakerDto, SceneMemberDto } from "@shared/types.ts";
+import type { NextSpeakerDto, SceneMemberDto, TurnScope } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 
 /**
@@ -10,6 +10,11 @@ import { strings } from "../strings.ts";
  * the director's reason is **printed, always**, with no tooltip and no modal:
  * it is the answer to "why is it picking them", and a decision nobody can read
  * is the arbitrary dice roll this replaces.
+ *
+ * The scope control lives here rather than in the composer because it is a
+ * decision about the same thing the strip is about — what the next turn is —
+ * and because it only means anything with two or more characters in play: a
+ * beat is several of them interacting, so with one there is nothing to choose.
  */
 
 interface CastStripProps {
@@ -18,10 +23,23 @@ interface CastStripProps {
   /** Tap a card to cue that character for the next turn. */
   onCue(characterId: string): void;
   onLongPress(member: SceneMemberDto): void;
+  /** One voice or the whole room (SPEC §3.5). */
+  scope: TurnScope;
+  onScope(scope: TurnScope): void;
 }
 
-export function CastStrip({ cast, nextSpeaker, onCue, onLongPress }: CastStripProps) {
+export function CastStrip({
+  cast,
+  nextSpeaker,
+  onCue,
+  onLongPress,
+  scope,
+  onScope,
+}: CastStripProps) {
   if (cast.length === 0) return null;
+
+  const inPlay = cast.filter((member) => member.isActive);
+  const canBeat = inPlay.length > 1;
 
   return (
     <div className="mb-[11px]">
@@ -48,7 +66,13 @@ export function CastStrip({ cast, nextSpeaker, onCue, onLongPress }: CastStripPr
                   className="chrome absolute -top-[14px] left-0 text-[7.5px] tracking-[0.14em] uppercase"
                   style={{ color: "var(--onsen-color-red)" }}
                 >
-                  {nextSpeaker!.source === "user" ? strings.chat.youCued : strings.chat.autoNext}
+                  {nextSpeaker!.source === "user"
+                    ? scope === "beat" && canBeat
+                      ? strings.chat.youOpens
+                      : strings.chat.youCued
+                    : scope === "beat" && canBeat
+                      ? strings.chat.autoOpens
+                      : strings.chat.autoNext}
                 </span>
               ) : null}
 
@@ -85,8 +109,39 @@ export function CastStrip({ cast, nextSpeaker, onCue, onLongPress }: CastStripPr
         })}
       </div>
 
-      {/* Printed, always. No tooltip, no modal. */}
-      {nextSpeaker !== null ? (
+      {/* One voice, or the room. Offered only when there is a room. */}
+      {canBeat ? (
+        <div className="mt-[9px] flex gap-[6px]">
+          {(["spotlight", "beat"] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => onScope(option)}
+              aria-pressed={scope === option}
+              className="chrome flex-1 border py-[8px] text-[9px] tracking-[0.14em] uppercase"
+              style={{
+                borderColor:
+                  scope === option ? "var(--onsen-color-red)" : "var(--onsen-color-border-quiet)",
+                color:
+                  scope === option
+                    ? "var(--onsen-color-red)"
+                    : "var(--onsen-color-text-muted)",
+              }}
+            >
+              {option === "beat" ? strings.chat.scopeBeat : strings.chat.scopeSpotlight}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {/* Printed, always. No tooltip, no modal. In a beat the director's choice
+          is who opens rather than who speaks, so the caption says what is
+          actually about to happen instead. */}
+      {canBeat && scope === "beat" ? (
+        <p className="chrome mt-[8px] text-[9.5px] leading-[1.5] tracking-[0.06em] text-ink-dim uppercase">
+          {strings.chat.scopeBeatHint(inPlay.map((member) => member.name).join(", "))}
+        </p>
+      ) : nextSpeaker !== null ? (
         <p className="chrome mt-[8px] text-[9.5px] leading-[1.5] tracking-[0.06em] text-ink-dim uppercase">
           {nextSpeaker.source === "user"
             ? strings.chat.yourPickOverrides

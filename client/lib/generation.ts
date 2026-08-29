@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { api } from "./api.ts";
 import { keys } from "./queries.ts";
 import { useGenerationStore } from "../state/generation.ts";
+import type { BeatBound, TurnScope } from "@shared/types.ts";
 
 /**
  * Watching a generation from the client (SPEC §5).
@@ -21,6 +22,15 @@ interface StartArgs {
   parentId?: string | null;
   /** Forces who speaks, overriding the turn director for this turn. */
   characterId?: string | null;
+  /** One voice or the whole room (SPEC §3.5). Defaults to a spotlight. */
+  scope?: TurnScope;
+  beatBound?: BeatBound;
+  /**
+   * Rewrite one character's part of an existing beat. The result is spliced
+   * into that beat rather than appended, so nothing new appears in the log —
+   * the message being corrected changes under the reader.
+   */
+  recast?: { messageId: string; ordinal: number };
 }
 
 interface ServerEvent {
@@ -127,15 +137,25 @@ export function useGeneration() {
 
   const start = useCallback(
     async (args: StartArgs) => {
-      const body: Record<string, unknown> = {};
-      if (args.parentId !== undefined) body["parentId"] = args.parentId;
-      if (args.characterId != null) body["characterId"] = args.characterId;
-      const started = await api.post<{ id: string }>(`/scenes/${args.sceneId}/generate`, body);
+      const recast = args.recast;
+      const started =
+        recast === undefined
+          ? await api.post<{ id: string }>(`/scenes/${args.sceneId}/generate`, {
+              ...(args.parentId === undefined ? {} : { parentId: args.parentId }),
+              ...(args.characterId == null ? {} : { characterId: args.characterId }),
+              ...(args.scope === undefined ? {} : { scope: args.scope }),
+              ...(args.beatBound === undefined ? {} : { beatBound: args.beatBound }),
+            })
+          : await api.post<{ id: string }>(
+              `/scenes/${args.sceneId}/messages/${recast.messageId}/recast`,
+              { ordinal: recast.ordinal },
+            );
       useGenerationStore.getState().begin({
         generationId: started.id,
         sceneId: args.sceneId,
         sceneTitle: args.sceneTitle,
         speaker: args.speaker,
+        ...(recast === undefined ? {} : { recast }),
       });
       void consume(started.id, args.sceneId);
       return started.id;

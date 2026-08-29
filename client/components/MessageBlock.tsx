@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { MessageDto } from "@shared/types.ts";
+import type { MessageDto, MessageSegmentDto } from "@shared/types.ts";
 import { useSwipe } from "../lib/gestures.ts";
 import { strings } from "../strings.ts";
 
@@ -21,6 +21,12 @@ interface MessageBlockProps {
   onLongPress(): void;
   /** Streaming text replaces the content while this message is being written. */
   streamingText?: string;
+  /**
+   * A part of this beat being rewritten right now (SPEC §7). The text lands
+   * inside the message rather than after it, so it is shown where it will end
+   * up rather than arriving at the bottom of the log and then vanishing.
+   */
+  recasting?: { ordinal: number; text: string };
 }
 
 /**
@@ -43,6 +49,49 @@ function Prose({ text }: { text: string }) {
   );
 }
 
+/**
+ * One speaker's part of a beat.
+ *
+ * A beat is one message, so its parts are not separated the way messages are:
+ * no full-width rule, no swipe counter, nothing that would read as a turn
+ * boundary. What distinguishes a speaker inside a beat is their name, set
+ * smaller and quieter than a message's own attribution, and nothing else — the
+ * prose stays one continuous document, which is the whole point of a beat.
+ *
+ * The parts carry no gestures of their own. A long-press inside a beat would
+ * nest one gesture target inside another, and the beat has to keep its own
+ * swipe: recast is reached from the message's action sheet instead, which is
+ * also where a reader would look for it.
+ */
+function Segment({
+  segment,
+  replacement,
+}: {
+  segment: MessageSegmentDto;
+  /** Live text for this part while it is being rewritten. */
+  replacement?: string;
+}) {
+  return (
+    <div
+      className="mt-[16px] first:mt-0"
+      // Red is the live pencil: the part being rewritten is the only thing on
+      // the screen that is happening now.
+      style={
+        replacement === undefined
+          ? undefined
+          : { borderLeft: "2px solid var(--onsen-color-red)", paddingLeft: "10px" }
+      }
+    >
+      {segment.speakerName === null ? null : (
+        <p className="chrome mb-[5px] text-[9px] tracking-[0.14em] text-ink-label uppercase">
+          {segment.speakerName}
+        </p>
+      )}
+      <Prose text={replacement ?? segment.content} />
+    </div>
+  );
+}
+
 export function MessageBlock({
   message,
   speakerName,
@@ -50,6 +99,7 @@ export function MessageBlock({
   onOpenVersions,
   onLongPress,
   streamingText,
+  recasting,
 }: MessageBlockProps) {
   const swipe = useSwipe({
     // Opposite directions by design (design handoff, Gestures).
@@ -59,6 +109,7 @@ export function MessageBlock({
   });
 
   const text = streamingText ?? message.content;
+  const segments = streamingText === undefined ? message.segments : null;
   // Attribution is the only thing that distinguishes a speaker: the design's
   // rule is three message kinds in one document, so the prose itself is not
   // recoloured by who wrote it.
@@ -93,7 +144,27 @@ export function MessageBlock({
       </header>
 
       <div>
-        <Prose text={text} />
+        {/* A beat is rendered by its parts; every other message is its own text.
+            While one is streaming there are no parts yet, so the raw output
+            shows — labels and all — rather than the log going blank. */}
+        {segments === null ? (
+          <Prose text={text} />
+        ) : (
+          segments.map((segment) => (
+            <Segment
+              key={segment.ordinal}
+              segment={segment}
+              {...(recasting?.ordinal === segment.ordinal
+                ? { replacement: recasting.text }
+                : {})}
+            />
+          ))
+        )}
+        {message.parseDegraded ? (
+          <p className="chrome mt-[8px] text-[8.5px] leading-[1.5] tracking-[0.06em] text-ink-dim uppercase">
+            {strings.chat.beatUnparsed}
+          </p>
+        ) : null}
         {message.editedAt !== null ? (
           <p className="chrome mt-[8px] text-[8.5px] tracking-[0.1em] text-ink-dim uppercase">
             {strings.chat.edited}

@@ -112,9 +112,28 @@ export const strings = {
     delete: "Delete",
     deleteConfirm: "Delete this and everything after it?",
 
+    /** Turn scope (SPEC §3.5). */
+    scope: "This turn",
+    scopeSpotlight: "One voice",
+    scopeBeat: "The room",
+    scopeBeatHint: (names: string) => `${names} — one exchange, written together`,
+    beatLabel: "Beat",
+    /** The send button reads initials; a beat has no single speaker. */
+    beatInitials: "ALL",
+    beatUnparsed: "The speaker labels did not come through — kept as written",
+    recast: "Rewrite this part",
+    recasting: (name: string) => `Rewriting ${name}`,
+    splitBeat: "Split into separate turns",
+    splitBeatConfirm: "Split this beat into one message per part? The beat is kept.",
+    beatPart: "Part of a beat",
+    narrationPart: "Narration",
+
     you: "You",
     /** Cast strip captions (design handoff). */
     autoNext: "Auto · next",
+    /** In a beat the director's pick is who starts it, not who speaks. */
+    autoOpens: "Auto · opens",
+    youOpens: "You chose",
     youCued: "You cued",
     yourPickOverrides: "Your pick overrides the director this turn",
     benched: "Benched",

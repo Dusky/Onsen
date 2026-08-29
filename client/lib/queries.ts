@@ -94,6 +94,16 @@ export function useDeleteMessage(sceneId: string) {
   );
 }
 
+/**
+ * Split a beat into one message per part (SPEC §7). The beat itself is kept as
+ * a sibling of the first of them, so this branches rather than converts.
+ */
+export function useSplitBeat(sceneId: string) {
+  return useSceneMutation(sceneId, (messageId: string) =>
+    api.post<SceneWithHistoryDto>(`/scenes/${sceneId}/messages/${messageId}/split`, {}),
+  );
+}
+
 /** Swipe, rewind, branch and checkpoint restore are all this one call (§2). */
 export function useSetLeaf(sceneId: string) {
   return useSceneMutation(sceneId, (body: SetActiveLeafRequest) =>

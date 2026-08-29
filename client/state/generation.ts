@@ -20,6 +20,12 @@ export interface ActiveGeneration {
   sceneTitle: string;
   /** Who is speaking, for the streaming row. */
   speaker: string;
+  /**
+   * Set when this generation replaces one part of a beat rather than adding a
+   * message (SPEC §7). The text belongs inside that message, so the log renders
+   * it in place instead of as a new turn arriving at the bottom.
+   */
+  recast?: { messageId: string; ordinal: number };
   /** Everything received so far. */
   text: string;
   /** Characters received; what a reconnect resumes from. */

@@ -15,8 +15,8 @@ import { MessageBlock, MessageEditor } from "../components/MessageBlock.tsx";
 import { Composer } from "../components/Composer.tsx";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
 import { CastStrip } from "../components/CastStrip.tsx";
-import { useBenchMember } from "../lib/queries.ts";
-import type { NextSpeakerDto, SceneMemberDto } from "@shared/types.ts";
+import { useBenchMember, useSplitBeat } from "../lib/queries.ts";
+import type { NextSpeakerDto, SceneMemberDto, TurnScope } from "@shared/types.ts";
 
 /**
  * The chat screen. Everything else in the app is support.
@@ -35,6 +35,9 @@ import type { NextSpeakerDto, SceneMemberDto } from "@shared/types.ts";
  */
 function speakerFor(message: MessageDto, authorName: string | null): string {
   if (message.authorType === "user") return strings.chat.you;
+  // A beat is the author writing several characters at once, so attributing the
+  // whole thing to whoever opened it would be wrong: the parts name themselves.
+  if (message.kind === "beat") return authorName ?? strings.chat.beatLabel;
   return message.speakerName ?? authorName ?? strings.chat.narratorName;
 }
 
@@ -56,7 +59,15 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const generation = useGeneration();
 
   const bench = useBenchMember(sceneId);
+  const split = useSplitBeat(sceneId);
   const [acting, setActing] = useState<MessageDto | null>(null);
+  /** The beat whose parts are being picked from, for a recast. */
+  const [recasting, setRecasting] = useState<MessageDto | null>(null);
+  /**
+   * One voice or the room. Like the cue, this is a decision about the next turn
+   * rather than scene configuration, so it lives here and not on the server.
+   */
+  const [scope, setScope] = useState<TurnScope>("spotlight");
   const [castActing, setCastActing] = useState<SceneMemberDto | null>(null);
   /**
    * Who the user cued for this turn. Client-side and one-shot: a cue is a
@@ -94,6 +105,12 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     active !== null &&
     active.sceneId === sceneId &&
     (active.status === "connecting" || active.status === "streaming");
+  // A recast lands inside a message that is already in the log, so it is drawn
+  // there rather than as a new turn arriving at the bottom.
+  const recastInFlight =
+    isGenerating && active.recast !== undefined
+      ? { ...active.recast, text: active.text }
+      : null;
 
   // Keep the newest content in view as it arrives. Bottom-anchored layout does
   // most of the work; this covers the case where the log has overflowed.
@@ -116,14 +133,34 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
 
   async function sendAndReply(text: string) {
     await send.mutateAsync({ kind: "user", authorType: "user", content: text });
+    await generation.start(nextTurn());
+    // A cue is spent once it has been used; the scope is not — asking for the
+    // room once usually means asking for it again.
+    setCued(null);
+  }
+
+  /** What the send button is about to ask for. */
+  function nextTurn() {
+    return {
+      sceneId,
+      sceneTitle: title,
+      speaker: scope === "beat" ? (authorName ?? strings.chat.beatLabel) : speakerName,
+      scope,
+      // In a beat the cue chooses who opens rather than who speaks.
+      ...(nextSpeaker === null ? {} : { characterId: nextSpeaker.characterId }),
+    };
+  }
+
+  /** Rewrite one character's part of a beat, holding the rest of it fixed. */
+  async function recast(message: MessageDto, ordinal: number, name: string | null) {
+    setRecasting(null);
+    setActing(null);
     await generation.start({
       sceneId,
       sceneTitle: title,
-      speaker: speakerName,
-      ...(nextSpeaker === null ? {} : { characterId: nextSpeaker.characterId }),
+      speaker: name ?? strings.chat.beatLabel,
+      recast: { messageId: message.id, ordinal },
     });
-    // A cue is spent once it has been used.
-    setCued(null);
   }
 
   /** Reroll: generate a sibling under the same parent, keeping the original. */
@@ -200,13 +237,16 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                 onReroll={() => void reroll(message)}
                 onOpenVersions={() => setVersionsFor(message)}
                 onLongPress={() => setActing(message)}
+                {...(recastInFlight?.messageId === message.id
+                  ? { recasting: { ordinal: recastInFlight.ordinal, text: recastInFlight.text } }
+                  : {})}
               />
             ),
           )}
 
           {/* The message being written, in the same treatment as a finished one:
               the attribution header appears first, then text streams under it. */}
-          {isGenerating ? (
+          {isGenerating && recastInFlight === null ? (
             <article>
               <header className="mb-[10px] flex items-center gap-[10px]">
                 <span className="chrome shrink-0 text-[10px] font-semibold tracking-[0.18em] text-ink-label uppercase">
@@ -260,6 +300,8 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
               nextSpeaker={nextSpeaker}
               onCue={(characterId) => setCued(characterId)}
               onLongPress={(member) => setCastActing(member)}
+              scope={scope}
+              onScope={setScope}
             />
           </div>
         </div>
@@ -267,18 +309,11 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
 
       <Composer
         onSend={(text) => void sendAndReply(text)}
-        onGenerate={() =>
-          void generation
-            .start({
-              sceneId,
-              sceneTitle: title,
-              speaker: speakerName,
-              ...(nextSpeaker === null ? {} : { characterId: nextSpeaker.characterId }),
-            })
-            .then(() => setCued(null))
-        }
+        onGenerate={() => void generation.start(nextTurn()).then(() => setCued(null))}
         disabled={isGenerating}
-        speakerInitials={initialsOf(speakerName)}
+        speakerInitials={
+          scope === "beat" ? strings.chat.beatInitials : initialsOf(speakerName)
+        }
       />
 
       {acting !== null ? (
@@ -299,6 +334,27 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
               setActing(null);
             }}
           />
+          {/* A beat has parts, and correcting one of them is not a reroll of the
+              whole exchange: that distinction is the point of recast (§7). */}
+          {acting.kind === "beat" && (acting.segments?.length ?? 0) > 1 ? (
+            <>
+              <SheetAction
+                label={strings.chat.recast}
+                onClick={() => {
+                  setRecasting(acting);
+                  setActing(null);
+                }}
+              />
+              <SheetAction
+                label={strings.chat.splitBeat}
+                onClick={() => {
+                  if (!window.confirm(strings.chat.splitBeatConfirm)) return;
+                  split.mutate(acting.id);
+                  setActing(null);
+                }}
+              />
+            </>
+          ) : null}
           <SheetAction
             label={strings.chat.copy}
             onClick={() => {
@@ -315,6 +371,30 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
               setActing(null);
             }}
           />
+        </Sheet>
+      ) : null}
+
+      {/* Which part to rewrite. A separate sheet rather than a long-press on the
+          part itself: nesting a gesture target inside the beat's own would cost
+          the beat its swipe, and both would fire at once. */}
+      {recasting !== null ? (
+        <Sheet title={strings.chat.recast} onClose={() => setRecasting(null)}>
+          {(recasting.segments ?? []).map((segment) => (
+            <button
+              key={segment.ordinal}
+              type="button"
+              disabled={segment.speakerType !== "character"}
+              onClick={() => void recast(recasting, segment.ordinal, segment.speakerName)}
+              className="w-full border-b border-rule py-[13px] text-left disabled:opacity-40"
+            >
+              <span className="chrome text-[9px] tracking-[0.14em] text-ink-label uppercase">
+                {segment.speakerName ?? strings.chat.narrationPart}
+              </span>
+              <p className="mt-[5px] line-clamp-2 text-[length:var(--onsen-text-prose-excerpt)] leading-[1.5] text-ink-prose-muted">
+                {segment.content}
+              </p>
+            </button>
+          ))}
         </Sheet>
       ) : null}
 
