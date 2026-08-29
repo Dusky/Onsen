@@ -100,7 +100,7 @@ export function resolveMacros(text: string, env: MacroEnvironment): MacroResolut
         return ctx.spotlight.name;
       case "user":
       case "persona":
-        return ctx.persona.name;
+        return ctx.persona.name ?? "the reader";
       case "author":
         return ctx.author?.name ?? ctx.spotlight.name;
       case "scenario":

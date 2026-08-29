@@ -87,9 +87,17 @@ export interface PromptAuthor {
   boundaries: string | null;
 }
 
-/** Who the user is (§2). */
+/**
+ * Who the user is (§2).
+ *
+ * `name` is null when the user has not said who they are. That is a real state,
+ * not a missing value, and it has to be modelled rather than papered over with
+ * a placeholder: the user-lock is phrased in terms of this name, and a stand-in
+ * like "You" turns the most important sentence in the system prompt into "You
+ * belongs to the reader".
+ */
 export interface PromptPersona {
-  name: string;
+  name: string | null;
   description: string | null;
 }
 

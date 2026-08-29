@@ -102,10 +102,16 @@ export function sortLore(entries: PromptLoreEntry[]): SortedLore {
 function authorIdentity(ctx: PromptContext): string | null {
   const author = ctx.author;
   if (author === null) return null;
+  // Phrased around the persona's name where there is one, and around the reader
+  // where there is not — never around a placeholder standing in for a name.
+  const lock =
+    ctx.persona.name === null
+      ? `The reader's own character is theirs alone: never write their dialogue, their actions, ` +
+        `or their thoughts, and never decide what they do next.`
+      : `${ctx.persona.name} belongs to the reader: never write their dialogue, their actions, ` +
+        `or their thoughts, and never decide what they do next.`;
   return paragraphs(
-    `You are ${author.name}, the author of this story. You write every character in the cast. ` +
-      `${ctx.persona.name} belongs to the reader: never write their dialogue, their actions, or their thoughts, ` +
-      `and never decide what they do next.`,
+    `You are ${author.name}, the author of this story. You write every character in the cast. ${lock}`,
     author.personality,
     labelled("How you write", author.writingStyle),
     labelled("How you direct a scene", author.directingStyle),
@@ -121,7 +127,13 @@ function castBlock(ctx: PromptContext): string | null {
 }
 
 function personaBlock(ctx: PromptContext): string | null {
-  const body = paragraphs(`## ${ctx.persona.name}`, ctx.persona.description);
+  // With no name and no description there is nothing to say about the reader
+  // that the user-lock has not already said.
+  if (ctx.persona.name === null && ctx.persona.description === null) return null;
+  const body = paragraphs(
+    ctx.persona.name === null ? null : `## ${ctx.persona.name}`,
+    ctx.persona.description,
+  );
   if (body === "") return null;
   return ctx.author === null
     ? body
@@ -193,16 +205,17 @@ function depthPromptGroups(
  * and to come last, because the end of the prompt is what the model weighs most.
  */
 function spotlightInstruction(ctx: PromptContext): string {
+  const theirs = ctx.persona.name === null ? "the reader's" : `${ctx.persona.name}'s`;
   if (ctx.author === null) {
     return (
       `Stay in character as ${ctx.spotlight.name}. Write only ${ctx.spotlight.name}'s words and ` +
-      `actions, never ${ctx.persona.name}'s.`
+      `actions, never ${theirs}.`
     );
   }
   return (
     `Write the next turn as ${ctx.spotlight.name}, and only as ${ctx.spotlight.name}. ` +
-    `Do not write ${ctx.persona.name}'s dialogue, actions, or thoughts, and do not decide what ` +
-    `they do next: that is the reader's to write.`
+    `Do not write ${theirs} dialogue, actions, or thoughts, and do not decide what they do next: ` +
+    `that is the reader's to write.`
   );
 }
 
@@ -258,7 +271,7 @@ export function draftBlocks(ctx: PromptContext): Map<PromptBlockId, DraftBlock[]
     ),
   );
   add("cast", "Cast", "scene members", castBlock(ctx));
-  add("persona", "Persona", ctx.persona.name, personaBlock(ctx));
+  add("persona", "Persona", ctx.persona.name ?? "the reader", personaBlock(ctx));
   add(
     "scenario",
     "Scenario",

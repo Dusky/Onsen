@@ -20,12 +20,21 @@ import {
   sceneDto,
   setActiveLeaf,
   siblingsOf,
+  speakerLookup,
   toCheckpointDto,
+  toMessageDto,
   updateMessage,
   updateScene,
   type MessageRow,
   type SceneRow,
 } from "../db/queries/history.ts";
+import {
+  addSceneMember,
+  findAuthor,
+  findPersona,
+  removeSceneMember,
+} from "../db/queries/authors.ts";
+import { findCharacter } from "../db/queries/characters.ts";
 import {
   isMessageAuthorType,
   isMessageKind,
@@ -157,6 +166,17 @@ export function sceneRoutes(ctx: AppContext): Hono<AppEnv> {
       if (profile === INVALID) return c.json(badRequest("No such connection profile."), 400);
       patch.connectionProfileId = profile;
     }
+    // A null author is not a missing value: it selects single-character mode.
+    if ("authorId" in input) {
+      const author = resolveRef(input.authorId, "authors");
+      if (author === INVALID) return c.json(badRequest("No such author."), 400);
+      patch.authorId = author;
+    }
+    if ("personaId" in input) {
+      const persona = resolveRef(input.personaId, "personas");
+      if (persona === INVALID) return c.json(badRequest("No such persona."), 400);
+      patch.personaId = persona;
+    }
 
     return c.json(sceneDto(ctx.db, updateScene(ctx.db, row.id, patch)));
   });
@@ -166,6 +186,37 @@ export function sceneRoutes(ctx: AppContext): Hono<AppEnv> {
     if (row === null) return c.json(notFound("scene"), 404);
     deleteScene(ctx.db, row.id);
     return c.body(null, 204);
+  });
+
+  /* -------------------------------------------------------------- */
+  /* Cast                                                            */
+  /* -------------------------------------------------------------- */
+
+  /**
+   * Add a character to a scene. Adding is cheap by design (SPEC §9): the author
+   * drives generation, so a cast member costs a compact definition rather than
+   * a whole second agent.
+   */
+  app.put("/:sceneId/cast/:characterId", (c) => {
+    const sceneRow = scene(c.req.param("sceneId"));
+    if (sceneRow === null) return c.json(notFound("scene"), 404);
+    const character = findCharacter(ctx.db, c.req.param("characterId"));
+    if (character === null) return c.json(notFound("character"), 404);
+
+    addSceneMember(ctx.db, sceneRow.id, character.id);
+    return c.json(sceneDto(ctx.db, sceneRow));
+  });
+
+  app.delete("/:sceneId/cast/:characterId", (c) => {
+    const sceneRow = scene(c.req.param("sceneId"));
+    if (sceneRow === null) return c.json(notFound("scene"), 404);
+    const character = findCharacter(ctx.db, c.req.param("characterId"));
+    if (character === null) return c.json(notFound("character"), 404);
+
+    // History written by this character stays: removing them from the cast is
+    // not the same as deleting what they said.
+    removeSceneMember(ctx.db, sceneRow.id, character.id);
+    return c.json(sceneDto(ctx.db, sceneRow));
   });
 
   /* -------------------------------------------------------------- */
@@ -273,20 +324,17 @@ export function sceneRoutes(ctx: AppContext): Hono<AppEnv> {
               | null
           )?.ulid ?? null);
 
-    const dtos: MessageDto[] = siblings.map((sibling, index) => ({
-      id: sibling.ulid,
-      sceneId: sceneRow.ulid,
-      parentId: parentUlid,
-      kind: sibling.kind,
-      authorType: sibling.author_type,
-      content: sibling.content,
-      isHidden: sibling.is_hidden === 1,
-      tokenCount: sibling.token_count,
-      createdAt: sibling.created_at,
-      editedAt: sibling.edited_at,
-      siblingIndex: index,
-      siblingCount: siblings.length,
-    }));
+    // Sibling positions are known from the list itself, so they are supplied
+    // rather than re-queried per row.
+    const speakers = speakerLookup(ctx.db);
+    const dtos: MessageDto[] = siblings.map((sibling, index) =>
+      toMessageDto(
+        { ...sibling, sibling_index: index, sibling_count: siblings.length },
+        sceneRow.ulid,
+        parentUlid,
+        speakers,
+      ),
+    );
     return c.json(dtos);
   });
 
@@ -410,7 +458,7 @@ export function sceneRoutes(ctx: AppContext): Hono<AppEnv> {
    */
   function resolveRef(
     value: unknown,
-    table: "presets" | "connection_profiles",
+    table: "presets" | "connection_profiles" | "authors" | "personas",
   ): number | null | typeof INVALID {
     if (value === undefined || value === null) return null;
     if (typeof value !== "string") return INVALID;

@@ -33,7 +33,8 @@ export interface RenderedHistory {
 function speakerLabel(ctx: PromptContext, message: PromptMessage): string | null {
   switch (message.authorType) {
     case "user":
-      return ctx.persona.name;
+      // A transcript still needs a consistent label for the reader's turns.
+      return ctx.persona.name ?? "Reader";
     case "narrator":
       return "Narration";
     case "ooc":

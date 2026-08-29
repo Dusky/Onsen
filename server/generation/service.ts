@@ -11,6 +11,7 @@ import {
   type SceneRow,
 } from "../db/queries/history.ts";
 import { buildPromptContext, resolvePreset } from "./context.ts";
+import { castRowsOf } from "../db/queries/authors.ts";
 
 /**
  * The generation service (SPEC §5).
@@ -73,6 +74,8 @@ interface ActiveGeneration {
   error: string | null;
   detail: string | null;
   messageUlid: string | null;
+  /** Which cast member this turn is voiced as, recorded on the message. */
+  spotlightId: number | null;
   abort: AbortController;
   listeners: Set<(event: GenerationEvent) => void>;
   startedAt: number;
@@ -106,6 +109,11 @@ export interface StartOptions {
   parentId?: number | null;
   /** Per-call profile override — the mechanism behind per-operation routing (§7). */
   connectionProfileId?: number | null;
+  /**
+   * Who speaks this turn. Omitted means the first cast member; the turn
+   * director picks in phase 8, and a guided op can force a speaker.
+   */
+  spotlightId?: number | null;
 }
 
 interface ResolvedRoute {
@@ -207,6 +215,10 @@ export class GenerationService {
       error: null,
       detail: null,
       messageUlid: null,
+      // Resolved now rather than at completion: the cast can change mid-turn,
+      // and the message must record who actually spoke.
+      spotlightId:
+        options.spotlightId ?? (castRowsOf(this.db, scene.id)[0]?.id ?? null),
       abort: new AbortController(),
       listeners: new Set(),
       startedAt,
@@ -309,6 +321,7 @@ export class GenerationService {
         db: this.db,
         scene,
         capabilities: adapter.capabilities,
+        spotlightId: generation.spotlightId,
         now: this.now(),
         // The seed is derived from the generation's own identifier, so a reroll
         // is a genuinely different draw while one generation stays reproducible.
@@ -388,11 +401,10 @@ export class GenerationService {
       const message = appendMessage(this.db, {
         sceneId: generation.sceneId,
         parentId: generation.parentId,
-        // Without a cast there is no character to spotlight yet; phase 6 gives
-        // this message a character_id.
         kind: "spotlight",
         authorType: "character",
         content: generation.buffer,
+        characterId: generation.spotlightId,
       });
       this.db
         .query("UPDATE messages SET generation_meta = $meta WHERE id = $id")

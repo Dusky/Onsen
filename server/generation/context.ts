@@ -9,6 +9,14 @@ import type {
   PromptPreset,
 } from "../prompt/index.ts";
 import { activePath, type MessageRowWithSiblings, type SceneRow } from "../db/queries/history.ts";
+import {
+  castRowsOf,
+  findAuthorById,
+  findPersonaById,
+  type AuthorRow,
+  type PersonaRow,
+} from "../db/queries/authors.ts";
+import type { CharacterRow } from "../db/queries/characters.ts";
 
 /**
  * Assembling a PromptContext from the database.
@@ -18,9 +26,9 @@ import { activePath, type MessageRowWithSiblings, type SceneRow } from "../db/qu
  */
 
 /**
- * A scene has no cast yet — characters are phase 6, author personas phase 7,
- * and group casts phase 8 — but the builder requires a spotlight. Until those
- * phases land, generation runs in single-character mode against this stand-in.
+ * Used only when a scene has no cast at all — a roleplay started before any
+ * character was added. The builder requires a spotlight, and refusing to
+ * generate would be a worse answer than writing as an unnamed narrator.
  *
  * It is deliberately plain rather than a fake character card: a placeholder that
  * looked like a real one would invite code to depend on it.
@@ -88,23 +96,68 @@ export function resolvePreset(db: Database, presetId: number | null): ResolvedPr
   };
 }
 
-function toPromptMessage(row: MessageRowWithSiblings): PromptMessage {
+function toPromptMessage(
+  row: MessageRowWithSiblings,
+  characterUlids: Map<number, string>,
+): PromptMessage {
   return {
     id: row.ulid,
     kind: row.kind,
     authorType: row.author_type,
     content: row.content,
     isHidden: row.is_hidden === 1,
-    // Characters arrive in phase 6; until then no message names one.
-    characterId: null,
+    characterId:
+      row.character_id === null ? null : (characterUlids.get(row.character_id) ?? null),
     tokenCount: row.token_count,
   };
+}
+
+/** A stored character, as the prompt builder wants to read it. */
+export function toPromptCharacter(row: CharacterRow): PromptCharacter {
+  return {
+    id: row.ulid,
+    name: row.name,
+    description: row.description,
+    personality: row.personality,
+    scenario: row.scenario,
+    exampleDialogue: row.example_dialogue,
+    voiceNotes: row.voice_notes,
+    depthPrompt: row.depth_prompt,
+    depthPromptDepth: row.depth_prompt_depth,
+    depthPromptRole: row.depth_prompt_role,
+    systemPrompt: row.system_prompt,
+    postHistoryInstructions: row.post_history_instructions,
+  };
+}
+
+function toPromptAuthor(row: AuthorRow) {
+  return {
+    name: row.name,
+    personality: row.personality,
+    writingStyle: row.writing_style,
+    directingStyle: row.directing_style,
+    oocVoice: row.ooc_voice,
+    boundaries: row.boundaries,
+  };
+}
+
+function toPromptPersona(row: PersonaRow | null) {
+  // No persona is a real state, not a missing value: the builder phrases the
+  // user-lock around the reader rather than around an invented name.
+  return row === null
+    ? { name: null, description: null }
+    : { name: row.name, description: row.description };
 }
 
 export interface BuildContextOptions {
   db: Database;
   scene: SceneRow;
   capabilities: ProviderCapabilities;
+  /**
+   * Whose turn this is. Defaults to the first cast member; the turn director
+   * chooses in phase 8, and a guided op can force a speaker.
+   */
+  spotlightId?: number | null;
   /**
    * History to generate from. Defaults to the scene's active path; a rerolled
    * or branched generation passes the path it is attaching to instead.
@@ -123,14 +176,35 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
   const { preset, contextSize } = resolvePreset(options.db, options.scene.preset_id);
   const history = options.history ?? activePath(options.db, options.scene.id);
 
+  const castRows = castRowsOf(options.db, options.scene.id);
+  const cast = castRows.map(toPromptCharacter);
+  const characterUlids = new Map(castRows.map((row) => [row.id, row.ulid]));
+
+  // The spotlight is an explicit choice where one was made, otherwise the first
+  // cast member — which is the whole cast until group scenes arrive.
+  const spotlightRow =
+    options.spotlightId == null
+      ? castRows[0]
+      : (castRows.find((row) => row.id === options.spotlightId) ?? castRows[0]);
+  const spotlight =
+    spotlightRow === undefined ? PLACEHOLDER_SPOTLIGHT : toPromptCharacter(spotlightRow);
+
+  const authorRow =
+    options.scene.author_id === null ? null : findAuthorById(options.db, options.scene.author_id);
+  const personaRow =
+    options.scene.persona_id === null
+      ? null
+      : findPersonaById(options.db, options.scene.persona_id);
+
   return {
     scene: { title: options.scene.title, scenarioOverride: null },
-    cast: [PLACEHOLDER_SPOTLIGHT],
-    spotlight: PLACEHOLDER_SPOTLIGHT,
-    // Null selects single-character mode. Author personas are phase 7.
-    author: null,
-    persona: { name: "You", description: null },
-    history: history.map(toPromptMessage),
+    cast: cast.length === 0 ? [spotlight] : cast,
+    spotlight,
+    // A null author selects single-character mode: standard card-in-system-
+    // prompt rendering rather than the co-author framing (SPEC §3).
+    author: authorRow === null ? null : toPromptAuthor(authorRow),
+    persona: toPromptPersona(personaRow),
+    history: history.map((row) => toPromptMessage(row, characterUlids)),
     lore: [],
     documents: [],
     summaries: [],

@@ -46,7 +46,11 @@ export function sceneGenerationRoutes(
       return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
     }
 
-    let body: { parentId?: string | null; connectionProfileId?: string | null } = {};
+    let body: {
+      parentId?: string | null;
+      connectionProfileId?: string | null;
+      characterId?: string | null;
+    } = {};
     try {
       const parsed: unknown = await c.req.json();
       if (typeof parsed === "object" && parsed !== null) body = parsed;
@@ -82,11 +86,30 @@ export function sceneGenerationRoutes(
       profileId = profile.id;
     }
 
+    // Naming a character forces who speaks this turn.
+    let spotlightId: number | undefined;
+    if (typeof body.characterId === "string") {
+      const member = ctx.db
+        .query(
+          `SELECT c.id FROM scene_members m JOIN characters c ON c.id = m.character_id
+            WHERE m.scene_id = $scene_id AND c.ulid = $ulid`,
+        )
+        .get({ scene_id: scene.id, ulid: body.characterId }) as { id: number } | null;
+      if (member === null) {
+        return c.json(
+          { error: { code: "not_found", message: "That character is not in this roleplay." } },
+          404,
+        );
+      }
+      spotlightId = member.id;
+    }
+
     try {
       const snapshot = service.start({
         scene,
         ...(parentId === undefined ? {} : { parentId }),
         ...(profileId === undefined ? {} : { connectionProfileId: profileId }),
+        ...(spotlightId === undefined ? {} : { spotlightId }),
       });
       return c.json(snapshot, 201);
     } catch (caught) {
