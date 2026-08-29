@@ -2,7 +2,7 @@ import { ensureDataDirs, loadConfig } from "./config.ts";
 import { openDatabase } from "./db/index.ts";
 import { migrate } from "./db/migrate.ts";
 import { loadOrCreateKeyring } from "./lib/crypto.ts";
-import { createApp } from "./app.ts";
+import { createServer } from "./app.ts";
 import { isSetupCompleted } from "./db/queries/settings.ts";
 import type { AppContext } from "./context.ts";
 
@@ -16,7 +16,7 @@ if (result.applied.length > 0) {
 }
 
 const ctx: AppContext = { db, config, keyring: loadOrCreateKeyring(config) };
-const app = createApp(ctx);
+const { app, generation } = createServer(ctx);
 
 const server = Bun.serve({
   port: config.port,
@@ -32,6 +32,8 @@ if (!isSetupCompleted(db)) {
 
 function shutdown(signal: string): void {
   console.log(`onsen: ${signal}, shutting down`);
+  // Abort in-flight generations so upstream inference actually stops (§4).
+  generation.shutdown();
   void server.stop();
   db.close();
   process.exit(0);

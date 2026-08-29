@@ -5,14 +5,30 @@ import { authRoutes } from "./routes/auth.ts";
 import { setupRoutes } from "./routes/setup.ts";
 import { connectionRoutes } from "./routes/connections.ts";
 import { sceneRoutes } from "./routes/scenes.ts";
+import { generationRoutes, sceneGenerationRoutes } from "./routes/generation.ts";
+import { GenerationService } from "./generation/service.ts";
 import { spaStatic } from "./static.ts";
 
 export interface CreateAppOptions {
   /** Off in tests, where there is no built client to serve. */
   serveClient?: boolean;
+  /**
+   * Supplied by tests so no live provider is contacted (§23). In production the
+   * app owns its generation service, and hands it back so the process can
+   * cancel everything in flight on shutdown.
+   */
+  generationService?: GenerationService;
 }
 
-export function createApp(ctx: AppContext, options: CreateAppOptions = {}): Hono<AppEnv> {
+export interface CreatedApp {
+  app: Hono<AppEnv>;
+  generation: GenerationService;
+}
+
+/** Build the app and the services it owns. */
+export function createServer(ctx: AppContext, options: CreateAppOptions = {}): CreatedApp {
+  const generation =
+    options.generationService ?? new GenerationService({ db: ctx.db, keyring: ctx.keyring });
   const app = new Hono<AppEnv>();
 
   app.use("*", sessionMiddleware(ctx));
@@ -23,6 +39,8 @@ export function createApp(ctx: AppContext, options: CreateAppOptions = {}): Hono
   api.route("/", setupRoutes(ctx));
   api.route("/connections", connectionRoutes(ctx));
   api.route("/scenes", sceneRoutes(ctx));
+  api.route("/scenes", sceneGenerationRoutes(ctx, generation));
+  api.route("/generations", generationRoutes(generation));
 
   // An unknown API path is an API error, not the SPA shell — returning HTML
   // from a fetch is the kind of thing that costs an hour to diagnose.
@@ -36,5 +54,10 @@ export function createApp(ctx: AppContext, options: CreateAppOptions = {}): Hono
     app.use("*", spaStatic(ctx.config.clientDir));
   }
 
-  return app;
+  return { app, generation };
+}
+
+/** The app alone, for callers that do not need the services. */
+export function createApp(ctx: AppContext, options: CreateAppOptions = {}): Hono<AppEnv> {
+  return createServer(ctx, options).app;
 }
