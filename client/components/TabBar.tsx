@@ -1,0 +1,39 @@
+import { navigate, type Route } from "../lib/router.ts";
+import { strings } from "../strings.ts";
+
+/**
+ * The bottom tab bar. Mono, uppercase, the active item in red — the design's
+ * one use of colour for navigation state.
+ *
+ * Two tabs for now. The design draws five; the other three are the screens that
+ * arrive with later phases, and a tab that leads nowhere is worse than no tab.
+ */
+export function TabBar({ active }: { active: "scenes" | "characters" }) {
+  const items: { key: "scenes" | "characters"; label: string; route: Route }[] = [
+    { key: "scenes", label: strings.nav.roleplays, route: { name: "scenes" } },
+    { key: "characters", label: strings.nav.characters, route: { name: "characters" } },
+  ];
+
+  return (
+    <nav
+      className="flex flex-none border-t border-rule bg-bg-raised"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
+      {items.map((item) => (
+        <button
+          key={item.key}
+          type="button"
+          onClick={() => navigate(item.route)}
+          aria-current={item.key === active ? "page" : undefined}
+          className="chrome flex-1 py-[14px] text-[9.5px] tracking-[0.12em] uppercase"
+          style={{
+            color:
+              item.key === active ? "var(--onsen-color-red)" : "var(--onsen-color-text-muted)",
+          }}
+        >
+          {item.label}
+        </button>
+      ))}
+    </nav>
+  );
+}

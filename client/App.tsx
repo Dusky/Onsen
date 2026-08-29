@@ -4,6 +4,8 @@ import { SetupScreen } from "./screens/SetupScreen.tsx";
 import { LoginScreen } from "./screens/LoginScreen.tsx";
 import { ScenesScreen } from "./screens/ScenesScreen.tsx";
 import { ChatScreen } from "./screens/ChatScreen.tsx";
+import { CharactersScreen } from "./screens/CharactersScreen.tsx";
+import { CharacterEditorScreen } from "./screens/CharacterEditorScreen.tsx";
 import { api } from "./lib/api.ts";
 import { strings } from "./strings.ts";
 import { useRoute } from "./lib/router.ts";
@@ -79,5 +81,15 @@ export function App() {
 
 function Routed() {
   const route = useRoute();
-  return route.name === "chat" ? <ChatScreen sceneId={route.sceneId} /> : <ScenesScreen />;
+  switch (route.name) {
+    case "chat":
+      return <ChatScreen sceneId={route.sceneId} />;
+    case "characters":
+      return <CharactersScreen />;
+    case "character":
+      return <CharacterEditorScreen characterId={route.characterId} />;
+    case "scenes":
+    case "unknown":
+      return <ScenesScreen />;
+  }
 }

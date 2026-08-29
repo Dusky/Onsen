@@ -2,6 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api.ts";
 import type {
   AppendMessageRequest,
+  CharacterDto,
+  ImportCharacterResponse,
+  UpdateCharacterRequest,
   MessageDto,
   SceneDto,
   SceneWithHistoryDto,
@@ -91,4 +94,75 @@ export function useSetLeaf(sceneId: string) {
   return useSceneMutation(sceneId, (body: SetActiveLeafRequest) =>
     api.put<SceneWithHistoryDto>(`/scenes/${sceneId}/leaf`, body),
   );
+}
+
+/* ------------------------------------------------------------------ */
+/* Characters (SPEC §9)                                                */
+/* ------------------------------------------------------------------ */
+
+export const characterKeys = {
+  all: ["characters"] as const,
+  one: (id: string) => ["characters", id] as const,
+};
+
+export function useCharacters() {
+  return useQuery({
+    queryKey: characterKeys.all,
+    queryFn: () => api.get<CharacterDto[]>("/characters"),
+  });
+}
+
+export function useCharacter(id: string) {
+  return useQuery({
+    queryKey: characterKeys.one(id),
+    queryFn: () => api.get<CharacterDto>(`/characters/${id}`),
+  });
+}
+
+/** Import goes through fetch directly: it is multipart, not JSON. */
+export function useImportCharacter() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File): Promise<ImportCharacterResponse> => {
+      const form = new FormData();
+      form.append("file", file);
+      const response = await fetch("/api/characters/import", { method: "POST", body: form });
+      const body: unknown = await response.json();
+      if (!response.ok) {
+        throw new Error(
+          (body as { error?: { message?: string } }).error?.message ?? "That card could not be read.",
+        );
+      }
+      return body as ImportCharacterResponse;
+    },
+    onSuccess: () => void client.invalidateQueries({ queryKey: characterKeys.all }),
+  });
+}
+
+export function useCreateCharacter() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name?: string }) => api.post<CharacterDto>("/characters", body),
+    onSuccess: () => void client.invalidateQueries({ queryKey: characterKeys.all }),
+  });
+}
+
+export function useUpdateCharacter(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: UpdateCharacterRequest) =>
+      api.patch<CharacterDto>(`/characters/${id}`, patch),
+    onSuccess: (character) => {
+      client.setQueryData(characterKeys.one(id), character);
+      void client.invalidateQueries({ queryKey: characterKeys.all });
+    },
+  });
+}
+
+export function useDeleteCharacter() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/characters/${id}`),
+    onSuccess: () => void client.invalidateQueries({ queryKey: characterKeys.all }),
+  });
 }

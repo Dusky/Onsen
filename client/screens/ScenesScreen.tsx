@@ -5,6 +5,7 @@ import { useCreateScene, useScenes } from "../lib/queries.ts";
 import { useGenerationStore } from "../state/generation.ts";
 import { api } from "../lib/api.ts";
 import { useEffect, useState } from "react";
+import { TabBar } from "../components/TabBar.tsx";
 import type { ConnectionProfileDto } from "@shared/types.ts";
 
 /**
@@ -123,6 +124,8 @@ export function ScenesScreen() {
           {strings.scenes.create}
         </button>
       </footer>
+
+      <TabBar active="scenes" />
     </div>
   );
 }

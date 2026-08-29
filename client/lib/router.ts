@@ -14,6 +14,8 @@ import { useEffect, useState } from "react";
 export type Route =
   | { name: "scenes" }
   | { name: "chat"; sceneId: string }
+  | { name: "characters" }
+  | { name: "character"; characterId: string }
   /** Anything unrecognised lands on the scenes list. */
   | { name: "unknown" };
 
@@ -21,6 +23,11 @@ export function parseRoute(pathname: string): Route {
   if (pathname === "/" || pathname === "/scenes") return { name: "scenes" };
   const scene = /^\/scenes\/([^/]+)\/?$/.exec(pathname);
   if (scene !== null) return { name: "chat", sceneId: decodeURIComponent(scene[1]!) };
+  if (pathname === "/characters") return { name: "characters" };
+  const character = /^\/characters\/([^/]+)\/?$/.exec(pathname);
+  if (character !== null) {
+    return { name: "character", characterId: decodeURIComponent(character[1]!) };
+  }
   return { name: "unknown" };
 }
 
@@ -28,6 +35,10 @@ export function pathFor(route: Route): string {
   switch (route.name) {
     case "chat":
       return `/scenes/${encodeURIComponent(route.sceneId)}`;
+    case "characters":
+      return "/characters";
+    case "character":
+      return `/characters/${encodeURIComponent(route.characterId)}`;
     case "scenes":
     case "unknown":
       return "/";
