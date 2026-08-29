@@ -450,6 +450,20 @@ from `/db`, `/routes` or `/middleware`, and on `Date.now`, `new Date()`,
 - **Outlet text nothing referenced costs nothing.** Being filled is not enough;
   a placeholder has to have consumed it.
 
+### An unnamed persona
+
+Settled while building phase 7. `PromptPersona.name` is nullable: a user who has
+not said who they are is a real state, not a missing value, and it cannot be
+papered over with a stand-in name. The user-lock is phrased in terms of that
+name, so a placeholder like "You" turns the most important sentence in the
+system prompt into "You belongs to the reader" and the depth-0 restatement into
+"Do not write You's dialogue".
+
+With no name, the lock is phrased around the reader instead, the persona block
+is omitted entirely when there is also no description, `{{user}}` resolves to
+"the reader", and the transcript labels the reader's turns "Reader" so the
+document stays consistent.
+
 ### Invented text is always a block
 
 Where a provider's rules force text the user did not write — currently only the

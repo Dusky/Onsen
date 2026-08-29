@@ -4,11 +4,10 @@ A self-hosted, mobile-first AI roleplay frontend. Group scenes are the primary
 case: one AI **author** with its own personality plays the whole cast, like a GM
 running a table, while you direct.
 
-> **Status: phase 6 of 41 — usable.** Set it up, start a roleplay, and write
-> with any OpenAI-compatible model: streaming, swipe to reroll, a version
-> carousel, edit and branch, and a stream that survives a phone suspending its
-> tab. Character cards import and export losslessly. Casts and author personas
-> arrive in phases 7–8. See
+> **Status: phase 7 of 41 — usable.** Set it up, import a character card, give
+> the AI an author persona of its own, and write: streaming, swipe to reroll, a
+> version carousel, edit and branch, and a stream that survives a phone
+> suspending its tab. Group casts and the turn director are phase 8. See
 > [`docs/SPEC.md` §20](docs/SPEC.md) for the build order and
 > [`docs/PHASES.md`](docs/PHASES.md) for what exists today.
 

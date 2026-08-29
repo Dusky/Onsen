@@ -521,3 +521,80 @@ fields the importer did not read, and extension keys the row did not model. Two
 notions with one name is how a field ends up reported inconsistently, so both
 now come from one helper reading `raw_card`, and the answer includes
 `extensions.` paths — which is where the interesting unknowns actually live.
+
+---
+
+## Phase 7 — Author personas
+
+> Entity, editor, author-mode rendering. The defining feature; do it before
+> group complexity accumulates.
+
+### Built
+
+**The author as an entity**, reusable across scenes, carrying the five fields
+that make an author an author: personality, writing style, directing style,
+out-of-character voice, and boundaries. It is its own record rather than a flag
+on a scene because it is what the system prompt is *about* (§0.2).
+
+**Personas too.** SPEC §20 gives them no phase of their own, but they are the
+other half of the same relationship: the user-lock is the rule that the author
+never writes the persona, and it needs both names to be stated at all.
+
+**Author-mode rendering, actually reaching a model.** A scene with an author
+renders the co-author framing; the same scene with the author cleared renders
+standard card-in-system-prompt single-character mode. Both paths are tested
+against a real assembled prompt rather than a mock. Generated messages now
+record which cast member voiced them, and a generation may name the speaker.
+
+**`scene_members`**, with the columns phase 7 needs — the link and an order.
+`is_active`, per-scene overrides and presence tracking arrive with group scenes
+in phase 8.
+
+**The author editor**, presented as a card. The out-of-character voice takes the
+blue pencil and boundaries the red, and the sample-voice block renders that
+field in the *exact* treatment the user will meet it in — blue rule, tinted
+bubble with the asymmetric corner, mono at reading size. Configuring a voice you
+can see beats configuring a text field.
+
+**Scene setup**: author picker first, because it is the decision that changes
+what the app is, then persona and cast. The model profile, turn strategy,
+lorebook and guide rows the design draws belong to later phases and are left
+out rather than stubbed.
+
+**The chat screen now names who actually spoke** — the placeholder attribution
+from phases 4–6 is gone.
+
+**Tests.** 24 new, most of them asserting that author mode shows up in the
+prompt, because that is the only place it is real.
+
+### Deliberately not built
+
+- **Multiple cast members and the turn director.** Phase 8. A scene can hold
+  several characters, but the first is always spotlighted.
+- **Author memory** (§11). The column exists and defaults off; nothing reads it
+  until phase 41. An author that silently accumulates notes about the user is a
+  different product, and that stays a deliberate choice.
+- **Author avatars.** The column exists; there is no upload yet.
+
+### Spec changes
+
+SPEC §3 gains "An unnamed persona", recording that `PromptPersona.name` is
+nullable and why.
+
+### Surprises
+
+Two, both found by looking at a real prompt rather than at a test.
+
+The first was a genuine prose bug: with no persona set, the assembler was
+inventing the name "You", which made the system prompt say "You belongs to the
+reader" and the depth-0 restatement say "Do not write You's dialogue" — in the
+two sentences that matter most in the whole product. A placeholder standing in
+for a name is not a harmless default when the name is grammatically load-bearing.
+No persona is now modelled as null and phrased around.
+
+The second was a latent flaky test that only surfaced once the suite got slower:
+two scenes created in the same millisecond tie on `updated_at`, and the
+"recent first" list then falls back to creation order. It is a
+millisecond-resolution artefact rather than a real ordering bug — real scenes
+are created seconds apart — so the test is now realistic rather than the
+ordering being engineered around.
