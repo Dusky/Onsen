@@ -1,0 +1,18 @@
+import foundation from "./0001_foundation.sql" with { type: "text" };
+
+export interface Migration {
+  /** Monotonic, gapless, never reordered once merged. */
+  version: number;
+  name: string;
+  sql: string;
+}
+
+/**
+ * Migrations are imported as text rather than read from disk so that
+ * `bun build --compile` produces a working single-file executable (SPEC §1).
+ * Adding a migration means adding a line here, which also makes the ordering
+ * reviewable in a diff.
+ */
+export const migrations: readonly Migration[] = [
+  { version: 1, name: "foundation", sql: foundation },
+];
