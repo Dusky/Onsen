@@ -4,10 +4,11 @@ A self-hosted, mobile-first AI roleplay frontend. Group scenes are the primary
 case: one AI **author** with its own personality plays the whole cast, like a GM
 running a table, while you direct.
 
-> **Status: phase 5 of 41 — usable.** Set it up, start a roleplay, and write
+> **Status: phase 6 of 41 — usable.** Set it up, start a roleplay, and write
 > with any OpenAI-compatible model: streaming, swipe to reroll, a version
 > carousel, edit and branch, and a stream that survives a phone suspending its
-> tab. The AI has no character card yet — that is phase 6. See
+> tab. Character cards import and export losslessly. Casts and author personas
+> arrive in phases 7–8. See
 > [`docs/SPEC.md` §20](docs/SPEC.md) for the build order and
 > [`docs/PHASES.md`](docs/PHASES.md) for what exists today.
 
@@ -102,6 +103,7 @@ because later phases depend on earlier ones being correct, not merely present.
   /db          schema, migrations, queries
   /prompt      the pure prompt builder - no imports from /db or /routes
   /adapters    provider adapters
+  /cards       character card formats - PNG, CharX, JSON
   /generation  generation service, resumable streaming
   /lib         ULIDs, crypto
   /middleware  session, rate limiting

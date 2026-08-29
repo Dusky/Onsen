@@ -440,3 +440,84 @@ right the first time. The one thing I got wrong was mine, not the design's — I
 had muted the user's own prose, which contradicts the handoff's "three message
 kinds, one document" and made the user's writing read as less real than the
 model's.
+
+---
+
+## Phase 6 — Character cards
+
+> Lossless import/export, PNG V2/V3, CharX, CCv3 decorators, editor,
+> parsed-card cache.
+
+### Built
+
+**PNG chunk parsing, written directly**, as §9 requires. The format is
+length-prefixed chunks with a CRC, the app has to both read and write them, and
+an image library would be a far larger dependency for a job this small. `zTXt`
+is decompressed as well as `tEXt`: some exporters use it for large cards, and a
+reader that only understands `tEXt` reports those as having no character data at
+all. Writing replaces an existing chunk rather than appending a second with the
+same keyword, and leaves every non-text chunk alone so the avatar is not damaged
+by an edit.
+
+**Four formats, detected from content rather than filename** — cards are
+routinely renamed, and a CharX called `.png` should still import. V1 (bare
+object, no envelope), V2, V3, and CharX. When a PNG carries both `ccv3` and
+`chara`, the V3 payload wins: the V2 chunk exists only for older readers.
+Export emits both.
+
+**Lossless is the whole point.** The typed columns are a *view*; `raw_card`
+holds the original document verbatim and export re-emits from it with edits
+overlaid. A card carrying an embedded lorebook, another frontend's private
+configuration, or a field from a spec revision this app predates comes back
+byte-identical in everything the app does not touch. There are round-trip tests
+for exactly that, across all three export formats.
+
+**Nothing is silently partial.** Import reports what it preserved but does not
+show — top-level fields and extension keys alike — and the editor's Advanced tab
+names them. SPEC §18 is right that a silent partial import is the worst outcome;
+"preserved but not editable here" is a very different thing from "lost".
+
+**CCv3 decorators** with fallback chains. Decorator lines are stripped before
+the text can reach a model, only lines at the top of an entry count so `@@depth`
+in prose is left alone, and an unknown decorator falls through its `@@@` chain
+rather than erroring — a chain where nothing is supported still yields its
+content.
+
+**The parsed-card cache** doubles as duplicate detection: a card is hashed on
+import, and re-importing the same file returns the character already in the
+library instead of a second copy.
+
+**Per-field token costs**, computed server-side so there is one tokenizer in the
+system and the numbers cannot disagree. The editor prints each field's cost on
+its own label row and the footer prints the card total as a share of the context
+window — never an abstract number.
+
+**Verified in a browser**: imported a real V3 PNG through the file picker, saw
+the preservation warnings, opened the editor, edited a field and watched the
+cost rail re-count, and confirmed the Advanced tab names the preserved fields.
+
+**Tests.** 49 new: 32 on the formats themselves and 17 over HTTP.
+
+### Deliberately not built
+
+- **Bulk import from a folder and Chub URL import.** Both are in §9's list but
+  the build order puts them under Polish and Later respectively.
+- **The library at scale** (§9): full-text search, real tags, saved filters,
+  bulk operations, version history, derive. Phase 24. What is here is a name
+  filter, which is what a library of dozens needs.
+- **Grid virtualization.** §16 asks for it; phase 24 is the one about hundreds
+  of cards, and a plain grid is correct until then.
+- **AI-assisted authoring** (create/revise/extract character). Phase 25.
+- **The LORE and SPRITES tabs** the design draws. Lorebooks are phase 19,
+  expression packs phase 27, and a tab that leads nowhere is worse than no tab.
+- **Wiring characters into scenes.** A scene still has no cast — that is phase 8
+  (and author personas are phase 7), so the chat screen keeps its placeholder
+  attribution for one more phase.
+
+### Surprises
+
+`unmodelledFields` had quietly come to mean two different things: top-level
+fields the importer did not read, and extension keys the row did not model. Two
+notions with one name is how a field ends up reported inconsistently, so both
+now come from one helper reading `raw_card`, and the answer includes
+`extensions.` paths — which is where the interesting unknowns actually live.
