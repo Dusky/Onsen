@@ -31,6 +31,11 @@ export interface RenderedHistory {
 }
 
 function speakerLabel(ctx: PromptContext, message: PromptMessage): string | null {
+  // A beat already carries a label per speaker inside its own text (§3.5), so
+  // prefixing it with the member it is filed under would attribute the whole
+  // exchange to whoever happened to open it.
+  if (message.kind === "beat") return null;
+
   switch (message.authorType) {
     case "user":
       // A transcript still needs a consistent label for the reader's turns.

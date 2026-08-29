@@ -127,6 +127,37 @@ export interface PromptCharacter {
   joinedAfterMessageId?: string | null;
 }
 
+/**
+ * How long a beat runs (SPEC §3.5).
+ *
+ * A beat with no bound is the one that stalls: the characters re-affirm each
+ * other until the response limit cuts them off. The bound is therefore part of
+ * the request, not a setting somewhere.
+ */
+export type BeatBound =
+  | { kind: "exchanges"; count: number }
+  | { kind: "until"; condition: string }
+  | { kind: "open" };
+
+/**
+ * What this generation is being asked for (SPEC §3.5, §7).
+ *
+ * Absent means a spotlight — one character, the ordinary turn. The three shapes
+ * share the same near-turn instruction slot rather than each adding a block to
+ * the assembly order, because they are the same thing: the last word before the
+ * model writes.
+ */
+export type PromptTurn =
+  | { kind: "spotlight" }
+  /** Several characters in one generation. `spotlight` is the one who opens. */
+  | { kind: "beat"; participants: PromptCharacter[]; bound: BeatBound }
+  /**
+   * Rewriting one character's part of a beat that already exists, holding the
+   * rest of it fixed. `spotlight` is the character being recast, and
+   * `beatText` is the beat exactly as it stands.
+   */
+  | { kind: "recast"; beatText: string };
+
 export interface PromptScene {
   title: string;
   /** Overrides the spotlighted character's scenario when set (§2). */
@@ -220,8 +251,13 @@ export interface PromptPreset {
 export interface PromptContext {
   scene: PromptScene;
   cast: PromptCharacter[];
-  /** Whose turn this is. Beats — several characters in one turn — are §3.5. */
+  /**
+   * Whose turn this is: the character in a spotlight, the one who opens a beat,
+   * or the one being recast.
+   */
   spotlight: PromptCharacter;
+  /** What is being asked for. Absent means an ordinary spotlight turn (§3.5). */
+  turn?: PromptTurn;
   /** Null selects single-character mode (§3). */
   author: PromptAuthor | null;
   persona: PromptPersona;

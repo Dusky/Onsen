@@ -1,10 +1,12 @@
 import type {
+  BeatBound,
   BlockPlacement,
   PromptBlockId,
   PromptCharacter,
   PromptContext,
   PromptLoreEntry,
   PromptRole,
+  PromptTurn,
 } from "./types.ts";
 
 /**
@@ -120,8 +122,25 @@ function authorIdentity(ctx: PromptContext): string | null {
   );
 }
 
+/**
+ * The characters this generation is actually writing.
+ *
+ * A spotlight has one; a beat has all of its participants, and SPEC §3.5
+ * requires full definitions for every one of them rather than the lead in full
+ * and the rest compactly — homogenised voices are the failure mode, and voice
+ * notes are the direct mitigation.
+ */
+export function turnCharactersOf(ctx: PromptContext): PromptCharacter[] {
+  const turn = ctx.turn;
+  if (turn === undefined || turn.kind !== "beat") return [ctx.spotlight];
+  // The lead opens, so they come first; nobody is listed twice.
+  const rest = turn.participants.filter((member) => member.id !== ctx.spotlight.id);
+  return [ctx.spotlight, ...rest];
+}
+
 function castBlock(ctx: PromptContext): string | null {
-  const others = ctx.cast.filter((member) => member.id !== ctx.spotlight.id);
+  const inTurn = new Set(turnCharactersOf(ctx).map((member) => member.id));
+  const others = ctx.cast.filter((member) => !inTurn.has(member.id));
   if (others.length === 0) return null;
   return paragraphs("## Also in this scene", ...others.map(compactCharacter));
 }
@@ -212,8 +231,8 @@ function depthPromptGroups(
  * constraint is stated: this character joined partway through and does not know
  * what came before.
  */
-function presenceConstraint(ctx: PromptContext): string | null {
-  const joinedAfter = ctx.spotlight.joinedAfterMessageId;
+function presenceConstraint(ctx: PromptContext, character: PromptCharacter): string | null {
+  const joinedAfter = character.joinedAfterMessageId;
   if (joinedAfter === undefined || joinedAfter === null) return null;
 
   const index = ctx.history.findIndex((message) => message.id === joinedAfter);
@@ -224,25 +243,149 @@ function presenceConstraint(ctx: PromptContext): string | null {
   // They missed everything up to and including the message they joined after.
   const missed = index + 1;
   return (
-    `${ctx.spotlight.name} was not present for the first ${missed} ` +
+    `${character.name} was not present for the first ${missed} ` +
     `turn${missed === 1 ? "" : "s"} of this scene and does not know what happened in them. ` +
     `Do not have them refer to anything from that part.`
   );
 }
 
-function spotlightInstruction(ctx: PromptContext): string {
-  const theirs = ctx.persona.name === null ? "the reader's" : `${ctx.persona.name}'s`;
-  const presence = presenceConstraint(ctx);
+/**
+ * Knowledge scoping stated per participant (SPEC §6, §3.5). The author sees the
+ * whole scene, so history is never trimmed — trimming it would cost the author
+ * the continuity it writes from. The constraint is stated instead, once per
+ * character it applies to.
+ */
+function presenceConstraints(ctx: PromptContext): string | null {
+  const lines = turnCharactersOf(ctx)
+    .map((character) => presenceConstraint(ctx, character))
+    .filter((line): line is string => line !== null);
+  return lines.length === 0 ? null : lines.join("\n");
+}
 
-  const base =
-    ctx.author === null
-      ? `Stay in character as ${ctx.spotlight.name}. Write only ${ctx.spotlight.name}'s words and ` +
+/** The reader's character, in the possessive, however much of it is known. */
+function readersPossessive(ctx: PromptContext): string {
+  return ctx.persona.name === null ? "the reader's" : `${ctx.persona.name}'s`;
+}
+
+/** English list: "A", "A and B", "A, B and C". */
+function listOf(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? "";
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]!}`;
+}
+
+function boundSentence(bound: BeatBound, names: string[]): string {
+  switch (bound.kind) {
+    case "exchanges":
+      return (
+        `Write about ${bound.count} exchange${bound.count === 1 ? "" : "s"} — one exchange is ` +
+        `each of ${listOf(names)} taking a turn — and then stop.`
+      );
+    case "until":
+      return `Keep going until ${bound.condition.trim().replace(/\.$/, "")}, and then stop.`;
+    case "open":
+      return `Let the exchange run as long as the moment needs, then stop on something happening.`;
+  }
+}
+
+/**
+ * The near-turn instruction: the last thing said before the model writes.
+ *
+ * SPEC §3 requires it to name the character explicitly and to come last,
+ * because the end of the prompt is what the model weighs most. It is also the
+ * second assertion of the user-lock — the first is in the author's identity.
+ */
+function spotlightInstruction(ctx: PromptContext): string {
+  const theirs = readersPossessive(ctx);
+  return ctx.author === null
+    ? `Stay in character as ${ctx.spotlight.name}. Write only ${ctx.spotlight.name}'s words and ` +
         `actions, never ${theirs}.`
-      : `Write the next turn as ${ctx.spotlight.name}, and only as ${ctx.spotlight.name}. ` +
+    : `Write the next turn as ${ctx.spotlight.name}, and only as ${ctx.spotlight.name}. ` +
         `Do not write ${theirs} dialogue, actions, or thoughts, and do not decide what they do ` +
         `next: that is the reader's to write.`;
+}
 
+/**
+ * The beat instruction (SPEC §3.5).
+ *
+ * Every line of this is a named failure mode from §3.5's table: voices
+ * converging, one character dominating, the exchange stalling on mutual
+ * agreement, and — the most common way a group scene dies — the beat ending by
+ * asking the reader a question and waiting.
+ */
+function beatInstruction(ctx: PromptContext, bound: BeatBound): string {
+  const participants = turnCharactersOf(ctx);
+  const names = participants.map((member) => member.name);
+  const reader = ctx.persona.name ?? "the reader";
+  const lead = ctx.spotlight.name;
+
+  return [
+    `Write the next beat of this scene: ${listOf(names)}, together, in one continuous passage. ` +
+      `${lead} opens it.`,
+    "",
+    `- Every one of ${listOf(names)} acts or speaks. Do not funnel the exchange onto one of them.`,
+    `- ${boundSentence(bound, names)}`,
+    `- Each of them sounds like themselves. Two of them agreeing is not two of them saying the ` +
+      `same thing.`,
+    `- Move the situation somewhere it was not. Do not have them restate what has already been ` +
+      `said, and do not have them settle into agreeing with each other.`,
+    `- Do not end the beat by asking ${reader} a question, and do not stop to wait for them. ` +
+      `End on something that has happened.`,
+    `- Do not write ${readersPossessive(ctx)} dialogue, actions, or thoughts, and do not decide ` +
+      `what they do next: that is the reader's to write.`,
+    "",
+    `Begin each character's part on its own line with their name in bold and a colon, exactly ` +
+      `like \`**${lead}:**\`. Prose that is nobody in particular speaking or acting is ` +
+      `narration; leave it unlabelled.`,
+  ].join("\n");
+}
+
+/**
+ * The recast instruction (SPEC §7).
+ *
+ * One character's part of a beat, rewritten with the rest held fixed. The beat
+ * is given in full as context and the reply is scoped to the part being
+ * replaced, because what comes back is spliced into the beat at that segment's
+ * offsets rather than appended.
+ */
+function recastInstruction(ctx: PromptContext, beatText: string): string {
+  const name = ctx.spotlight.name;
+  return [
+    `The next beat of this scene has already been written:`,
+    "",
+    beatText.trim(),
+    "",
+    `Rewrite ${name}'s part of it, and only ${name}'s part. Everything else in the beat stays ` +
+      `exactly as it is — do not repeat it, do not continue past it, and do not write anyone ` +
+      `else. What ${name} does still has to fit what the others do around it.`,
+    "",
+    `Reply with ${name}'s lines alone, with no name label and nothing before or after them.`,
+  ].join("\n");
+}
+
+/** The near-turn instruction for whichever kind of turn this is. */
+function turnInstruction(ctx: PromptContext): string {
+  const turn: PromptTurn = ctx.turn ?? { kind: "spotlight" };
+  const base =
+    turn.kind === "beat"
+      ? beatInstruction(ctx, turn.bound)
+      : turn.kind === "recast"
+        ? recastInstruction(ctx, turn.beatText)
+        : spotlightInstruction(ctx);
+
+  const presence = presenceConstraints(ctx);
   return presence === null ? base : `${base}\n\n${presence}`;
+}
+
+/** What the inspector calls the near-turn instruction, by kind. */
+function turnInstructionLabel(ctx: PromptContext): string {
+  switch (ctx.turn?.kind) {
+    case "beat":
+      return "Beat instruction";
+    case "recast":
+      return "Recast instruction";
+    default:
+      return "Spotlight instruction";
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -285,15 +428,18 @@ export function draftBlocks(ctx: PromptContext): Map<PromptBlockId, DraftBlock[]
 
   add("system_prompt", "System prompt", "preset", ctx.preset.systemPrompt);
   add("author_identity", "Author", ctx.author?.name ?? "author", authorIdentity(ctx));
+  const inTurn = turnCharactersOf(ctx);
   add(
     "spotlight_character",
-    "Spotlight",
-    ctx.spotlight.name,
+    inTurn.length === 1 ? "Spotlight" : "Beat participants",
+    inTurn.map((member) => member.name).join(", "),
     // In single-character mode a per-character system prompt overrides the
-    // preset's framing for this character (§2).
+    // preset's framing for this character (§2). Every character the turn is
+    // writing gets a full definition, voice notes included: §3.5 makes that the
+    // first mitigation for the voices converging.
     paragraphs(
       ctx.author === null ? ctx.spotlight.systemPrompt : null,
-      fullCharacter(ctx.spotlight),
+      ...inTurn.map(fullCharacter),
     ),
   );
   add("cast", "Cast", "scene members", castBlock(ctx));
@@ -358,9 +504,9 @@ export function draftBlocks(ctx: PromptContext): Map<PromptBlockId, DraftBlock[]
   );
   add(
     "spotlight_instruction",
-    "Spotlight instruction",
-    ctx.spotlight.name,
-    spotlightInstruction(ctx),
+    turnInstructionLabel(ctx),
+    inTurn.map((member) => member.name).join(", "),
+    turnInstruction(ctx),
     NEAR_TURN,
   );
   add("jailbreak", "Final instruction", "preset", ctx.preset.jailbreak, NEAR_TURN);
