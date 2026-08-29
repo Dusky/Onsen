@@ -361,3 +361,82 @@ The tests also caught a genuine production bug: `shutdown()` aborts in-flight
 generations, but an abort resolves asynchronously, so a run loop could reach its
 completion path after the database had already closed. That is the SIGTERM path,
 not just a test artefact. The service now stops writing once it is stopping.
+
+---
+
+## Phase 5 — Minimum usable chat UI
+
+> Single character, streaming, swipe, edit. **Ship this and use it daily.**
+
+### Built
+
+Two screens, built to the design handoff rather than approximated: a scenes
+list and the chat screen.
+
+**The log is bottom-anchored** — `justify-content: flex-end`, content growing
+upward from the composer. Not cosmetic: the streaming indicator and its stop
+control live at the bottom of the log and must never be pushed below the fold.
+
+**During generation the whole log takes a 2px red left rail.** The entire
+reading surface acknowledges that the app is writing, rather than a spinner in
+a corner. Stop sits at the end of the streaming row and is reachable the whole
+time.
+
+**Messages are one document, not bubbles.** Mono uppercase attribution at
+0.18em tracking, a hairline rule running to the right edge, the swipe counter
+at the end of that rule, then Spectral paragraphs. No avatar, no timestamp, no
+shadow, and the counter appears only when there is more than one version —
+never an empty `1/1`. The prose is not recoloured by who wrote it; attribution
+is the only thing that distinguishes a speaker.
+
+**Gestures with certain direction locking.** Swipe left rerolls, swipe right
+opens the version carousel, long-press raises the action sheet. The axis is
+chosen after about ten pixels of travel and then committed — never re-evaluated
+mid-gesture, which is what makes a swipe feel like it is arguing with the scroll
+container. `touch-action: pan-y` plus pointer capture keeps the gesture and the
+scroll from fighting.
+
+**Resumable streaming on the client**, using `fetch` and a stream reader rather
+than `EventSource`. EventSource reconnects to the URL it was given, which would
+replay from the original offset and duplicate everything already received;
+resuming needs the offset to move, so the reconnect has to be ours. Chunks are
+spliced by offset, which makes a replay idempotent.
+
+**Generation state is global, not per-screen**, exactly as the design's state
+list requires — that is what lets the "still writing" strip appear on the
+scenes list while a roleplay generates in the background, with an affordance
+back to it.
+
+**Keyboard handling.** `100dvh` is not enough on iOS: the layout viewport does
+not shrink when the keyboard opens, so a composer pinned to the bottom ends up
+behind it. A `visualViewport` listener publishes the real height as a custom
+property and every screen sizes from it.
+
+Verified in a real browser at 390 × 844 in both themes: sent a message,
+watched it stream, stopped it, rerolled by swiping, opened the carousel,
+switched versions, and raised the action sheet by long-press.
+
+### Deliberately not built
+
+Everything the design draws that belongs to a later phase: the cast strip and
+director reason (phase 8), the ops grid (phase 12), the guides sheet (15),
+autopilot (22), the OOC channel (21), the VN stage (27), the prompt inspector
+(23), and the desktop three-column layout. The composer here is the resting
+state minus the cast strip.
+
+### The placeholder speaker, again
+
+The AI's turns are attributed to "Author" because there is still no character
+entity — see the phase 4 note. Everything else about the screen is real; only
+the name is standing in. This is the second phase to run into it, which
+strengthens the case that a minimal `characters` table belongs before phase 5
+rather than in phase 6.
+
+### Surprises
+
+None in the browser, which is itself worth noting: the design handoff is
+specific enough about tokens, sizes and behaviour that the screen came out
+right the first time. The one thing I got wrong was mine, not the design's — I
+had muted the user's own prose, which contradicts the handoff's "three message
+kinds, one document" and made the user's writing read as less real than the
+model's.

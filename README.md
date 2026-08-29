@@ -4,10 +4,10 @@ A self-hosted, mobile-first AI roleplay frontend. Group scenes are the primary
 case: one AI **author** with its own personality plays the whole cast, like a GM
 running a table, while you direct.
 
-> **Status: phase 4 of 41.** The server boots, migrates, authenticates, runs its
-> setup wizard, owns a full history tree, assembles prompts, and generates
-> against any OpenAI-compatible provider with resumable streaming that survives
-> a phone suspending its tab. There is no chat screen yet; that is phase 5. See
+> **Status: phase 5 of 41 — usable.** Set it up, start a roleplay, and write
+> with any OpenAI-compatible model: streaming, swipe to reroll, a version
+> carousel, edit and branch, and a stream that survives a phone suspending its
+> tab. The AI has no character card yet — that is phase 6. See
 > [`docs/SPEC.md` §20](docs/SPEC.md) for the build order and
 > [`docs/PHASES.md`](docs/PHASES.md) for what exists today.
 
@@ -107,7 +107,7 @@ because later phases depend on earlier ones being correct, not merely present.
   /middleware  session, rate limiting
   /routes
 /client        React + Vite SPA
-  /components  /screens  /styles  /lib
+  /components  /screens  /styles  /lib  /state
 /shared        types shared across the boundary
 /test
 ```
