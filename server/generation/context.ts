@@ -14,6 +14,7 @@ import {
   findAuthorById,
   findPersonaById,
   type AuthorRow,
+  type CastRow,
   type PersonaRow,
 } from "../db/queries/authors.ts";
 import type { CharacterRow } from "../db/queries/characters.ts";
@@ -112,9 +113,18 @@ function toPromptMessage(
   };
 }
 
-/** A stored character, as the prompt builder wants to read it. */
-export function toPromptCharacter(row: CharacterRow): PromptCharacter {
+/**
+ * A stored character, as the prompt builder wants to read it.
+ *
+ * The join point needs the *message's* external id, which only the caller that
+ * has the history can resolve, so it is passed in rather than looked up.
+ */
+export function toPromptCharacter(
+  row: CharacterRow,
+  joinedAfterMessageUlid: string | null = null,
+): PromptCharacter {
   return {
+    joinedAfterMessageId: joinedAfterMessageUlid,
     id: row.ulid,
     name: row.name,
     description: row.description,
@@ -177,17 +187,27 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
   const history = options.history ?? activePath(options.db, options.scene.id);
 
   const castRows = castRowsOf(options.db, options.scene.id);
-  const cast = castRows.map(toPromptCharacter);
   const characterUlids = new Map(castRows.map((row) => [row.id, row.ulid]));
 
-  // The spotlight is an explicit choice where one was made, otherwise the first
-  // cast member — which is the whole cast until group scenes arrive.
+  // Presence is expressed in message identifiers, so the internal ids stored on
+  // membership have to be resolved against the history being rendered.
+  const messageUlids = new Map(history.map((row) => [row.id, row.ulid]));
+  const joinedAfterOf = (row: CastRow) =>
+    row.joined_after_message_id === null
+      ? null
+      : (messageUlids.get(row.joined_after_message_id) ?? null);
+
+  const cast = castRows.map((row) => toPromptCharacter(row, joinedAfterOf(row)));
+
+  // Whoever the turn director chose, otherwise the first active member.
   const spotlightRow =
     options.spotlightId == null
-      ? castRows[0]
+      ? (castRows.find((row) => row.is_active === 1) ?? castRows[0])
       : (castRows.find((row) => row.id === options.spotlightId) ?? castRows[0]);
   const spotlight =
-    spotlightRow === undefined ? PLACEHOLDER_SPOTLIGHT : toPromptCharacter(spotlightRow);
+    spotlightRow === undefined
+      ? PLACEHOLDER_SPOTLIGHT
+      : toPromptCharacter(spotlightRow, joinedAfterOf(spotlightRow));
 
   const authorRow =
     options.scene.author_id === null ? null : findAuthorById(options.db, options.scene.author_id);

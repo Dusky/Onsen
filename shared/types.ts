@@ -213,6 +213,7 @@ export interface SceneDto {
   title: string;
   presetId: string | null;
   connectionProfileId: string | null;
+  turnStrategy: TurnStrategy;
   /** Null selects single-character mode (SPEC §3). */
   authorId: string | null;
   authorName: string | null;
@@ -231,6 +232,8 @@ export interface SceneDto {
 export interface SceneWithHistoryDto {
   scene: SceneDto;
   messages: MessageDto[];
+  /** Null when the cast is empty or entirely benched. */
+  nextSpeaker: NextSpeakerDto | null;
 }
 
 export interface CheckpointDto {
@@ -453,12 +456,38 @@ export interface UpdatePersonaRequest {
   isDefault?: boolean;
 }
 
+/** SPEC §6. `mention` and `classifier` are accepted but not yet implemented. */
+export type TurnStrategy = "manual" | "round_robin" | "mention" | "classifier";
+
+export const TURN_STRATEGIES: readonly TurnStrategy[] = [
+  "manual",
+  "round_robin",
+  "mention",
+  "classifier",
+];
+
 /** A character taking part in a scene. */
 export interface SceneMemberDto {
   characterId: string;
   name: string;
   hasAvatar: boolean;
   displayOrder: number;
+  /** A benched character keeps their history but is not chosen to speak. */
+  isActive: boolean;
+}
+
+/**
+ * Who the director says speaks next, and why.
+ *
+ * The reason is shown verbatim in the UI (SPEC §6): a decision nobody can read
+ * is the arbitrary dice roll this is meant to replace.
+ */
+export interface NextSpeakerDto {
+  characterId: string;
+  name: string;
+  hasAvatar: boolean;
+  source: "user" | "director";
+  reason: string;
 }
 
 /** Everything the scene setup screen edits. */
@@ -467,5 +496,6 @@ export interface SceneSetupRequest {
   personaId?: string | null;
   presetId?: string | null;
   connectionProfileId?: string | null;
+  turnStrategy?: TurnStrategy;
   title?: string;
 }

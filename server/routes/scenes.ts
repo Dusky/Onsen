@@ -33,11 +33,15 @@ import {
   findAuthor,
   findPersona,
   removeSceneMember,
+  setMemberActive,
+  setTurnStrategy,
 } from "../db/queries/authors.ts";
 import { findCharacter } from "../db/queries/characters.ts";
+import { resolveNextSpeaker } from "../generation/turn.ts";
 import {
   isMessageAuthorType,
   isMessageKind,
+  TURN_STRATEGIES,
   type AppendMessageRequest,
   type CheckpointDto,
   type CreateCheckpointRequest,
@@ -108,7 +112,14 @@ export function sceneRoutes(ctx: AppContext): Hono<AppEnv> {
   }
 
   function history(sceneRow: SceneRow): SceneWithHistoryDto {
-    return { scene: sceneDto(ctx.db, sceneRow), messages: activePathDtos(ctx.db, sceneRow) };
+    return {
+      scene: sceneDto(ctx.db, sceneRow),
+      messages: activePathDtos(ctx.db, sceneRow),
+      // The director's choice travels with the scene rather than needing a
+      // second request: the composer has to know who the send button will
+      // speak as before the user presses it.
+      nextSpeaker: resolveNextSpeaker(ctx.db, sceneRow),
+    };
   }
 
   /* -------------------------------------------------------------- */
@@ -177,6 +188,12 @@ export function sceneRoutes(ctx: AppContext): Hono<AppEnv> {
       if (persona === INVALID) return c.json(badRequest("No such persona."), 400);
       patch.personaId = persona;
     }
+    if ("turnStrategy" in input) {
+      if (!(TURN_STRATEGIES as readonly unknown[]).includes(input.turnStrategy)) {
+        return c.json(badRequest("Unknown turn strategy."), 400);
+      }
+      setTurnStrategy(ctx.db, row.id, input.turnStrategy as string);
+    }
 
     return c.json(sceneDto(ctx.db, updateScene(ctx.db, row.id, patch)));
   });
@@ -204,6 +221,28 @@ export function sceneRoutes(ctx: AppContext): Hono<AppEnv> {
     if (character === null) return c.json(notFound("character"), 404);
 
     addSceneMember(ctx.db, sceneRow.id, character.id);
+    return c.json(sceneDto(ctx.db, sceneRow));
+  });
+
+  /** Bench or un-bench a cast member: they stay, but stop being chosen. */
+  app.patch("/:sceneId/cast/:characterId", async (c) => {
+    const sceneRow = scene(c.req.param("sceneId"));
+    if (sceneRow === null) return c.json(notFound("scene"), 404);
+    const character = findCharacter(ctx.db, c.req.param("characterId"));
+    if (character === null) return c.json(notFound("character"), 404);
+
+    let isActive = true;
+    try {
+      const body = (await c.req.json()) as { isActive?: unknown };
+      if (typeof body.isActive !== "boolean") {
+        return c.json(badRequest("isActive must be a boolean."), 400);
+      }
+      isActive = body.isActive;
+    } catch {
+      return c.json(badRequest("Expected a JSON body."), 400);
+    }
+
+    setMemberActive(ctx.db, sceneRow.id, character.id, isActive);
     return c.json(sceneDto(ctx.db, sceneRow));
   });
 

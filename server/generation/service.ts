@@ -11,7 +11,7 @@ import {
   type SceneRow,
 } from "../db/queries/history.ts";
 import { buildPromptContext, resolvePreset } from "./context.ts";
-import { castRowsOf } from "../db/queries/authors.ts";
+import { internalIdOf, resolveNextSpeaker } from "./turn.ts";
 
 /**
  * The generation service (SPEC §5).
@@ -216,9 +216,9 @@ export class GenerationService {
       detail: null,
       messageUlid: null,
       // Resolved now rather than at completion: the cast can change mid-turn,
-      // and the message must record who actually spoke.
-      spotlightId:
-        options.spotlightId ?? (castRowsOf(this.db, scene.id)[0]?.id ?? null),
+      // and the message must record who actually spoke. An explicit choice
+      // wins; otherwise the turn director decides (SPEC §6).
+      spotlightId: options.spotlightId ?? directorChoice(this.db, scene),
       abort: new AbortController(),
       listeners: new Set(),
       startedAt,
@@ -689,6 +689,12 @@ function pathTo(db: Database, messageId: number): MessageRowWithSiblings[] {
           ORDER BY ancestry.depth DESC`,
     )
     .all({ leaf: messageId }) as MessageRowWithSiblings[];
+}
+
+/** Who the turn director says speaks, as an internal id. */
+function directorChoice(db: Database, scene: SceneRow): number | null {
+  const decision = resolveNextSpeaker(db, scene);
+  return decision === null ? null : internalIdOf(db, scene, decision.characterId);
 }
 
 function hashToSeed(value: string): number {

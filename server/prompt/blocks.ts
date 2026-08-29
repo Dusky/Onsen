@@ -204,19 +204,45 @@ function depthPromptGroups(
  * SPEC §3 requires the spotlight instruction to name the character explicitly
  * and to come last, because the end of the prompt is what the model weighs most.
  */
+/**
+ * What the spotlighted character did not witness (SPEC §6).
+ *
+ * The author sees the whole scene, so history is not trimmed — trimming it
+ * would cost the author the continuity it needs to write well. Instead the
+ * constraint is stated: this character joined partway through and does not know
+ * what came before.
+ */
+function presenceConstraint(ctx: PromptContext): string | null {
+  const joinedAfter = ctx.spotlight.joinedAfterMessageId;
+  if (joinedAfter === undefined || joinedAfter === null) return null;
+
+  const index = ctx.history.findIndex((message) => message.id === joinedAfter);
+  // Not on the active path — a different branch, or a deleted message — so
+  // nothing reliable can be said about what they missed.
+  if (index === -1) return null;
+
+  // They missed everything up to and including the message they joined after.
+  const missed = index + 1;
+  return (
+    `${ctx.spotlight.name} was not present for the first ${missed} ` +
+    `turn${missed === 1 ? "" : "s"} of this scene and does not know what happened in them. ` +
+    `Do not have them refer to anything from that part.`
+  );
+}
+
 function spotlightInstruction(ctx: PromptContext): string {
   const theirs = ctx.persona.name === null ? "the reader's" : `${ctx.persona.name}'s`;
-  if (ctx.author === null) {
-    return (
-      `Stay in character as ${ctx.spotlight.name}. Write only ${ctx.spotlight.name}'s words and ` +
-      `actions, never ${theirs}.`
-    );
-  }
-  return (
-    `Write the next turn as ${ctx.spotlight.name}, and only as ${ctx.spotlight.name}. ` +
-    `Do not write ${theirs} dialogue, actions, or thoughts, and do not decide what they do next: ` +
-    `that is the reader's to write.`
-  );
+  const presence = presenceConstraint(ctx);
+
+  const base =
+    ctx.author === null
+      ? `Stay in character as ${ctx.spotlight.name}. Write only ${ctx.spotlight.name}'s words and ` +
+        `actions, never ${theirs}.`
+      : `Write the next turn as ${ctx.spotlight.name}, and only as ${ctx.spotlight.name}. ` +
+        `Do not write ${theirs} dialogue, actions, or thoughts, and do not decide what they do ` +
+        `next: that is the reader's to write.`;
+
+  return presence === null ? base : `${base}\n\n${presence}`;
 }
 
 /* ------------------------------------------------------------------ */

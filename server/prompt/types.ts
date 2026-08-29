@@ -117,6 +117,14 @@ export interface PromptCharacter {
   depthPromptRole: PromptRole;
   systemPrompt: string | null;
   postHistoryInstructions: string | null;
+  /**
+   * The last message that had already happened when this character joined
+   * (SPEC §6). Null means they were present from the start. Characters should
+   * not react to events they were not there for; in author mode the author sees
+   * everything, so the spotlight instruction carries the constraint rather than
+   * history being trimmed.
+   */
+  joinedAfterMessageId?: string | null;
 }
 
 export interface PromptScene {
