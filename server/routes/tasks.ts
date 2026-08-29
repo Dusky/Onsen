@@ -1,7 +1,8 @@
 import { Hono } from "hono";
 import type { AppContext, AppEnv } from "../context.ts";
 import { requireAuth } from "../middleware/session.ts";
-import { taskKind } from "../tasks/registry.ts";
+import { isInjectionRole } from "../../shared/types.ts";
+import { opKind } from "../tasks/registry.ts";
 import {
   listTaskRuns,
   listTasks,
@@ -36,7 +37,7 @@ export function taskRoutes(ctx: AppContext): Hono<AppEnv> {
   );
 
   app.patch("/:key", async (c) => {
-    const kind = taskKind(c.req.param("key"));
+    const kind = opKind(c.req.param("key"));
     if (kind === null) {
       return c.json({ error: { code: "not_found", message: "No such task." } }, 404);
     }
@@ -72,6 +73,24 @@ export function taskRoutes(ctx: AppContext): Hono<AppEnv> {
         patch.connectionProfileId = row.id;
       }
     }
+    if (body.injectionRole !== undefined) {
+      if (!isInjectionRole(body.injectionRole)) {
+        return c.json(
+          { error: { code: "bad_request", message: "Unknown injection role." } },
+          400,
+        );
+      }
+      patch.injectionRole = body.injectionRole;
+    }
+    if (body.buttonVisible !== undefined) {
+      if (typeof body.buttonVisible !== "boolean") {
+        return c.json(
+          { error: { code: "bad_request", message: "buttonVisible must be a boolean." } },
+          400,
+        );
+      }
+      patch.buttonVisible = body.buttonVisible;
+    }
     if ("promptTemplate" in body) {
       const template = body.promptTemplate;
       if (template !== null && typeof template !== "string") {
@@ -90,7 +109,7 @@ export function taskRoutes(ctx: AppContext): Hono<AppEnv> {
 
   /** What this task has actually been doing, most recent first. */
   app.get("/:key/runs", (c) => {
-    const kind = taskKind(c.req.param("key"));
+    const kind = opKind(c.req.param("key"));
     if (kind === null) {
       return c.json({ error: { code: "not_found", message: "No such task." } }, 404);
     }

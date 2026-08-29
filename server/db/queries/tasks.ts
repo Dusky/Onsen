@@ -1,7 +1,14 @@
 import type { Database } from "bun:sqlite";
 import { ulid } from "../../lib/ulid.ts";
 import type { SamplerSettings, TaskDto, TaskRunDto } from "../../../shared/types.ts";
-import { TASK_KINDS, taskKind, type TaskKind } from "../../tasks/registry.ts";
+import {
+  OP_KINDS,
+  opKind,
+  type InjectionRole,
+  type OpKind,
+  type SideCallOp,
+} from "../../tasks/registry.ts";
+import { defaultTemplateOf } from "../../prompt/op-templates.ts";
 
 /**
  * Reading and writing background-task configuration and the run log (SPEC §7).
@@ -21,6 +28,10 @@ export interface TaskRow {
   sampler_settings: string | null;
   timeout_ms: number;
   run_order: number;
+  /** Where this op's text lands (SPEC §7). */
+  injection_role: InjectionRole;
+  /** Whether its button is shown. Hidden is not the same as off. */
+  button_visible: number;
   created_at: number;
   updated_at: number;
 }
@@ -45,7 +56,7 @@ export interface TaskRunRow {
  * for. A kind that has never been configured behaves exactly like its defaults,
  * which is what makes adding one a one-line change.
  */
-export function taskConfig(db: Database, kind: TaskKind): TaskRow {
+export function taskConfig(db: Database, kind: OpKind): TaskRow {
   const existing = db.query("SELECT * FROM tasks WHERE key = $key").get({ key: kind.key }) as
     | TaskRow
     | null;
@@ -54,17 +65,27 @@ export function taskConfig(db: Database, kind: TaskKind): TaskRow {
   const now = Date.now();
   return db
     .query(
-      `INSERT INTO tasks (key, stage, enabled, timeout_ms, run_order, created_at, updated_at)
-       VALUES ($key, $stage, 1, $timeout, 0, $now, $now)
+      `INSERT INTO tasks
+         (key, stage, enabled, timeout_ms, run_order, injection_role, button_visible,
+          created_at, updated_at)
+       VALUES ($key, $stage, 1, $timeout, 0, $role, 1, $now, $now)
        RETURNING *`,
     )
-    .get({ key: kind.key, stage: kind.stage, timeout: kind.timeoutMs, now }) as TaskRow;
+    .get({
+      key: kind.key,
+      stage: kind.stage,
+      // A turn instruction has a default role; a side call is its own prompt and
+      // the column does not apply to it.
+      timeout: kind.runs === "side_call" ? kind.timeoutMs : 0,
+      role: kind.runs === "turn" ? kind.injectionRole : "system",
+      now,
+    }) as TaskRow;
 }
 
 export function listTasks(db: Database): TaskRow[] {
   // Every known kind, configured or not, so the list is the registry rather
   // than whatever happens to have run on this installation.
-  return TASK_KINDS.map((kind) => taskConfig(db, kind));
+  return OP_KINDS.map((kind) => taskConfig(db, kind));
 }
 
 export interface TaskPatch {
@@ -72,9 +93,11 @@ export interface TaskPatch {
   connectionProfileId?: number | null;
   promptTemplate?: string | null;
   timeoutMs?: number;
+  injectionRole?: InjectionRole;
+  buttonVisible?: boolean;
 }
 
-export function updateTask(db: Database, kind: TaskKind, patch: TaskPatch): TaskRow {
+export function updateTask(db: Database, kind: OpKind, patch: TaskPatch): TaskRow {
   const current = taskConfig(db, kind);
   return db
     .query(
@@ -83,6 +106,8 @@ export function updateTask(db: Database, kind: TaskKind, patch: TaskPatch): Task
               connection_profile_id = $profile,
               prompt_template = $template,
               timeout_ms = $timeout,
+              injection_role = $role,
+              button_visible = $visible,
               updated_at = $now
         WHERE id = $id
         RETURNING *`,
@@ -97,12 +122,15 @@ export function updateTask(db: Database, kind: TaskKind, patch: TaskPatch): Task
       template:
         patch.promptTemplate === undefined ? current.prompt_template : patch.promptTemplate,
       timeout: patch.timeoutMs ?? current.timeout_ms,
+      role: patch.injectionRole ?? current.injection_role,
+      visible:
+        patch.buttonVisible === undefined ? current.button_visible : patch.buttonVisible ? 1 : 0,
       now: Date.now(),
     }) as TaskRow;
 }
 
 /** The samplers a run uses: the row's override, else the kind's own. */
-export function samplersOf(row: TaskRow, kind: TaskKind): SamplerSettings {
+export function samplersOf(row: TaskRow, kind: SideCallOp): SamplerSettings {
   if (row.sampler_settings === null) return kind.samplers;
   try {
     return JSON.parse(row.sampler_settings) as SamplerSettings;
@@ -184,18 +212,33 @@ export function listTaskRuns(db: Database, key: string, limit = 20): TaskRunRow[
 /* ------------------------------------------------------------------ */
 
 export function toTaskDto(row: TaskRow, profileUlid: string | null): TaskDto {
-  const kind = taskKind(row.key);
+  const kind = opKind(row.key);
   return {
     key: row.key,
     label: kind?.label ?? row.key,
     description: kind?.description ?? "",
     stage: row.stage,
+    // A side call runs on its own model; a turn instruction is words inside
+    // somebody else's prompt, so routing and a timeout do not apply to it.
+    runs: kind?.runs ?? "side_call",
     enabled: row.enabled === 1,
     connectionProfileId: profileUlid,
-    /** Null means the built-in prompt, which is the normal case. */
+    // Null means the built-in prompt, which is the normal case.
     promptTemplate: row.prompt_template,
+    /** The words this op uses when nothing has overridden them. */
+    defaultTemplate: defaultTemplateOf(row.key),
+    variables: kind?.variables ?? [],
+    injectionRole: row.injection_role,
+    buttonVisible: row.button_visible === 1,
+    hideable: kind?.hideable ?? false,
     timeoutMs: row.timeout_ms,
   };
+}
+
+/** The words an op uses with nothing overridden, so an editor can start there. */
+export function templateOf(row: TaskRow, kind: OpKind): string {
+  const override = row.prompt_template?.trim();
+  return override === undefined || override === "" ? defaultTemplateOf(kind.key) : override;
 }
 
 export function toTaskRunDto(row: TaskRunRow, sceneUlid: string | null): TaskRunDto {
