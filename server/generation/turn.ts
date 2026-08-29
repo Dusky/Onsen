@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import { activePath, type SceneRow } from "../db/queries/history.ts";
+import { activePath, lastSpeakerOf, type SceneRow } from "../db/queries/history.ts";
 import { castRowsOf } from "../db/queries/authors.ts";
 import { chooseSpeaker, type DirectorDecision, type TurnStrategy } from "./director.ts";
 
@@ -36,13 +36,17 @@ export function resolveNextSpeaker(
       isActive: row.is_active === 1,
       displayOrder: row.display_order,
     })),
-    history: activePath(db, scene.id).map((row) => ({
-      characterId:
-        row.character_id === null
-          ? null
-          : (castRows.find((member) => member.id === row.character_id)?.ulid ?? null),
-      content: row.content,
-    })),
+    history: activePath(db, scene.id).map((row) => {
+      // For a beat this is whoever spoke last *inside* it, not the member it is
+      // filed under: after a beat that ends on Mira, "never twice in a row" is
+      // about Mira (SPEC §6, §3.5).
+      const spoke = lastSpeakerOf(db, row);
+      return {
+        characterId:
+          spoke === null ? null : (castRows.find((member) => member.id === spoke)?.ulid ?? null),
+        content: row.content,
+      };
+    }),
     ...(requested == null ? {} : { requested }),
   });
 

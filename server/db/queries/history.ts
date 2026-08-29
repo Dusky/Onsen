@@ -5,9 +5,11 @@ import type {
   MessageAuthorType,
   MessageDto,
   MessageKind,
+  MessageSegmentDto,
   SceneDto,
   SceneMemberDto,
 } from "../../../shared/types.ts";
+import { parseBeat, spliceSegment, type ParsedSegment } from "../../generation/segments.ts";
 
 /**
  * The history tree (SPEC §0.3, §2).
@@ -51,6 +53,8 @@ export interface MessageRow {
   character_id: number | null;
   is_hidden: number;
   token_count: number | null;
+  /** A beat whose speaker labels could not be read (SPEC §3.5). */
+  parse_degraded: number;
   created_at: number;
   edited_at: number | null;
 }
@@ -100,6 +104,12 @@ export function toMessageDto(
   sceneUlid: string,
   parentUlid: string | null,
   speakers?: SpeakerLookup,
+  /**
+   * A beat's parsed view. Passed in rather than looked up so the mapper stays a
+   * pure function of its row, and so a caller that does not need segments — a
+   * swipe carousel showing three-line excerpts — does not pay for them.
+   */
+  segments: MessageSegmentDto[] | null = null,
 ): MessageDto {
   return {
     id: row.ulid,
@@ -119,6 +129,8 @@ export function toMessageDto(
     editedAt: row.edited_at,
     siblingIndex: row.sibling_index,
     siblingCount: row.sibling_count,
+    segments,
+    parseDegraded: row.parse_degraded === 1,
   };
 }
 
@@ -360,6 +372,10 @@ export function updateMessage(
       token_count: contentChanged ? null : current.token_count,
       edited_at: contentChanged ? Date.now() : current.edited_at,
     }) as MessageRow;
+
+  // A beat's segments are a view of its content, so editing the content
+  // rebuilds them here rather than leaving that to every caller (SPEC §3.5).
+  if (contentChanged && row.kind === "beat") reparseSegments(db, row);
 
   touchScene(db, current.scene_id);
   return row;
@@ -617,15 +633,238 @@ export function activePathDtos(db: Database, scene: SceneRow): MessageDto[] {
   const rows = activePath(db, scene.id);
   const speakers = speakerLookup(db);
   return rows.map((row, index) =>
-    toMessageDto(row, scene.ulid, index === 0 ? null : (rows[index - 1]?.ulid ?? null), speakers),
+    toMessageDto(
+      row,
+      scene.ulid,
+      index === 0 ? null : (rows[index - 1]?.ulid ?? null),
+      speakers,
+      // Only a beat carries a parsed view; every other kind of message is its
+      // own single segment and does not need it sent twice.
+      row.kind === "beat" ? segmentDtosOf(db, row, speakers) : null,
+    ),
   );
 }
 
 export function messageDto(db: Database, row: MessageRow, sceneUlid: string): MessageDto {
+  const speakers = speakerLookup(db);
   return toMessageDto(
     withSiblings(db, row),
     sceneUlid,
     ulidOf(db, "messages", row.parent_id),
-    speakerLookup(db),
+    speakers,
+    row.kind === "beat" ? segmentDtosOf(db, row, speakers) : null,
   );
+}
+
+/* ------------------------------------------------------------------ */
+/* Segments — the parsed view of a beat (SPEC §2, §3.5)                */
+/* ------------------------------------------------------------------ */
+
+export interface SegmentRow {
+  id: number;
+  message_id: number;
+  ordinal: number;
+  speaker_type: "character" | "narration";
+  character_id: number | null;
+  speaker_label: string | null;
+  content: string;
+  expression: string | null;
+  char_start: number;
+  char_end: number;
+}
+
+/**
+ * Segments live here, with the tree, because that is what they are: the
+ * canonical content on the message is the truth, and these rows are a derived
+ * view rebuilt whenever it changes. Nothing below ever writes prose the message
+ * does not already contain.
+ */
+
+/** The scene's cast, indexed by lowercased name, for resolving speaker labels. */
+function castByName(db: Database, sceneId: number): Map<string, number> {
+  const rows = db
+    .query(
+      `SELECT c.id AS id, c.name AS name
+         FROM scene_members m JOIN characters c ON c.id = m.character_id
+        WHERE m.scene_id = $scene_id`,
+    )
+    .all({ scene_id: sceneId }) as { id: number; name: string }[];
+  return new Map(rows.map((row) => [row.name.trim().toLowerCase(), row.id]));
+}
+
+export function segmentRowsOf(db: Database, messageId: number): SegmentRow[] {
+  return db
+    .query("SELECT * FROM message_segments WHERE message_id = $id ORDER BY ordinal")
+    .all({ id: messageId }) as SegmentRow[];
+}
+
+/**
+ * Parse a beat's content and replace its stored segments.
+ *
+ * Called after a beat is generated and after any edit to one, so the parsed
+ * view can never drift from the text it describes.
+ */
+export function reparseSegments(db: Database, message: MessageRow): SegmentRow[] {
+  const cast = castByName(db, message.scene_id);
+  const { segments, degraded } = parseBeat(message.content, [...cast.keys()]);
+
+  db.query("DELETE FROM message_segments WHERE message_id = $id").run({ id: message.id });
+  const insert = db.query(
+    `INSERT INTO message_segments
+       (message_id, ordinal, speaker_type, character_id, speaker_label, content, char_start, char_end)
+     VALUES ($message_id, $ordinal, $speaker_type, $character_id, $speaker_label, $content,
+             $char_start, $char_end)`,
+  );
+  for (const segment of segments) {
+    insert.run({
+      message_id: message.id,
+      ordinal: segment.ordinal,
+      speaker_type: segment.speakerType,
+      character_id:
+        segment.speakerLabel === null
+          ? null
+          : (cast.get(segment.speakerLabel.trim().toLowerCase()) ?? null),
+      speaker_label: segment.speakerLabel,
+      content: segment.content,
+      char_start: segment.charStart,
+      char_end: segment.charEnd,
+    });
+  }
+
+  db.query("UPDATE messages SET parse_degraded = $flag WHERE id = $id").run({
+    id: message.id,
+    flag: degraded ? 1 : 0,
+  });
+
+  return segmentRowsOf(db, message.id);
+}
+
+/**
+ * A message's segments as the client reads them.
+ *
+ * A message that is not a beat has exactly one segment (SPEC §2), derived here
+ * rather than stored: a stored copy of the message's own content would be one
+ * more thing to keep in step, for no reader.
+ */
+export function segmentDtosOf(
+  db: Database,
+  message: MessageRow,
+  speakers: SpeakerLookup = speakerLookup(db),
+): MessageSegmentDto[] {
+  const rows = message.kind === "beat" ? segmentRowsOf(db, message.id) : [];
+
+  if (rows.length === 0) {
+    return [
+      {
+        ordinal: 0,
+        speakerType: message.character_id === null ? "narration" : "character",
+        characterId:
+          message.character_id === null
+            ? null
+            : (speakers.ulidById.get(message.character_id) ?? null),
+        speakerName:
+          message.character_id === null
+            ? null
+            : (speakers.nameById.get(message.character_id) ?? null),
+        content: message.content,
+        charStart: 0,
+        charEnd: message.content.length,
+      },
+    ];
+  }
+
+  return rows.map((row) => ({
+    ordinal: row.ordinal,
+    speakerType: row.speaker_type,
+    characterId:
+      row.character_id === null ? null : (speakers.ulidById.get(row.character_id) ?? null),
+    // The written label wins over the resolved name: it is what the author
+    // actually said, and it is the only name a speaker outside the cast has.
+    speakerName:
+      row.speaker_label ??
+      (row.character_id === null ? null : (speakers.nameById.get(row.character_id) ?? null)),
+    content: row.content,
+    charStart: row.char_start,
+    charEnd: row.char_end,
+  }));
+}
+
+/**
+ * Who spoke last in a message.
+ *
+ * For a beat this is the last character segment, not the member the beat is
+ * filed under: after a beat that ends on Mira, the turn director's "never twice
+ * consecutively" rule is about Mira (SPEC §6).
+ */
+export function lastSpeakerOf(db: Database, message: MessageRow): number | null {
+  if (message.kind !== "beat") return message.character_id;
+  const rows = segmentRowsOf(db, message.id);
+  for (let index = rows.length - 1; index >= 0; index--) {
+    const characterId = rows[index]!.character_id;
+    if (characterId !== null) return characterId;
+  }
+  return message.character_id;
+}
+
+function toParsedSegment(row: SegmentRow): ParsedSegment {
+  return {
+    ordinal: row.ordinal,
+    speakerType: row.speaker_type,
+    speakerLabel: row.speaker_label,
+    content: row.content,
+    charStart: row.char_start,
+    charEnd: row.char_end,
+  };
+}
+
+/**
+ * Replace one segment's prose in place and rebuild the parsed view — what
+ * recast lands (SPEC §7).
+ *
+ * The message is edited rather than forked: a recast corrects this beat, it is
+ * not a different version of it. Swiping the whole beat is what makes a sibling.
+ */
+export function replaceSegment(
+  db: Database,
+  message: MessageRow,
+  ordinal: number,
+  replacement: string,
+): MessageRow | null {
+  const row = segmentRowsOf(db, message.id).find((segment) => segment.ordinal === ordinal);
+  if (row === undefined) return null;
+
+  updateMessage(db, message.id, {
+    content: spliceSegment(message.content, toParsedSegment(row), replacement),
+  });
+  return findMessageById(db, message.id);
+}
+
+/**
+ * Split a beat into one message per segment (SPEC §7).
+ *
+ * The new messages are a chain under the beat's own parent, which makes them a
+ * sibling branch of it: the beat survives untouched, exactly as every other
+ * tree operation preserves what it moves away from. Returns the chain, whose
+ * last node is the new leaf.
+ */
+export function splitBeat(db: Database, message: MessageRow): MessageRow[] {
+  const rows = segmentRowsOf(db, message.id);
+  // Nothing to split: one segment would just be the same message again.
+  if (rows.length < 2) return [];
+
+  const created: MessageRow[] = [];
+  let parentId = message.parent_id;
+  for (const row of rows) {
+    const node = appendMessage(db, {
+      sceneId: message.scene_id,
+      parentId,
+      kind: row.speaker_type === "character" ? "spotlight" : "narrator",
+      authorType: row.speaker_type === "character" ? "character" : "narrator",
+      content: row.content,
+      characterId: row.character_id,
+    });
+    created.push(node);
+    parentId = node.id;
+  }
+  return created;
 }
