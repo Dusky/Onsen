@@ -7,6 +7,7 @@ import { loadOrCreateKeyring } from "../server/lib/crypto.ts";
 import { loadConfig, ensureDataDirs, type Config } from "../server/config.ts";
 import { createServer } from "../server/app.ts";
 import { GenerationService } from "../server/generation/service.ts";
+import { TaskRunner } from "../server/tasks/runner.ts";
 import type { AppContext } from "../server/context.ts";
 import type { Hono } from "hono";
 import type { AppEnv } from "../server/context.ts";
@@ -19,6 +20,7 @@ export interface TestHarness {
   app: Hono<AppEnv>;
   config: Config;
   generation: GenerationService;
+  tasks: TaskRunner;
   /** Sends a request through the app, carrying the session cookie if one is held. */
   fetch(path: string, init?: RequestInit): Promise<Response>;
   /** Capture the session cookie from a response so later requests are authenticated. */
@@ -44,20 +46,24 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
   const db = openDatabase(":memory:");
   migrate(db);
   const ctx: AppContext = { db, config, keyring: loadOrCreateKeyring(config, {} as NodeJS.ProcessEnv) };
-  const generation = new GenerationService({
-    db,
-    keyring: ctx.keyring,
-    ...(options.adapter === undefined
-      ? {}
-      : { createAdapter: () => options.adapter as Adapter }),
+  const adapterOption =
+    options.adapter === undefined ? {} : { createAdapter: () => options.adapter as Adapter };
+  // The runner is shared with the generation service, as it is in production:
+  // a side call and the turn it belongs to run against the same fixture.
+  const tasks = new TaskRunner({ db, keyring: ctx.keyring, ...adapterOption });
+  const generation = new GenerationService({ db, keyring: ctx.keyring, tasks, ...adapterOption });
+  const { app } = createServer(ctx, {
+    serveClient: false,
+    generationService: generation,
+    taskRunner: tasks,
   });
-  const { app } = createServer(ctx, { serveClient: false, generationService: generation });
 
   const harness: TestHarness = {
     ctx,
     app,
     config,
     generation,
+    tasks,
     cookie: null,
     async fetch(path, init) {
       const headers = new Headers(init?.headers);
@@ -73,6 +79,7 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
     },
     cleanup() {
       generation.shutdown();
+      tasks.shutdown();
       db.close();
       rmSync(dataDir, { recursive: true, force: true });
     },

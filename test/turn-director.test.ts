@@ -266,8 +266,9 @@ describe("when the classifier does not answer", () => {
 
     expect(snapshot.status).toBe("complete");
     expect(snapshot.buffer).toBe("A line of prose.");
-    // The fallback stands, and says what it is rather than pretending.
-    expect(snapshot.director!.reason).toBe("The classifier decides when you send");
+    // The fallback stands, and names the failure. A director that is quietly
+    // broken must not read the same as one that is quietly working.
+    expect(snapshot.director!.reason).toBe("Round robin — the classifier could not be reached");
   });
 
   test("a reply naming nobody falls back rather than guessing", async () => {
@@ -278,7 +279,7 @@ describe("when the classifier does not answer", () => {
     const snapshot = await generate(t, sceneId);
     expect(snapshot.status).toBe("complete");
     expect(snapshot.director!.characterId).not.toBeNull();
-    expect(snapshot.director!.reason).toBe("The classifier decides when you send");
+    expect(snapshot.director!.reason).toBe("Round robin — the classifier named nobody in the cast");
   });
 
   test("a reply with a name but no reason still says something readable", async () => {

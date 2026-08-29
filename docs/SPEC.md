@@ -920,6 +920,40 @@ classification are all instances of this one mechanism. Build it once.
 Background tasks run off the main generation path and **must never block or fail
 a user-facing generation.**
 
+Settled while building phase 11.
+
+- **A kind is code; a row is its configuration.** What a task asks for and what
+  it does with the answer are not expressible as data, and pretending otherwise
+  would be the extension system §15 puts in a much later tier. What is stored is
+  §7's per-op row for a kind the code already knows about, and rows are created
+  the first time a kind is asked for — so adding one is a change to a single
+  list. Kinds are registered as they are built; seeding rows for tasks whose
+  feature does not exist would be a settings screen full of switches that do
+  nothing.
+- **"Never fails a generation" means `run` does not throw.** Every way a side
+  call can go wrong comes back as a named result the caller falls back from: no
+  model to run on, an unreachable provider, a timeout, a cancelled turn, an
+  answer that could not be read. They are named apart because "the model said
+  no" and "the model was unreachable" are different problems and only one of
+  them is worth changing a model over.
+- **Because every failure is swallowed, every run is logged.** Otherwise the
+  rule quietly becomes "side calls fail forever and nobody can tell". The log
+  keeps what was sent, what came back and why it failed, bounded per kind. It is
+  also where a caller records the runs it decided *not* to make: "there was only
+  one turn this could be" is the answer when a director looks idle.
+- **The fallback says why it is the fallback.** A caller that cannot tell "no
+  answer" from "no answer because the model was unreachable" would present a
+  broken director exactly like a working one, so the failure is named in the
+  reason the user reads.
+- **Two bounds, always: a timeout and a reply-length cap.** A task that ends
+  cleanly on abort rather than throwing must still be reported as a timeout —
+  otherwise giving up waiting looks exactly like the model saying nothing.
+- **A concurrency cap**, because side calls are cheap individually and unbounded
+  in aggregate: a four-pass pipeline over a beat's five segments is twenty
+  requests from one turn, and a local model serves one at a time.
+- **Routing order is: the caller's override, then the task's configured profile,
+  then the scene's own.** §6's director profile is the first instance of it.
+
 ### 7.5 Post-generation pipeline
 
 An ordered set of passes that run *after* a message is generated and can revise
@@ -1917,6 +1951,11 @@ Things existing frontends do that this project should not.
   Joining is enough for the case that actually occurs (a character arriving
   mid-scene); an explicit exit point is still open, and is only worth adding
   when something needs a character to stop knowing things.
+- Once a turn has finished, the director's reason survives only in the task log
+  (§7) — the message itself records who spoke, not who chose them or why. Keeping
+  it per message would need somewhere to show it; the prompt inspector (§20
+  phase 23) is the natural place, and deciding before that exists would be
+  guessing at the surface.
 - Should beats be the default turn type, with spotlight as the exception? Group
   scenes probably want beats most of the time; single-character scenes never do.
   Phase 9 ships with spotlight as the default and the scope control offered only

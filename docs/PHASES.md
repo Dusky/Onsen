@@ -854,3 +854,98 @@ them by what they are not.
 The smaller one: `bare()`, which strips the quotes and asterisks a model wraps a
 name in, also strips a trailing full stop — correct for a name, vandalism for
 the reason sentence next to it. Names are cleaned; prose is left alone.
+
+---
+
+## Phase 11 — The background-task primitive
+
+Summarisation, tracker refresh, memory extraction, the turn classifier,
+expression classification and every post-generation pass are the same shape: a
+prompt, a model to run it on, and somewhere for the answer to go. SPEC §7 says
+build it once, and this is the phase that does — before the four phases that
+each would otherwise have rolled their own.
+
+### What was built
+
+**`TaskRunner`** — the primitive. One rule shapes all of it: §7's *a background
+task must never block or fail a user-facing generation*. So `run` does not
+throw. Every way a side call can go wrong comes back as a named result the
+caller reads and falls back from — no model to run on, an unreachable provider,
+a timeout, a cancelled turn, an answer that could not be used. They are named
+apart on purpose: "the model said no" and "the model was unreachable" are
+different problems and only one of them is worth changing a model over.
+
+Two bounds, always: a timeout and a reply-length cap. And a concurrency cap,
+because side calls are cheap individually and unbounded in aggregate — a
+four-pass pipeline over a beat's five segments is twenty requests out of one
+turn, and a local model serves one at a time.
+
+**The run log** (migration 0009), which exists *because* of the rule. Every
+failure a background task has is swallowed by design, so a swallowed failure
+that cannot be read anywhere is indistinguishable from the feature quietly not
+working. Every run records what was sent, what came back, which model answered,
+and why it failed — including the runs a caller decided not to make, since "there
+was only one turn this could be" is the answer when a director looks idle. Bounded
+per kind, so a side call that runs every turn does not grow the database forever.
+
+**A registry, not a table of user-authored tasks.** What a task asks for and what
+it does with the answer are code; what is stored is §7's per-op row for a kind
+the code already knows. Rows are created the first time a kind is asked for, so
+adding one is a change to a single list. Kinds are registered as they are built —
+seeding rows for tasks whose feature does not exist would be a settings screen
+full of switches that do nothing.
+
+**Route resolution moved out of the generation service** into
+`server/generation/route.ts`, because per-operation routing is the point: a task
+runs on its own profile and control returns to the scene's. Both paths now fail
+the same way, naming the provider and what is wrong with it.
+
+**The classifier moved onto it**, which is the proof. It gained something in the
+move: when the classifier is asked and cannot answer, the reason under the cast
+strip now says so — "Round robin — the classifier could not be reached" — rather
+than repeating the provisional sentence. A director that is quietly broken should
+not read exactly like one that is quietly working.
+
+**The log, in the UI**, under the turn strategy that produced it: the last few
+decisions with their status, model, timing and — when it went wrong — the
+provider's own words.
+
+**Verified end to end in a browser** at 390×844 dark, with a stub that could be
+made to refuse: a good turn, then a 503 on the director, the turn generated
+anyway on the round-robin fallback, and the failure readable afterwards in scene
+setup as "FAILED · stub-small · The provider returned 503. model is loading".
+
+**Tests.** 19 new, most of them the rule holding under a different kind of
+failure.
+
+### Deliberately not built
+
+- **Any second kind of task.** The consumers are phases 14–16 and 28. Adding
+  their rows now would be switches that do nothing.
+- **A trigger expression language.** A task's trigger is code — the classifier's
+  is "the scene's strategy is classifier". A stored condition is the extension
+  system, and §15 is right about where that belongs.
+- **A tasks settings screen.** §20 phase 13 owns per-op configuration; a screen
+  with one switch on it now would be built twice. The run log went where the
+  feature that produces it already lives.
+- **Prompt template overrides actually taking effect.** The column and the API
+  accept one; nothing reads it yet, because a template needs the macro set and a
+  documented variable list, which is phase 13's job.
+
+### Spec changes
+
+§7 gains "settled while building phase 11": a kind is code and a row is its
+configuration, "never fails" means `run` does not throw, the log exists because
+the failures are swallowed, the fallback names the failure, the two bounds, the
+concurrency cap, and the routing order. §24 gains one question — after a turn
+finishes, the director's reason survives only in the task log.
+
+### Surprises
+
+The timeout test failed on its first run for a good reason. An adapter that ends
+*cleanly* on abort rather than throwing — which is what the OpenAI adapter does
+when the caller aborts — produced an empty reply, and the runner reported it as
+"the model returned nothing" rather than "we gave up waiting". Those are exactly
+the two things the named statuses exist to tell apart. The timeout signal is now
+held separately from the merged one so the reason is still readable after a
+clean end.
