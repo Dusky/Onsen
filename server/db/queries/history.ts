@@ -6,6 +6,7 @@ import type {
   MessageDto,
   MessageKind,
   SceneDto,
+  SceneMemberDto,
 } from "../../../shared/types.ts";
 
 /**
@@ -28,6 +29,9 @@ export interface SceneRow {
   title: string;
   preset_id: number | null;
   connection_profile_id: number | null;
+  /** Null selects single-character mode (SPEC §3). */
+  author_id: number | null;
+  persona_id: number | null;
   active_leaf_id: number | null;
   created_at: number;
   updated_at: number;
@@ -41,6 +45,8 @@ export interface MessageRow {
   kind: MessageKind;
   author_type: MessageAuthorType;
   content: string;
+  /** Which cast member voiced this turn. Null for user and system turns. */
+  character_id: number | null;
   is_hidden: number;
   token_count: number | null;
   created_at: number;
@@ -69,13 +75,41 @@ const MAX_DEPTH = 100_000;
 /* Mappers                                                             */
 /* ------------------------------------------------------------------ */
 
-export function toMessageDto(row: MessageRowWithSiblings, sceneUlid: string, parentUlid: string | null): MessageDto {
+/** Character identifiers and names, for resolving who spoke. */
+export interface SpeakerLookup {
+  ulidById: Map<number, string>;
+  nameById: Map<number, string>;
+}
+
+export function speakerLookup(db: Database): SpeakerLookup {
+  const rows = db.query("SELECT id, ulid, name FROM characters").all() as {
+    id: number;
+    ulid: string;
+    name: string;
+  }[];
+  return {
+    ulidById: new Map(rows.map((row) => [row.id, row.ulid])),
+    nameById: new Map(rows.map((row) => [row.id, row.name])),
+  };
+}
+
+export function toMessageDto(
+  row: MessageRowWithSiblings,
+  sceneUlid: string,
+  parentUlid: string | null,
+  speakers?: SpeakerLookup,
+): MessageDto {
   return {
     id: row.ulid,
     sceneId: sceneUlid,
     parentId: parentUlid,
     kind: row.kind,
     authorType: row.author_type,
+    characterId:
+      row.character_id === null ? null : (speakers?.ulidById.get(row.character_id) ?? null),
+    // Resolved here so the log does not need the character list to render.
+    speakerName:
+      row.character_id === null ? null : (speakers?.nameById.get(row.character_id) ?? null),
     content: row.content,
     isHidden: row.is_hidden === 1,
     tokenCount: row.token_count,
@@ -86,17 +120,30 @@ export function toMessageDto(row: MessageRowWithSiblings, sceneUlid: string, par
   };
 }
 
-export function toSceneDto(row: SceneRow, extras: {
-  presetUlid: string | null;
-  profileUlid: string | null;
-  activeLeafUlid: string | null;
-  messageCount: number;
-}): SceneDto {
+export function toSceneDto(
+  row: SceneRow,
+  extras: {
+    presetUlid: string | null;
+    profileUlid: string | null;
+    authorUlid: string | null;
+    authorName: string | null;
+    personaUlid: string | null;
+    personaName: string | null;
+    cast: SceneMemberDto[];
+    activeLeafUlid: string | null;
+    messageCount: number;
+  },
+): SceneDto {
   return {
     id: row.ulid,
     title: row.title,
     presetId: extras.presetUlid,
     connectionProfileId: extras.profileUlid,
+    authorId: extras.authorUlid,
+    authorName: extras.authorName,
+    personaId: extras.personaUlid,
+    personaName: extras.personaName,
+    cast: extras.cast,
     activeLeafId: extras.activeLeafUlid,
     messageCount: extras.messageCount,
     createdAt: row.created_at,
@@ -162,16 +209,29 @@ export function listScenes(db: Database): SceneRow[] {
 export function updateScene(
   db: Database,
   id: number,
-  patch: { title?: string; presetId?: number | null; connectionProfileId?: number | null },
+  patch: {
+    title?: string;
+    presetId?: number | null;
+    connectionProfileId?: number | null;
+    authorId?: number | null;
+    personaId?: number | null;
+  },
 ): SceneRow {
   const current = findSceneById(db, id);
   if (current === null) throw new Error(`no such scene: ${id}`);
+  // Absent means "leave alone" and null means "clear" — the distinction
+  // matters, because a null author is a real choice (single-character mode).
+  const keep = <T>(value: T | undefined, fallback: T): T =>
+    value === undefined ? fallback : value;
+
   return db
     .query(
       `UPDATE scenes
           SET title = $title,
               preset_id = $preset_id,
               connection_profile_id = $connection_profile_id,
+              author_id = $author_id,
+              persona_id = $persona_id,
               updated_at = $now
         WHERE id = $id
         RETURNING *`,
@@ -179,11 +239,10 @@ export function updateScene(
     .get({
       id,
       title: patch.title ?? current.title,
-      preset_id: patch.presetId === undefined ? current.preset_id : patch.presetId,
-      connection_profile_id:
-        patch.connectionProfileId === undefined
-          ? current.connection_profile_id
-          : patch.connectionProfileId,
+      preset_id: keep(patch.presetId, current.preset_id),
+      connection_profile_id: keep(patch.connectionProfileId, current.connection_profile_id),
+      author_id: keep(patch.authorId, current.author_id),
+      persona_id: keep(patch.personaId, current.persona_id),
       now: Date.now(),
     }) as SceneRow;
 }
@@ -227,6 +286,8 @@ export interface NewMessage {
   kind: MessageKind;
   authorType: MessageAuthorType;
   content: string;
+  /** The cast member this turn was voiced as, where there is one. */
+  characterId?: number | null;
   isHidden?: boolean;
 }
 
@@ -239,8 +300,8 @@ export function appendMessage(db: Database, input: NewMessage): MessageRow {
   const now = Date.now();
   const row = db
     .query(
-      `INSERT INTO messages (ulid, scene_id, parent_id, kind, author_type, content, is_hidden, created_at)
-       VALUES ($ulid, $scene_id, $parent_id, $kind, $author_type, $content, $is_hidden, $now)
+      `INSERT INTO messages (ulid, scene_id, parent_id, kind, author_type, content, character_id, is_hidden, created_at)
+       VALUES ($ulid, $scene_id, $parent_id, $kind, $author_type, $content, $character_id, $is_hidden, $now)
        RETURNING *`,
     )
     .get({
@@ -250,6 +311,7 @@ export function appendMessage(db: Database, input: NewMessage): MessageRow {
       kind: input.kind,
       author_type: input.authorType,
       content: input.content,
+      character_id: input.characterId ?? null,
       is_hidden: input.isHidden ? 1 : 0,
       now,
     }) as MessageRow;
@@ -489,10 +551,52 @@ function ulidOf(db: Database, table: "presets" | "connection_profiles" | "messag
   return row?.ulid ?? null;
 }
 
+/** The cast, in display order (SPEC §2 SceneMember). */
+export function castOf(db: Database, sceneId: number): SceneMemberDto[] {
+  const rows = db
+    .query(
+      `SELECT c.ulid, c.name, c.avatar_path, m.display_order
+         FROM scene_members m JOIN characters c ON c.id = m.character_id
+        WHERE m.scene_id = $scene_id
+        ORDER BY m.display_order, m.id`,
+    )
+    .all({ scene_id: sceneId }) as {
+    ulid: string;
+    name: string;
+    avatar_path: string | null;
+    display_order: number;
+  }[];
+  return rows.map((row) => ({
+    characterId: row.ulid,
+    name: row.name,
+    hasAvatar: row.avatar_path !== null,
+    displayOrder: row.display_order,
+  }));
+}
+
+function named(
+  db: Database,
+  table: "authors" | "personas",
+  id: number | null,
+): { ulid: string | null; name: string | null } {
+  if (id === null) return { ulid: null, name: null };
+  const row = db.query(`SELECT ulid, name FROM ${table} WHERE id = $id`).get({ id }) as
+    | { ulid: string; name: string }
+    | null;
+  return { ulid: row?.ulid ?? null, name: row?.name ?? null };
+}
+
 export function sceneDto(db: Database, row: SceneRow): SceneDto {
+  const author = named(db, "authors", row.author_id);
+  const persona = named(db, "personas", row.persona_id);
   return toSceneDto(row, {
     presetUlid: ulidOf(db, "presets", row.preset_id),
     profileUlid: ulidOf(db, "connection_profiles", row.connection_profile_id),
+    authorUlid: author.ulid,
+    authorName: author.name,
+    personaUlid: persona.ulid,
+    personaName: persona.name,
+    cast: castOf(db, row.id),
     activeLeafUlid: ulidOf(db, "messages", row.active_leaf_id),
     messageCount: countMessages(db, row.id),
   });
@@ -504,11 +608,17 @@ export function sceneDto(db: Database, row: SceneRow): SceneDto {
  */
 export function activePathDtos(db: Database, scene: SceneRow): MessageDto[] {
   const rows = activePath(db, scene.id);
+  const speakers = speakerLookup(db);
   return rows.map((row, index) =>
-    toMessageDto(row, scene.ulid, index === 0 ? null : (rows[index - 1]?.ulid ?? null)),
+    toMessageDto(row, scene.ulid, index === 0 ? null : (rows[index - 1]?.ulid ?? null), speakers),
   );
 }
 
 export function messageDto(db: Database, row: MessageRow, sceneUlid: string): MessageDto {
-  return toMessageDto(withSiblings(db, row), sceneUlid, ulidOf(db, "messages", row.parent_id));
+  return toMessageDto(
+    withSiblings(db, row),
+    sceneUlid,
+    ulidOf(db, "messages", row.parent_id),
+    speakerLookup(db),
+  );
 }

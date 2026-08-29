@@ -187,6 +187,10 @@ export interface MessageDto {
   parentId: string | null;
   kind: MessageKind;
   authorType: MessageAuthorType;
+  /** Which cast member voiced this turn. Null for user and system turns. */
+  characterId: string | null;
+  /** Resolved for display, so the log does not need the character list. */
+  speakerName: string | null;
   content: string;
   /** Excluded from the prompt, still rendered in the log. */
   isHidden: boolean;
@@ -209,6 +213,13 @@ export interface SceneDto {
   title: string;
   presetId: string | null;
   connectionProfileId: string | null;
+  /** Null selects single-character mode (SPEC §3). */
+  authorId: string | null;
+  authorName: string | null;
+  personaId: string | null;
+  personaName: string | null;
+  /** The cast, in display order. One member until group scenes (phase 8). */
+  cast: SceneMemberDto[];
   /** Null while the scene is empty. */
   activeLeafId: string | null;
   messageCount: number;
@@ -369,4 +380,92 @@ export interface ImportCharacterResponse {
   /** True when the file matched a character already in the library. */
   duplicateOf: string | null;
   warnings: string[];
+}
+
+/* ------------------------------------------------------------------ */
+/* Authors and personas (SPEC §0.2, §2)                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The AI's own identity: the writing partner who puppets the cast.
+ *
+ * This is the product's defining bet (SPEC §0.2). The author is the identity in
+ * the system prompt and characters are roles it plays — not three independent
+ * bots sharing a scene, which is where group roleplay breaks everywhere else.
+ */
+export interface AuthorDto {
+  id: string;
+  name: string;
+  hasAvatar: boolean;
+  /** Who the partner is as a collaborator. */
+  personality: string | null;
+  /** Prose style, tense, point of view, paragraph length. */
+  writingStyle: string | null;
+  /** Pacing habits, how much it escalates, how it handles silence. */
+  directingStyle: string | null;
+  /** How it talks to the user out of character. */
+  oocVoice: string | null;
+  /** Content it steers toward or away from. */
+  boundaries: string | null;
+  /** Opt-in cross-scene memory (§11). Off by default and not yet read. */
+  memoryEnabled: boolean;
+  isDefault: boolean;
+  tokens: AuthorTokenCosts;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface AuthorTokenCosts {
+  personality: number;
+  writingStyle: number;
+  directingStyle: number;
+  oocVoice: number;
+  boundaries: number;
+  /** What the author block costs every prompt. */
+  total: number;
+  estimated: boolean;
+}
+
+export interface UpdateAuthorRequest {
+  name?: string;
+  personality?: string | null;
+  writingStyle?: string | null;
+  directingStyle?: string | null;
+  oocVoice?: string | null;
+  boundaries?: string | null;
+  memoryEnabled?: boolean;
+  isDefault?: boolean;
+}
+
+/** Who the user is. The name the user-lock is stated in terms of. */
+export interface PersonaDto {
+  id: string;
+  name: string;
+  description: string | null;
+  isDefault: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface UpdatePersonaRequest {
+  name?: string;
+  description?: string | null;
+  isDefault?: boolean;
+}
+
+/** A character taking part in a scene. */
+export interface SceneMemberDto {
+  characterId: string;
+  name: string;
+  hasAvatar: boolean;
+  displayOrder: number;
+}
+
+/** Everything the scene setup screen edits. */
+export interface SceneSetupRequest {
+  authorId?: string | null;
+  personaId?: string | null;
+  presetId?: string | null;
+  connectionProfileId?: string | null;
+  title?: string;
 }
