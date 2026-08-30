@@ -23,6 +23,7 @@ import type { CharacterRow } from "../db/queries/characters.ts";
 import { activeGuides } from "../db/queries/guides.ts";
 import { injectedSummaries } from "../db/queries/summaries.ts";
 import { activeBans, listGroups, selectedOptions } from "../db/queries/options.ts";
+import { activateForScene } from "../lore/scene.ts";
 import { parseReasoningConfig, type ReasoningConfig } from "./reasoning.ts";
 import { guideOpKey } from "../tasks/registry.ts";
 import { taskConfig, templateOf } from "../db/queries/tasks.ts";
@@ -306,6 +307,9 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
       : options.presetId,
   );
   const history = options.history ?? activePath(options.db, options.scene.id);
+  // One tokenizer for the whole context: the lore budget and the prompt budget
+  // must agree about what a token is.
+  const tokenizer = createEstimatingTokenizer();
 
   const castRows = castRowsOf(options.db, options.scene.id);
   const characterUlids = new Map(castRows.map((row) => [row.id, row.ulid]));
@@ -326,6 +330,21 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
   // Resolved once: an option knows its group by id, and the inspector wants
   // the group's name on every block it produces.
   const groupNames = new Map(listGroups(options.db).map((row) => [row.id, row.name]));
+
+  /* ---------------- lorebooks (SPEC §10) ---------------- */
+
+  // The activation model is pure and lives in /lore; this is only the part that
+  // reads rows and counts messages. §10's probability and weighted groups are
+  // seeded from the generation, so the same turn always activates the same lore
+  // — a reroll that quietly matched different entries would be untraceable.
+  const lore = activateForScene({
+    db: options.db,
+    scene: options.scene,
+    history,
+    presentCharacterIds: castRows.filter((row) => row.is_active === 1).map((row) => row.ulid),
+    seed: options.seed,
+    tokenizer,
+  });
 
   // Whoever the turn director chose, otherwise the first active member.
   const spotlightRow =
@@ -389,7 +408,17 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
     author: authorRow === null ? null : toPromptAuthor(authorRow),
     persona: toPromptPersona(personaRow),
     history: history.map((row) => toPromptMessage(row, characterUlids, injected.coveredMessageIds)),
-    lore: [],
+    // Already matched and resolved by the activation model (§10).
+    lore: lore.activated.map((entry) => ({
+      id: entry.id,
+      content: entry.content,
+      isConstant: entry.isConstant,
+      position: entry.position,
+      insertionOrder: entry.insertionOrder,
+      insertionDepth: entry.insertionDepth,
+      insertionRole: entry.insertionRole,
+      outletName: entry.outletName,
+    })),
     documents: [],
     // Rolling summarisation (SPEC §11). Which of the scene's summaries reach
     // the prompt is decided by the threshold and the freeze, not by this call.
@@ -430,7 +459,7 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
     // The window is the smaller of what the preset asks for and what the
     // provider actually has: exceeding the latter fails at the provider.
     budget: Math.min(contextSize, options.capabilities.maxContext),
-    tokenizer: createEstimatingTokenizer(),
+    tokenizer,
     now: options.now,
     seed: options.seed,
   };

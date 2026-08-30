@@ -17,6 +17,7 @@ import type { PassPipeline } from "../passes/pipeline.ts";
 import type { GuideRunner } from "../guides/runner.ts";
 import type { SummaryRunner } from "../summaries/runner.ts";
 import type { BanAnalyser } from "../options/runner.ts";
+import { activateForScene } from "../lore/scene.ts";
 import {
   acceptBan,
   addBan,
@@ -472,6 +473,39 @@ export function sceneGenerationRoutes(
     }
     flushGuides(ctx.db, scene.id, raw === "all" ? null : raw);
     return c.json(activeGuides(ctx.db, scene.id).map(toGuideDto));
+  });
+
+  /**
+   * What lore would fire for this scene right now, and what would not (§10).
+   *
+   * §16 asks the lorebook editor for "an activation test tool that shows what
+   * would fire against the current scene". This is that, and it runs the same
+   * engine a generation runs — a test tool with its own second implementation
+   * would be a tool that lies.
+   */
+  app.get("/:sceneId/lore", (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    const present = ctx.db
+      .query(
+        `SELECT c.ulid AS ulid FROM scene_members m
+           JOIN characters c ON c.id = m.character_id
+          WHERE m.scene_id = $scene AND m.is_active = 1`,
+      )
+      .all({ scene: scene.id }) as { ulid: string }[];
+
+    const result = activateForScene({
+      db: ctx.db,
+      scene,
+      presentCharacterIds: present.map((row) => row.ulid),
+      // Fixed rather than per-generation: the tool answers "what does this
+      // scene do", and a number that changed on every refresh would make a
+      // probability entry impossible to reason about.
+      seed: 1,
+    });
+    return c.json(result.trace);
   });
 
   /* -------------------------------------------------------------- */
