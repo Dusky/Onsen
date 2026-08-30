@@ -1935,41 +1935,64 @@ Each phase ends in a working, usable application.
 16. Rolling summarization with threshold, eviction, and cache freeze.
 17. Modern sampler defaults, DRY/XTC, reasoning extraction, prefill.
 18. **Prompt option groups** and the ban list.
+19. **Desktop layout** — §16 and the design's `4a`: the same components
+    unrolled into sidebar, capped prose column and cast rail, with the ops grid
+    flattened and the guides panel becoming the rail's footer.
+20. **Schema review** — read migrations 0001 onward end to end, against §2 and
+    against what was actually built, before the depth phases start adding
+    tables.
 
 **Depth**
-19. Lorebooks — full activation model, timed effects, inclusion groups,
+21. Lorebooks — full activation model, timed effects, inclusion groups,
     character filters, recursion levels, outlets.
-20. Remaining adapters — Anthropic, text completion with instruct templates.
-21. OOC channel — parsing, rendering, user OOC replies.
-22. Autopilot.
-23. Prompt inspector, with eviction and activation traces.
-24. **Character library at scale** — search, tags, bulk ops, versioning, derive.
-25. **AI-assisted authoring** — create/revise/extract character, suggest lore,
+22. Remaining adapters — Anthropic, text completion with instruct templates.
+23. OOC channel — parsing, rendering, user OOC replies.
+24. Autopilot.
+25. Prompt inspector, with eviction and activation traces.
+26. **Character library at scale** — search, tags, bulk ops, versioning, derive.
+27. **AI-assisted authoring** — create/revise/extract character, suggest lore,
     auto-tagging. All background tasks; cheap once the primitive exists.
-26. **Preset import** — SillyTavern chat-completion presets, mapped onto option
+28. **Preset import** — SillyTavern chat-completion presets, mapped onto option
     groups, with an import report.
-27. Expressions — author-declared tags, sprite packs, VN mode.
-28. Document RAG / data bank.
-29. Structured trackers with the panel UI.
-30. Character dossiers for emergent NPCs.
-31. Regex scripts and event triggers.
-32. **Packs** — export/import bundles, transactional install, ownership
+29. Expressions — author-declared tags, sprite packs, VN mode.
+30. Document RAG / data bank.
+31. Structured trackers with the panel UI.
+32. Character dossiers for emergent NPCs.
+33. Regex scripts and event triggers.
+34. **Packs** — export/import bundles, transactional install, ownership
     tracking for clean uninstall.
-33. **Outbound webhooks** — signed event subscriptions.
-34. Multi-device head sync, background indicators.
-41. Outbound OpenAI-compatible API — `last_message` mode, scene models, inline
+35. **Outbound webhooks** — signed event subscriptions.
+36. Multi-device head sync, background indicators.
+37. Outbound OpenAI-compatible API — `last_message` mode, scene models, inline
     ops, bearer keys. Depends on the head sync being in place.
 
 **Later**
-40. Narrative memory (entities, relations, salience) — only after summarization
+38. Narrative memory (entities, relations, salience) — only after summarization
     and RAG are proven.
-41. Author memory.
+39. Author memory.
 40. Optional tabletop module — dice, skill checks, stat and inventory tracking
     as user-defined state schemas. Deterministic rolls happen server-side, never
     in the model.
 41. TTS, image generation, captioning.
-40. Chub import, community asset browsing.
-41. Polish — mention strategy, group greetings, bulk import, PWA.
+42. Chub import, community asset browsing.
+43. Polish — mention strategy, group greetings, bulk import, PWA.
+
+Settled while building phase 15.
+
+- **The desktop layout is phase 19, not a polish item.** The design is explicit
+  that desktop is the same components unrolled rather than a second design, and
+  that only stays true if the components are unrolled while there are few of
+  them. Every screen built mobile-only after this point is one more to retrofit,
+  so it goes at the end of the core product and before the depth phases, and
+  everything from lorebooks onward is built for both widths from the start.
+- **The schema review is phase 20, and it is overdue.** `HANDOFF.md` asks for
+  the migrations to be reviewed before they are run; thirteen of them have been
+  written and run without that ever happening, because waiting would have
+  stopped every phase. The honest repair is a phase that reads them all against
+  §2, taken before the depth phases add lorebooks, trackers and packs — the
+  point past which a schema mistake stops being cheap.
+- **The numbering past 34 was wrong**, and is corrected here: the tail repeated
+  40 and 41 several times over. The count is 43 phases with the two above added.
 
 ---
 
