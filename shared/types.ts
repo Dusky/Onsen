@@ -711,6 +711,132 @@ export interface RebuildGuidesRequest {
 }
 
 /* ------------------------------------------------------------------ */
+/* Lorebooks (SPEC §10)                                                */
+/* ------------------------------------------------------------------ */
+
+export type LoreSecondaryLogic = "and_any" | "and_all" | "not_any" | "not_all";
+export type LoreGroupSelection = "weight" | "prioritize" | "score";
+export type LoreDelayFrom = "scene_start" | "branch_point";
+export type LorePosition =
+  | "before_character"
+  | "after_character"
+  | "before_examples"
+  | "after_examples"
+  | "before_history"
+  | "at_depth"
+  | "outlet";
+export type LoreBindingScope = "global" | "scene" | "character" | "persona";
+
+export const LORE_POSITIONS: readonly LorePosition[] = [
+  "before_character",
+  "after_character",
+  "before_examples",
+  "after_examples",
+  "before_history",
+  "at_depth",
+  "outlet",
+];
+
+export interface LorebookDto {
+  id: string;
+  name: string;
+  description: string | null;
+  /** Lowest-priority entries drop when this is exceeded. 0 is no budget (§10). */
+  tokenBudget: number;
+  scanDepth: number;
+  recursionDepth: number;
+  entryCount: number;
+  /** What this book is attached to, and how. */
+  bindings: LoreBindingDto[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface LoreBindingDto {
+  id: string;
+  scope: LoreBindingScope;
+  /** The thing bound to, for every scope but `global`. */
+  targetId: string | null;
+  targetName: string | null;
+}
+
+export interface LoreEntryDto {
+  id: string;
+  lorebookId: string;
+  title: string;
+  content: string;
+  enabled: boolean;
+  tokenCount: number;
+
+  keys: string[];
+  secondaryKeys: string[];
+  secondaryLogic: LoreSecondaryLogic;
+  caseSensitive: boolean;
+  matchWholeWords: boolean;
+  useRegex: boolean;
+  probability: number;
+  isConstant: boolean;
+  /** Null uses the book's depth. */
+  scanDepth: number | null;
+  /** Character ULIDs; empty means every character (§10). */
+  characterFilter: string[];
+
+  sticky: number;
+  cooldown: number;
+  delay: number;
+  delayFrom: LoreDelayFrom;
+
+  inclusionGroup: string | null;
+  groupWeight: number;
+  groupSelection: LoreGroupSelection;
+
+  position: LorePosition;
+  insertionOrder: number;
+  insertionDepth: number;
+  insertionRole: InjectionRole;
+  outletName: string | null;
+
+  recursionLevel: number;
+  nonRecursable: boolean;
+  preventFurtherRecursion: boolean;
+  automationId: string | null;
+
+  updatedAt: number;
+}
+
+export type UpdateLoreEntryRequest = Partial<
+  Omit<LoreEntryDto, "id" | "lorebookId" | "tokenCount" | "updatedAt">
+>;
+
+export interface CreateLorebookRequest {
+  name: string;
+  description?: string | null;
+}
+
+export interface UpdateLorebookRequest {
+  name?: string;
+  description?: string | null;
+  tokenBudget?: number;
+  scanDepth?: number;
+  recursionDepth?: number;
+}
+
+/**
+ * What fired for a scene right now, and what did not (SPEC §10, §3's inspector).
+ * The activation test tool in §16 is this endpoint with a scene attached.
+ */
+export interface LoreActivationDto {
+  entryId: string;
+  title: string;
+  matchedKey: string | null;
+  round: number;
+  sticky: boolean;
+  constant: boolean;
+  /** Null when it fired. Otherwise why it did not. */
+  skipped: string | null;
+}
+
+/* ------------------------------------------------------------------ */
 /* Prompt option groups and the ban list (SPEC §13.5, §13.6)           */
 /* ------------------------------------------------------------------ */
 
