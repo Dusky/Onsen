@@ -40,6 +40,67 @@ export interface SamplerSettings {
 }
 
 /**
+ * What each sampler is allowed to be (SPEC §13).
+ *
+ * Bounded rather than free-form because these reach a provider verbatim: a
+ * temperature of 40 is not an adventurous setting, it is a request that comes
+ * back as noise or as a 400, and neither failure points at the field that
+ * caused it. The ranges are deliberately wider than the useful range — this is
+ * a guard against nonsense, not an opinion about taste.
+ */
+export const SAMPLER_BOUNDS = {
+  temperature: { min: 0, max: 5, step: 0.05 },
+  min_p: { min: 0, max: 1, step: 0.01 },
+  top_p: { min: 0, max: 1, step: 0.01 },
+  top_k: { min: 0, max: 500, step: 1, integer: true },
+  repetition_penalty: { min: 0.5, max: 2, step: 0.01 },
+  dry_multiplier: { min: 0, max: 5, step: 0.05 },
+  dry_base: { min: 0, max: 5, step: 0.05 },
+  dry_allowed_length: { min: 0, max: 20, step: 1, integer: true },
+  xtc_threshold: { min: 0, max: 1, step: 0.01 },
+  xtc_probability: { min: 0, max: 1, step: 0.05 },
+} as const satisfies Record<string, { min: number; max: number; step: number; integer?: boolean }>;
+
+export type BoundedSampler = keyof typeof SAMPLER_BOUNDS;
+
+export const BOUNDED_SAMPLERS = Object.keys(SAMPLER_BOUNDS) as BoundedSampler[];
+
+/**
+ * Validate a sampler bundle, returning the first thing wrong with it.
+ *
+ * Shared between the route and the editor so a value the form accepts is never
+ * one the server refuses, which is the kind of mismatch that reads as a bug in
+ * whichever half the user is looking at.
+ */
+export function samplerProblem(settings: unknown): string | null {
+  if (typeof settings !== "object" || settings === null) return "Expected sampler settings.";
+  const record = settings as Record<string, unknown>;
+
+  for (const [key, value] of Object.entries(record)) {
+    if (value === undefined) continue;
+
+    if (key === "dry_sequence_breakers") {
+      if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
+        return "Sequence breakers must be a list of strings.";
+      }
+      if (value.length > 20) return "That is more sequence breakers than any backend will use.";
+      continue;
+    }
+
+    if (!(key in SAMPLER_BOUNDS)) return `${key} is not a sampler this app knows.`;
+    const bound = SAMPLER_BOUNDS[key as BoundedSampler];
+    if (typeof value !== "number" || !Number.isFinite(value)) return `${key} must be a number.`;
+    if (value < bound.min || value > bound.max) {
+      return `${key} must be between ${bound.min} and ${bound.max}.`;
+    }
+    if ("integer" in bound && bound.integer && !Number.isInteger(value)) {
+      return `${key} must be a whole number.`;
+    }
+  }
+  return null;
+}
+
+/**
  * SPEC §13, "Ship modern defaults, not 2023 defaults". High repetition penalty
  * with low temperature actively degrades current models; DRY and XTC are the
  * modern replacements. Shipping these on rather than off is deliberate — a
@@ -70,6 +131,14 @@ export interface ProviderDto {
   hasApiKey: boolean;
   apiKeyMask: string | null;
   enabled: boolean;
+  /**
+   * Whether this endpoint accepts a prefill — a partial assistant turn the
+   * model continues from (SPEC §13). Null means the adapter's own default: it
+   * is a property of the endpoint rather than the wire format, since OpenAI
+   * rejects a trailing assistant message and most local servers speaking the
+   * same shape accept one.
+   */
+  supportsPrefill: boolean | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -80,9 +149,37 @@ export interface PresetDto {
   samplerSettings: SamplerSettings;
   contextSize: number;
   maxResponseTokens: number;
+  /** Seeds the assistant turn, where the endpoint accepts one (SPEC §13). */
+  prefill: string | null;
+  /** How reasoning is handled for scenes on this preset (SPEC §13). */
+  reasoning: ReasoningConfigDto;
   isDefault: boolean;
   createdAt: number;
   updatedAt: number;
+}
+
+/**
+ * SPEC §13: reasoning is parsed out of the response, hidden from the prose, and
+ * **not fed back into multi-turn context by default** — most providers advise
+ * against it. Re-injection is an opt-in with a configurable prefix and suffix,
+ * and "off" is expressed as zero blocks rather than a separate flag, so there is
+ * one thing to read and no way for a flag and a count to disagree.
+ */
+export interface ReasoningConfigDto {
+  reinjectLast: number;
+  prefix: string;
+  suffix: string;
+  /** Strip inline `<think>` tags from the prose. On by default. */
+  parseInline: boolean;
+}
+
+export interface UpdatePresetRequest {
+  name?: string;
+  samplerSettings?: SamplerSettings;
+  contextSize?: number;
+  maxResponseTokens?: number;
+  prefill?: string | null;
+  reasoning?: Partial<ReasoningConfigDto>;
 }
 
 export interface ConnectionProfileDto {
@@ -120,6 +217,8 @@ export interface UpdateProviderRequest {
   apiKey?: string | null;
   model?: string | null;
   enabled?: boolean;
+  /** Null restores the adapter's own answer, rather than meaning "no" (§13). */
+  supportsPrefill?: boolean | null;
 }
 
 export interface CreateConnectionProfileRequest {
@@ -270,6 +369,11 @@ export interface MessageDto {
   /** Resolved for display, so the log does not need the character list. */
   speakerName: string | null;
   content: string;
+  /**
+   * The model's own reasoning, hidden from the prose and rendered collapsed
+   * (SPEC §13). Never fed back into a later prompt unless the preset asks.
+   */
+  reasoning: string | null;
   /** Excluded from the prompt, still rendered in the log. */
   isHidden: boolean;
   /** Null when never counted, or invalidated by an edit. */

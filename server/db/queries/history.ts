@@ -78,6 +78,11 @@ export interface MessageRow {
   parse_degraded: number;
   /** True while the post-generation pipeline is still working on it (§7.5). */
   passes_pending: number;
+  /**
+   * The model's own reasoning, kept apart from the content (SPEC §13). Null
+   * where it produced none, or where the turn predates extraction.
+   */
+  reasoning: string | null;
   created_at: number;
   edited_at: number | null;
 }
@@ -148,6 +153,7 @@ export function toMessageDto(
     speakerName:
       row.character_id === null ? null : (speakers?.nameById.get(row.character_id) ?? null),
     content: row.content,
+    reasoning: row.reasoning,
     isHidden: row.is_hidden === 1,
     tokenCount: row.token_count,
     createdAt: row.created_at,

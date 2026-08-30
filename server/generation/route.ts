@@ -19,6 +19,12 @@ export interface ResolvedRoute {
   apiKey: string | null;
   model: string;
   presetId: number | null;
+  /**
+   * Whether this endpoint accepts a prefill (§13). Null means the adapter's own
+   * default stands — prefill is a property of the endpoint, not the wire
+   * format, so an operator can say what their local server actually does.
+   */
+  supportsPrefill: boolean | null;
 }
 
 export class RouteError extends Error {
@@ -51,7 +57,7 @@ export function resolveRoute(
     .query(
       `SELECT cp.model AS profile_model, cp.preset_id,
               p.name AS provider_name, p.kind, p.base_url, p.api_key_encrypted,
-              p.model AS provider_model, p.enabled
+              p.model AS provider_model, p.enabled, p.supports_prefill
          FROM connection_profiles cp
          JOIN providers p ON p.id = cp.provider_id
         WHERE cp.id = $id`,
@@ -66,6 +72,7 @@ export function resolveRoute(
         api_key_encrypted: string | null;
         provider_model: string | null;
         enabled: number;
+        supports_prefill: number | null;
       }
     | null;
 
@@ -103,5 +110,6 @@ export function resolveRoute(
     apiKey,
     model,
     presetId: row.preset_id,
+    supportsPrefill: row.supports_prefill === null ? null : row.supports_prefill === 1,
   };
 }

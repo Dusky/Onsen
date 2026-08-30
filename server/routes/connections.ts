@@ -6,6 +6,7 @@ import {
   deleteConnectionProfile,
   deleteProvider,
   findConnectionProfileByUlid,
+  findPresetByUlid,
   findProviderById,
   findProviderByUlid,
   insertConnectionProfile,
@@ -18,10 +19,18 @@ import {
   toProviderDto,
   ulidLookup,
   updateConnectionProfile,
+  updatePreset,
   updateProvider,
+  type PresetPatch,
 } from "../db/queries/connections.ts";
+import { parseReasoningConfig } from "../generation/reasoning.ts";
 import { encryptSecret } from "../lib/crypto.ts";
-import { PROVIDER_KINDS, type ProviderKind } from "../../shared/types.ts";
+import {
+  PROVIDER_KINDS,
+  samplerProblem,
+  type ProviderKind,
+  type SamplerSettings,
+} from "../../shared/types.ts";
 
 /**
  * Providers and connection profiles (SPEC §20 phase 13).
@@ -41,6 +50,64 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
   );
 
   app.get("/presets", (c) => c.json(listPresets(ctx.db).map(toPresetDto)));
+
+  /**
+   * Edit a preset: samplers, the context budget, the prefill, and how reasoning
+   * is handled (SPEC §13).
+   *
+   * The modern defaults have shipped since phase 1 but have never been
+   * reachable, which is most of the way to not having them — a default nobody
+   * can see is indistinguishable from a hardcoded constant.
+   */
+  app.patch("/presets/:id", async (c) => {
+    const row = findPresetByUlid(ctx.db, c.req.param("id"));
+    if (row === null) return c.json(notFound("preset"), 404);
+
+    const body = await readJson(c);
+    if (body === null) return c.json(badRequest("Expected a JSON body."), 400);
+
+    const patch: PresetPatch = {};
+    const name = text(body["name"], 120);
+    if (name !== null) patch.name = name;
+
+    if ("samplerSettings" in body) {
+      // Validated with the same function the editor uses, so a value the form
+      // accepts is never one the server refuses.
+      const problem = samplerProblem(body["samplerSettings"]);
+      if (problem !== null) return c.json(badRequest(problem), 400);
+      patch.samplerSettings = body["samplerSettings"] as SamplerSettings;
+    }
+
+    for (const [field, min, max] of [
+      ["contextSize", 512, 2_000_000],
+      ["maxResponseTokens", 16, 32_768],
+    ] as const) {
+      if (!(field in body)) continue;
+      const value = body[field];
+      if (typeof value !== "number" || !Number.isInteger(value) || value < min || value > max) {
+        const said = `${field} must be a whole number between ${min} and ${max}.`;
+        return c.json(badRequest(said), 400);
+      }
+      if (field === "contextSize") patch.contextSize = value;
+      else patch.maxResponseTokens = value;
+    }
+
+    if ("prefill" in body) patch.prefill = text(body["prefill"], 2_000);
+
+    if ("reasoning" in body) {
+      const value = body["reasoning"];
+      if (typeof value !== "object" || value === null) {
+        return c.json(badRequest("reasoning must be an object."), 400);
+      }
+      // Merged onto what is stored rather than replacing it, so a client that
+      // sends one field does not silently reset the other three. The parser
+      // clamps and defaults, so anything unusable becomes the safe value.
+      const merged = { ...parseReasoningConfig(row.reasoning_config), ...value };
+      patch.reasoningConfig = JSON.stringify(parseReasoningConfig(JSON.stringify(merged)));
+    }
+
+    return c.json(toPresetDto(updatePreset(ctx.db, row.id, patch)));
+  });
 
   app.get("/profiles", (c) => {
     const providers = ulidLookup(ctx.db, "providers");
@@ -104,6 +171,15 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
         return c.json(badRequest("enabled must be a boolean."), 400);
       }
       patch.enabled = body["enabled"];
+    }
+    // Whether this endpoint takes a prefill (§13). Three-valued on purpose:
+    // null is "use whatever the adapter says", which is not the same as "no".
+    if ("supportsPrefill" in body) {
+      const value = body["supportsPrefill"];
+      if (value !== null && typeof value !== "boolean") {
+        return c.json(badRequest("supportsPrefill must be a boolean, or null."), 400);
+      }
+      patch.supportsPrefill = value;
     }
     // Absent leaves the key alone; null clears it; a string replaces it. A form
     // that came back empty must not delete a credential nobody touched.

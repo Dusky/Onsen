@@ -206,6 +206,12 @@ export interface PromptMessage {
   /** Cached count; recomputed when absent. */
   tokenCount: number | null;
   /**
+   * The model's own reasoning for this turn (SPEC §13). Present on the message
+   * but kept out of the prompt unless `PromptContext.reasoning` asks for it —
+   * most providers advise against feeding it back.
+   */
+  reasoning?: string | null;
+  /**
    * Covered by a summary the prompt is carrying (§11). Only meaningful when the
    * scene has asked for raw eviction; otherwise the message is shown as well as
    * described, which is the safe default and the expensive one.
@@ -313,6 +319,11 @@ export interface PromptContext {
    * last user message is kept regardless: the turn has to answer something.
    */
   evictSummarized?: boolean;
+  /**
+   * Feeding reasoning back into context (SPEC §13), which is opt-in because
+   * most providers advise against it. Zero blocks is off and is the default.
+   */
+  reasoning?: { reinjectLast: number; prefix: string; suffix: string };
   /** Persistent steer on the scene (§7). */
   directorNote?: string;
   /** One-shot instruction for this generation only (§7). */

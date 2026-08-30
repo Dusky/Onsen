@@ -10,6 +10,14 @@ import type { BuiltPrompt, ProviderCapabilities } from "../prompt/index.ts";
 export interface TokenChunk {
   /** Text to append to the generation buffer. */
   text: string;
+  /**
+   * Reasoning the provider handed back in a field of its own (SPEC §13).
+   *
+   * Separate from `text` because it is separate at the source: DeepSeek, vLLM
+   * and OpenRouter stream it in `delta.reasoning_content`, and mixing the two
+   * here would put the model's private planning into the scene.
+   */
+  reasoning?: string;
 }
 
 export interface ModelInfo {
@@ -67,6 +75,13 @@ export interface AdapterConfig {
   model: string;
   /** Overrides the capability default where the operator knows better. */
   maxContext?: number;
+  /**
+   * Whether this endpoint accepts a prefill (§13). Prefill is a property of the
+   * endpoint rather than the wire format: OpenAI rejects a trailing assistant
+   * message, most local servers speaking the same shape accept one. Absent
+   * means the adapter's own default stands.
+   */
+  supportsPrefill?: boolean;
   /** Injected so tests use recorded fixtures rather than live APIs (§23). */
   fetch?: typeof globalThis.fetch;
 }

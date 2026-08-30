@@ -57,6 +57,16 @@ function speakerLabel(ctx: PromptContext, message: PromptMessage): string | null
   }
 }
 
+/** Wrap a re-injected block in the preset's own words (§13). */
+function wrapReasoning(ctx: PromptContext, reasoning: string): string {
+  if (reasoning === "") return "";
+  const prefix = ctx.reasoning?.prefix ?? "";
+  const suffix = ctx.reasoning?.suffix ?? "";
+  const head = prefix === "" ? "" : `${prefix}\n`;
+  const tail = suffix === "" ? "" : `\n${suffix}`;
+  return `${head}${reasoning}${tail}\n\n`;
+}
+
 function roleFor(message: PromptMessage): PromptRole {
   if (message.authorType === "user") return "user";
   if (message.authorType === "system") return "system";
@@ -82,6 +92,19 @@ export function renderHistory(ctx: PromptContext, mode: RenderMode): RenderedHis
   // drops the thing being replied to leaves the turn with nothing to answer.
   const lastUserId = ctx.history.filter((message) => message.authorType === "user").at(-1)?.id;
 
+  // §13: reasoning is not fed back unless the preset asks, and then only for
+  // the last N blocks. Which N is decided here, over the whole path, so that
+  // trimming history later cannot change which turns were eligible.
+  const reinject = ctx.reasoning?.reinjectLast ?? 0;
+  const carryReasoning = new Set(
+    reinject === 0
+      ? []
+      : ctx.history
+          .filter((message) => (message.reasoning ?? "").trim() !== "")
+          .slice(-reinject)
+          .map((message) => message.id),
+  );
+
   for (const message of ctx.history) {
     if (message.isHidden) {
       hidden.push({ id: message.id, label: speakerLabel(ctx, message) ?? "System" });
@@ -90,7 +113,10 @@ export function renderHistory(ctx: PromptContext, mode: RenderMode): RenderedHis
 
     const label = mode === "author" ? speakerLabel(ctx, message) : null;
     const prefix = label === null ? "" : `${label}: `;
-    const tokens = costOf(ctx.tokenizer, message, prefix);
+    const thought = carryReasoning.has(message.id)
+      ? wrapReasoning(ctx, (message.reasoning ?? "").trim())
+      : "";
+    const tokens = costOf(ctx.tokenizer, message, prefix) + ctx.tokenizer.count(thought);
 
     // Raw eviction (§11): a summary the prompt is carrying already says what
     // this message said, so showing both spends the budget twice.
@@ -105,7 +131,10 @@ export function renderHistory(ctx: PromptContext, mode: RenderMode): RenderedHis
 
     turns.push({
       role: roleFor(message),
-      content: `${prefix}${message.content}`,
+      // The reasoning goes *before* the turn it produced, because that is the
+      // order it happened in and the only order that reads as thinking rather
+      // than as an afterword.
+      content: `${thought}${prefix}${message.content}`,
       messageId: message.id,
       tokens,
     });

@@ -12,6 +12,7 @@ import opConfig from "./0011_op_config.sql" with { type: "text" };
 import passes from "./0012_passes.sql" with { type: "text" };
 import guides from "./0013_guides.sql" with { type: "text" };
 import summaries from "./0014_summaries.sql" with { type: "text" };
+import reasoning from "./0015_reasoning.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -41,4 +42,5 @@ export const migrations: readonly Migration[] = [
   { version: 12, name: "passes", sql: passes },
   { version: 13, name: "guides", sql: guides },
   { version: 14, name: "summaries", sql: summaries },
+  { version: 15, name: "reasoning", sql: reasoning },
 ];

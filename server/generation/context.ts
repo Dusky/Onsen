@@ -22,6 +22,7 @@ import {
 import type { CharacterRow } from "../db/queries/characters.ts";
 import { activeGuides } from "../db/queries/guides.ts";
 import { injectedSummaries } from "../db/queries/summaries.ts";
+import { parseReasoningConfig, type ReasoningConfig } from "./reasoning.ts";
 import { guideOpKey } from "../tasks/registry.ts";
 import { taskConfig, templateOf } from "../db/queries/tasks.ts";
 import { fillTemplate } from "../prompt/index.ts";
@@ -66,12 +67,15 @@ interface PresetRow {
   prefill: string | null;
   context_size: number;
   max_response_tokens: number;
+  reasoning_config: string | null;
 }
 
 export interface ResolvedPreset {
   preset: PromptPreset;
   samplers: SamplerSettings;
   contextSize: number;
+  /** How reasoning is handled for this preset (SPEC §13). */
+  reasoning: ReasoningConfig;
 }
 
 /** Read a preset row, falling back to the modern defaults when there is none. */
@@ -92,6 +96,7 @@ export function resolvePreset(db: Database, presetId: number | null): ResolvedPr
   }
 
   return {
+    reasoning: parseReasoningConfig(row?.reasoning_config ?? null),
     preset: {
       name: row?.name ?? "Default",
       systemPrompt: row?.system_prompt ?? null,
@@ -121,6 +126,7 @@ function toPromptMessage(
       row.character_id === null ? null : (characterUlids.get(row.character_id) ?? null),
     tokenCount: row.token_count,
     isSummarized: summarized.has(row.id),
+    reasoning: row.reasoning,
   };
 }
 
@@ -259,7 +265,7 @@ function resolveOps(options: BuildContextOptions): Partial<Record<string, Prompt
  * later phases; the builder already handles each being absent.
  */
 export function buildPromptContext(options: BuildContextOptions): PromptContext {
-  const { preset, contextSize } = resolvePreset(options.db, options.scene.preset_id);
+  const { preset, contextSize, reasoning } = resolvePreset(options.db, options.scene.preset_id);
   const history = options.history ?? activePath(options.db, options.scene.id);
 
   const castRows = castRowsOf(options.db, options.scene.id);
@@ -320,6 +326,13 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
     // §11's raw eviction, off unless the scene asks: it saves the most and it
     // loses the most.
     evictSummarized: options.scene.summarise_evict === 1,
+    // §13: off unless the preset asks, because most providers advise against
+    // feeding reasoning back into multi-turn context.
+    reasoning: {
+      reinjectLast: reasoning.reinjectLast,
+      prefix: reasoning.prefix,
+      suffix: reasoning.suffix,
+    },
     ops: resolveOps(options),
     cast: cast.length === 0 ? [spotlight] : cast,
     spotlight,

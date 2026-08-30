@@ -39,9 +39,21 @@ export const OPENAI_COMPATIBLE_CAPABILITIES: ProviderCapabilities = {
   tokenizer: null,
 };
 
-/** The delta shape of a streaming chat completion. */
+/**
+ * The delta shape of a streaming chat completion.
+ *
+ * `reasoning_content` is DeepSeek's field and the one vLLM copied;
+ * `reasoning` is OpenRouter's. Neither is in OpenAI's own schema, and a
+ * provider that sends neither simply never populates them (§13).
+ */
 interface ChatCompletionChunk {
-  choices?: { delta?: { content?: string | null } }[];
+  choices?: {
+    delta?: {
+      content?: string | null;
+      reasoning_content?: string | null;
+      reasoning?: string | null;
+    };
+  }[];
   error?: { message?: string };
 }
 
@@ -97,6 +109,7 @@ export function createOpenAiAdapter(config: AdapterConfig): Adapter {
   const capabilities: ProviderCapabilities = {
     ...OPENAI_COMPATIBLE_CAPABILITIES,
     ...(config.maxContext === undefined ? {} : { maxContext: config.maxContext }),
+    ...(config.supportsPrefill === undefined ? {} : { supportsPrefill: config.supportsPrefill }),
   };
 
   function headers(): Record<string, string> {
@@ -122,6 +135,14 @@ export function createOpenAiAdapter(config: AdapterConfig): Adapter {
         ...(prompt.system === undefined ? [] : [{ role: "system", content: prompt.system }]),
         ...prompt.messages.map((message) => ({ role: message.role, content: message.content })),
       ];
+
+      // Prefill: a partial assistant turn the model continues from (§13). On
+      // this wire format that is a trailing assistant message, which is exactly
+      // what OpenAI rejects and what most local servers accept — so it is sent
+      // only where the endpoint has said it works.
+      if (capabilities.supportsPrefill && prompt.prefill !== undefined && prompt.prefill !== "") {
+        messages.push({ role: "assistant", content: prompt.prefill });
+      }
 
       let response: Response;
       try {
@@ -179,7 +200,12 @@ export function createOpenAiAdapter(config: AdapterConfig): Adapter {
           });
         }
 
-        const text = chunk.choices?.[0]?.delta?.content;
+        const delta = chunk.choices?.[0]?.delta;
+        // A frame can carry either, and some providers send a run of
+        // reasoning-only frames before the first word of prose.
+        const thought = delta?.reasoning_content ?? delta?.reasoning;
+        if (typeof thought === "string" && thought !== "") yield { text: "", reasoning: thought };
+        const text = delta?.content;
         if (typeof text === "string" && text !== "") yield { text };
       }
     },

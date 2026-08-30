@@ -9,6 +9,7 @@ import {
   type ProviderKind,
   type SamplerSettings,
 } from "../../../shared/types.ts";
+import { parseReasoningConfig } from "../../generation/reasoning.ts";
 
 /* ------------------------------------------------------------------ */
 /* Row shapes                                                          */
@@ -24,6 +25,7 @@ interface ProviderRow {
   model: string | null;
   capabilities: string | null;
   enabled: number;
+  supports_prefill: number | null;
   created_at: number;
   updated_at: number;
 }
@@ -35,6 +37,8 @@ interface PresetRow {
   sampler_settings: string;
   context_size: number;
   max_response_tokens: number;
+  prefill: string | null;
+  reasoning_config: string | null;
   is_default: number;
   created_at: number;
   updated_at: number;
@@ -81,6 +85,7 @@ export function toProviderDto(row: ProviderRow, keyring: Keyring): ProviderDto {
     hasApiKey: row.api_key_encrypted !== null,
     apiKeyMask: mask,
     enabled: row.enabled === 1,
+    supportsPrefill: row.supports_prefill === null ? null : row.supports_prefill === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -101,6 +106,8 @@ export function toPresetDto(row: PresetRow): PresetDto {
     samplerSettings: parseSamplerSettings(row.sampler_settings),
     contextSize: row.context_size,
     maxResponseTokens: row.max_response_tokens,
+    prefill: row.prefill,
+    reasoning: parseReasoningConfig(row.reasoning_config),
     isDefault: row.is_default === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -264,6 +271,8 @@ export interface ProviderPatch {
   apiKeyEncrypted?: string | null;
   model?: string | null;
   enabled?: boolean;
+  /** Null restores the adapter's own answer rather than meaning "no" (§13). */
+  supportsPrefill?: boolean | null;
 }
 
 export function updateProvider(db: Database, id: number, patch: ProviderPatch): ProviderRow {
@@ -272,7 +281,8 @@ export function updateProvider(db: Database, id: number, patch: ProviderPatch): 
     .query(
       `UPDATE providers
           SET name = $name, base_url = $base_url, api_key_encrypted = $key,
-              model = $model, enabled = $enabled, updated_at = $now
+              model = $model, enabled = $enabled, supports_prefill = $prefill,
+              updated_at = $now
         WHERE id = $id
         RETURNING *`,
     )
@@ -283,6 +293,16 @@ export function updateProvider(db: Database, id: number, patch: ProviderPatch): 
       key: patch.apiKeyEncrypted === undefined ? current.api_key_encrypted : patch.apiKeyEncrypted,
       model: patch.model === undefined ? current.model : patch.model,
       enabled: patch.enabled === undefined ? current.enabled : patch.enabled ? 1 : 0,
+      // Three-valued, and the three cases are all real: absent leaves it,
+      // null restores the adapter's own answer, a boolean overrides it (§13).
+      prefill:
+        patch.supportsPrefill === undefined
+          ? current.supports_prefill
+          : patch.supportsPrefill === null
+            ? null
+            : patch.supportsPrefill
+              ? 1
+              : 0,
       now: Date.now(),
     }) as ProviderRow;
 }
@@ -365,4 +385,49 @@ export function deleteConnectionProfile(db: Database, id: number): void {
 /** How many profiles exist, so the last one is not deleted out from under a scene. */
 export function countConnectionProfiles(db: Database): number {
   return (db.query("SELECT COUNT(*) AS n FROM connection_profiles").get() as { n: number }).n;
+}
+
+/* ------------------------------------------------------------------ */
+/* Presets (SPEC §13)                                                  */
+/* ------------------------------------------------------------------ */
+
+export interface PresetPatch {
+  name?: string;
+  samplerSettings?: SamplerSettings;
+  contextSize?: number;
+  maxResponseTokens?: number;
+  prefill?: string | null;
+  reasoningConfig?: string;
+}
+
+export function findPresetByUlid(db: Database, ulidValue: string): PresetRow | null {
+  return (db.query("SELECT * FROM presets WHERE ulid = $ulid").get({ ulid: ulidValue }) ?? null) as
+    | PresetRow
+    | null;
+}
+
+export function updatePreset(db: Database, id: number, patch: PresetPatch): PresetRow {
+  const current = db.query("SELECT * FROM presets WHERE id = $id").get({ id }) as PresetRow;
+  return db
+    .query(
+      `UPDATE presets
+          SET name = $name, sampler_settings = $samplers, context_size = $context,
+              max_response_tokens = $max, prefill = $prefill,
+              reasoning_config = $reasoning, updated_at = $now
+        WHERE id = $id
+        RETURNING *`,
+    )
+    .get({
+      id,
+      name: patch.name ?? current.name,
+      samplers:
+        patch.samplerSettings === undefined
+          ? current.sampler_settings
+          : JSON.stringify(patch.samplerSettings),
+      context: patch.contextSize ?? current.context_size,
+      max: patch.maxResponseTokens ?? current.max_response_tokens,
+      prefill: patch.prefill === undefined ? current.prefill : patch.prefill,
+      reasoning: patch.reasoningConfig ?? current.reasoning_config,
+      now: Date.now(),
+    }) as PresetRow;
 }

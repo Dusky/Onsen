@@ -38,6 +38,7 @@ import type { TaskRunner } from "../tasks/runner.ts";
 import type { PassPipeline } from "../passes/pipeline.ts";
 import type { GuideRunner } from "../guides/runner.ts";
 import type { SummaryRunner } from "../summaries/runner.ts";
+import { ReasoningSplitter, parseReasoningConfig } from "./reasoning.ts";
 import type { TaskRunStatus } from "../../shared/types.ts";
 
 /**
@@ -88,6 +89,13 @@ export interface DirectorEvent {
 export type GenerationEvent =
   | ({ type: "director" } & DirectorEvent)
   | { type: "chunk"; offset: number; text: string }
+  /**
+   * Reasoning, streamed separately from the prose (SPEC §13). Deltas rather
+   * than offsets: a reconnecting client is replayed the whole block at once,
+   * because nobody reads reasoning a token at a time — it is collapsed by
+   * default, and what matters live is only that something is happening.
+   */
+  | { type: "reasoning"; text: string }
   | { type: "done"; messageId: string; meta: GenerationMeta }
   | { type: "cancelled"; messageId: string | null; meta: GenerationMeta }
   | { type: "error"; message: string; detail: string | null };
@@ -100,6 +108,8 @@ export interface GenerationSnapshot {
   buffer: string;
   /** Character length of `buffer`; what a client resumes from. */
   offset: number;
+  /** Reasoning so far, hidden from the prose by default (SPEC §13). */
+  reasoning: string;
   messageId: string | null;
   meta: GenerationMeta | null;
   /** Null until the director has decided, which the classifier does mid-flight. */
@@ -117,6 +127,10 @@ interface ActiveGeneration {
   parentId: number | null;
   status: GenerationStatus;
   buffer: string;
+  /** Reasoning, kept apart from the prose all the way to the message (§13). */
+  reasoning: string;
+  /** Splits inline `<think>` tags out of the stream. Stateful across chunks. */
+  splitter: ReasoningSplitter;
   meta: GenerationMeta;
   error: string | null;
   detail: string | null;
@@ -361,6 +375,8 @@ export class GenerationService {
       parentId,
       status: "pending",
       buffer: "",
+      reasoning: "",
+      splitter: new ReasoningSplitter(),
       meta: {
         provider: route.providerName,
         model: route.model,
@@ -425,6 +441,13 @@ export class GenerationService {
       listener({ type: "director", ...generation.director });
     }
 
+    // Reasoning is replayed whole rather than from an offset. It is collapsed
+    // by default and nobody reads it a token at a time, so a client that
+    // reconnects wants all of it once, not the tail it happens to have missed.
+    if (generation.reasoning !== "") {
+      listener({ type: "reasoning", text: generation.reasoning });
+    }
+
     const from = Math.max(0, Math.min(offset, generation.buffer.length));
     if (from < generation.buffer.length) {
       listener({ type: "chunk", offset: from, text: generation.buffer.slice(from) });
@@ -483,6 +506,7 @@ export class GenerationService {
         baseUrl: route.baseUrl,
         apiKey: route.apiKey,
         model: route.model,
+        ...(route.supportsPrefill === null ? {} : { supportsPrefill: route.supportsPrefill }),
       });
     } catch (caught) {
       this.fail(generation, caught);
@@ -519,16 +543,41 @@ export class GenerationService {
       });
 
       const prompt = buildPrompt(context);
+      const reasoningConfig = parseReasoningConfig(this.reasoningJson(scene.preset_id));
       generation.meta.promptTokens = prompt.debug.totalTokens;
       generation.meta.tokensAreEstimated = prompt.debug.tokensAreEstimated;
 
       this.setStatus(generation, "streaming");
       dispatchedAt = this.now();
 
+      const parseInline = reasoningConfig.parseInline;
       for await (const chunk of adapter.generate(prompt, samplers, generation.abort.signal)) {
         if (generation.abort.signal.aborted) break;
+        // Reasoning does not count as the first token: §13 hides it from the
+        // prose, and a time-to-first-token that measured private planning would
+        // report a speed the reader never sees.
+        if (chunk.reasoning !== undefined && chunk.reasoning !== "") {
+          this.appendReasoning(generation, chunk.reasoning);
+        }
+        if (chunk.text === "") continue;
+        // Inline `<think>` tags are a streaming problem, not a parsing one:
+        // the splitter holds back anything that could still turn out to be a
+        // tag, so a stray `<think>` never reaches the reader for a frame.
+        const split = parseInline
+          ? generation.splitter.push(chunk.text)
+          : { prose: chunk.text, reasoning: "" };
+        if (split.reasoning !== "") this.appendReasoning(generation, split.reasoning);
+        if (split.prose === "") continue;
         if (generation.meta.ttftMs === null) generation.meta.ttftMs = this.now() - dispatchedAt;
-        this.append(generation, chunk.text);
+        this.append(generation, split.prose);
+      }
+      // An unclosed block is reasoning, not prose. Printing a model's private
+      // planning into the scene because it forgot a closing tag would be the
+      // worst possible failure of this feature.
+      if (parseInline) {
+        const rest = generation.splitter.flush();
+        if (rest.reasoning !== "") this.appendReasoning(generation, rest.reasoning);
+        if (rest.prose !== "") this.append(generation, rest.prose);
       }
     } catch (caught) {
       // An abort surfaces here as a thrown error on some runtimes and as a
@@ -797,6 +846,27 @@ export class GenerationService {
     }
   }
 
+  /** The preset's reasoning settings, or null for the built-in defaults (§13). */
+  private reasoningJson(presetId: number | null): string | null {
+    if (presetId === null) return null;
+    const row = this.db
+      .query("SELECT reasoning_config FROM presets WHERE id = $id")
+      .get({ id: presetId }) as { reasoning_config: string | null } | null;
+    return row?.reasoning_config ?? null;
+  }
+
+  /**
+   * Reasoning, kept out of the prose buffer entirely (SPEC §13).
+   *
+   * Separate storage is what makes "do not feed it back into context" free
+   * rather than a rule somebody has to remember: the history renderer reads a
+   * message's content, so reasoning cannot leak into a later prompt by accident.
+   */
+  private appendReasoning(generation: ActiveGeneration, text: string): void {
+    generation.reasoning += text;
+    this.emit(generation, { type: "reasoning", text });
+  }
+
   /**
    * Write the message node and emit the terminal event (SPEC §5.5). A cancelled
    * generation keeps whatever it produced — partial output is still the user's
@@ -832,6 +902,13 @@ export class GenerationService {
         this.db
           .query("UPDATE messages SET generation_meta = $meta WHERE id = $id")
           .run({ id: message.id, meta: JSON.stringify(generation.meta) });
+        // §13: reasoning lives on the message, apart from its content, so it
+        // can be shown collapsed and never reaches a later prompt unasked.
+        if (generation.reasoning.trim() !== "") {
+          this.db
+            .query("UPDATE messages SET reasoning = $reasoning WHERE id = $id")
+            .run({ id: message.id, reasoning: generation.reasoning.trim() });
+        }
         generation.messageUlid = message.ulid;
         generation.landedMessageId = message.id;
         this.db
@@ -1007,6 +1084,7 @@ export class GenerationService {
       status: generation.status,
       buffer: generation.buffer,
       offset: generation.buffer.length,
+      reasoning: generation.reasoning,
       messageId: generation.messageUlid,
       meta: generation.meta,
       director: generation.director,
@@ -1056,6 +1134,9 @@ export class GenerationService {
       status: row.status,
       buffer: row.buffer,
       offset: row.buffer.length,
+      // Not persisted on the generation row: reasoning belongs to the message
+      // it produced, and a generation read back from disk has already landed.
+      reasoning: "",
       messageId: row.message_ulid,
       meta,
       // A generation read back from disk is finished; the decision belonged to
