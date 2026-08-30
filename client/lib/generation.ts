@@ -39,7 +39,7 @@ interface StartArgs {
 }
 
 interface ServerEvent {
-  type: "director" | "chunk" | "done" | "cancelled" | "error";
+  type: "director" | "chunk" | "reasoning" | "done" | "cancelled" | "error";
   offset?: number;
   text?: string;
   message?: string;
@@ -123,6 +123,12 @@ export function useGeneration() {
               } else if (event.type === "chunk") {
                 attempt = 0; // progress resets the backoff
                 store.appendAt(generationId, event.offset ?? 0, event.text ?? "");
+              } else if (event.type === "reasoning") {
+                // Reasoning counts as progress too: a model that thinks for
+                // twenty seconds before its first word is working, not stalled,
+                // and resetting the backoff is what stops a reconnect storm.
+                attempt = 0;
+                store.appendReasoning(generationId, event.text ?? "");
               } else {
                 sawTerminal = true;
                 store.settle(

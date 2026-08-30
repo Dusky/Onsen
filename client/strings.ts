@@ -96,6 +96,8 @@ export const strings = {
     writing: (speaker: string) => `${speaker} is writing`,
     stop: "Stop",
     edited: "Edited",
+    /** The reasoning strip (SPEC §13), collapsed by default. */
+    reasoning: (chars: number) => `Thought · ${chars} chars`,
     save: "Save",
     versionCounter: (index: number, total: number) => `◂ ${index}/${total} ▸`,
     versions: "Versions",
@@ -291,6 +293,59 @@ export const strings = {
     opEffectFlag: "Reports what it finds",
     opEffectReplace: "Rewrites the turn, keeping the original",
     opEffectGuide: "Rewrites this guide, and every turn carries it until you flush it",
+
+    /** The preset editor (SPEC §13, §16). */
+    generation: "Generation",
+    generationHint:
+      "How the model is asked to write. These ship on modern values — high repetition penalty with low temperature actively degrades current models.",
+    presetKicker: "Preset",
+    samplers: "Samplers",
+    samplersReset: "Back to defaults",
+    samplerTemperature: "Temperature",
+    samplerMinP: "Min-P",
+    samplerTopP: "Top-P",
+    samplerTopK: "Top-K",
+    samplerRepetitionPenalty: "Repetition penalty",
+    samplerDryMultiplier: "DRY multiplier",
+    samplerDryBase: "DRY base",
+    samplerDryAllowedLength: "DRY allowed length",
+    samplerXtcThreshold: "XTC threshold",
+    samplerXtcProbability: "XTC probability",
+    samplerOff: "Off",
+    dryHint:
+      "DRY penalises anything that would extend a sequence the model has already written. Far better than repetition penalty for roleplay, and the reason repetition penalty ships off.",
+    xtcHint:
+      "XTC drops the most-likely tokens while keeping one viable choice, which raises creativity. Threshold is how likely a token must be to qualify; probability is how often it fires.",
+    contextSize: "Context window",
+    contextSizeUnit: "tokens",
+    maxResponseTokens: "Reserved for the reply",
+    maxResponseTokensUnit: "tokens",
+    budgetHint:
+      "The window is what the prompt is built to fit. What is reserved for the reply comes off it before anything is placed.",
+
+    prefill: "Prefill",
+    prefillHint:
+      "Seeds the start of the assistant's turn, which is the strongest way to enforce a format. Only sent where the endpoint accepts it.",
+    prefillPlaceholder: "*She did not look up.*",
+    prefillUnsupported:
+      "No provider is set to accept a prefill. Turn it on for the provider that does.",
+    providerPrefill: "Accepts a prefill",
+    providerPrefillAuto: "Adapter decides",
+    providerPrefillYes: "Yes",
+    providerPrefillNo: "No",
+    providerPrefillHint:
+      "A partial assistant turn the model continues from. OpenAI refuses one; most local servers speaking the same API accept it. Leave it on the adapter unless you know your endpoint.",
+
+    reasoningTitle: "Reasoning",
+    reasoningParseInline: "Strip <think> tags from the prose",
+    reasoningParseInlineHint:
+      "On, a block wrapped in <think> is pulled out and shown collapsed. Off, it is left in the turn as written.",
+    reasoningReinject: "Feed the last",
+    reasoningReinjectUnit: "blocks back in",
+    reasoningReinjectHint:
+      "Zero is off, and off is right for most providers — most advise against feeding reasoning back into context. Above zero, the most recent blocks ride on the prompt.",
+    reasoningPrefix: "Before each block",
+    reasoningSuffix: "After each block",
     opWords: "Words",
     opWordsDefault: "Built-in",
     opWordsOverridden: "Yours",

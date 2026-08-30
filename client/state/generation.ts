@@ -43,6 +43,12 @@ export interface ActiveGeneration {
   recast?: { messageId: string; ordinal: number };
   /** Everything received so far. */
   text: string;
+  /**
+   * The model's own reasoning for this turn (SPEC §13), kept apart from the
+   * prose all the way through. Replayed whole on a reconnect rather than by
+   * offset, so this is replaced rather than spliced.
+   */
+  reasoning: string;
   /** Characters received; what a reconnect resumes from. */
   offset: number;
   status: "connecting" | "streaming" | "done" | "cancelled" | "error";
@@ -54,13 +60,19 @@ interface GenerationStore {
   begin(
     generation: Omit<
       ActiveGeneration,
-      "text" | "offset" | "status" | "error" | "director"
+      "text" | "offset" | "status" | "error" | "director" | "reasoning"
     >,
   ): void;
   /** The turn director's answer, which arrives on the stream. */
   direct(generationId: string, decision: DirectorDecision): void;
   /** Append a chunk, ignoring anything already received (§5 replay is idempotent). */
   appendAt(generationId: string, offset: number, text: string): void;
+  /**
+   * Reasoning, which arrives as deltas live and as the whole block on a
+   * reconnect. Appending a replayed block would double it, so a delta that the
+   * buffer already ends with is a replay and replaces rather than extends.
+   */
+  appendReasoning(generationId: string, text: string): void;
   settle(generationId: string, status: ActiveGeneration["status"], error?: string | null): void;
   clear(): void;
 }
@@ -74,6 +86,7 @@ export const useGenerationStore = create<GenerationStore>((set) => ({
         ...generation,
         director: null,
         text: "",
+        reasoning: "",
         offset: 0,
         status: "connecting",
         error: null,
@@ -100,6 +113,17 @@ export const useGenerationStore = create<GenerationStore>((set) => ({
       // makes the update idempotent rather than duplicating text.
       const next = active.text.slice(0, offset) + text;
       return { active: { ...active, text: next, offset: next.length, status: "streaming" } };
+    });
+  },
+
+  appendReasoning(generationId, text) {
+    set((state) => {
+      const active = state.active;
+      if (active === null || active.generationId !== generationId) return state;
+      // A reconnect replays everything at once. If what arrived already starts
+      // with what is held, it is that replay and not a delta.
+      const next = text.startsWith(active.reasoning) ? text : active.reasoning + text;
+      return { active: { ...active, reasoning: next } };
     });
   },
 

@@ -6,12 +6,14 @@ import type {
   ConnectionProfileDto,
   CreateConnectionProfileRequest,
   CreateProviderRequest,
+  PresetDto,
   ProviderDto,
   RebuildGuidesRequest,
   SummaryStateDto,
   TaskDto,
   TaskRunDto,
   UpdateConnectionProfileRequest,
+  UpdatePresetRequest,
   UpdateProviderRequest,
   UpdateTaskRequest,
   CharacterDto,
@@ -58,6 +60,7 @@ export function useConnectionProfiles() {
 export const connectionKeys = {
   providers: ["connection-providers"] as const,
   profiles: ["connection-profiles"] as const,
+  presets: ["connection-presets"] as const,
   tasks: ["tasks"] as const,
 };
 
@@ -69,10 +72,25 @@ function useConnectionMutation<TArgs, TResult>(fn: (args: TArgs) => Promise<TRes
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: connectionKeys.providers });
       void client.invalidateQueries({ queryKey: connectionKeys.profiles });
+      void client.invalidateQueries({ queryKey: connectionKeys.presets });
       // A deleted profile can null a scene's routing, so scenes are stale too.
       void client.invalidateQueries({ queryKey: keys.scenes });
     },
   });
+}
+
+/** The presets, which carry the samplers and the reasoning settings (§13). */
+export function usePresets() {
+  return useQuery({
+    queryKey: connectionKeys.presets,
+    queryFn: () => api.get<PresetDto[]>("/connections/presets"),
+  });
+}
+
+export function useUpdatePreset() {
+  return useConnectionMutation(({ id, ...patch }: UpdatePresetRequest & { id: string }) =>
+    api.patch<PresetDto>(`/connections/presets/${id}`, patch),
+  );
 }
 
 export function useProviders() {

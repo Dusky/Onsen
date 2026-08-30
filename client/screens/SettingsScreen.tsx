@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ConnectionProfileDto, ProviderDto, TaskDto } from "@shared/types.ts";
+import type { ConnectionProfileDto, PresetDto, ProviderDto, TaskDto } from "@shared/types.ts";
 import { PROVIDER_KINDS, INJECTION_ROLES } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import {
@@ -8,6 +8,7 @@ import {
   useCreateProvider,
   useDeleteProfile,
   useDeleteProvider,
+  usePresets,
   useProviders,
   useTasks,
   useUpdateProfile,
@@ -16,6 +17,7 @@ import {
 } from "../lib/queries.ts";
 import { TabBar } from "../components/TabBar.tsx";
 import { Sheet } from "../components/Sheet.tsx";
+import { PresetEditor } from "../components/PresetEditor.tsx";
 
 /**
  * Settings (design handoff, screen 3i).
@@ -142,6 +144,43 @@ function ProviderEditor({
               ? `${strings.settings.providerKeyHeld(provider.apiKeyMask ?? "")} · ${strings.settings.providerKeyKeep}`
               : strings.settings.providerKeyNone}
         </p>
+
+        {/* Whether this endpoint takes a prefill (SPEC §13). Three-valued, and
+            all three are real: prefill is a property of the endpoint rather
+            than the wire format, so "the adapter decides" is a different answer
+            from "no". Only offered on an existing provider, since it is a
+            correction to what the adapter assumed. */}
+        {provider === null ? null : (
+          <>
+            <p className="section-label mb-[6px]">{strings.settings.providerPrefill}</p>
+            <div className="mb-[6px] flex gap-[6px]">
+              {(
+                [
+                  [null, strings.settings.providerPrefillAuto],
+                  [true, strings.settings.providerPrefillYes],
+                  [false, strings.settings.providerPrefillNo],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={String(value)}
+                  type="button"
+                  className={`btn flex-1 ${provider.supportsPrefill === value ? "btn-primary" : ""}`}
+                  onClick={() =>
+                    update.mutate(
+                      { id: provider.id, supportsPrefill: value },
+                      { onError: (e: Error) => setError(e.message) },
+                    )
+                  }
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="chrome mb-[14px] text-[9px] leading-[1.5] text-ink-dim">
+              {strings.settings.providerPrefillHint}
+            </p>
+          </>
+        )}
 
         {error === null ? null : (
           <p className="chrome mb-[10px] text-[9.5px] leading-[1.5] text-red-text">{error}</p>
@@ -427,6 +466,7 @@ function OpEditor({
 export function SettingsScreen() {
   const providers = useProviders();
   const profiles = useConnectionProfiles();
+  const presets = usePresets();
   const tasks = useTasks();
 
   const [editingProvider, setEditingProvider] = useState<ProviderDto | null | undefined>(undefined);
@@ -434,6 +474,7 @@ export function SettingsScreen() {
     undefined,
   );
   const [editingOp, setEditingOp] = useState<TaskDto | null>(null);
+  const [editingPreset, setEditingPreset] = useState<PresetDto | null>(null);
 
   const profileList = profiles.data ?? [];
   const providerList = providers.data ?? [];
@@ -522,6 +563,36 @@ export function SettingsScreen() {
             {strings.settings.addProfile}
           </button>
 
+          {/* How the model is asked to write (SPEC §13). */}
+          <p className="section-label mb-[4px]">{strings.settings.generation}</p>
+          <p className="chrome mb-[10px] text-[9px] leading-[1.5] text-ink-dim">
+            {strings.settings.generationHint}
+          </p>
+          {(presets.data ?? []).map((preset) => (
+            <Row key={preset.id}>
+              <button
+                type="button"
+                onClick={() => setEditingPreset(preset)}
+                className="flex w-full items-baseline gap-[9px] text-left"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[15px] font-medium">{preset.name}</span>
+                  <span className="chrome block truncate text-[9px] tracking-[0.06em] text-ink-dim uppercase">
+                    {[
+                      `${strings.settings.samplerTemperature} ${preset.samplerSettings.temperature ?? "—"}`,
+                      preset.samplerSettings.dry_multiplier ? "DRY" : null,
+                      preset.samplerSettings.xtc_probability ? "XTC" : null,
+                      `${preset.contextSize} ${strings.settings.contextSizeUnit}`,
+                    ]
+                      .filter((part) => part !== null)
+                      .join(" · ")}
+                  </span>
+                </span>
+              </button>
+            </Row>
+          ))}
+          <div className="mb-[26px]" />
+
           {/* Routing by operation — the interesting one. */}
           <p className="section-label mb-[4px]">{strings.settings.routing}</p>
           <p className="chrome mb-[10px] text-[9px] leading-[1.5] text-ink-dim">
@@ -582,6 +653,12 @@ export function SettingsScreen() {
           profile={editingProfile}
           providers={providerList}
           onClose={() => setEditingProfile(undefined)}
+        />
+      ) : null}
+      {editingPreset !== null ? (
+        <PresetEditor
+          preset={(presets.data ?? []).find((row) => row.id === editingPreset.id) ?? editingPreset}
+          onClose={() => setEditingPreset(null)}
         />
       ) : null}
       {editingOp !== null ? (

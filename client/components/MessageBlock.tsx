@@ -29,6 +29,44 @@ interface MessageBlockProps {
   recasting?: { ordinal: number; text: string };
   /** Put back what a pass changed (SPEC §7.5). */
   onRevert?(annotation: AnnotationDto): void;
+  /** Reasoning arriving live, before the message it belongs to exists (§13). */
+  streamingReasoning?: string;
+}
+
+/**
+ * The reasoning strip (SPEC §13: hidden from the prose, rendered as a
+ * collapsible section).
+ *
+ * Entirely mono, like a pass annotation, because it is the machine talking
+ * about its own work rather than another voice in the scene — and collapsed by
+ * default, because a reader who wanted to watch a model think would not be
+ * reading a roleplay. The header says how much there is, so the closed state is
+ * still informative: "it thought for 900 characters" is the fact worth having.
+ */
+export function Reasoning({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const trimmed = text.trim();
+  if (trimmed === "") return null;
+  return (
+    <div className="mb-[12px]">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="chrome flex min-h-[28px] w-full items-center gap-[8px] text-left text-[8.5px] tracking-[0.12em] text-ink-dim uppercase"
+      >
+        <span aria-hidden>{open ? "⌃" : "⌄"}</span>
+        {strings.chat.reasoning(trimmed.length)}
+      </button>
+      {open ? (
+        <p
+          className="chrome mt-[7px] border-l pl-[11px] text-[10px] leading-[1.65] whitespace-pre-wrap text-ink-dim"
+          style={{ borderColor: "var(--onsen-color-rule)" }}
+        >
+          {trimmed}
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 /**
@@ -151,6 +189,7 @@ export function MessageBlock({
   streamingText,
   recasting,
   onRevert,
+  streamingReasoning,
 }: MessageBlockProps) {
   const swipe = useSwipe({
     // Opposite directions by design (design handoff, Gestures).
@@ -195,6 +234,10 @@ export function MessageBlock({
       </header>
 
       <div>
+        {/* Collapsed by default, above the prose it produced: reasoning happened
+            first, and putting it after would read as an afterword (§13). */}
+        <Reasoning text={streamingReasoning ?? message.reasoning ?? ""} />
+
         {/* A beat is rendered by its parts; every other message is its own text.
             While one is streaming there are no parts yet, so the raw output
             shows — labels and all — rather than the log going blank. */}

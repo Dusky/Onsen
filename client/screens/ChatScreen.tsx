@@ -11,7 +11,7 @@ import {
   useSiblings,
 } from "../lib/queries.ts";
 import { useGeneration } from "../lib/generation.ts";
-import { MessageBlock, MessageEditor } from "../components/MessageBlock.tsx";
+import { MessageBlock, MessageEditor, Reasoning } from "../components/MessageBlock.tsx";
 import { Composer } from "../components/Composer.tsx";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
 import { CastStrip } from "../components/CastStrip.tsx";
@@ -549,7 +549,12 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                 onLongPress={() => setActing(message)}
                 onRevert={(note) => revert.mutate(note.id)}
                 {...(recastInFlight?.messageId === message.id
-                  ? { recasting: { ordinal: recastInFlight.ordinal, text: recastInFlight.text } }
+                  ? {
+                      recasting: { ordinal: recastInFlight.ordinal, text: recastInFlight.text },
+                      // A recast streams inside the beat it belongs to, so its
+                      // reasoning belongs there too rather than at the bottom.
+                      ...(active?.reasoning ? { streamingReasoning: active.reasoning } : {}),
+                    }
                   : {})}
               />
             ),
@@ -576,6 +581,10 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                   </p>
                 ) : null}
               </header>
+              {/* Reasoning while it is happening (SPEC §13). Collapsed like
+                  any other, but present — a model that thinks for twenty
+                  seconds before its first word should not look stalled. */}
+              <Reasoning text={active.reasoning} />
               <p className="text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)] whitespace-pre-wrap">
                 {active.text}
               </p>

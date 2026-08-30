@@ -190,4 +190,62 @@
   .hairline {
     border-bottom: 1px solid var(--onsen-color-rule);
   }
+
+  /*
+   * A slider, drawn rather than inherited. The browser's own track is a bright
+   * bar that ignores the palette entirely, which in the dark theme is the
+   * loudest thing on the screen.
+   *
+   * The handle is a **square**, per the design's slider (§10, "13px red square
+   * handle") and its rule that the only rounded corners in the system are the
+   * three documented exceptions. `accent-color` alone cannot do this — it
+   * tints the default shapes — so both halves are drawn per engine.
+   */
+  .slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 22px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .slider::-webkit-slider-runnable-track {
+    height: 2px;
+    background: var(--onsen-color-rule-strong);
+  }
+
+  .slider::-moz-range-track {
+    height: 2px;
+    background: var(--onsen-color-rule-strong);
+  }
+
+  .slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 13px;
+    height: 13px;
+    margin-top: -5.5px;
+    background: var(--onsen-color-red);
+    border: 0;
+    border-radius: 0;
+  }
+
+  .slider::-moz-range-thumb {
+    width: 13px;
+    height: 13px;
+    background: var(--onsen-color-red);
+    border: 0;
+    border-radius: 0;
+  }
+
+  .slider:focus-visible::-webkit-slider-thumb {
+    outline: 2px solid var(--onsen-color-red);
+    outline-offset: 2px;
+  }
+
+  .slider:focus-visible::-moz-range-thumb {
+    outline: 2px solid var(--onsen-color-red);
+    outline-offset: 2px;
+  }
 }
