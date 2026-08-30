@@ -113,6 +113,14 @@ wizard. Before writing code:
    running them. The schema in §2 is detailed but not final, and getting it wrong
    is expensive later.
 
+**What actually happened, recorded here rather than quietly:** this rule was not
+followed. Seventeen migrations were written and run without waiting, because
+waiting would have blocked every phase behind phase 1, and each phase report
+flagged it as outstanding. §20 phase 20 is the repair — a full review of the
+schema against §2 — and `docs/PHASES.md` carries its findings. Two real problems
+turned up, both fixed there. The rule stands for anything new; it is the
+*waiting* that proved unworkable in a single unattended run, not the review.
+
 Then build phase 1 and stop.
 
 ## Phase completion

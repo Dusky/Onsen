@@ -1782,3 +1782,125 @@ moving the chat body into a variable had re-indented the JSX by two spaces and I
 was matching on the old text. The screenshot caught it — the OPS key was still
 there — which is the argument for looking at the thing rather than trusting the
 edit.
+
+---
+
+## Phase 20 — The schema review
+
+`HANDOFF.md` asks for the migrations to be proposed and reviewed before they are
+run. Seventeen have now been written and run without that, because waiting would
+have stopped every phase behind it, and I flagged it at the end of each one.
+This is the repair: reading all sixteen migrations against SPEC §2 and against
+what was actually built, before the depth phases start adding lorebooks,
+trackers and packs.
+
+It is a review, so the findings are the deliverable. Two were worth fixing here;
+the rest are recorded.
+
+### What the review checked
+
+Not by reading my own memory of the schema. The database was built from the
+migrations in memory and then interrogated: every table, column, foreign key,
+cascade action and index dumped from `PRAGMA`; every column SPEC §2 names
+diffed against what exists; every column cross-referenced against the whole
+server source to find any that nothing reads or writes; and the delete cascades
+exercised for real, with rows inserted and removed and the survivors counted.
+
+### Finding 1 — a presence anchor was being nulled, not moved (fixed)
+
+`scene_members.joined_after_message_id` is declared `ON DELETE SET NULL`, and
+null is **not** a neutral value in that column: it means "present from the
+start" (§2, presence tracking), and `blocks.ts` reads it that way — a null
+anchor produces no presence note at all.
+
+So deleting the message a character joined after silently turned them into
+someone who had witnessed the whole scene. And it is exactly backwards: deleting
+a message takes its subtree, so what survives is precisely the stretch that
+character was *not* there for.
+
+The fix is to move the anchor to the deleted message's parent before the delete
+— "joined after the turn before this one" is the closest true statement — and to
+leave it null only when the anchor was the root, where nothing came before and
+the scene is now empty, so "present from the start" stops being a lie. Two tests,
+and I checked both fail against the old code rather than assuming they would.
+
+### Finding 2 — `scenes.scenario_override` was a column the builder believed in (fixed)
+
+§2 lists it. The prompt builder has read it since **phase 3** — the scenario
+block chooses between it and the spotlight character's, and the `{{scenario}}`
+macro prefers it — and `PromptScene.scenarioOverride` is in the types. The
+column was never added, and `buildPromptContext` hardcoded `null`.
+
+There is a builder unit test for the override, written in phase 3, and it passes:
+it constructs a context by hand with the field set. That is the whole reason this
+survived seventeen migrations. **A unit test on a value the real system cannot
+produce is not coverage**, and the new test goes through the route and the real
+context builder for that reason.
+
+Added as migration 0017 and wired through to the scene setup screen. It is not a
+new feature — it is a feature the rest of the system already thought it had. It
+also matters more here than in most apps: a card's scenario was written by
+whoever made the card, for a scene nobody had had yet, and running the same cast
+somewhere else is the ordinary case in this product rather than the exotic one.
+
+### Recorded, not fixed
+
+- **`presets.prompt_order` is dead.** The only column in the schema that nothing
+  reads or writes. It is §3's overridable assembly order, and `PromptPreset`
+  carries `blockOrder` hardcoded to null for the same reason `scenarioOverride`
+  was: the editor for it does not exist. Deliberately deferred in phase 17 —
+  block order is only legible beside the inspector (phase 25). Left in place
+  rather than dropped, because dropping and re-adding a column is worse than a
+  column with a known arrival date.
+- **`scene_members.overrides` has no phase.** §2 wants per-scene JSON tweaks to
+  a card. Nothing builds it and nothing schedules it. It is not a schema
+  question — it needs a decision about merging an override over a card at prompt
+  time — so it wants a phase of its own rather than a column added quietly here.
+
+Everything else §2 names and the schema lacks is scheduled and correctly absent:
+`personas.lorebook_id` (phase 21, and §2 flags it as a gap itself),
+`scenes.ooc_enabled`/`ooc_interval` (23), `autopilot_enabled`/`autopilot_max_turns`
+(24), `characters.expression_pack_id`, `messages.expression` and
+`vn_mode_enabled` (29). `first_seen_message_id` was resolved differently as
+`joined_after_message_id` and is already settled in §24.
+
+### What held up
+
+Worth recording, because a review that only lists problems is a misleading
+review.
+
+- **Every table is STRICT**, all 22 of them, and every timestamp is Unix
+  milliseconds as §2 requires.
+- **The pragmas are right**: WAL, `foreign_keys = ON`, `busy_timeout`,
+  `synchronous = NORMAL`.
+- **Every declared index exists.** The tables without one are the small ones
+  whose lookups are covered by a primary key or a unique constraint.
+- **The cascades do what they say.** Deleting a message takes its subtree and
+  moves the active leaf; deleting a scene takes its messages, guides, summaries
+  and bans; a guide anchored to a deleted turn goes with that turn; a summary
+  whose range is broken by a delete is removed so the stretch becomes pending
+  again; deleting a fold un-supersedes the summaries it replaced. All six
+  verified by insert-and-delete rather than by reading the DDL.
+- **`messages.token_count` is invalidated on edit**, exactly as §2 asks, and
+  only when the content actually changed.
+
+### Spec changes
+
+None. §2 was right about everything it named; the schema had simply fallen
+behind it in two places.
+
+### Surprises
+
+The interesting one is finding 2's shape rather than its content. The bug
+survived seventeen migrations *because it had a passing test* — a unit test that
+built its own context, set the field by hand, and asserted the builder did the
+right thing with it. Everything about that test was correct, and it was still
+the reason nobody noticed the field could never arrive. The lesson is narrow and
+worth keeping: a pure function tested with hand-built inputs proves the function,
+and proves nothing whatsoever about whether those inputs occur.
+
+The second surprise was how much of the review was mechanical. Diffing §2's
+columns against `PRAGMA table_info`, and grepping every column name against the
+whole server source, took a few minutes and found both real problems. The parts
+I expected to be hard — reasoning about cascade correctness — turned out to be
+answerable by inserting rows and deleting them.
