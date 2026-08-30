@@ -121,6 +121,16 @@ export const strings = {
     /** Before the director has answered — with a classifier, that takes a moment. */
     choosing: "Choosing who speaks",
     chooseInitials: "?",
+    /** The cast rail's heading, and the statuses a card can be in (design 4a). */
+    whoSpeaksNext: "Who speaks next",
+    statusCued: "Cued",
+    statusWriting: "Writing",
+    statusJustSpoke: "Just spoke",
+    statusBenched: "Benched",
+    /** The desktop keyboard hints, at the end of the flattened ops row. */
+    keyHints: "⌘↵ send",
+    /** The desktop hover row, which the design draws as REROLL · BRANCH · EDIT. */
+    hoverBranch: "Branch",
     scopeSpotlight: "One voice",
     scopeBeat: "The room",
     scopeBeatHint: (names: string) => `${names} — one exchange, written together`,
@@ -576,6 +586,8 @@ export const strings = {
   },
 
   nav: {
+    /** The desktop sidebar's roleplay list (design 4a). */
+    recent: "Recent",
     settings: "Settings",
     roleplays: "Roleplays",
     characters: "Cast",

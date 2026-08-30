@@ -69,7 +69,7 @@ export function ScenesScreen() {
   return (
     <div className="flex screen-height flex-col bg-bg">
       <header
-        className="hairline flex-none px-[22px] pb-[14px]"
+        className="screen-header hairline flex-none px-[22px] pb-[14px]"
         style={{ paddingTop: "calc(22px + env(safe-area-inset-top))" }}
       >
         <p className="screen-kicker">{strings.scenes.kicker}</p>

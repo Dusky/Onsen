@@ -12,6 +12,8 @@ import { SettingsScreen } from "./screens/SettingsScreen.tsx";
 import { api } from "./lib/api.ts";
 import { strings } from "./strings.ts";
 import { useRoute } from "./lib/router.ts";
+import { useIsDesktop } from "./lib/breakpoint.ts";
+import { Sidebar } from "./components/Sidebar.tsx";
 import { useViewportHeight } from "./lib/viewport.ts";
 import type { BootstrapDto } from "@shared/types.ts";
 
@@ -77,8 +79,30 @@ export function App() {
   }
   return (
     <QueryClientProvider client={queryClient}>
-      <Routed />
+      <Shell />
     </QueryClientProvider>
+  );
+}
+
+/**
+ * The shell (design `4a`, SPEC §16).
+ *
+ * On a phone a screen is the whole window and navigation is the tab bar at the
+ * bottom. With room, the tab bar unrolls into a persistent sidebar beside every
+ * screen — same destinations, same treatment, more space — and the screens
+ * themselves are unchanged: each one still renders its own header, body and
+ * footer into whatever column it is given.
+ */
+function Shell() {
+  const isDesktop = useIsDesktop();
+  if (!isDesktop) return <Routed />;
+  return (
+    <div className="flex screen-height bg-bg">
+      <Sidebar />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Routed />
+      </div>
+    </div>
   );
 }
 

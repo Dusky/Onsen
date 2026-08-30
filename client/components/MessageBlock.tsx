@@ -31,6 +31,17 @@ interface MessageBlockProps {
   onRevert?(annotation: AnnotationDto): void;
   /** Reasoning arriving live, before the message it belongs to exists (§13). */
   streamingReasoning?: string;
+  /**
+   * Reroll, branch and edit at the end of the attribution rule, revealed on
+   * hover (design `4a`).
+   *
+   * **The only hover affordance in the system, and it exists only on desktop.**
+   * Every mobile equivalent is a tap, a swipe or a long-press, and those still
+   * work here — this is a shortcut for a pointer, not a replacement. Passed in
+   * rather than read from a breakpoint so the component stays a function of its
+   * props: absent means no hover row, on any width.
+   */
+  hoverActions?: { onBranch(): void; onEdit(): void };
 }
 
 /**
@@ -190,6 +201,7 @@ export function MessageBlock({
   recasting,
   onRevert,
   streamingReasoning,
+  hoverActions,
 }: MessageBlockProps) {
   const swipe = useSwipe({
     // Opposite directions by design (design handoff, Gestures).
@@ -208,7 +220,7 @@ export function MessageBlock({
   return (
     <article
       {...swipe}
-      className="select-none"
+      className="group select-none"
       // The whole block is the gesture target, so the affordance matches the
       // thing being acted on rather than a handle beside it.
       aria-label={`${speakerName}: ${text.slice(0, 80)}`}
@@ -222,6 +234,24 @@ export function MessageBlock({
         </span>
         {/* The rule runs to the right edge; the swipe counter sits at its end. */}
         <span className="h-px flex-1 bg-rule" />
+        {hoverActions === undefined ? null : (
+          <span className="flex flex-none items-center gap-[7px] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+            {[
+              { label: strings.chat.reroll, run: onReroll },
+              { label: strings.chat.hoverBranch, run: hoverActions.onBranch },
+              { label: strings.chat.edit, run: hoverActions.onEdit },
+            ].map((action) => (
+              <button
+                key={action.label}
+                type="button"
+                onClick={action.run}
+                className="chrome text-[8px] tracking-[0.12em] text-ink-dim uppercase hover:text-ink-label"
+              >
+                {action.label}
+              </button>
+            ))}
+          </span>
+        )}
         {message.siblingCount > 1 ? (
           <button
             type="button"

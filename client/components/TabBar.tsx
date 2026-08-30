@@ -1,5 +1,6 @@
 import { navigate, type Route } from "../lib/router.ts";
 import { strings } from "../strings.ts";
+import { useIsDesktop } from "../lib/breakpoint.ts";
 
 /**
  * The bottom tab bar. Mono, uppercase, the active item in red — the design's
@@ -11,12 +12,18 @@ import { strings } from "../strings.ts";
 type TabKey = "scenes" | "characters" | "authors" | "settings";
 
 export function TabBar({ active }: { active: TabKey }) {
+  // With room, this is the sidebar instead — the same four destinations
+  // unrolled into a column (design `4a`). Drawn in one place or the other,
+  // never both.
+  const isDesktop = useIsDesktop();
   const items: { key: TabKey; label: string; route: Route }[] = [
     { key: "scenes", label: strings.nav.roleplays, route: { name: "scenes" } },
     { key: "characters", label: strings.nav.characters, route: { name: "characters" } },
     { key: "authors", label: strings.nav.authors, route: { name: "authors" } },
     { key: "settings", label: strings.nav.settings, route: { name: "settings" } },
   ];
+
+  if (isDesktop) return null;
 
   return (
     <nav

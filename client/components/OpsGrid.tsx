@@ -44,6 +44,58 @@ const BLUE = {
   label: "var(--onsen-color-blue-text-muted)",
 };
 
+/**
+ * The ops, flattened into one horizontal row (design `4a`).
+ *
+ * "The ops grid flattens into one horizontal row of bordered mono chips, always
+ * visible — no OPS key needed." That is the whole difference: on a phone the
+ * grid hides behind a key because the composer has to fit above a keyboard, and
+ * with room there is nothing to hide it from. The keyboard hints sit at the
+ * right end, where they read as a reminder rather than an instruction.
+ */
+export function OpsRow({ ops, hint }: { ops: Op[]; hint?: string | undefined }) {
+  return (
+    <div className="flex flex-wrap items-center gap-[6px]">
+      {ops.map((op) => {
+        const disabled =
+          op.disabled === true || (op.unavailable !== undefined && op.unavailable !== "");
+        const blue = op.tone === "blue" ? BLUE : undefined;
+        const why =
+          op.unavailable === undefined || op.unavailable === "" ? undefined : op.unavailable;
+        return (
+          <button
+            key={op.key}
+            type="button"
+            onClick={op.onPress}
+            disabled={disabled}
+            title={why}
+            className="chrome flex items-center gap-[6px] border border-border-quiet px-[9px] py-[6px] text-[8.5px] tracking-[0.1em] uppercase disabled:opacity-40"
+            style={blue === undefined ? undefined : { borderColor: blue.border }}
+          >
+            <span
+              className="text-[10px] leading-none text-ink-label"
+              style={blue === undefined ? undefined : { color: blue.glyph }}
+            >
+              {op.glyph}
+            </span>
+            <span
+              className="leading-none text-ink-muted"
+              style={blue === undefined ? undefined : { color: blue.label }}
+            >
+              {op.label}
+            </span>
+          </button>
+        );
+      })}
+      {hint === undefined ? null : (
+        <span className="chrome ml-auto text-[8.5px] tracking-[0.1em] text-ink-dim uppercase">
+          {hint}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function OpsGrid({ ops, cue }: { ops: Op[]; cue?: string | undefined }) {
   const blocked = ops.find((op) => op.unavailable !== undefined && op.unavailable !== "");
   return (

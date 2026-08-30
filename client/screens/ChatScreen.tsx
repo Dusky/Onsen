@@ -15,7 +15,9 @@ import { MessageBlock, MessageEditor, Reasoning } from "../components/MessageBlo
 import { Composer } from "../components/Composer.tsx";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
 import { CastStrip } from "../components/CastStrip.tsx";
-import { OpsGrid, OpPrompt, type Op } from "../components/OpsGrid.tsx";
+import { OpsGrid, OpsRow, OpPrompt, type Op } from "../components/OpsGrid.tsx";
+import { CastRail } from "../components/CastRail.tsx";
+import { useIsDesktop } from "../lib/breakpoint.ts";
 import { ContextSheet, type ContextTab } from "../components/ContextSheet.tsx";
 import {
   useBenchMember,
@@ -142,6 +144,9 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const siblings = useSiblings(sceneId, versionsFor?.id ?? null);
 
   const log = useRef<HTMLDivElement>(null);
+  // The cast becomes a rail and the ops flatten (design `4a`). Everything
+  // else about this screen is the same components at a different width.
+  const isDesktop = useIsDesktop();
   const messages = scene.data?.messages ?? [];
   const title = scene.data?.scene.title ?? "";
   const authorName = scene.data?.scene.authorName ?? null;
@@ -402,7 +407,8 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       case null:
         return undefined;
       case "grid":
-        return <OpsGrid ops={shownOps} cue={cueSummary()} />;
+        // Already a visible row up there, so the drawer has nothing to add.
+        return isDesktop ? undefined : <OpsGrid ops={shownOps} cue={cueSummary()} />;
       case "nudge":
         return (
           <OpPrompt
@@ -411,7 +417,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             placeholder={strings.chat.opNudgePlaceholder}
             submitLabel={strings.chat.opApply}
             onSubmit={(value) => void nudge(value)}
-            onCancel={() => setOpsPanel("grid")}
+            onCancel={() => setOpsPanel(isDesktop ? null : "grid")}
           />
         );
       case "guided_swipe":
@@ -422,7 +428,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             placeholder={strings.chat.opNudgePlaceholder}
             submitLabel={strings.chat.opApply}
             onSubmit={(value) => void guidedSwipe(value)}
-            onCancel={() => setOpsPanel("grid")}
+            onCancel={() => setOpsPanel(isDesktop ? null : "grid")}
           />
         );
       case "steer":
@@ -437,7 +443,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
               setup.mutate({ directorNote: value });
               setOpsPanel(null);
             }}
-            onCancel={() => setOpsPanel("grid")}
+            onCancel={() => setOpsPanel(isDesktop ? null : "grid")}
             {...(steer === null
               ? {}
               : {
@@ -475,7 +481,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             <button
               type="button"
               className="btn mt-[6px] w-full"
-              onClick={() => setOpsPanel("grid")}
+              onClick={() => setOpsPanel(isDesktop ? null : "grid")}
             >
               {opWorking ? strings.chat.opImpersonateWorking : strings.common.cancel}
             </button>
@@ -484,24 +490,223 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     }
   }
 
+  const body = (
+    <>
+
+        {/* The log is bottom-anchored: content grows up from the composer. */}
+        <div
+          ref={log}
+          className="min-h-0 flex-1 overflow-y-auto px-[22px] py-[18px]"
+          style={
+            isGenerating
+              ? { borderLeft: "2px solid var(--onsen-color-red)", paddingLeft: "20px" }
+              : undefined
+          }
+        >
+          <div className="mx-auto flex min-h-full w-full max-w-[var(--onsen-prose-measure)] flex-col justify-end gap-[26px]">
+            {messages.length === 0 && !isGenerating ? (
+              <p className="chrome text-[10px] tracking-[0.14em] text-ink-dim uppercase">
+                {strings.scenes.emptyScene}
+              </p>
+            ) : null}
+
+            {messages.map((message) =>
+              editing === message.id ? (
+                <MessageEditor
+                  key={message.id}
+                  initial={message.content}
+                  onCancel={() => setEditing(null)}
+                  onSave={(content) => {
+                    setEditing(null);
+                    edit.mutate({ messageId: message.id, content });
+                  }}
+                />
+              ) : (
+                <MessageBlock
+                  key={message.id}
+                  message={message}
+                  speakerName={speakerFor(message, authorName)}
+                  onReroll={() => void reroll(message)}
+                  onOpenVersions={() => setVersionsFor(message)}
+                  onLongPress={() => setActing(message)}
+                  onRevert={(note) => revert.mutate(note.id)}
+                  {...(isDesktop
+                    ? {
+                        hoverActions: {
+                          onBranch: () =>
+                            setLeaf.mutate({ messageId: message.id, descend: false }),
+                          onEdit: () => setEditing(message.id),
+                        },
+                      }
+                    : {})}
+                  {...(recastInFlight?.messageId === message.id
+                    ? {
+                        recasting: { ordinal: recastInFlight.ordinal, text: recastInFlight.text },
+                        // A recast streams inside the beat it belongs to, so its
+                        // reasoning belongs there too rather than at the bottom.
+                        ...(active?.reasoning ? { streamingReasoning: active.reasoning } : {}),
+                      }
+                    : {})}
+                />
+              ),
+            )}
+
+            {/* The message being written, in the same treatment as a finished one:
+                the attribution header appears first, then text streams under it. */}
+            {/* Nothing is drawn until there is a speaker to attribute it to: while
+                the director is still choosing, the status row below already says
+                so, and a header over an empty body says it twice. */}
+            {isGenerating && recastInFlight === null && active.speaker !== null ? (
+              <article>
+                <header className="mb-[10px]">
+                  <div className="flex items-center gap-[10px]">
+                    <span className="chrome shrink-0 text-[10px] font-semibold tracking-[0.18em] text-ink-label uppercase">
+                      {active.speaker}
+                    </span>
+                    <span className="h-px flex-1 bg-rule" />
+                  </div>
+                  {/* The director's own sentence, where it had one to give. */}
+                  {active.director !== null && active.director.reason !== "" ? (
+                    <p className="chrome mt-[5px] text-[9px] leading-[1.5] tracking-[0.06em] text-ink-dim uppercase">
+                      {active.director.reason}
+                    </p>
+                  ) : null}
+                </header>
+                {/* Reasoning while it is happening (SPEC §13). Collapsed like
+                    any other, but present — a model that thinks for twenty
+                    seconds before its first word should not look stalled. */}
+                <Reasoning text={active.reasoning} />
+                <p className="text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)] whitespace-pre-wrap">
+                  {active.text}
+                </p>
+              </article>
+            ) : null}
+
+            {active !== null && active.sceneId === sceneId && active.status === "error" ? (
+              <p
+                role="alert"
+                className="chrome border border-red-border bg-red-bg px-[11px] py-[9px] text-[10px] tracking-[0.06em] text-red-text uppercase"
+              >
+                {active.error ?? strings.errors.generationFailed}
+              </p>
+            ) : null}
+
+            {/* Stop is reachable at all times while writing (design handoff). */}
+            {isGenerating ? (
+              <div className="flex items-center gap-[10px]">
+                <span
+                  className="h-[6px] w-[6px] flex-none"
+                  style={{ background: "var(--onsen-color-red)" }}
+                />
+                <span className="chrome flex-1 text-[9.5px] tracking-[0.14em] text-ink-muted uppercase">
+                  {active.speaker === null
+                    ? strings.chat.choosing
+                    : strings.chat.writing(active.speaker)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void generation.cancel()}
+                  className="chrome border border-red-border px-[10px] py-[6px] text-[9.5px] tracking-[0.14em] uppercase"
+                  style={{ color: "var(--onsen-color-red)" }}
+                >
+                  {strings.chat.stop}
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Steer, when it is set: a hairline strip above the composer, so a note
+            that changes every turn is visible while you write (design handoff). */}
+        {steer !== null && opsPanel === null ? (
+          <button
+            type="button"
+            onClick={() => setOpsPanel("steer")}
+            className="flex-none border-t border-rule bg-bg-raised px-[16px] py-[8px] text-left"
+          >
+            <span className="chrome mx-auto flex w-full max-w-[var(--onsen-prose-measure)] gap-[8px] text-[9px] leading-[1.5] tracking-[0.06em] uppercase">
+              <span style={{ color: "var(--onsen-color-red)" }}>{strings.chat.steerActive}</span>
+              <span className="min-w-0 flex-1 truncate text-ink-dim">{steer}</span>
+            </span>
+          </button>
+        ) : null}
+
+        {/* With the ops drawer open the cast strip collapses away, so the whole
+            composer stack still fits above an open keyboard (design handoff). */}
+        {cast.length > 0 && !isGenerating && opsPanel === null && !isDesktop ? (
+          <div className="flex-none border-t border-rule bg-bg-raised px-[16px] pt-[2px]">
+            <div className="mx-auto w-full max-w-[var(--onsen-prose-measure)]">
+              <CastStrip
+                cast={cast}
+                nextSpeaker={nextSpeaker}
+                onCue={(characterId) => setCued(characterId)}
+                onLongPress={(member) => setCastActing(member)}
+                scope={scope}
+                onScope={setScope}
+                strategy={strategy}
+                decidesOnSend={decidesOnSend}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        {/* Always visible with room for it, and no OPS key (design `4a`). */}
+        {isDesktop ? (
+          <div className="flex-none border-t border-rule bg-bg-raised px-[16px] py-[9px]">
+            <div className="mx-auto w-full max-w-[var(--onsen-prose-measure)]">
+              <OpsRow ops={shownOps} hint={strings.chat.keyHints} />
+            </div>
+          </div>
+        ) : null}
+
+        <Composer
+          onSend={(text) => void sendAndReply(text)}
+          onGenerate={() => void generation.start(nextTurn()).then(() => setCued(null))}
+          disabled={isGenerating}
+          speakerInitials={
+            scope === "beat"
+              ? strings.chat.beatInitials
+              : speakerName === null
+                ? strings.chat.chooseInitials
+                : initialsOf(speakerName)
+          }
+          draft={draft}
+          onDraftChange={setDraft}
+          opsOpen={opsPanel !== null}
+          onToggleOps={() => setOpsPanel(opsPanel === null ? "grid" : null)}
+          ops={opsDrawer()}
+          wide={isDesktop}
+        />
+
+    </>
+  );
+
   return (
     <div className="flex screen-height flex-col bg-bg">
       <header
         className="hairline flex flex-none items-baseline gap-[12px] px-[22px] pb-[12px]"
         style={{ paddingTop: "calc(18px + env(safe-area-inset-top))" }}
       >
-        <button
-          type="button"
-          onClick={() => navigate({ name: "scenes" })}
-          aria-label={strings.common.back}
-          className="chrome -ml-[6px] flex h-[34px] w-[24px] items-center text-[18px] text-ink-muted"
-        >
-          {strings.chat.back}
-        </button>
+        {/* Back is how a phone leaves a screen. On desktop the sidebar is
+            always there, so the affordance would point at nothing. */}
+        {isDesktop ? null : (
+          <button
+            type="button"
+            onClick={() => navigate({ name: "scenes" })}
+            aria-label={strings.common.back}
+            className="chrome -ml-[6px] flex h-[34px] w-[24px] items-center text-[18px] text-ink-muted"
+          >
+            {strings.chat.back}
+          </button>
+        )}
         <div className="min-w-0 flex-1">
           <p className="screen-kicker">{strings.chat.kicker}</p>
           <h1 className="truncate text-[19px] font-medium tracking-[-0.01em]">{title}</h1>
         </div>
+        {/* Design `4a` puts `PROMPT · n TOK` and `STAGE OFF` here beside SETUP.
+            Both are chips onto screens that do not exist yet — the inspector is
+            phase 25 and the VN stage is phase 29 — and a number with nothing
+            behind it to open is worse than the space it saves. */}
         <button
           type="button"
           onClick={() => navigate({ name: "setup", sceneId })}
@@ -510,172 +715,33 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           {strings.chat.setup}
         </button>
       </header>
-
-      {/* The log is bottom-anchored: content grows up from the composer. */}
-      <div
-        ref={log}
-        className="min-h-0 flex-1 overflow-y-auto px-[22px] py-[18px]"
-        style={
-          isGenerating
-            ? { borderLeft: "2px solid var(--onsen-color-red)", paddingLeft: "20px" }
-            : undefined
-        }
-      >
-        <div className="mx-auto flex min-h-full w-full max-w-[var(--onsen-prose-measure)] flex-col justify-end gap-[26px]">
-          {messages.length === 0 && !isGenerating ? (
-            <p className="chrome text-[10px] tracking-[0.14em] text-ink-dim uppercase">
-              {strings.scenes.emptyScene}
-            </p>
-          ) : null}
-
-          {messages.map((message) =>
-            editing === message.id ? (
-              <MessageEditor
-                key={message.id}
-                initial={message.content}
-                onCancel={() => setEditing(null)}
-                onSave={(content) => {
-                  setEditing(null);
-                  edit.mutate({ messageId: message.id, content });
-                }}
-              />
-            ) : (
-              <MessageBlock
-                key={message.id}
-                message={message}
-                speakerName={speakerFor(message, authorName)}
-                onReroll={() => void reroll(message)}
-                onOpenVersions={() => setVersionsFor(message)}
-                onLongPress={() => setActing(message)}
-                onRevert={(note) => revert.mutate(note.id)}
-                {...(recastInFlight?.messageId === message.id
-                  ? {
-                      recasting: { ordinal: recastInFlight.ordinal, text: recastInFlight.text },
-                      // A recast streams inside the beat it belongs to, so its
-                      // reasoning belongs there too rather than at the bottom.
-                      ...(active?.reasoning ? { streamingReasoning: active.reasoning } : {}),
-                    }
-                  : {})}
-              />
-            ),
-          )}
-
-          {/* The message being written, in the same treatment as a finished one:
-              the attribution header appears first, then text streams under it. */}
-          {/* Nothing is drawn until there is a speaker to attribute it to: while
-              the director is still choosing, the status row below already says
-              so, and a header over an empty body says it twice. */}
-          {isGenerating && recastInFlight === null && active.speaker !== null ? (
-            <article>
-              <header className="mb-[10px]">
-                <div className="flex items-center gap-[10px]">
-                  <span className="chrome shrink-0 text-[10px] font-semibold tracking-[0.18em] text-ink-label uppercase">
-                    {active.speaker}
-                  </span>
-                  <span className="h-px flex-1 bg-rule" />
-                </div>
-                {/* The director's own sentence, where it had one to give. */}
-                {active.director !== null && active.director.reason !== "" ? (
-                  <p className="chrome mt-[5px] text-[9px] leading-[1.5] tracking-[0.06em] text-ink-dim uppercase">
-                    {active.director.reason}
-                  </p>
-                ) : null}
-              </header>
-              {/* Reasoning while it is happening (SPEC §13). Collapsed like
-                  any other, but present — a model that thinks for twenty
-                  seconds before its first word should not look stalled. */}
-              <Reasoning text={active.reasoning} />
-              <p className="text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)] whitespace-pre-wrap">
-                {active.text}
-              </p>
-            </article>
-          ) : null}
-
-          {active !== null && active.sceneId === sceneId && active.status === "error" ? (
-            <p
-              role="alert"
-              className="chrome border border-red-border bg-red-bg px-[11px] py-[9px] text-[10px] tracking-[0.06em] text-red-text uppercase"
-            >
-              {active.error ?? strings.errors.generationFailed}
-            </p>
-          ) : null}
-
-          {/* Stop is reachable at all times while writing (design handoff). */}
-          {isGenerating ? (
-            <div className="flex items-center gap-[10px]">
-              <span
-                className="h-[6px] w-[6px] flex-none"
-                style={{ background: "var(--onsen-color-red)" }}
-              />
-              <span className="chrome flex-1 text-[9.5px] tracking-[0.14em] text-ink-muted uppercase">
-                {active.speaker === null
-                  ? strings.chat.choosing
-                  : strings.chat.writing(active.speaker)}
-              </span>
-              <button
-                type="button"
-                onClick={() => void generation.cancel()}
-                className="chrome border border-red-border px-[10px] py-[6px] text-[9.5px] tracking-[0.14em] uppercase"
-                style={{ color: "var(--onsen-color-red)" }}
-              >
-                {strings.chat.stop}
-              </button>
-            </div>
-          ) : null}
+      {/* The desktop shape: the log, the ops and the composer in a capped
+          prose column, with the cast rail beside them (design `4a`). The
+          pieces are identical either way — only their parent differs, which
+          is the one thing a media query cannot do. */}
+      {isDesktop ? (
+        <div className="flex min-h-0 flex-1">
+          <div className="flex min-w-0 flex-1 flex-col">{body}</div>
+          <CastRail
+            cast={cast}
+            nextSpeaker={nextSpeaker}
+            messages={messages}
+            guides={guides}
+            scope={scope}
+            onScope={setScope}
+            onCue={(characterId) => setCued(characterId)}
+            onMember={(member) => setCastActing(member)}
+            writingName={isGenerating ? active.speaker : null}
+            guidesCost={guides.reduce((sum, guide) => sum + guide.tokenCount, 0)}
+            onGuides={() => {
+              setContextTab("guides");
+              setGuidesOpen(true);
+            }}
+          />
         </div>
-      </div>
-
-      {/* Steer, when it is set: a hairline strip above the composer, so a note
-          that changes every turn is visible while you write (design handoff). */}
-      {steer !== null && opsPanel === null ? (
-        <button
-          type="button"
-          onClick={() => setOpsPanel("steer")}
-          className="flex-none border-t border-rule bg-bg-raised px-[16px] py-[8px] text-left"
-        >
-          <span className="chrome mx-auto flex w-full max-w-[var(--onsen-prose-measure)] gap-[8px] text-[9px] leading-[1.5] tracking-[0.06em] uppercase">
-            <span style={{ color: "var(--onsen-color-red)" }}>{strings.chat.steerActive}</span>
-            <span className="min-w-0 flex-1 truncate text-ink-dim">{steer}</span>
-          </span>
-        </button>
-      ) : null}
-
-      {/* With the ops drawer open the cast strip collapses away, so the whole
-          composer stack still fits above an open keyboard (design handoff). */}
-      {cast.length > 0 && !isGenerating && opsPanel === null ? (
-        <div className="flex-none border-t border-rule bg-bg-raised px-[16px] pt-[2px]">
-          <div className="mx-auto w-full max-w-[var(--onsen-prose-measure)]">
-            <CastStrip
-              cast={cast}
-              nextSpeaker={nextSpeaker}
-              onCue={(characterId) => setCued(characterId)}
-              onLongPress={(member) => setCastActing(member)}
-              scope={scope}
-              onScope={setScope}
-              strategy={strategy}
-              decidesOnSend={decidesOnSend}
-            />
-          </div>
-        </div>
-      ) : null}
-
-      <Composer
-        onSend={(text) => void sendAndReply(text)}
-        onGenerate={() => void generation.start(nextTurn()).then(() => setCued(null))}
-        disabled={isGenerating}
-        speakerInitials={
-          scope === "beat"
-            ? strings.chat.beatInitials
-            : speakerName === null
-              ? strings.chat.chooseInitials
-              : initialsOf(speakerName)
-        }
-        draft={draft}
-        onDraftChange={setDraft}
-        opsOpen={opsPanel !== null}
-        onToggleOps={() => setOpsPanel(opsPanel === null ? "grid" : null)}
-        ops={opsDrawer()}
-      />
+      ) : (
+        body
+      )}
 
       {acting !== null ? (
         <Sheet title={strings.chat.actions} onClose={() => setActing(null)}>

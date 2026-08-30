@@ -142,20 +142,24 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
   return (
     <div className="flex screen-height flex-col bg-bg">
       <header
-        className="hairline flex flex-none items-baseline gap-[12px] px-[22px] pb-[12px]"
+        className="screen-header hairline flex-none px-[22px] pb-[12px]"
         style={{ paddingTop: "calc(18px + env(safe-area-inset-top))" }}
       >
-        <button
-          type="button"
-          onClick={() => navigate({ name: "chat", sceneId })}
-          aria-label={strings.common.back}
-          className="chrome -ml-[6px] flex h-[34px] w-[24px] items-center text-[18px] text-ink-muted"
-        >
-          {strings.chat.back}
-        </button>
-        <div className="min-w-0 flex-1">
-          <p className="screen-kicker">{strings.sceneSetup.kicker}</p>
-          <h1 className="truncate text-[19px] font-medium tracking-[-0.01em]">{scene.title}</h1>
+        {/* Wrapped so the whole row is capped to the column below it, rather
+            than each of its parts being capped on its own. */}
+        <div className="flex w-full items-baseline gap-[12px]">
+          <button
+            type="button"
+            onClick={() => navigate({ name: "chat", sceneId })}
+            aria-label={strings.common.back}
+            className="chrome -ml-[6px] flex h-[34px] w-[24px] items-center text-[18px] text-ink-muted"
+          >
+            {strings.chat.back}
+          </button>
+          <div className="min-w-0 flex-1">
+            <p className="screen-kicker">{strings.sceneSetup.kicker}</p>
+            <h1 className="truncate text-[19px] font-medium tracking-[-0.01em]">{scene.title}</h1>
+          </div>
         </div>
       </header>
 

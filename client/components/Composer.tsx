@@ -31,6 +31,12 @@ interface ComposerProps {
   opsOpen: boolean;
   onToggleOps(): void;
   ops?: ReactNode;
+  /**
+   * With room, the ops are a row above this and always visible, so the key
+   * that opens them is a button onto something already open (design `4a`).
+   * The composer also aligns to the prose column rather than the window.
+   */
+  wide?: boolean;
 }
 
 export function Composer({
@@ -43,6 +49,7 @@ export function Composer({
   opsOpen,
   onToggleOps,
   ops,
+  wide = false,
 }: ComposerProps) {
   const field = useRef<HTMLTextAreaElement>(null);
 
@@ -67,6 +74,10 @@ export function Composer({
       className="flex-none border-t border-rule bg-bg-raised px-[16px] pt-[11px]"
       style={{ paddingBottom: "calc(10px + env(safe-area-inset-bottom))" }}
     >
+      {/* Aligned to the prose it is answering rather than to the window: a
+          composer stretched to 900px under a 620px column reads as two
+          different documents. */}
+      <div className={wide ? "mx-auto w-full max-w-[var(--onsen-prose-measure)]" : undefined}>
       {/* Progressive disclosure: the ops drawer sits above the input row and is
           closed by default, so the resting composer stays two rows tall. */}
       {ops === undefined ? null : <div className="mb-[11px]">{ops}</div>}
@@ -90,7 +101,9 @@ export function Composer({
           }}
         />
 
-        {/* The ops key. Takes the red active treatment while the drawer is open. */}
+        {/* The ops key. Takes the red active treatment while the drawer is
+            open — and is absent where the ops are already a visible row. */}
+        {wide ? null : (
         <button
           type="button"
           onClick={onToggleOps}
@@ -106,6 +119,7 @@ export function Composer({
         >
           {opsOpen ? strings.chat.opsClose : strings.chat.ops}
         </button>
+        )}
 
         {/* Send posts the message and asks for a reply. */}
         <button
@@ -131,6 +145,7 @@ export function Composer({
       >
         {strings.chat.continueWithout}
       </button>
+      </div>
     </div>
   );
 }
