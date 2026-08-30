@@ -186,6 +186,32 @@ export const strings = {
     guidesFlushAllConfirm: "Stop injecting every guide? Every version of them goes.",
     guidesDone: "Done",
     guidesCustomHint: "Needs a question first, which is set in this roleplay's setup.",
+
+    /** The memory half of the blue sheet (SPEC §11, §16 "memory panel"). */
+    tabGuides: "Guides",
+    tabMemory: "Memory",
+    memory: "Memory · what it remembers",
+    memoryEmpty:
+      "Nothing summarised yet. Once the story is long enough, old turns are condensed and the prompt carries the condensed version instead.",
+    memoryPending: (messages: number, words: number) =>
+      `${messages} waiting · ${words} words`,
+    memoryPendingNone: "Nothing waiting",
+    memoryCovers: (messages: number) => `${messages} turns`,
+    memoryInjected: "In the prompt",
+    memoryHeld: "Too recent",
+    memoryEdited: "Yours",
+    memoryFolded: (level: number) => `Condensed ×${level}`,
+    memoryEvicting: (messages: number) => `Standing in for ${messages} turns`,
+    memoryShowing: "Shown as well as summarised",
+    memoryNow: "Summarise now",
+    memoryWorking: "Reading…",
+    memoryRewrite: "Rewrite",
+    memoryEdit: "Edit",
+    memorySave: "Save",
+    memoryForget: "Forget",
+    memoryForgetAll: "Forget all",
+    memoryForgetConfirm: "Forget this summary? The turns it covers get summarised again.",
+    memoryForgetAllConfirm: "Forget every summary? The whole scene gets summarised again.",
     opExpand: "Write it longer",
     opCorrect: "Rewrite this…",
     opCorrectTitle: "What should change?",
@@ -425,6 +451,31 @@ export const strings = {
     customGuideHint:
       "One question, asked of the story after every turn. The answer rides on every prompt until you flush it. Leave it empty and the custom guide stays off.",
     customGuidePlaceholder: "What does the crew believe about the captain?",
+
+    /** Rolling summarisation, all per scene (SPEC §11). */
+    summarise: "Remember what happened",
+    summariseHint:
+      "Old turns are condensed into a paragraph the prompt carries instead of the turns. A long scene stops fitting otherwise.",
+    summariseOn: "On",
+    summariseOff: "Off",
+    summariseEveryMessages: "Summarise every",
+    summariseEveryMessagesUnit: "turns",
+    summariseEveryWords: "or every",
+    summariseEveryWordsUnit: "words",
+    summariseEveryHint: "Whichever comes first. Twenty short exchanges and twenty long ones are very different amounts of story.",
+    summariseThreshold: "Keep the last",
+    summariseThresholdUnit: "turns in full",
+    summariseThresholdHint:
+      "Recent turns are shown as written, never as a summary. Nothing inside this window is condensed or replaced.",
+    summariseEvict: "Drop the turns it covers",
+    summariseEvictOn: "Drop them",
+    summariseEvictOff: "Keep both",
+    summariseEvictHint:
+      "Off, the prompt carries the summary and the original turns until the budget forces a choice. On, the summary stands in for them and the room is yours. Your last message is always kept.",
+    summariseFreeze: "Move the summary every",
+    summariseFreezeUnit: "turns",
+    summariseFreezeHint:
+      "Changing what the prompt carries invalidates the provider's cache, and the summary sits near the front, so everything after it moves too. Holding it still for a few turns costs a little staleness and saves a lot.",
 
     /** Where the classifier runs (SPEC §6). */
     directorProfile: "Where the director runs",

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { GUIDE_KINDS, type GuideDto, type GuideKind, type TaskDto } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { Sheet } from "./Sheet.tsx";
+import { blueOutline, blueSolid } from "./blue.ts";
 
 /**
  * The guides panel (design screen `3f`, SPEC §8).
@@ -22,7 +23,7 @@ import { Sheet } from "./Sheet.tsx";
  * the button that writes it, because the alternative is a feature you can only
  * find by turning something on in settings first.
  */
-export function GuidesPanel({
+export function GuidesBody({
   guides,
   tasks,
   customPrompt,
@@ -57,12 +58,7 @@ export function GuidesPanel({
   }));
 
   return (
-    <Sheet
-      tone="blue"
-      title={strings.chat.guides}
-      meta={strings.chat.guidesTotal(total)}
-      onClose={onClose}
-    >
+    <>
       <div className="pt-[4px] pb-[14px]">
         {guides.length === 0 ? (
           <p
@@ -272,18 +268,6 @@ export function GuidesPanel({
           </button>
         )}
       </div>
-    </Sheet>
+    </>
   );
 }
-
-/** The panel's two button treatments, so every one of them agrees. */
-const blueOutline = {
-  borderColor: "var(--onsen-color-blue-border-strong)",
-  color: "var(--onsen-color-blue-text)",
-};
-
-const blueSolid = {
-  background: "var(--onsen-color-blue)",
-  borderColor: "var(--onsen-color-blue)",
-  color: "#f2f5f8",
-};

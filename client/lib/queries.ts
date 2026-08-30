@@ -8,6 +8,7 @@ import type {
   CreateProviderRequest,
   ProviderDto,
   RebuildGuidesRequest,
+  SummaryStateDto,
   TaskDto,
   TaskRunDto,
   UpdateConnectionProfileRequest,
@@ -270,6 +271,71 @@ export function useEditGuide(sceneId: string) {
 export function useFlushGuides(sceneId: string) {
   return useSceneMutation(sceneId, (kind: GuideKind | "all") =>
     api.delete<GuideDto[]>(`/scenes/${sceneId}/guides/${kind}`),
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Rolling summarisation (SPEC §11)                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Unlike the guides, the summaries are their own query rather than part of the
+ * scene: the panel is the only thing that reads them, they carry a pending
+ * count that changes on every turn, and putting that on the scene response
+ * would make every message send re-serialise the lot.
+ */
+export const summaryKeys = {
+  all: (sceneId: string) => ["scenes", sceneId, "summaries"] as const,
+};
+
+export function useSummaries(sceneId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: summaryKeys.all(sceneId),
+    queryFn: () => api.get<SummaryStateDto>(`/scenes/${sceneId}/summaries`),
+    enabled,
+  });
+}
+
+/** Every summary mutation returns the whole state, so they all invalidate it. */
+function useSummaryMutation<TArgs>(sceneId: string, fn: (args: TArgs) => Promise<SummaryStateDto>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: summaryKeys.all(sceneId) });
+      // Eviction changes what the prompt carries, so the scene's own costs move.
+      void client.invalidateQueries({ queryKey: keys.scene(sceneId) });
+    },
+  });
+}
+
+/** Summarise now rather than waiting for a threshold (§11). */
+export function useSummariseNow(sceneId: string) {
+  return useSummaryMutation(sceneId, () =>
+    api.post<SummaryStateDto>(`/scenes/${sceneId}/summaries`, {}),
+  );
+}
+
+/** Write one again over the same range. An edited one is overwritten: they asked. */
+export function useRewriteSummary(sceneId: string) {
+  return useSummaryMutation(sceneId, (summaryId: string) =>
+    api.post<SummaryStateDto>(`/scenes/${sceneId}/summaries/${summaryId}/rewrite`, {}),
+  );
+}
+
+/** Hand-edit a summary, which marks it against regeneration (§11). */
+export function useEditSummary(sceneId: string) {
+  return useSummaryMutation(
+    sceneId,
+    ({ summaryId, content }: { summaryId: string; content: string }) =>
+      api.patch<SummaryStateDto>(`/scenes/${sceneId}/summaries/${summaryId}`, { content }),
+  );
+}
+
+/** Forget one, or all. The messages become pending again, not lost (§11). */
+export function useForgetSummary(sceneId: string) {
+  return useSummaryMutation(sceneId, (summaryId: string) =>
+    api.delete<SummaryStateDto>(`/scenes/${sceneId}/summaries/${summaryId}`),
   );
 }
 

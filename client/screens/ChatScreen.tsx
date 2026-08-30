@@ -16,10 +16,15 @@ import { Composer } from "../components/Composer.tsx";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
 import { CastStrip } from "../components/CastStrip.tsx";
 import { OpsGrid, OpPrompt, type Op } from "../components/OpsGrid.tsx";
-import { GuidesPanel } from "../components/GuidesPanel.tsx";
+import { ContextSheet, type ContextTab } from "../components/ContextSheet.tsx";
 import {
   useBenchMember,
   useEditGuide,
+  useEditSummary,
+  useForgetSummary,
+  useRewriteSummary,
+  useSummaries,
+  useSummariseNow,
   useFlushGuides,
   useRebuildGuides,
   useRevertAnnotation,
@@ -89,9 +94,17 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const rebuildGuides = useRebuildGuides(sceneId);
   const editGuide = useEditGuide(sceneId);
   const flushGuides = useFlushGuides(sceneId);
-  /** Whether the guides panel is up, and which guide is being written in it. */
+  /** Whether the blue sheet is up, which half of it, and what is working. */
   const [guidesOpen, setGuidesOpen] = useState(false);
+  const [contextTab, setContextTab] = useState<ContextTab>("guides");
   const [guideWorking, setGuideWorking] = useState<GuideKind | "all" | null>(null);
+  // Only fetched while the sheet is open: the pending count moves on every turn,
+  // and polling it behind a closed panel would be a request per message.
+  const summaries = useSummaries(sceneId, guidesOpen);
+  const summariseNow = useSummariseNow(sceneId);
+  const rewriteSummary = useRewriteSummary(sceneId);
+  const editSummary = useEditSummary(sceneId);
+  const forgetSummary = useForgetSummary(sceneId);
   const [acting, setActing] = useState<MessageDto | null>(null);
   /** The beat whose parts are being picked from, for a recast. */
   const [recasting, setRecasting] = useState<MessageDto | null>(null);
@@ -743,19 +756,30 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       ) : null}
 
       {guidesOpen ? (
-        <GuidesPanel
+        <ContextSheet
+          tab={contextTab}
+          onTab={setContextTab}
           guides={guides}
           tasks={tasks.data ?? []}
           customPrompt={scene.data?.scene.customGuidePrompt ?? null}
-          working={guideWorking}
+          guideWorking={guideWorking}
           onRebuild={(kind) => {
             setGuideWorking(kind);
             rebuildGuides.mutate(kind === "all" ? {} : { kind }, {
               onSettled: () => setGuideWorking(null),
             });
           }}
-          onEdit={(guideId, content) => editGuide.mutate({ guideId, content })}
+          onEditGuide={(guideId, content) => editGuide.mutate({ guideId, content })}
           onFlush={(kind) => flushGuides.mutate(kind)}
+          summaries={summaries.data}
+          evicting={scene.data?.scene.summariseEvict ?? false}
+          summaryWorking={
+            summariseNow.isPending || rewriteSummary.isPending || forgetSummary.isPending
+          }
+          onSummarise={() => summariseNow.mutate(undefined)}
+          onRewriteSummary={(summaryId) => rewriteSummary.mutate(summaryId)}
+          onEditSummary={(summaryId, content) => editSummary.mutate({ summaryId, content })}
+          onForgetSummary={(summaryId) => forgetSummary.mutate(summaryId)}
           onClose={() => setGuidesOpen(false)}
         />
       ) : null}

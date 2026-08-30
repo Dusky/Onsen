@@ -40,6 +40,53 @@ function labelFor(strategy: TurnStrategy): string {
   }
 }
 
+/**
+ * A bounded whole number. Committed on blur rather than per keystroke: every
+ * one of these is a server round-trip, and a threshold typed as "2" on the way
+ * to "20" is a setting that briefly means something very different.
+ */
+function NumberField({
+  label,
+  unit,
+  value,
+  min,
+  max,
+  onCommit,
+}: {
+  label: string;
+  unit: string;
+  value: number;
+  min: number;
+  max: number;
+  onCommit(value: number): void;
+}) {
+  return (
+    <label className="min-w-0 flex-1">
+      <span className="section-label mb-[6px] block">{label}</span>
+      <input
+        type="number"
+        inputMode="numeric"
+        min={min}
+        max={max}
+        defaultValue={value}
+        key={value}
+        className="field"
+        onBlur={(event) => {
+          const next = Number.parseInt(event.target.value, 10);
+          if (!Number.isInteger(next) || next < min || next > max) {
+            event.target.value = String(value);
+            return;
+          }
+          if (next !== value) onCommit(next);
+        }}
+      />
+      <span className="chrome mt-[5px] block text-[9px] tracking-[0.10em] text-ink-dim uppercase">
+        {unit}
+      </span>
+    </label>
+  );
+}
+
 export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
   const query = useScene(sceneId);
   const authors = useAuthors();
@@ -278,6 +325,93 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
           <p className="chrome mb-[22px] text-[9.5px] leading-[1.5] text-ink-dim">
             {strings.sceneSetup.autoPassesHint}
           </p>
+
+          {/* Rolling summarisation (SPEC §11 layer 1). Every knob is per scene
+              because how fast a story moves is a property of the story. */}
+          <p className="section-label mb-[8px]">{strings.sceneSetup.summarise}</p>
+          <div className="mb-[8px] flex gap-[6px]">
+            {[true, false].map((on) => (
+              <button
+                key={String(on)}
+                type="button"
+                onClick={() => setup.mutate({ summarise: on })}
+                className={`btn flex-1 ${scene.summarise === on ? "btn-primary" : ""}`}
+              >
+                {on ? strings.sceneSetup.summariseOn : strings.sceneSetup.summariseOff}
+              </button>
+            ))}
+          </div>
+          <p className="chrome mb-[18px] text-[9.5px] leading-[1.5] text-ink-dim">
+            {strings.sceneSetup.summariseHint}
+          </p>
+
+          {scene.summarise ? (
+            <>
+              <div className="mb-[8px] flex gap-[10px]">
+                <NumberField
+                  label={strings.sceneSetup.summariseEveryMessages}
+                  unit={strings.sceneSetup.summariseEveryMessagesUnit}
+                  value={scene.summariseEveryMessages}
+                  min={2}
+                  max={500}
+                  onCommit={(value) => setup.mutate({ summariseEveryMessages: value })}
+                />
+                <NumberField
+                  label={strings.sceneSetup.summariseEveryWords}
+                  unit={strings.sceneSetup.summariseEveryWordsUnit}
+                  value={scene.summariseEveryWords}
+                  min={100}
+                  max={100000}
+                  onCommit={(value) => setup.mutate({ summariseEveryWords: value })}
+                />
+              </div>
+              <p className="chrome mb-[18px] text-[9.5px] leading-[1.5] text-ink-dim">
+                {strings.sceneSetup.summariseEveryHint}
+              </p>
+
+              <div className="mb-[8px] flex gap-[10px]">
+                <NumberField
+                  label={strings.sceneSetup.summariseThreshold}
+                  unit={strings.sceneSetup.summariseThresholdUnit}
+                  value={scene.summariseThreshold}
+                  min={0}
+                  max={500}
+                  onCommit={(value) => setup.mutate({ summariseThreshold: value })}
+                />
+                <NumberField
+                  label={strings.sceneSetup.summariseFreeze}
+                  unit={strings.sceneSetup.summariseFreezeUnit}
+                  value={scene.summariseFreeze}
+                  min={1}
+                  max={100}
+                  onCommit={(value) => setup.mutate({ summariseFreeze: value })}
+                />
+              </div>
+              <p className="chrome mb-[6px] text-[9.5px] leading-[1.5] text-ink-dim">
+                {strings.sceneSetup.summariseThresholdHint}
+              </p>
+              <p className="chrome mb-[18px] text-[9.5px] leading-[1.5] text-ink-dim">
+                {strings.sceneSetup.summariseFreezeHint}
+              </p>
+
+              <p className="section-label mb-[8px]">{strings.sceneSetup.summariseEvict}</p>
+              <div className="mb-[8px] flex gap-[6px]">
+                {[false, true].map((on) => (
+                  <button
+                    key={String(on)}
+                    type="button"
+                    onClick={() => setup.mutate({ summariseEvict: on })}
+                    className={`btn flex-1 ${scene.summariseEvict === on ? "btn-primary" : ""}`}
+                  >
+                    {on ? strings.sceneSetup.summariseEvictOn : strings.sceneSetup.summariseEvictOff}
+                  </button>
+                ))}
+              </div>
+              <p className="chrome mb-[22px] text-[9.5px] leading-[1.5] text-ink-dim">
+                {strings.sceneSetup.summariseEvictHint}
+              </p>
+            </>
+          ) : null}
 
           {/* SPEC §8's sixth guide. It is the only one with nothing built in to
               ask, so its question is scene configuration and lives here; the
