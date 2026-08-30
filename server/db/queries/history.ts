@@ -551,6 +551,34 @@ export function deleteMessage(db: Database, row: MessageRow): void {
     scene?.active_leaf_id != null && isSelfOrDescendant(db, scene.active_leaf_id, row.id);
   const parentId = row.parent_id;
 
+  /**
+   * Presence anchors have to move *before* the delete, not be nulled by it.
+   *
+   * `scene_members.joined_after_message_id` is declared `ON DELETE SET NULL`,
+   * and null is not a neutral value here: it means "present from the start"
+   * (SPEC §2, presence tracking). So a character who joined after a message
+   * that is now being deleted would silently become someone who witnessed the
+   * whole scene — the exact opposite of the truth, since everything they
+   * actually missed is what survives the delete.
+   *
+   * The closest true statement is the deleted message's parent: "joined after
+   * the turn before this one". A member anchored to the root has no earlier
+   * turn to point at, and null is then correct rather than a lie.
+   */
+  db.query(
+    `UPDATE scene_members
+        SET joined_after_message_id = $parent
+      WHERE scene_id = $scene
+        AND joined_after_message_id IN (
+          WITH RECURSIVE subtree(id) AS (
+            SELECT $id
+            UNION ALL
+            SELECT m.id FROM messages m JOIN subtree s ON m.parent_id = s.id
+          )
+          SELECT id FROM subtree
+        )`,
+  ).run({ id: row.id, parent: parentId, scene: row.scene_id });
+
   db.query("DELETE FROM messages WHERE id = $id").run({ id: row.id });
 
   if (leafWasInside) {

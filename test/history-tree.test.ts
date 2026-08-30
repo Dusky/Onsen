@@ -275,6 +275,60 @@ describe("deleting", () => {
     expect(pathText(d, scene)).toEqual(["prompt", "reply A", "A continues"]);
   });
 
+  test("a presence anchor moves to the surviving parent rather than being nulled", () => {
+    const { db: d, scene } = fresh();
+    const one = say(d, scene, "one");
+    const two = say(d, scene, "two");
+    say(d, scene, "three");
+
+    const character = d
+      .query(
+        `INSERT INTO characters (ulid, name, raw_card, raw_card_format, created_at, updated_at)
+         VALUES ('c', 'Bell', '{}', 'json', 1, 1) RETURNING id`,
+      )
+      .get() as { id: number };
+    // Bell joined after "two", so "one" and "two" are turns she did not witness.
+    d.query(
+      `INSERT INTO scene_members (scene_id, character_id, joined_after_message_id, created_at)
+       VALUES ($scene, $character, $anchor, 1)`,
+    ).run({ scene: scene.id, character: character.id, anchor: two.id });
+
+    deleteMessage(d, two);
+
+    // The column is declared ON DELETE SET NULL, and null is not neutral here:
+    // it means "present from the start" (SPEC §2). Left to the cascade, Bell
+    // would silently become someone who witnessed "one" — which is precisely
+    // the turn that survives and that she was never there for.
+    const anchor = d
+      .query("SELECT joined_after_message_id AS j FROM scene_members WHERE scene_id = $s")
+      .get({ s: scene.id }) as { j: number | null };
+    expect(anchor.j).toBe(one.id);
+  });
+
+  test("a presence anchor on the root becomes null, which is then true", () => {
+    const { db: d, scene } = fresh();
+    const root = say(d, scene, "one");
+    const character = d
+      .query(
+        `INSERT INTO characters (ulid, name, raw_card, raw_card_format, created_at, updated_at)
+         VALUES ('c2', 'Aldan', '{}', 'json', 1, 1) RETURNING id`,
+      )
+      .get() as { id: number };
+    d.query(
+      `INSERT INTO scene_members (scene_id, character_id, joined_after_message_id, created_at)
+       VALUES ($scene, $character, $anchor, 1)`,
+    ).run({ scene: scene.id, character: character.id, anchor: root.id });
+
+    deleteMessage(d, root);
+
+    // Nothing came before the root, so there is no earlier turn to point at —
+    // and with the scene empty, "present from the start" is no longer a lie.
+    const anchor = d
+      .query("SELECT joined_after_message_id AS j FROM scene_members WHERE scene_id = $s")
+      .get({ s: scene.id }) as { j: number | null };
+    expect(anchor.j).toBeNull();
+  });
+
   test("deleting the last root empties the scene rather than dangling the pointer", () => {
     const { db: d, scene } = fresh();
     const root = say(d, scene, "only");
