@@ -1,17 +1,26 @@
 import { useState } from "react";
 import { strings } from "../strings.ts";
+import { BanListSheet, OptionGroupSheet } from "../components/OptionSheets.tsx";
 import { navigate } from "../lib/router.ts";
 import {
+  useAddBan,
   useAddToCast,
+  useAnalyseBans,
   useAuthors,
+  useBans,
   useCharacters,
   useConnectionProfiles,
   useCreatePersona,
+  useDeleteBan,
   usePersonas,
   useRemoveFromCast,
+  useResetOptions,
   useScene,
+  useSceneOptions,
   useSceneSetup,
+  useSetOption,
   useTaskRuns,
+  useUpdateBan,
 } from "../lib/queries.ts";
 import { Sheet } from "../components/Sheet.tsx";
 import { TURN_STRATEGIES, type TurnStrategy } from "@shared/types.ts";
@@ -102,6 +111,19 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
   // swallowed failure nobody can read is the feature quietly not working.
   const directorRuns = useTaskRuns("turn_classifier", query.data?.scene.turnStrategy === "classifier");
   const [picking, setPicking] = useState(false);
+  // Prompt options and the ban list (SPEC §13.5, §13.6).
+  const options = useSceneOptions(sceneId);
+  const setOption = useSetOption(sceneId);
+  const resetOptions = useResetOptions(sceneId);
+  const [editingGroup, setEditingGroup] = useState<string | null>(null);
+  const [bansOpen, setBansOpen] = useState(false);
+  // Only fetched with the sheet open: the list is long and nothing on the
+  // setup screen needs it until then, beyond the count on its row.
+  const bans = useBans(sceneId, true);
+  const addBan = useAddBan(sceneId);
+  const analyseBans = useAnalyseBans(sceneId);
+  const updateBan = useUpdateBan(sceneId);
+  const deleteBan = useDeleteBan(sceneId);
 
   const scene = query.data?.scene;
   if (scene === undefined) {
@@ -326,6 +348,93 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
             {strings.sceneSetup.autoPassesHint}
           </p>
 
+          {/* Prompt option groups (SPEC §13.5). One row per group showing what
+              is chosen; the options themselves are a sheet, because seven
+              groups of four to six is thirty-odd switches on one screen. */}
+          <div className="mb-[8px] flex items-baseline justify-between gap-[10px]">
+            <p className="section-label">{strings.sceneSetup.options}</p>
+            <p className="chrome text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+              {options.data === undefined
+                ? ""
+                : strings.sceneSetup.optionsCost(options.data.tokenCount)}
+            </p>
+          </div>
+          <p className="chrome mb-[10px] text-[9.5px] leading-[1.5] text-ink-dim">
+            {strings.sceneSetup.optionsHint}
+          </p>
+          {(options.data?.groups ?? []).map((group) => {
+            const chosen = group.options.filter((option) => option.selected);
+            return (
+              <button
+                key={group.id}
+                type="button"
+                onClick={() => setEditingGroup(group.id)}
+                className="flex w-full items-baseline gap-[9px] border-b border-rule py-[12px] text-left"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="chrome block text-[9.5px] tracking-[0.1em] text-ink-muted uppercase">
+                    {group.name}
+                  </span>
+                  <span className="mt-[4px] block truncate text-[13.5px]">
+                    {chosen.length === 0
+                      ? strings.sceneSetup.optionsNone
+                      : chosen.map((option) => option.name).join(" · ")}
+                  </span>
+                </span>
+                <span className="chrome flex-none text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+                  {chosen.reduce((sum, option) => sum + option.tokenCount, 0)} TOK
+                </span>
+              </button>
+            );
+          })}
+
+          {/* The ban list is its own sheet: it has proposals to judge, two
+              scopes, and a list that grows (SPEC §13.6). */}
+          <button
+            type="button"
+            onClick={() => setBansOpen(true)}
+            className="flex w-full items-baseline gap-[9px] border-b border-rule py-[12px] text-left"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="chrome block text-[9.5px] tracking-[0.1em] text-ink-muted uppercase">
+                {strings.sceneSetup.bans}
+              </span>
+              <span className="mt-[4px] block truncate text-[13.5px]">
+                {bans.data === undefined
+                  ? "—"
+                  : strings.sceneSetup.bansCount(
+                      bans.data.phrases.filter(
+                        (row) => row.enabled && row.origin !== "proposed",
+                      ).length,
+                      bans.data.phrases.filter((row) => row.origin === "proposed").length,
+                    )}
+              </span>
+            </span>
+            <span className="chrome flex-none text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+              {bans.data === undefined ? "" : `${bans.data.tokenCount} TOK`}
+            </span>
+          </button>
+
+          {/* Only offered once the scene has chosen for itself: a scene still
+              running on the shipped configuration has nothing to go back to. */}
+          {options.data?.configured === true ? (
+            <button
+              type="button"
+              className="btn mt-[12px] w-full"
+              onClick={() => {
+                if (!window.confirm(strings.sceneSetup.optionsResetConfirm)) return;
+                resetOptions.mutate(undefined);
+              }}
+            >
+              {strings.sceneSetup.optionsReset}
+            </button>
+          ) : (
+            <p className="chrome mt-[10px] text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+              {strings.sceneSetup.optionsDefaults}
+            </p>
+          )}
+          <div className="mb-[22px]" />
+
           {/* Rolling summarisation (SPEC §11 layer 1). Every knob is per scene
               because how fast a story moves is a property of the story. */}
           <p className="section-label mb-[8px]">{strings.sceneSetup.summarise}</p>
@@ -483,6 +592,34 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
           {strings.sceneSetup.done}
         </button>
       </footer>
+
+      {editingGroup !== null ? (
+        (() => {
+          const group = (options.data?.groups ?? []).find((row) => row.id === editingGroup);
+          return group === undefined ? null : (
+            <OptionGroupSheet
+              group={group}
+              onSet={(optionId, on) => setOption.mutate({ optionId, on })}
+              onClose={() => setEditingGroup(null)}
+            />
+          );
+        })()
+      ) : null}
+
+      {bansOpen ? (
+        <BanListSheet
+          state={bans.data}
+          analysing={analyseBans.isPending}
+          detail={
+            (analyseBans.data as { detail?: string | null } | undefined)?.detail ?? null
+          }
+          onAdd={(phrase, scoped) => addBan.mutate({ phrase, scoped })}
+          onAnalyse={() => analyseBans.mutate(undefined)}
+          onUpdate={(banId, patch) => updateBan.mutate({ banId, ...patch })}
+          onDelete={(banId) => deleteBan.mutate(banId)}
+          onClose={() => setBansOpen(false)}
+        />
+      ) : null}
 
       {picking ? (
         <Sheet title={strings.sceneSetup.addToCast} onClose={() => setPicking(false)}>

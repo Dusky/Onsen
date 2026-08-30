@@ -507,6 +507,42 @@ export const strings = {
       "One question, asked of the story after every turn. The answer rides on every prompt until you flush it. Leave it empty and the custom guide stays off.",
     customGuidePlaceholder: "What does the crew believe about the captain?",
 
+    /** Prompt option groups (SPEC §13.5). */
+    options: "How it writes",
+    optionsHint:
+      "Small rules the prompt carries, rather than one long instruction. Groups marked one-of pick exactly one — choosing another swaps it.",
+    optionsCost: (n: number) => `${n} TOK on every turn`,
+    optionsNone: "None",
+    optionsDefaults: "Shipped defaults",
+    optionsReset: "Back to defaults",
+    optionsResetConfirm: "Put every group back to what the app ships with?",
+    optionsOneOf: "Pick one",
+    optionsAnyOf: "Any number",
+    optionsEmpty: "Adds nothing to the prompt",
+    optionsDone: "Done",
+
+    /** The ban list (SPEC §13.6). */
+    bans: "Banned phrasings",
+    bansHint:
+      "Phrases the prompt asks it to avoid, and the slop scan flags when they appear anyway. Kept as data because the same list feeds the prompt, the samplers and the pass.",
+    bansCount: (enforced: number, proposed: number) =>
+      proposed === 0 ? `${enforced} in force` : `${enforced} in force · ${proposed} proposed`,
+    bansAdd: "Ban a phrase",
+    bansPlaceholder: "the air hung heavy",
+    bansScopeGlobal: "Everywhere",
+    bansScopeScene: "This roleplay",
+    bansAnalyse: "What does it repeat?",
+    bansAnalysing: "Counting…",
+    bansAccept: "Ban it",
+    bansProposed: "Proposed",
+    bansGlobal: "Everywhere",
+    bansBuiltin: "Shipped",
+    bansHits: (n: number) => `${n} turns`,
+    bansOff: "Off",
+    bansRemove: "Remove",
+    bansEmpty: "Nothing banned yet.",
+    bansNothingFound: "Nothing repeats often enough to be worth banning yet.",
+
     /** Rolling summarisation, all per scene (SPEC §11). */
     summarise: "Remember what happened",
     summariseHint:

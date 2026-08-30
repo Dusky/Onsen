@@ -10,6 +10,9 @@ import type {
   ProviderDto,
   RebuildGuidesRequest,
   SummaryStateDto,
+  SceneOptionsDto,
+  BanListDto,
+  AddBanRequest,
   TaskDto,
   TaskRunDto,
   UpdateConnectionProfileRequest,
@@ -289,6 +292,95 @@ export function useEditGuide(sceneId: string) {
 export function useFlushGuides(sceneId: string) {
   return useSceneMutation(sceneId, (kind: GuideKind | "all") =>
     api.delete<GuideDto[]>(`/scenes/${sceneId}/guides/${kind}`),
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Prompt options and the ban list (SPEC §13.5, §13.6)                 */
+/* ------------------------------------------------------------------ */
+
+export const optionKeys = {
+  options: (sceneId: string) => ["scenes", sceneId, "options"] as const,
+  bans: (sceneId: string) => ["scenes", sceneId, "bans"] as const,
+};
+
+export function useSceneOptions(sceneId: string) {
+  return useQuery({
+    queryKey: optionKeys.options(sceneId),
+    queryFn: () => api.get<SceneOptionsDto>(`/scenes/${sceneId}/options`),
+  });
+}
+
+/** Every option mutation returns the whole state, so they all invalidate it. */
+function useOptionMutation<TArgs>(sceneId: string, fn: (args: TArgs) => Promise<SceneOptionsDto>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: optionKeys.options(sceneId) });
+      // What the prompt carries changed, so the scene's costs moved with it.
+      void client.invalidateQueries({ queryKey: keys.scene(sceneId) });
+    },
+  });
+}
+
+/** Switch one option on or off. Cardinality is settled server-side (§13.5). */
+export function useSetOption(sceneId: string) {
+  return useOptionMutation(sceneId, ({ optionId, on }: { optionId: string; on: boolean }) =>
+    api.put<SceneOptionsDto>(`/scenes/${sceneId}/options/${optionId}`, { on }),
+  );
+}
+
+/** Back to the shipped configuration, which is not the same as all off (§22). */
+export function useResetOptions(sceneId: string) {
+  return useOptionMutation(sceneId, () =>
+    api.delete<SceneOptionsDto>(`/scenes/${sceneId}/options`),
+  );
+}
+
+export function useBans(sceneId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: optionKeys.bans(sceneId),
+    queryFn: () => api.get<BanListDto>(`/scenes/${sceneId}/bans`),
+    enabled,
+  });
+}
+
+function useBanMutation<TArgs>(sceneId: string, fn: (args: TArgs) => Promise<BanListDto>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: optionKeys.bans(sceneId) });
+      void client.invalidateQueries({ queryKey: keys.scene(sceneId) });
+    },
+  });
+}
+
+export function useAddBan(sceneId: string) {
+  return useBanMutation(sceneId, (body: AddBanRequest) =>
+    api.post<BanListDto>(`/scenes/${sceneId}/bans`, body),
+  );
+}
+
+/** Ask what this scene keeps reaching for. Proposals, not bans (§13.6). */
+export function useAnalyseBans(sceneId: string) {
+  return useBanMutation(sceneId, () =>
+    api.post<BanListDto & { detail: string | null }>(`/scenes/${sceneId}/bans/analyse`, {}),
+  );
+}
+
+export function useUpdateBan(sceneId: string) {
+  return useBanMutation(
+    sceneId,
+    ({ banId, ...patch }: { banId: string; accept?: boolean; enabled?: boolean }) =>
+      api.patch<BanListDto>(`/scenes/${sceneId}/bans/${banId}`, patch),
+  );
+}
+
+export function useDeleteBan(sceneId: string) {
+  return useBanMutation(sceneId, (banId: string) =>
+    api.delete<BanListDto>(`/scenes/${sceneId}/bans/${banId}`),
   );
 }
 
