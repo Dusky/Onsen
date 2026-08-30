@@ -1578,3 +1578,111 @@ not come back yet — and four presses moved one step. The draft is now kept for
 the life of the sheet. And the sliders were using the browser's own track, which
 in the dark theme is the brightest thing on the screen; they are drawn
 explicitly now, hairline track and the square red handle the design specifies.
+
+---
+
+## Phase 18 — Prompt option groups and the ban list
+
+SPEC §13.5 and §13.6, and the phase that finally lets the slop scan deferred in
+phase 14 exist.
+
+### What was built
+
+**A data model where the preset suites keep a wall of toggles.** §13.5's
+argument is that the best suites are not one long system prompt — they are
+libraries of small toggleable blocks, some groups mutually exclusive. Celia
+coordinates roughly thirty-five state variables to manage that; it works, and it
+is prompt engineering standing in for a data model.
+
+**Cardinality is what earns the table.** `one_of` is enforced on write, not
+asked for in the prompt: selecting an option clears the rest of its group, so a
+scene cannot ask for first person and third person at once. That is precisely
+what a wall of toggles cannot promise, and it is why the suites built on one
+spend so much prompt text asking the model to sort out contradictions.
+
+**Seven groups ship**, each with a default named, because §22 is explicit that a
+preset arriving entirely switched off is an anti-pattern — a first run looks
+broken. A scene that has never been configured *inherits* the defaults rather
+than holding them; the first time somebody switches one thing off, the rest are
+materialised alongside it, because "this, and keep the others" is what that
+gesture means and "this alone" is not.
+
+**Every option is its own prompt block**, labelled with its group and priced.
+§13.5 asks for exactly that, and merging them into one block would hand back the
+wall of toggles whose effect on the prompt you cannot see. An option with an
+empty fragment is a real choice — "no planning", "immersive prose" — that simply
+contributes nothing.
+
+**The ban list is data** (§13.6) because the same list has to reach three
+mechanisms that catch different things: the prompt, the samplers, and a
+post-generation pass. A paragraph can only reach the first. Global and
+per-scene, with a starter list of the well-known offenders.
+
+**Auto-analysis splits at the seam where judgement begins.** §13.6 says
+recurrence is measurable, so it is measured: an exact n-gram counter that keeps
+only the longest form of overlapping runs and counts a phrase once per message,
+since twice in one turn is a stylistic choice and three turns is a habit. The
+model is asked only the half that needs a reader — whether a phrase that recurs
+is a tic or is the story, since a character's name recurs too. **Nothing it
+proposes is enforced**; a proposal carries the count as its evidence and waits
+for a person, because a background task that started banning phrases on its own
+authority would be editing somebody's prose unasked.
+
+**The slop scan**, deferred in phase 14 for want of a list. It is the only pass
+that makes no model call: matching text against a list is exact, instant and
+free, where asking a model would be slow, expensive and occasionally wrong about
+something that is simply true or false. It is also the only pass that says
+nothing when it is happy — every other one records `ok` because "it ran and was
+happy" and "it never ran" are different things when a small model can ramble or
+time out, but this one cannot fail, so silence is unambiguous and a clean note on
+every turn forever would be a row per turn saying so.
+
+**Verified end to end in a browser** at 390×844 in both themes: the group sheets
+showing each rule's own words and price, a one-of swap through the UI, the
+analyser finding a planted tic across three turns and proposing it with its
+count, accepting it turning it into a ban, and a later turn carrying that phrase
+being flagged by the scan.
+
+### Deliberately not built
+
+- **Logit bias.** §13.6 wants the ban list enforced through logit bias "where
+  the provider supports it", and the capability flag says the OpenAI-compatible
+  adapter does. But logit bias takes token *ids*, and this app has an estimator
+  rather than a real tokenizer — §24 still has the tokenizer choice open. Biasing
+  against guessed ids would suppress arbitrary unrelated words.
+- **Import and export of ban lists.** §13.6 asks for it. It is a file format
+  decision that belongs with packs (phase 34), where the same question is
+  already being answered for every other kind of user content.
+- **Per-option editing in the UI.** The fragments are shown, and the schema is
+  built for user-defined groups and options, but there is no editor yet: a
+  rewritten built-in survives re-seeding, so the capability is real and only the
+  surface is missing.
+- **Sampler-side anti-slop.** §13.6 names DRY as the third mechanism. It already
+  ships on, from phase 17; nothing further was needed.
+
+### Spec changes
+
+None. §13.5 and §13.6 described this precisely enough to build from, which is
+worth recording on its own — it is the first phase in a while that settled
+nothing because nothing needed settling.
+
+### Surprises
+
+Three of my own tests failed together, and the code was right in all three. The
+fixture planted "the air hung heavy" as the scene's tic — which is on the
+shipped starter list, so the analyser correctly refused to propose something it
+already knew, and the ban was correctly already in the prompt before anything
+was accepted. The tests were asserting against a phrase the feature had already
+handled. Rebuilt on a phrase deliberately absent from the starter list, with the
+reason written down beside it so the next person does not plant a shipped phrase
+either.
+
+A fourth failure was more useful: the slop scan's "this costs no model call"
+assertion counted every side call, and the guides run behind a turn too. That is
+now a helper that switches off everything else behind the turn, which any future
+test about what one background thing costs will want.
+
+And one thing found by looking rather than testing: sixteen shipped phrases each
+drawn with a full-width enable button and a remove button is thirty-two buttons
+in one sheet. Only proposals want that weight — they are the rows asking for a
+decision. Everything settled is one compact line now.

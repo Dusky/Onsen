@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openDatabase } from "../server/db/index.ts";
 import { migrate } from "../server/db/migrate.ts";
+import { seedBuiltins } from "../server/db/queries/options.ts";
 import { loadOrCreateKeyring } from "../server/lib/crypto.ts";
 import { loadConfig, ensureDataDirs, type Config } from "../server/config.ts";
 import { createServer } from "../server/app.ts";
@@ -11,6 +12,7 @@ import { TaskRunner } from "../server/tasks/runner.ts";
 import { PassPipeline } from "../server/passes/pipeline.ts";
 import { GuideRunner } from "../server/guides/runner.ts";
 import { SummaryRunner } from "../server/summaries/runner.ts";
+import { BanAnalyser } from "../server/options/runner.ts";
 import type { AppContext } from "../server/context.ts";
 import type { Hono } from "hono";
 import type { AppEnv } from "../server/context.ts";
@@ -27,6 +29,7 @@ export interface TestHarness {
   passes: PassPipeline;
   guides: GuideRunner;
   summaries: SummaryRunner;
+  bans: BanAnalyser;
   /** Sends a request through the app, carrying the session cookie if one is held. */
   fetch(path: string, init?: RequestInit): Promise<Response>;
   /** Capture the session cookie from a response so later requests are authenticated. */
@@ -51,6 +54,8 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
 
   const db = openDatabase(":memory:");
   migrate(db);
+  // The shipped options and bans, as production seeds them at boot (§13.5).
+  seedBuiltins(db);
   const ctx: AppContext = { db, config, keyring: loadOrCreateKeyring(config, {} as NodeJS.ProcessEnv) };
   const adapterOption =
     options.adapter === undefined ? {} : { createAdapter: () => options.adapter as Adapter };
@@ -60,6 +65,7 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
   const passes = new PassPipeline({ db, tasks });
   const guides = new GuideRunner({ db, tasks });
   const summaries = new SummaryRunner({ db, tasks });
+  const banAnalyser = new BanAnalyser({ db, tasks });
   const generation = new GenerationService({
     db,
     keyring: ctx.keyring,
@@ -76,6 +82,7 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
     passPipeline: passes,
     guideRunner: guides,
     summaryRunner: summaries,
+    banAnalyser,
   });
 
   const harness: TestHarness = {
@@ -87,6 +94,7 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
     passes,
     guides,
     summaries,
+    bans: banAnalyser,
     cookie: null,
     async fetch(path, init) {
       const headers = new Headers(init?.headers);
@@ -106,6 +114,7 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
       passes.shutdown();
       guides.shutdown();
       summaries.shutdown();
+      banAnalyser.shutdown();
       db.close();
       rmSync(dataDir, { recursive: true, force: true });
     },
