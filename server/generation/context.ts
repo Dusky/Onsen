@@ -78,6 +78,33 @@ export interface ResolvedPreset {
   reasoning: ReasoningConfig;
 }
 
+/**
+ * Which preset a generation runs under (SPEC §2, §13).
+ *
+ * Two things can carry one — a scene, and the connection profile it routes
+ * through — and until phase 17 the two halves of the answer disagreed: the
+ * samplers were read from the profile's preset and the prompt from the scene's,
+ * so a preset attached to one drove half the generation and a preset attached
+ * to the other drove the other half. Nobody had noticed because both are
+ * usually null and the hardcoded defaults covered for it.
+ *
+ * One rule now, applied to both: the scene's own preset if it has one,
+ * otherwise the profile's, otherwise the one marked default. A preset the user
+ * can edit but no scene reads is the same as no preset editor at all.
+ */
+export function presetIdFor(
+  db: Database,
+  scene: SceneRow,
+  routePresetId: number | null,
+): number | null {
+  if (scene.preset_id !== null) return scene.preset_id;
+  if (routePresetId !== null) return routePresetId;
+  const row = db.query("SELECT id FROM presets WHERE is_default = 1").get() as
+    | { id: number }
+    | null;
+  return row?.id ?? null;
+}
+
 /** Read a preset row, falling back to the modern defaults when there is none. */
 export function resolvePreset(db: Database, presetId: number | null): ResolvedPreset {
   const row =
@@ -191,6 +218,12 @@ export interface BuildContextOptions {
    */
   history?: MessageRowWithSiblings[];
   /**
+   * The preset this generation runs under. Defaults to `presetIdFor`, so a
+   * caller that does not know its route still gets the same answer the service
+   * would have computed.
+   */
+  presetId?: number | null;
+  /**
    * What is being asked for (SPEC §3.5). Omitted means an ordinary spotlight.
    * A beat's participants are resolved here rather than passed in: they are the
    * active cast, which only the database knows.
@@ -265,7 +298,12 @@ function resolveOps(options: BuildContextOptions): Partial<Record<string, Prompt
  * later phases; the builder already handles each being absent.
  */
 export function buildPromptContext(options: BuildContextOptions): PromptContext {
-  const { preset, contextSize, reasoning } = resolvePreset(options.db, options.scene.preset_id);
+  const { preset, contextSize, reasoning } = resolvePreset(
+    options.db,
+    options.presetId === undefined
+      ? presetIdFor(options.db, options.scene, null)
+      : options.presetId,
+  );
   const history = options.history ?? activePath(options.db, options.scene.id);
 
   const castRows = castRowsOf(options.db, options.scene.id);

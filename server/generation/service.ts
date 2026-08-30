@@ -24,7 +24,7 @@ import {
   type MessageRowWithSiblings,
   type SceneRow,
 } from "../db/queries/history.ts";
-import { buildPromptContext, resolvePreset } from "./context.ts";
+import { buildPromptContext, presetIdFor, resolvePreset } from "./context.ts";
 import { resolveRoute, RouteError, type ResolvedRoute } from "./route.ts";
 import { internalIdOf, resolveNextSpeaker } from "./turn.ts";
 import {
@@ -515,7 +515,10 @@ export class GenerationService {
 
     let dispatchedAt = this.now();
     try {
-      const { samplers } = resolvePreset(this.db, route.presetId);
+      // One preset for the whole generation: the samplers, the prompt and the
+      // reasoning settings all come from the same row (SPEC §13).
+      const presetId = presetIdFor(this.db, scene, route.presetId);
+      const { samplers } = resolvePreset(this.db, presetId);
       generation.meta.samplers = samplers;
 
       // Who speaks, and whether one of them or several. For the classifier this
@@ -530,6 +533,7 @@ export class GenerationService {
         db: this.db,
         scene,
         capabilities: adapter.capabilities,
+        presetId,
         spotlightId: generation.spotlightId,
         turn: promptTurnOf(generation.turn),
         ...(generation.nudge === null ? {} : { nudge: generation.nudge }),
@@ -543,7 +547,7 @@ export class GenerationService {
       });
 
       const prompt = buildPrompt(context);
-      const reasoningConfig = parseReasoningConfig(this.reasoningJson(scene.preset_id));
+      const reasoningConfig = parseReasoningConfig(this.reasoningJson(presetId));
       generation.meta.promptTokens = prompt.debug.totalTokens;
       generation.meta.tokensAreEstimated = prompt.debug.tokensAreEstimated;
 
