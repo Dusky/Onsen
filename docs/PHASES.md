@@ -1686,3 +1686,99 @@ And one thing found by looking rather than testing: sixteen shipped phrases each
 drawn with a full-width enable button and a remove button is thirty-two buttons
 in one sheet. Only proposals want that weight — they are the rows asking for a
 decision. Everything settled is one compact line now.
+
+---
+
+## Phase 19 — The desktop layout
+
+The design's `4a`, and the phase that only exists because I put it on the list
+two phases ago rather than carrying it as a note for another twenty.
+
+### What was built
+
+**Same components, unrolled.** The design's claim, and it held: no component was
+forked, no second stylesheet exists, the type scale and palette are untouched,
+and the prose column keeps the 620px measure it has had since phase 5. Three
+columns at their stated widths — 232 sidebar, 620 prose, 292 rail — verified in
+the browser rather than asserted.
+
+**One hook, read in four places.** Most of the unrolling is CSS, but three
+things genuinely *reparent* rather than reflow: the cast leaves the composer and
+becomes a rail, the ops grid flattens into a row, and the guides sheet becomes a
+footer on that rail. A media query cannot move a component from one parent to
+another, so there is a `useIsDesktop` and it is read only where the tree differs.
+
+The breakpoint is 1144px rather than the design's 1440, because 232 + 620 + 292
+is 1144 and below that the rail is the first thing that cannot hold its width.
+A tablet in landscape gets the full shell; in portrait it gets the phone layout,
+which is the right answer for a 768px column.
+
+**The sidebar is the tab bar turned vertical** — same four destinations, same
+mono uppercase, same red for active, with the room a bottom bar does not have
+for a count and for `RECENT`. That list is the whole justification: on a phone,
+switching roleplays is a screen change, and on a desktop it should not be. The
+tab bar returns null above the breakpoint, so navigation is drawn in one place
+or the other and never both.
+
+**The cast rail carries what a phone cannot.** Portrait, name, status, the
+director's own sentence *on the card it is about* rather than in one line under
+the whole strip, and the last thing that character actually said in Spectral
+italic. The cued card takes the red-tinted fill and 2px red top border; a
+benched one drops to 72%. The last line is the part worth having — a phone strip
+can tell you who is cued, and only the rail can tell you who these people are
+right now.
+
+**The ops flatten and stop hiding.** On a phone the grid is behind an OPS key
+because the composer must fit above a keyboard; with room there is nothing to
+hide it from, so the row is always visible and the key is gone. The composer
+aligns to the prose column rather than the window — stretched to 900px under a
+620px column it read as two different documents.
+
+**One hover affordance, and only here.** `REROLL · BRANCH · EDIT` at the end of
+the attribution rule, revealed on hover, keyboard-reachable via focus-within.
+Every mobile equivalent — tap, swipe, long-press — still works, so this is a
+pointer shortcut rather than a replacement. It is passed in as props rather than
+read from the breakpoint inside the component, so `MessageBlock` stays a
+function of what it is given.
+
+**Verified in a browser** at 1440×900 in both themes, and at 390×844 to confirm
+the phone layout is untouched.
+
+### Deliberately not built
+
+- **The `PROMPT · n TOK` header chip.** Design `4a` puts it beside SETUP. The
+  number is real and the server computes it, but the client has no route to it,
+  and the chip is a door onto the prompt inspector — phase 25. A number with
+  nothing behind it to open is worse than the space it saves.
+- **The `STAGE OFF` chip**, for the same reason: the VN stage is phase 29.
+- **`⌘K CAST`.** The design's keyboard hints are `⌘↵ SEND · ⌘K CAST`. Send is
+  wired and hinted; a cast palette is a command surface that does not exist, and
+  hinting a shortcut that does nothing is worse than hinting none.
+- **A wider prose measure.** The design caps at 620px and says why —
+  "widening it past a reading measure would break the one thing the app is
+  for" — so there is nothing to build, only something not to do.
+
+### Spec changes
+
+None. `DESIGN.md` §11 is specific enough to build from directly, and §20 already
+gained this phase two phases ago.
+
+### Surprises
+
+Nothing broke, which is the finding. 602 tests passed untouched, because the
+desktop layout adds no server behaviour and reuses every component — if a phase
+like this had needed test changes it would have meant the components were less
+reusable than the design assumed.
+
+The two real problems both came from looking rather than testing, and both were
+alignment. The composer spanned the full main column under a centred 620px log,
+and the screen headers hung at the window's left edge above centred bodies. Each
+reads as a mistake rather than a choice, and neither is visible at any width a
+phone has. The header fix is four characters of CSS in one place; the composer
+one needed a prop, because the ops key had to go at the same time.
+
+A third, smaller: my first attempt to pass that prop silently missed, because
+moving the chat body into a variable had re-indented the JSX by two spaces and I
+was matching on the old text. The screenshot caught it — the OPS key was still
+there — which is the argument for looking at the thing rather than trusting the
+edit.

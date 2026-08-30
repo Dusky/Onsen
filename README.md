@@ -4,7 +4,7 @@ A self-hosted, mobile-first AI roleplay frontend. Group scenes are the primary
 case: one AI **author** with its own personality plays the whole cast, like a GM
 running a table, while you direct.
 
-> **Status: phase 18 of 43 — usable.** Set it up, import character cards, give
+> **Status: phase 19 of 43 — usable.** Set it up, import character cards, give
 > the AI an author persona of its own, and run a group scene: one writing
 > partner voicing a whole cast, **beats** — a whole exchange between several
 > characters written in one go, which you can then correct one character at a
@@ -23,7 +23,9 @@ running a table, while you direct.
 > prompt unless you ask. And how it writes is a set of small switches rather than
 > one long instruction — point of view, prose structure, length, planning — with
 > a **ban list** of the phrasings models fall into, which it will offer to fill
-> in for you by counting what your scene keeps repeating. See
+> in for you by counting what your scene keeps repeating. Built for a phone first, and on a
+> wide screen the same pieces unroll into a sidebar, a capped prose column and a
+> cast rail. See
 > [`docs/SPEC.md` §20](docs/SPEC.md) for the build order and
 > [`docs/PHASES.md`](docs/PHASES.md) for what exists today.
 
