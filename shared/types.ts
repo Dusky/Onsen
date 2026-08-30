@@ -325,6 +325,16 @@ export interface SceneDto {
   autoPasses: boolean;
   /** The question the custom guide asks. Null when it has not been written. */
   customGuidePrompt: string | null;
+  /** Rolling summarisation, all of §11's knobs, per scene. */
+  summarise: boolean;
+  summariseEveryMessages: number;
+  summariseEveryWords: number;
+  /** Only summaries covering messages older than this are injected (§11). */
+  summariseThreshold: number;
+  /** Drop the raw messages an injected summary covers (§11). */
+  summariseEvict: boolean;
+  /** Move the injection point only every N turns, for the prompt cache (§11). */
+  summariseFreeze: number;
   /** The cast, in display order. One member until group scenes (phase 8). */
   cast: SceneMemberDto[];
   /** Null while the scene is empty. */
@@ -592,6 +602,45 @@ export interface RebuildGuidesRequest {
 }
 
 /* ------------------------------------------------------------------ */
+/* Rolling summarisation (SPEC §11)                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A condensed record of a run of messages (SPEC §11 layer 1). Unlike a guide,
+ * which is the current state of one thing, a summary covers a fixed range and
+ * they accumulate — so the prompt carries the paragraph instead of the turns.
+ */
+export interface SummaryDto {
+  id: string;
+  content: string;
+  coversFromMessageId: string;
+  coversToMessageId: string;
+  messageCount: number;
+  tokenCount: number;
+  /** 0 summarises messages, 1 summarises summaries, and so on (§11). */
+  level: number;
+  /** A person wrote this, so regeneration leaves it alone (§11). */
+  isEdited: boolean;
+  updatedAt: number;
+}
+
+/** What the scene's summaries look like right now, and what is pending. */
+export interface SummaryStateDto {
+  summaries: SummaryDto[];
+  /** Which of them the prompt is carrying, after threshold and freeze (§11). */
+  injectedIds: string[];
+  /** Messages waiting to be summarised, and how close the trigger is. */
+  pendingMessages: number;
+  pendingWords: number;
+  /** How many raw messages the injected summaries stand in for. */
+  coveredMessages: number;
+}
+
+export interface UpdateSummaryRequest {
+  content: string;
+}
+
+/* ------------------------------------------------------------------ */
 /* Characters (SPEC §2, §9)                                            */
 /* ------------------------------------------------------------------ */
 
@@ -851,5 +900,11 @@ export interface SceneSetupRequest {
   autoPasses?: boolean;
   /** The question the custom guide asks (SPEC §8). */
   customGuidePrompt?: string | null;
+  summarise?: boolean;
+  summariseEveryMessages?: number;
+  summariseEveryWords?: number;
+  summariseThreshold?: number;
+  summariseEvict?: boolean;
+  summariseFreeze?: number;
   title?: string;
 }

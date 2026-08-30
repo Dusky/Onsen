@@ -15,6 +15,18 @@ import { IMPERSONATE, taskKind } from "../tasks/registry.ts";
 import type { TaskRunner } from "../tasks/runner.ts";
 import type { PassPipeline } from "../passes/pipeline.ts";
 import type { GuideRunner } from "../guides/runner.ts";
+import type { SummaryRunner } from "../summaries/runner.ts";
+import {
+  activeSummaries,
+  countWords,
+  deleteSummaries,
+  deleteSummary,
+  editSummary,
+  findSummary,
+  injectedSummaries,
+  pendingForSummary,
+  toSummaryDto,
+} from "../db/queries/summaries.ts";
 import {
   activeGuides,
   editGuide,
@@ -93,6 +105,7 @@ export function sceneGenerationRoutes(
   tasks: TaskRunner,
   passes: PassPipeline,
   guides: GuideRunner,
+  summaries: SummaryRunner,
 ): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
   app.use("*", requireAuth());
@@ -439,6 +452,119 @@ export function sceneGenerationRoutes(
     }
     flushGuides(ctx.db, scene.id, raw === "all" ? null : raw);
     return c.json(activeGuides(ctx.db, scene.id).map(toGuideDto));
+  });
+
+  /* -------------------------------------------------------------- */
+  /* Rolling summarisation (SPEC §11)                                */
+  /* -------------------------------------------------------------- */
+
+  /** What the scene remembers, what it is carrying, and what is waiting. */
+  function summaryState(scene: ReturnType<typeof findScene> & object) {
+    const rows = activeSummaries(ctx.db, scene.id);
+    const injected = injectedSummaries(ctx.db, scene);
+    const injectedIds = new Set(injected.summaries.map((row) => row.id));
+    const pending = pendingForSummary(ctx.db, scene);
+    return {
+      summaries: rows.map((row) => toSummaryDto(ctx.db, row)),
+      injectedIds: rows.filter((row) => injectedIds.has(row.id)).map((row) => row.ulid),
+      pendingMessages: pending.length,
+      pendingWords: pending.reduce((sum, row) => sum + countWords(row.content), 0),
+      coveredMessages: injected.coveredMessageIds.size,
+    };
+  }
+
+  app.get("/:sceneId/summaries", (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    return c.json(summaryState(scene));
+  });
+
+  /**
+   * Summarise now, without waiting for a threshold.
+   *
+   * Awaited, like the guides' rebuild and for the same reason: the user pressed
+   * a button and is looking at the panel.
+   */
+  app.post("/:sceneId/summaries", async (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    await summaries.run(scene, { automatic: false });
+    const after = findScene(ctx.db, c.req.param("sceneId"));
+    return c.json(summaryState(after ?? scene));
+  });
+
+  /** Write one again over the same range (§11). An edit is overwritten: they asked. */
+  app.post("/:sceneId/summaries/:summaryId/rewrite", async (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    const summary = findSummary(ctx.db, c.req.param("summaryId"));
+    if (summary === null || summary.scene_id !== scene.id) {
+      return c.json({ error: { code: "not_found", message: "No such summary." } }, 404);
+    }
+    await summaries.rewrite(scene, summary);
+    return c.json(summaryState(scene));
+  });
+
+  /** Hand-edit a summary, which marks it against regeneration (§11). */
+  app.patch("/:sceneId/summaries/:summaryId", async (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    const summary = findSummary(ctx.db, c.req.param("summaryId"));
+    if (summary === null || summary.scene_id !== scene.id) {
+      return c.json({ error: { code: "not_found", message: "No such summary." } }, 404);
+    }
+
+    let content: unknown;
+    try {
+      const parsed: unknown = await c.req.json();
+      if (typeof parsed === "object" && parsed !== null) {
+        content = (parsed as { content?: unknown }).content;
+      }
+    } catch {
+      /* Falls through to the check below. */
+    }
+    if (typeof content !== "string" || content.trim() === "") {
+      return c.json(
+        { error: { code: "bad_request", message: "A summary with nothing in it is a delete." } },
+        400,
+      );
+    }
+
+    editSummary(ctx.db, summary.id, content.trim());
+    return c.json(summaryState(scene));
+  });
+
+  /**
+   * Forget one summary, or all of them.
+   *
+   * The messages it covered become pending again, so the next trigger writes a
+   * new one — which is what makes this "do that again" rather than "lose that
+   * stretch of the story".
+   */
+  app.delete("/:sceneId/summaries/:summaryId", (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    const raw = c.req.param("summaryId");
+    if (raw === "all") {
+      deleteSummaries(ctx.db, scene.id);
+      return c.json(summaryState(scene));
+    }
+    const summary = findSummary(ctx.db, raw);
+    if (summary === null || summary.scene_id !== scene.id) {
+      return c.json({ error: { code: "not_found", message: "No such summary." } }, 404);
+    }
+    deleteSummary(ctx.db, summary.id);
+    return c.json(summaryState(scene));
   });
 
   /**

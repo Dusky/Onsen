@@ -21,6 +21,7 @@ import {
 } from "../db/queries/authors.ts";
 import type { CharacterRow } from "../db/queries/characters.ts";
 import { activeGuides } from "../db/queries/guides.ts";
+import { injectedSummaries } from "../db/queries/summaries.ts";
 import { guideOpKey } from "../tasks/registry.ts";
 import { taskConfig, templateOf } from "../db/queries/tasks.ts";
 import { fillTemplate } from "../prompt/index.ts";
@@ -108,6 +109,7 @@ export function resolvePreset(db: Database, presetId: number | null): ResolvedPr
 function toPromptMessage(
   row: MessageRowWithSiblings,
   characterUlids: Map<number, string>,
+  summarized: Set<number>,
 ): PromptMessage {
   return {
     id: row.ulid,
@@ -118,6 +120,7 @@ function toPromptMessage(
     characterId:
       row.character_id === null ? null : (characterUlids.get(row.character_id) ?? null),
     tokenCount: row.token_count,
+    isSummarized: summarized.has(row.id),
   };
 }
 
@@ -272,6 +275,10 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
 
   const cast = castRows.map((row) => toPromptCharacter(row, joinedAfterOf(row)));
 
+  // Rolling summarisation (SPEC §11): which summaries this prompt carries, and
+  // which raw messages they stand in for.
+  const injected = injectedSummaries(options.db, options.scene, history);
+
   // Whoever the turn director chose, otherwise the first active member.
   const spotlightRow =
     options.spotlightId == null
@@ -310,6 +317,9 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
       ? {}
       : { directorNote: options.scene.director_note }),
     ...(options.nudge === undefined ? {} : { nudge: options.nudge }),
+    // §11's raw eviction, off unless the scene asks: it saves the most and it
+    // loses the most.
+    evictSummarized: options.scene.summarise_evict === 1,
     ops: resolveOps(options),
     cast: cast.length === 0 ? [spotlight] : cast,
     spotlight,
@@ -318,10 +328,17 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
     // prompt rendering rather than the co-author framing (SPEC §3).
     author: authorRow === null ? null : toPromptAuthor(authorRow),
     persona: toPromptPersona(personaRow),
-    history: history.map((row) => toPromptMessage(row, characterUlids)),
+    history: history.map((row) => toPromptMessage(row, characterUlids, injected.coveredMessageIds)),
     lore: [],
     documents: [],
-    summaries: [],
+    // Rolling summarisation (SPEC §11). Which of the scene's summaries reach
+    // the prompt is decided by the threshold and the freeze, not by this call.
+    summaries: injected.summaries.map((row) => ({
+      id: row.ulid,
+      content: row.content,
+      coversFromMessageId: messageUlids.get(row.covers_from_message_id) ?? null,
+      coversToMessageId: messageUlids.get(row.covers_to_message_id) ?? null,
+    })),
     memory: [],
     trackers: [],
     // Written once by a side call and injected every turn until flushed

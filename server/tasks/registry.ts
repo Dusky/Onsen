@@ -97,6 +97,8 @@ export const CONTINUE = "continue";
 export const VOICE_CHECK = "voice_check";
 export const LOCK_CHECK = "lock_check";
 export const PROSE_REFINE = "prose_refine";
+export const SUMMARISE = "summarise";
+export const RESUMMARISE = "resummarise";
 
 /** The post-generation pipeline, in the order §7.5 runs it. */
 export const PASS_KEYS: readonly string[] = [VOICE_CHECK, LOCK_CHECK, PROSE_REFINE];
@@ -294,6 +296,38 @@ export const OP_KINDS: readonly OpKind[] = [
     hideable: false,
   },
   ...GUIDE_OPS,
+  {
+    key: SUMMARISE,
+    runs: "side_call",
+    label: "Summarise history",
+    description:
+      "Condenses a run of old messages into a paragraph the prompt carries instead of the messages. A cheap model is fine here.",
+    stage: "post_generation",
+    // §11 wants a record, not a reading: warm enough to write a paragraph, cool
+    // enough that it does not start adding things nobody wrote.
+    samplers: { temperature: 0.4, top_p: 0.9 },
+    timeoutMs: 60_000,
+    replyLimit: 4_000,
+    variables: ["transcript", "previous"],
+    hideable: false,
+    // On, and auto: §11 calls this the highest-leverage memory feature, and a
+    // scene that silently stops remembering is the failure it exists to fix.
+    autoByDefault: true,
+  },
+  {
+    key: RESUMMARISE,
+    runs: "side_call",
+    label: "Condense summaries",
+    description:
+      "Folds the oldest summaries into one when they themselves grow past their budget, so a long scene's history block stops growing.",
+    stage: "post_generation",
+    samplers: { temperature: 0.4, top_p: 0.9 },
+    timeoutMs: 60_000,
+    replyLimit: 4_000,
+    variables: ["transcript"],
+    hideable: false,
+    autoByDefault: true,
+  },
 ];
 
 export function opKind(key: string): OpKind | null {

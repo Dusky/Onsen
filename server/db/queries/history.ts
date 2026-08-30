@@ -47,6 +47,16 @@ export interface SceneRow {
   auto_passes: number;
   /** The question the custom guide asks (SPEC §8). Null until written. */
   custom_guide_prompt: string | null;
+  /** Rolling summarisation, all of §11's knobs, per scene. */
+  summarise: number;
+  summarise_every_messages: number;
+  summarise_every_words: number;
+  /** Only summaries older than this many messages are injected (§11). */
+  summarise_threshold: number;
+  /** Drop raw messages an injected summary covers (§11). */
+  summarise_evict: number;
+  /** Move the injection point only every N turns, for the prompt cache (§11). */
+  summarise_freeze: number;
   active_leaf_id: number | null;
   created_at: number;
   updated_at: number;
@@ -177,6 +187,12 @@ export function toSceneDto(
     directorNote: row.director_note,
     autoPasses: row.auto_passes === 1,
     customGuidePrompt: row.custom_guide_prompt,
+    summarise: row.summarise === 1,
+    summariseEveryMessages: row.summarise_every_messages,
+    summariseEveryWords: row.summarise_every_words,
+    summariseThreshold: row.summarise_threshold,
+    summariseEvict: row.summarise_evict === 1,
+    summariseFreeze: row.summarise_freeze,
     authorId: extras.authorUlid,
     authorName: extras.authorName,
     personaId: extras.personaUlid,

@@ -37,6 +37,7 @@ import { taskKind, TURN_CLASSIFIER } from "../tasks/registry.ts";
 import type { TaskRunner } from "../tasks/runner.ts";
 import type { PassPipeline } from "../passes/pipeline.ts";
 import type { GuideRunner } from "../guides/runner.ts";
+import type { SummaryRunner } from "../summaries/runner.ts";
 import type { TaskRunStatus } from "../../shared/types.ts";
 
 /**
@@ -159,6 +160,8 @@ export interface GenerationServiceOptions {
   passes: PassPipeline;
   /** Keeps the persistent guides current (SPEC §8). */
   guides: GuideRunner;
+  /** Condenses old history when it is time to (SPEC §11). */
+  summaries: SummaryRunner;
 }
 
 /**
@@ -277,6 +280,7 @@ export class GenerationService {
   private readonly tasks: TaskRunner;
   private readonly passes: PassPipeline;
   private readonly guides: GuideRunner;
+  private readonly summaries: SummaryRunner;
   private readonly active = new Map<string, ActiveGeneration>();
   /**
    * Set once the process is shutting down. Aborting a generation resolves
@@ -294,6 +298,7 @@ export class GenerationService {
     this.tasks = options.tasks;
     this.passes = options.passes;
     this.guides = options.guides;
+    this.summaries = options.summaries;
   }
 
   /* ---------------- lifecycle ---------------- */
@@ -538,7 +543,8 @@ export class GenerationService {
   }
 
   /**
-   * Read the finished turn, if the scene asked for that (SPEC §7.5).
+   * Read the finished turn, if the scene asked for that (SPEC §7.5), keep the
+   * guides current (§8), and condense old history when it is due (§11).
    *
    * Deliberately not awaited by `finish` and deliberately swallowing
    * everything: a pass is a second reader's note, and a note that could break
@@ -558,6 +564,13 @@ export class GenerationService {
       if (this.guides.willRunAutomatically()) {
         const current = findSceneById(this.db, sceneId);
         if (current !== null) await this.guides.refresh(current, { automatic: true });
+      }
+      // Summarisation last of the three, and for the same reason: it reads the
+      // turn, so it wants the version the passes settled on. It also runs least
+      // often — only when one of §11's thresholds has been crossed.
+      const afterGuides = findSceneById(this.db, sceneId);
+      if (afterGuides !== null && this.summaries.willRunAutomatically(afterGuides)) {
+        await this.summaries.run(afterGuides, { automatic: true });
       }
     } catch {
       /* Never reaches the turn. */

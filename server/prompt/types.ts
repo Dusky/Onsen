@@ -205,6 +205,12 @@ export interface PromptMessage {
   characterId: string | null;
   /** Cached count; recomputed when absent. */
   tokenCount: number | null;
+  /**
+   * Covered by a summary the prompt is carrying (§11). Only meaningful when the
+   * scene has asked for raw eviction; otherwise the message is shown as well as
+   * described, which is the safe default and the expensive one.
+   */
+  isSummarized?: boolean;
 }
 
 /** Where a lore entry lands (§10). */
@@ -302,6 +308,11 @@ export interface PromptContext {
   trackers: PromptTracker[];
   guides: PromptGuide[];
   preset: PromptPreset;
+  /**
+   * Drop the raw messages an injected summary covers (§11 raw eviction). The
+   * last user message is kept regardless: the turn has to answer something.
+   */
+  evictSummarized?: boolean;
   /** Persistent steer on the scene (§7). */
   directorNote?: string;
   /** One-shot instruction for this generation only (§7). */
@@ -426,7 +437,9 @@ export type EvictionReason =
   /** Trimmed oldest-first to make history fit the remaining budget. */
   | "history_budget"
   /** Excluded by the user, not by the budget. */
-  | "hidden";
+  | "hidden"
+  /** Replaced by a summary that covers it (§11 raw eviction). */
+  | "summarized";
 
 export interface EvictedItem {
   blockId: PromptBlockId;

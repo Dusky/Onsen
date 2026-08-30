@@ -3,15 +3,17 @@
  *
  * This module is under `/prompt`, which imports from nothing outside itself:
  * these strings are the words a prompt is made of, and the registry is a list
- * of things that can be configured. Five short constants is a cheaper coupling
- * than the layering violation, and `test/op-config.test.ts` asserts the two
- * lists agree.
+ * of things that can be configured. A handful of short constants is a cheaper
+ * coupling than the layering violation, and `test/op-config.test.ts` asserts
+ * the two lists agree.
  */
 const EXPAND = "expand";
 const CORRECT = "correct";
 const CONTINUE = "continue";
 const NUDGE = "nudge";
 const STEER = "steer";
+const SUMMARISE = "summarise";
+const RESUMMARISE = "resummarise";
 
 /**
  * The words each op uses, as templates (SPEC §7: "fully user-overridable,
@@ -114,7 +116,44 @@ What has happened, oldest first:
 
 {{previous}}`;
 
+/**
+ * Rolling summarisation (SPEC §11 layer 1).
+ *
+ * Written to be *joined* rather than to stand alone: this paragraph will sit in
+ * a list of other paragraphs covering earlier stretches, so it opens in the
+ * middle of a story and is told not to conclude anything. The previous summary
+ * is shown for continuity — who people are, what a name refers to — and
+ * explicitly not to be repeated, because a summariser handed its own last
+ * output will otherwise restate it and grow without bound.
+ */
+const SUMMARISE_TEMPLATE = `You keep the record of a story someone else is writing. Below is a stretch of it. Condense it into a short piece of prose that a reader could use in place of the original.
+
+{{previous}}
+
+The stretch to condense, oldest first:
+{{transcript}}
+
+Write what happened, in order, in past tense: what was decided, what changed, what was learned, and anything a later scene would need to know. Keep names, places and specifics — a summary that says "they discussed the shortage" where the story said "Mira accused Aldan of skimming oil" has thrown away the only part worth keeping.
+
+Do not repeat what earlier summaries already cover, do not quote dialogue at length, do not editorialise about the writing, and do not round the stretch off with a conclusion — the story is still going. A few short paragraphs at most, no headings, no bullet list, no preamble.`;
+
+/**
+ * Condensing summaries into one (§11: "older summaries can be re-summarised
+ * when they themselves grow past a budget"). Deliberately blunter than the
+ * first pass: at this level detail is already being traded for room, and
+ * pretending otherwise produces something as long as what went in.
+ */
+const RESUMMARISE_TEMPLATE = `Below are several summaries of consecutive stretches of one story, oldest first. Fold them into a single shorter summary covering the whole span.
+
+{{transcript}}
+
+Keep the through-line: who these people are, what they decided, what changed, and anything a later scene would still need. Drop the detail that only mattered at the time. Names and specifics survive; beat-by-beat sequence does not.
+
+Write it as plain past-tense prose, shorter than what went in, with no headings, no bullet list and no preamble.`;
+
 const DEFAULTS: Record<string, string> = {
+  [SUMMARISE]: SUMMARISE_TEMPLATE,
+  [RESUMMARISE]: RESUMMARISE_TEMPLATE,
   guide_situational: SITUATIONAL_TEMPLATE,
   guide_thinking: THINKING_TEMPLATE,
   guide_clothes: CLOTHES_TEMPLATE,

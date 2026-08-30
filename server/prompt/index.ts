@@ -149,13 +149,30 @@ export function buildPrompt(ctx: PromptContext): BuiltPrompt {
   if (fixedTokens > available) throw new PromptBudgetError(fixedTokens, available);
 
   const historyBudget = available - fixedTokens;
-  const evicted: EvictedItem[] = history.hidden.map((message) => ({
-    blockId: "history",
-    itemId: message.id,
-    label: message.label,
-    tokens: 0,
-    reason: "hidden",
-  }));
+  const evicted: EvictedItem[] = [
+    ...history.hidden.map(
+      (message): EvictedItem => ({
+        blockId: "history",
+        itemId: message.id,
+        label: message.label,
+        tokens: 0,
+        reason: "hidden",
+      }),
+    ),
+    // §11's raw eviction is reported like any other eviction, and for the same
+    // reason §3 insists on the list at all: "the character forgot" is almost
+    // always "the model never saw it", and a summary standing in for forty
+    // turns is exactly the case a user needs to be able to discover.
+    ...history.summarized.map(
+      (message): EvictedItem => ({
+        blockId: "history",
+        itemId: message.id,
+        label: message.label,
+        tokens: message.tokens,
+        reason: "summarized",
+      }),
+    ),
+  ];
 
   // Trim oldest first, whole messages only — never a partial message (§3).
   let kept = history.turns;

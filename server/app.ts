@@ -12,6 +12,7 @@ import { GenerationService } from "./generation/service.ts";
 import { TaskRunner } from "./tasks/runner.ts";
 import { PassPipeline } from "./passes/pipeline.ts";
 import { GuideRunner } from "./guides/runner.ts";
+import { SummaryRunner } from "./summaries/runner.ts";
 import { taskRoutes } from "./routes/tasks.ts";
 import type { createAdapter } from "./adapters/index.ts";
 import { spaStatic } from "./static.ts";
@@ -29,6 +30,7 @@ export interface CreateAppOptions {
   taskRunner?: TaskRunner;
   passPipeline?: PassPipeline;
   guideRunner?: GuideRunner;
+  summaryRunner?: SummaryRunner;
   /** Injected in tests so no live provider is ever contacted (§23). */
   createAdapter?: typeof createAdapter;
 }
@@ -42,6 +44,8 @@ export interface CreatedApp {
   passes: PassPipeline;
   /** The persistent guides (SPEC §8), for the same reason. */
   guides: GuideRunner;
+  /** Rolling summarisation (SPEC §11), for the same reason. */
+  summaries: SummaryRunner;
 }
 
 /** Build the app and the services it owns. */
@@ -55,9 +59,10 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
     });
   const passes = options.passPipeline ?? new PassPipeline({ db: ctx.db, tasks });
   const guides = options.guideRunner ?? new GuideRunner({ db: ctx.db, tasks });
+  const summaries = options.summaryRunner ?? new SummaryRunner({ db: ctx.db, tasks });
   const generation =
     options.generationService ??
-    new GenerationService({ db: ctx.db, keyring: ctx.keyring, tasks, passes, guides });
+    new GenerationService({ db: ctx.db, keyring: ctx.keyring, tasks, passes, guides, summaries });
   const app = new Hono<AppEnv>();
 
   app.use("*", sessionMiddleware(ctx));
@@ -68,7 +73,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   api.route("/", setupRoutes(ctx));
   api.route("/connections", connectionRoutes(ctx));
   api.route("/scenes", sceneRoutes(ctx));
-  api.route("/scenes", sceneGenerationRoutes(ctx, generation, tasks, passes, guides));
+  api.route("/scenes", sceneGenerationRoutes(ctx, generation, tasks, passes, guides, summaries));
   api.route("/generations", generationRoutes(generation));
   api.route("/characters", characterRoutes(ctx));
   api.route("/authors", authorRoutes(ctx));
@@ -87,7 +92,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
     app.use("*", spaStatic(ctx.config.clientDir));
   }
 
-  return { app, generation, tasks, passes, guides };
+  return { app, generation, tasks, passes, guides, summaries };
 }
 
 /** The app alone, for callers that do not need the services. */

@@ -28,6 +28,8 @@ export interface RenderedHistory {
   turns: RenderedTurn[];
   /** Messages the user excluded from the prompt, for the inspector. */
   hidden: { id: string; label: string }[];
+  /** Messages a summary stood in for, for the inspector (§11). */
+  summarized: { id: string; label: string; tokens: number }[];
 }
 
 function speakerLabel(ctx: PromptContext, message: PromptMessage): string | null {
@@ -74,6 +76,11 @@ function costOf(tokenizer: Tokenizer, message: PromptMessage, prefix: string): n
 export function renderHistory(ctx: PromptContext, mode: RenderMode): RenderedHistory {
   const turns: RenderedTurn[] = [];
   const hidden: { id: string; label: string }[] = [];
+  const summarized: { id: string; label: string; tokens: number }[] = [];
+
+  // §11 keeps the last user message whatever else goes: an evicted history that
+  // drops the thing being replied to leaves the turn with nothing to answer.
+  const lastUserId = ctx.history.filter((message) => message.authorType === "user").at(-1)?.id;
 
   for (const message of ctx.history) {
     if (message.isHidden) {
@@ -83,13 +90,26 @@ export function renderHistory(ctx: PromptContext, mode: RenderMode): RenderedHis
 
     const label = mode === "author" ? speakerLabel(ctx, message) : null;
     const prefix = label === null ? "" : `${label}: `;
+    const tokens = costOf(ctx.tokenizer, message, prefix);
+
+    // Raw eviction (§11): a summary the prompt is carrying already says what
+    // this message said, so showing both spends the budget twice.
+    if (
+      ctx.evictSummarized === true &&
+      message.isSummarized === true &&
+      message.id !== lastUserId
+    ) {
+      summarized.push({ id: message.id, label: speakerLabel(ctx, message) ?? "System", tokens });
+      continue;
+    }
+
     turns.push({
       role: roleFor(message),
       content: `${prefix}${message.content}`,
       messageId: message.id,
-      tokens: costOf(ctx.tokenizer, message, prefix),
+      tokens,
     });
   }
 
-  return { turns, hidden };
+  return { turns, hidden, summarized };
 }

@@ -101,6 +101,21 @@ function optionalString(
  * before any UI so the tree can be exercised directly; the chat screen in
  * phase 5 is a client of exactly these routes.
  */
+/**
+ * The numeric summarisation settings and what counts as a sane value (§11).
+ *
+ * Bounded rather than free: a threshold of zero summarises the turn that just
+ * happened, and a freeze of a thousand means the injection point never moves
+ * again. Neither is a setting anybody wants, and both look like a working
+ * feature until a long scene goes wrong.
+ */
+const SUMMARY_NUMBERS: readonly [string, string, number, number][] = [
+  ["summariseEveryMessages", "summarise_every_messages", 2, 500],
+  ["summariseEveryWords", "summarise_every_words", 100, 100_000],
+  ["summariseThreshold", "summarise_threshold", 0, 500],
+  ["summariseFreeze", "summarise_freeze", 1, 100],
+];
+
 export function sceneRoutes(ctx: AppContext): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
   app.use("*", requireAuth());
@@ -230,6 +245,36 @@ export function sceneRoutes(ctx: AppContext): Hono<AppEnv> {
         return c.json(badRequest("autoPasses must be a boolean."), 400);
       }
       setAutoPasses(ctx.db, row.id, input.autoPasses);
+    }
+    // Rolling summarisation (SPEC §11). All six knobs are per scene, because
+    // how fast a story moves is a property of the story: a scene of one-line
+    // exchanges and one of long descriptive turns want different thresholds.
+    if ("summarise" in input) {
+      if (typeof input.summarise !== "boolean") {
+        return c.json(badRequest("summarise must be a boolean."), 400);
+      }
+      ctx.db
+        .query("UPDATE scenes SET summarise = $on WHERE id = $id")
+        .run({ id: row.id, on: input.summarise ? 1 : 0 });
+    }
+    if ("summariseEvict" in input) {
+      if (typeof input.summariseEvict !== "boolean") {
+        return c.json(badRequest("summariseEvict must be a boolean."), 400);
+      }
+      ctx.db
+        .query("UPDATE scenes SET summarise_evict = $on WHERE id = $id")
+        .run({ id: row.id, on: input.summariseEvict ? 1 : 0 });
+    }
+    for (const [field, column, min, max] of SUMMARY_NUMBERS) {
+      if (!(field in input)) continue;
+      const value = (input as Record<string, unknown>)[field];
+      if (typeof value !== "number" || !Number.isInteger(value) || value < min || value > max) {
+        return c.json(badRequest(`${field} must be a whole number between ${min} and ${max}.`), 400);
+      }
+      ctx.db.query(`UPDATE scenes SET ${column} = $value WHERE id = $id`).run({
+        id: row.id,
+        value,
+      });
     }
     // Where the classifier runs (SPEC §6). Null is meaningful: it means the
     // scene's own profile, which is correct but spends a roleplay model on a
