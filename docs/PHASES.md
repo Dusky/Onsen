@@ -1351,3 +1351,115 @@ While renumbering for those two, the tail of §20 turned out to be wrong
 independently of them: past phase 34 it repeated 40 and 41 several times over,
 so the last nine entries had four distinct numbers between them. The order was
 never ambiguous, only the labels. The list now runs 1–43 without repeating.
+
+---
+
+## Phase 16 — Rolling summarisation
+
+SPEC §11 layer 1, and the spec's own verdict on it: the highest-leverage memory
+feature and the one to build first. Old turns are condensed into a paragraph the
+prompt carries instead of the turns, which is what lets a scene outlive its
+context window.
+
+### What was built
+
+**Two ops**, both side calls on phase 11's primitive: one summarises a run of
+messages, one folds summaries into each other when they have grown past their
+own budget. Separate because they are separately routable and want different
+words — the second is told bluntly that detail is being traded for room, because
+a fold that tries to keep everything comes back the same length as its input.
+
+**Migration 0014** and six per-scene settings. Everything about *when* is per
+scene because how fast a story moves is a property of the story: two thresholds
+(every N messages **or** N words, whichever comes first — twenty one-line
+exchanges and twenty long descriptive turns are the same count and a very
+different amount of story), an injection threshold, a raw-eviction switch, and a
+cache freeze. All of them bounded, because a threshold of zero summarises the
+turn that just happened and a freeze of a thousand stops the injection point
+ever moving again.
+
+**Three knobs meet in `injectedSummaries`, and the order is the behaviour.**
+The freeze goes first, rounding the path length *down* to a multiple of N so the
+injected set only moves every N turns — which is the whole point, since the
+summary block sits near the front of the prompt and moving it moves everything
+after it out of the provider's cache. The threshold goes second, against that
+frozen position. Eviction goes last, on whatever the first two settled. It needs
+no stored state: rounding the length down is a pure function of the scene and
+its active path, so nothing has to be kept in step with branching.
+
+**The tree, answered the same way guides answer it.** A summary counts when the
+last message it covers is on the active path. Rewinding past a range un-injects
+the summary of it; a branch that never had those messages never had their
+summary; going back brings it straight back.
+
+**Raw eviction, reported.** With it on, the turns an injected summary covers are
+dropped from the prompt and listed as evicted with their token cost — §3 insists
+on that list because "the character forgot" is almost always "the model never
+saw it", and one paragraph standing in for forty turns is the strongest case of
+that in the product. The last user message is kept whatever the ranges say: a
+turn whose history dropped the thing being replied to has nothing to answer.
+
+**The blue sheet gained a second half.** Rather than spend a seventh cell on a
+six-cell grid, the guides panel became a two-tab sheet: `GUIDES` and `MEMORY`,
+each showing its own cost on the switch. That is the question a user has when
+they open it — which of the two is eating my context — and a summary and a guide
+are the same kind of object from the reader's side anyway: notes the author
+keeps about their own scene, standing in for what the model would otherwise have
+to be shown. Guides are that state now; summaries are that state before.
+
+The memory half is §16's memory panel, minus the layers that do not exist yet:
+every summary with the turns it covers, its cost, **whether the prompt is
+actually carrying it**, and whether the words are the user's own. That last
+distinction is the one the panel exists for — §11's threshold means a summary is
+written long before it is used, and a panel that drew all of them identically
+would make "it forgot" and "it has not started remembering yet" look the same.
+Edit, rewrite, forget one, forget all.
+
+**Verified end to end in a browser** at 390×844 in both themes: a sixteen-turn
+scene summarised, the summary shown as in-prompt with its cost, raw eviction
+turned on from setup and the panel reporting what it stands in for, and the
+bounded number fields refusing a value out of range and snapping back.
+
+### Deliberately not built
+
+- **Injection position and depth.** §11 says summaries are injected at a
+  configurable position and depth; they currently land in the fixed block order
+  at slot 9. Block ordering is a preset concern and the preset editor is a later
+  phase, so a per-scene override here would be a second mechanism for the same
+  thing.
+- **A summary of a branch that was rewound past.** It is kept, not deleted, and
+  comes back when the reader returns — but nothing shows you that it exists
+  while you are on the other branch.
+- **Any automatic wipe.** Summaries accumulate until folded or forgotten by
+  hand. The fold bounds the block that reaches the prompt, which is the cost
+  that matters; bounding the table is not a problem anybody has yet.
+
+### Spec changes
+
+§11 gains "settled while building phase 16": the order the three knobs apply in,
+the freeze needing no stored state, the active-path rule, the tail never being
+summarised rather than merely never injected, eviction keeping the last user
+message and being reported with its cost, an empty reply not marking a range
+done, a longer fold being discarded, an edited summary never being folded, and
+the settings being per scene and bounded.
+
+### Surprises
+
+Two failing tests, and one of them was a real hole in how I was testing.
+
+The word-threshold test set `summariseEveryWords: 20`, which is below the route's
+own minimum of 100, so the PATCH came back 400 — and my test helper threw the
+response away. The test was quietly measuring the default of 3000 and asserting
+against arithmetic for 20. The fix is in the helper rather than the one test: a
+settings PATCH is now asserted to return 200, so a rejected setting fails loudly
+instead of silently testing the defaults. Two other tests in the file were
+passing settings I had not checked against those bounds; they turned out valid,
+but only by luck.
+
+The second was a fixture that tested nothing. The re-summarisation tests built
+four long summaries and then checked that a fold happened — but the summaries
+were long enough that the fold had already fired twice during setup, so the
+assertion was reading the fixture's own leftovers. Rebuilt so the setup stops one
+short of the budget and asserts that it did, which makes the fixture itself the
+guard: if folding ever starts firing early, those tests fail rather than pass
+for the wrong reason.

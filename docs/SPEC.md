@@ -1323,6 +1323,48 @@ The highest-leverage memory feature and the one to build first.
   provider's prompt cache. Offer a freeze option that only moves the injection
   point every N turns, trading a little staleness for a large cost saving.
 
+**Settled while building phase 16.**
+
+- **Three of these knobs meet in one place, and the order they apply in is the
+  behaviour.** The freeze runs first — it rounds the leaf *down* to a multiple
+  of N, so the answer only moves every N turns. The threshold runs second,
+  against that frozen position. Eviction runs last, on whatever the first two
+  decided is injected. Applying them in any other order gives a freeze that does
+  not actually freeze anything.
+- **The freeze needs no stored state.** Rounding the path length down is a pure
+  function of the scene and the active path, so the same prompt is computed the
+  same way every time without a "last moved at" column to keep in step with
+  branching.
+- **A summary counts when the last message it covers is on the active path** —
+  the same rule guides use, for the same reason. Rewinding past a range
+  un-injects the summary of it, and a branch that never had those messages never
+  had their summary.
+- **The threshold's tail is never summarised, not merely never injected.**
+  Summarising up to the leaf would spend a model call describing a turn the
+  prompt is still showing in full, and will keep showing for another N messages.
+- **Raw eviction always keeps the last user message**, whatever the ranges say.
+  A turn whose history has dropped the thing being replied to has nothing to
+  answer.
+- **Evicted-because-summarised is reported like any other eviction**, with its
+  token cost. §3 insists on the eviction list because "the character forgot" is
+  almost always "the model never saw it", and one paragraph standing in for
+  forty turns is the strongest case of that in the product.
+- **An empty reply does not mark the range summarised.** Writing an empty
+  summary would hide the messages behind a paragraph that says nothing, which is
+  worse than not summarising at all.
+- **A fold that comes back longer than its input is discarded.** Re-summarising
+  exists to stop the block growing; replacing four summaries with something
+  bigger makes the problem worse.
+- **An edited summary is never folded away.** §11 marks edits so regeneration
+  does not clobber them, and a fold is regeneration by another name. That can
+  leave the block over its budget, which is the right way round — the user wrote
+  it, so the user decides when it goes.
+- **Both thresholds are per scene, and both are bounded.** How fast a story
+  moves is a property of the story. A threshold of zero would summarise the turn
+  that just happened and a freeze of a thousand would stop the injection point
+  ever moving again; both look like a working feature until a long scene goes
+  wrong.
+
 ### Layer 2 — Document RAG / data bank
 
 Reference material, distinct from lorebooks: uploaded files, pasted notes, web

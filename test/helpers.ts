@@ -10,6 +10,7 @@ import { GenerationService } from "../server/generation/service.ts";
 import { TaskRunner } from "../server/tasks/runner.ts";
 import { PassPipeline } from "../server/passes/pipeline.ts";
 import { GuideRunner } from "../server/guides/runner.ts";
+import { SummaryRunner } from "../server/summaries/runner.ts";
 import type { AppContext } from "../server/context.ts";
 import type { Hono } from "hono";
 import type { AppEnv } from "../server/context.ts";
@@ -25,6 +26,7 @@ export interface TestHarness {
   tasks: TaskRunner;
   passes: PassPipeline;
   guides: GuideRunner;
+  summaries: SummaryRunner;
   /** Sends a request through the app, carrying the session cookie if one is held. */
   fetch(path: string, init?: RequestInit): Promise<Response>;
   /** Capture the session cookie from a response so later requests are authenticated. */
@@ -57,12 +59,14 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
   const tasks = new TaskRunner({ db, keyring: ctx.keyring, ...adapterOption });
   const passes = new PassPipeline({ db, tasks });
   const guides = new GuideRunner({ db, tasks });
+  const summaries = new SummaryRunner({ db, tasks });
   const generation = new GenerationService({
     db,
     keyring: ctx.keyring,
     tasks,
     passes,
     guides,
+    summaries,
     ...adapterOption,
   });
   const { app } = createServer(ctx, {
@@ -71,6 +75,7 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
     taskRunner: tasks,
     passPipeline: passes,
     guideRunner: guides,
+    summaryRunner: summaries,
   });
 
   const harness: TestHarness = {
@@ -81,6 +86,7 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
     tasks,
     passes,
     guides,
+    summaries,
     cookie: null,
     async fetch(path, init) {
       const headers = new Headers(init?.headers);
@@ -99,6 +105,7 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
       tasks.shutdown();
       passes.shutdown();
       guides.shutdown();
+      summaries.shutdown();
       db.close();
       rmSync(dataDir, { recursive: true, force: true });
     },
