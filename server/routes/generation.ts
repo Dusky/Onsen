@@ -16,6 +16,25 @@ import type { TaskRunner } from "../tasks/runner.ts";
 import type { PassPipeline } from "../passes/pipeline.ts";
 import type { GuideRunner } from "../guides/runner.ts";
 import type { SummaryRunner } from "../summaries/runner.ts";
+import type { BanAnalyser } from "../options/runner.ts";
+import {
+  acceptBan,
+  addBan,
+  deleteBan,
+  findBan,
+  findOptionByUlid,
+  listBans,
+  listGroups,
+  listOptions,
+  resetSceneOptions,
+  sceneHasChosen,
+  selectedOptions,
+  setBanEnabled,
+  setSceneOption,
+  toBanDto,
+  toGroupDto,
+  activeBans,
+} from "../db/queries/options.ts";
 import {
   activeSummaries,
   countWords,
@@ -106,6 +125,7 @@ export function sceneGenerationRoutes(
   passes: PassPipeline,
   guides: GuideRunner,
   summaries: SummaryRunner,
+  bans: BanAnalyser,
 ): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
   app.use("*", requireAuth());
@@ -452,6 +472,167 @@ export function sceneGenerationRoutes(
     }
     flushGuides(ctx.db, scene.id, raw === "all" ? null : raw);
     return c.json(activeGuides(ctx.db, scene.id).map(toGuideDto));
+  });
+
+  /* -------------------------------------------------------------- */
+  /* Prompt options and the ban list (SPEC §13.5, §13.6)             */
+  /* -------------------------------------------------------------- */
+
+  function optionsState(scene: { id: number }) {
+    const chosen = new Set(selectedOptions(ctx.db, scene.id).map((row) => row.id));
+    const groups = listGroups(ctx.db).map((group) =>
+      toGroupDto(group, listOptions(ctx.db, group.id), chosen),
+    );
+    return {
+      groups,
+      // False while the scene is still running on the shipped configuration,
+      // which is a different state from "everything happens to be off" (§22).
+      configured: sceneHasChosen(ctx.db, scene.id),
+      tokenCount: groups
+        .flatMap((group) => group.options)
+        .filter((option) => option.selected)
+        .reduce((sum, option) => sum + option.tokenCount, 0),
+    };
+  }
+
+  app.get("/:sceneId/options", (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    return c.json(optionsState(scene));
+  });
+
+  /** Switch one option on or off. Cardinality is enforced in the query (§13.5). */
+  app.put("/:sceneId/options/:optionId", async (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    const option = findOptionByUlid(ctx.db, c.req.param("optionId"));
+    if (option === null) {
+      return c.json({ error: { code: "not_found", message: "No such option." } }, 404);
+    }
+
+    let on = true;
+    try {
+      const parsed: unknown = await c.req.json();
+      if (typeof parsed === "object" && parsed !== null) {
+        const value = (parsed as { on?: unknown }).on;
+        if (typeof value === "boolean") on = value;
+      }
+    } catch {
+      /* No body means on, which is what pressing an option means. */
+    }
+
+    setSceneOption(ctx.db, scene.id, option, on);
+    return c.json(optionsState(scene));
+  });
+
+  /** Back to the shipped configuration, which is not the same as all off. */
+  app.delete("/:sceneId/options", (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    resetSceneOptions(ctx.db, scene.id);
+    return c.json(optionsState(scene));
+  });
+
+  function banState(scene: { id: number }) {
+    const tokenizer = createEstimatingTokenizer();
+    return {
+      phrases: listBans(ctx.db, scene.id).map(toBanDto),
+      // What the block actually costs, which is the enforced list rather than
+      // everything on screen: proposals are not injected.
+      tokenCount: activeBans(ctx.db, scene.id).reduce(
+        (sum, row) => sum + tokenizer.count(row.phrase),
+        0,
+      ),
+    };
+  }
+
+  app.get("/:sceneId/bans", (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    return c.json(banState(scene));
+  });
+
+  app.post("/:sceneId/bans", async (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+
+    let phrase: unknown;
+    let scoped = false;
+    try {
+      const parsed: unknown = await c.req.json();
+      if (typeof parsed === "object" && parsed !== null) {
+        phrase = (parsed as { phrase?: unknown }).phrase;
+        scoped = (parsed as { scoped?: unknown }).scoped === true;
+      }
+    } catch {
+      /* Falls through to the check below. */
+    }
+    if (typeof phrase !== "string" || phrase.trim() === "") {
+      return c.json({ error: { code: "bad_request", message: "A phrase to ban?" } }, 400);
+    }
+
+    addBan(ctx.db, { sceneId: scoped ? scene.id : null, phrase: phrase.trim() });
+    return c.json(banState(scene));
+  });
+
+  /**
+   * Ask what this scene keeps reaching for (§13.6).
+   *
+   * Awaited, like every other thing a user pressed a button for. What comes
+   * back is a proposal: nothing is enforced until it is accepted.
+   */
+  app.post("/:sceneId/bans/analyse", async (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    const result = await bans.run(scene);
+    return c.json({ ...banState(scene), detail: result.detail });
+  });
+
+  app.patch("/:sceneId/bans/:banId", async (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    const ban = findBan(ctx.db, c.req.param("banId"));
+    if (ban === null) {
+      return c.json({ error: { code: "not_found", message: "No such phrase." } }, 404);
+    }
+
+    let body: { accept?: unknown; enabled?: unknown } = {};
+    try {
+      const parsed: unknown = await c.req.json();
+      if (typeof parsed === "object" && parsed !== null) body = parsed;
+    } catch {
+      /* An empty body changes nothing, which the response will show. */
+    }
+    if (body.accept === true) acceptBan(ctx.db, ban.id);
+    if (typeof body.enabled === "boolean") setBanEnabled(ctx.db, ban.id, body.enabled);
+    return c.json(banState(scene));
+  });
+
+  app.delete("/:sceneId/bans/:banId", (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    const ban = findBan(ctx.db, c.req.param("banId"));
+    if (ban === null) {
+      return c.json({ error: { code: "not_found", message: "No such phrase." } }, 404);
+    }
+    deleteBan(ctx.db, ban.id);
+    return c.json(banState(scene));
   });
 
   /* -------------------------------------------------------------- */

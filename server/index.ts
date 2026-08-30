@@ -1,6 +1,7 @@
 import { ensureDataDirs, loadConfig } from "./config.ts";
 import { openDatabase } from "./db/index.ts";
 import { migrate } from "./db/migrate.ts";
+import { seedBuiltins } from "./db/queries/options.ts";
 import { loadOrCreateKeyring } from "./lib/crypto.ts";
 import { createServer } from "./app.ts";
 import { isSetupCompleted } from "./db/queries/settings.ts";
@@ -14,6 +15,11 @@ const result = migrate(db);
 if (result.applied.length > 0) {
   console.log(`onsen: applied migrations ${result.applied.join(", ")}`);
 }
+// The shipped option groups and ban phrases (SPEC §13.5, §13.6). Seeded at
+// boot rather than in a migration because they are content, not schema: the
+// words improve, and idempotent-by-key means an install gets new built-ins
+// without losing anything it has edited.
+seedBuiltins(db);
 
 const ctx: AppContext = { db, config, keyring: loadOrCreateKeyring(config) };
 const { app, generation, tasks, passes, guides } = createServer(ctx);

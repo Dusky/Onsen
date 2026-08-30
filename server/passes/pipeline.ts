@@ -12,7 +12,16 @@ import {
 } from "../db/queries/history.ts";
 import { recordAnnotation, setPassesPending } from "../db/queries/annotations.ts";
 import { taskConfig } from "../db/queries/tasks.ts";
-import { LOCK_CHECK, PASS_KEYS, PROSE_REFINE, taskKind, VOICE_CHECK } from "../tasks/registry.ts";
+import {
+  LOCK_CHECK,
+  PASS_KEYS,
+  PROSE_REFINE,
+  SLOP_SCAN,
+  taskKind,
+  VOICE_CHECK,
+} from "../tasks/registry.ts";
+import { activeBans } from "../db/queries/options.ts";
+import { findBanned } from "../options/analyse.ts";
 import type { TaskRunner } from "../tasks/runner.ts";
 import {
   buildLockCheckPrompt,
@@ -124,6 +133,8 @@ export class PassPipeline {
         return this.voiceCheck(scene, message);
       case LOCK_CHECK:
         return this.lockCheck(scene, message);
+      case SLOP_SCAN:
+        return this.slopScan(scene, message);
       case PROSE_REFINE:
         return this.refine(scene, message);
       default:
@@ -231,6 +242,41 @@ export class PassPipeline {
    * author taking over the reader's character is a regeneration the user asks
    * for, not a silent edit that leaves them wondering what changed.
    */
+  /**
+   * The slop scan (SPEC §7.5, §13.6).
+   *
+   * The only pass that makes no model call, and that is the point of storing
+   * the ban list as data rather than as a paragraph in the prompt: matching
+   * text against a list is exact, instant and free, where asking a model
+   * whether a turn contains a banned phrase would be slow, expensive, and
+   * occasionally wrong about something that is simply true or not.
+   *
+   * It flags rather than rewriting, like the user-lock check. A phrase on the
+   * list is not always a mistake — a character can say "in that moment" — so
+   * the decision is the author's, and the pass is a reader pointing at a line.
+   */
+  private async slopScan(scene: SceneRow, message: MessageRow): Promise<void> {
+    const bans = activeBans(this.db, scene.id).map((row) => row.phrase);
+    const hits = findBanned(message.content, bans);
+    // The one pass that says nothing when it is happy, and the reason is the
+    // reason it needs no model: it cannot fail. Every other pass records `ok`
+    // because "it ran and was happy" and "it never ran" are different things
+    // to know — a small model can ramble, time out, or answer unreadably. This
+    // one either found a phrase or it did not, so silence is unambiguous, and
+    // a clean note on every turn forever would be a row per turn saying so.
+    if (hits.length === 0) return Promise.resolve();
+    this.note(
+      message,
+      SLOP_SCAN,
+      null,
+      "flagged",
+      `${hits.length === 1 ? "Banned phrasing" : "Banned phrasings"}: ${hits
+        .map((phrase) => `"${phrase}"`)
+        .join(", ")}.`,
+    );
+    return Promise.resolve();
+  }
+
   private async lockCheck(scene: SceneRow, message: MessageRow): Promise<void> {
     const persona =
       scene.persona_id === null

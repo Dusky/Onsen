@@ -97,11 +97,13 @@ export const CONTINUE = "continue";
 export const VOICE_CHECK = "voice_check";
 export const LOCK_CHECK = "lock_check";
 export const PROSE_REFINE = "prose_refine";
+export const SLOP_SCAN = "slop_scan";
+export const ANALYSE_SLOP = "analyse_slop";
 export const SUMMARISE = "summarise";
 export const RESUMMARISE = "resummarise";
 
 /** The post-generation pipeline, in the order §7.5 runs it. */
-export const PASS_KEYS: readonly string[] = [VOICE_CHECK, LOCK_CHECK, PROSE_REFINE];
+export const PASS_KEYS: readonly string[] = [VOICE_CHECK, LOCK_CHECK, SLOP_SCAN, PROSE_REFINE];
 
 /**
  * The six persistent guides (SPEC §8), each its own op because each is
@@ -276,6 +278,39 @@ export const OP_KINDS: readonly OpKind[] = [
     timeoutMs: 20_000,
     replyLimit: 500,
     variables: ["persona", "text"],
+    hideable: false,
+  },
+  {
+    key: SLOP_SCAN,
+    runs: "side_call",
+    label: "Slop scan",
+    description:
+      "Checks a finished turn against the ban list and flags what it finds. Costs nothing: matching text is not a job for a model.",
+    stage: "post_generation",
+    effect: "flag",
+    passOrder: 1.5,
+    // Declared for the shape's sake. This pass never makes a call — the whole
+    // point of storing the ban list as data (§13.6) is that matching against it
+    // is exact, free and instant, where asking a model would be none of those.
+    samplers: {},
+    timeoutMs: 1_000,
+    replyLimit: 1,
+    variables: [],
+    hideable: false,
+    autoByDefault: true,
+  },
+  {
+    key: ANALYSE_SLOP,
+    runs: "side_call",
+    label: "Propose bans",
+    description:
+      "Counts the phrases this scene keeps reaching for and asks a model which of them are tics rather than the story. Proposals wait for you to accept them.",
+    stage: "post_generation",
+    // A judgement, not writing: cool, and it only has to pick from a list.
+    samplers: { temperature: 0.2, top_p: 0.9 },
+    timeoutMs: 30_000,
+    replyLimit: 1_500,
+    variables: ["candidates"],
     hideable: false,
   },
   {

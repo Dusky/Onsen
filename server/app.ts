@@ -13,6 +13,7 @@ import { TaskRunner } from "./tasks/runner.ts";
 import { PassPipeline } from "./passes/pipeline.ts";
 import { GuideRunner } from "./guides/runner.ts";
 import { SummaryRunner } from "./summaries/runner.ts";
+import { BanAnalyser } from "./options/runner.ts";
 import { taskRoutes } from "./routes/tasks.ts";
 import type { createAdapter } from "./adapters/index.ts";
 import { spaStatic } from "./static.ts";
@@ -31,6 +32,7 @@ export interface CreateAppOptions {
   passPipeline?: PassPipeline;
   guideRunner?: GuideRunner;
   summaryRunner?: SummaryRunner;
+  banAnalyser?: BanAnalyser;
   /** Injected in tests so no live provider is ever contacted (§23). */
   createAdapter?: typeof createAdapter;
 }
@@ -46,6 +48,8 @@ export interface CreatedApp {
   guides: GuideRunner;
   /** Rolling summarisation (SPEC §11), for the same reason. */
   summaries: SummaryRunner;
+  /** Proposing bans (SPEC §13.6), for the same reason. */
+  bans: BanAnalyser;
 }
 
 /** Build the app and the services it owns. */
@@ -60,6 +64,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   const passes = options.passPipeline ?? new PassPipeline({ db: ctx.db, tasks });
   const guides = options.guideRunner ?? new GuideRunner({ db: ctx.db, tasks });
   const summaries = options.summaryRunner ?? new SummaryRunner({ db: ctx.db, tasks });
+  const bans = options.banAnalyser ?? new BanAnalyser({ db: ctx.db, tasks });
   const generation =
     options.generationService ??
     new GenerationService({ db: ctx.db, keyring: ctx.keyring, tasks, passes, guides, summaries });
@@ -73,7 +78,10 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   api.route("/", setupRoutes(ctx));
   api.route("/connections", connectionRoutes(ctx));
   api.route("/scenes", sceneRoutes(ctx));
-  api.route("/scenes", sceneGenerationRoutes(ctx, generation, tasks, passes, guides, summaries));
+  api.route(
+    "/scenes",
+    sceneGenerationRoutes(ctx, generation, tasks, passes, guides, summaries, bans),
+  );
   api.route("/generations", generationRoutes(generation));
   api.route("/characters", characterRoutes(ctx));
   api.route("/authors", authorRoutes(ctx));
@@ -92,7 +100,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
     app.use("*", spaStatic(ctx.config.clientDir));
   }
 
-  return { app, generation, tasks, passes, guides, summaries };
+  return { app, generation, tasks, passes, guides, summaries, bans };
 }
 
 /** The app alone, for callers that do not need the services. */

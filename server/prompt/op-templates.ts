@@ -12,6 +12,7 @@ const CORRECT = "correct";
 const CONTINUE = "continue";
 const NUDGE = "nudge";
 const STEER = "steer";
+const ANALYSE_SLOP = "analyse_slop";
 const SUMMARISE = "summarise";
 const RESUMMARISE = "resummarise";
 
@@ -151,7 +152,28 @@ Keep the through-line: who these people are, what they decided, what changed, an
 
 Write it as plain past-tense prose, shorter than what went in, with no headings, no bullet list and no preamble.`;
 
+/**
+ * Judging what recurrence means (SPEC §13.6).
+ *
+ * The counting has already happened in code, exactly, before this is asked —
+ * §13.6 says recurrence is measurable, so it is measured. What is left is the
+ * only part that needs a reader: whether a phrase that keeps appearing is a tic
+ * or is simply the story. A character's name recurs. A place recurs. A thing
+ * somebody says on purpose recurs. None of those are slop, and no amount of
+ * counting can tell them apart from the ones that are.
+ */
+const ANALYSE_SLOP_TEMPLATE = `Below are phrasings that have appeared across several turns of one story, with the number of turns each appeared in.
+
+{{candidates}}
+
+Some of these recur because the story is about them — a character's name, a place, an object that matters, something a character says deliberately. Those are not problems.
+
+The rest recur because they are filler: stock descriptive phrases, worn imagery, the same sentence shape reached for again and again.
+
+Reply with only the filler ones, one per line, copied exactly as written above. No numbering, no explanation, nothing else. If none of them are filler, reply with nothing at all.`;
+
 const DEFAULTS: Record<string, string> = {
+  [ANALYSE_SLOP]: ANALYSE_SLOP_TEMPLATE,
   [SUMMARISE]: SUMMARISE_TEMPLATE,
   [RESUMMARISE]: RESUMMARISE_TEMPLATE,
   guide_situational: SITUATIONAL_TEMPLATE,

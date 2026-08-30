@@ -165,6 +165,25 @@ function summariesBlock(ctx: PromptContext): string | null {
   return paragraphs("## What has happened so far", ...ctx.summaries.map((s) => s.content));
 }
 
+/**
+ * The banned constructions, as one instruction (SPEC §13.6).
+ *
+ * A list rather than a sentence, because that is how it is stored and because a
+ * model follows an enumerated prohibition better than a paragraph describing
+ * one. Framed as phrasings to avoid rather than words that are forbidden: the
+ * failure mode of a ban list is a model that writes around it so carefully the
+ * prose goes stiff.
+ */
+function banBlock(ctx: PromptContext): string | null {
+  const bans = ctx.bans ?? [];
+  if (bans.length === 0) return null;
+  return paragraphs(
+    "Avoid these phrasings. They are the ones this kind of writing falls into, and they read as filler:",
+    bans.map((phrase) => `- ${phrase}`).join("\n"),
+    "Write the thought a different way rather than reaching for a synonym of the banned one.",
+  );
+}
+
 function documentsBlock(ctx: PromptContext): string | null {
   if (ctx.documents.length === 0) return null;
   return paragraphs(
@@ -520,6 +539,22 @@ export function draftBlocks(ctx: PromptContext): Map<PromptBlockId, DraftBlock[]
   }
 
   add("guides", "Guides", "persistent guides", guidesBlock(ctx), NEAR_TURN);
+
+  // One block per selected option, rather than one block for all of them.
+  // §13.5's whole argument is that an option is visible in the inspector as a
+  // labelled block with a cost — merging them would give back the wall of
+  // toggles whose effect you cannot see.
+  for (const option of ctx.options ?? []) {
+    add(
+      "prompt_option",
+      `${option.groupName}: ${option.name}`,
+      "prompt option",
+      option.fragment,
+      option.placement,
+      option.role,
+    );
+  }
+  add("ban_list", "Banned constructions", "ban list", banBlock(ctx), NEAR_TURN);
   add("trackers", "Trackers", "tracker state", trackersBlock(ctx), NEAR_TURN);
 
   for (const group of depthPromptGroups(ctx)) {

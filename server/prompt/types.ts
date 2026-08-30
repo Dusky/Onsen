@@ -264,6 +264,16 @@ export interface PromptMemoryEntity {
   salience: number;
 }
 
+/** One selected option, compiled (SPEC §13.5). */
+export interface PromptOption {
+  /** The group it came from, so the inspector can say what kind of rule it is. */
+  groupName: string;
+  name: string;
+  fragment: string;
+  placement: BlockPlacement;
+  role: PromptRole;
+}
+
 export interface PromptTracker {
   name: string;
   /** Already rendered by the tracker subsystem; the builder does not format. */
@@ -313,6 +323,10 @@ export interface PromptContext {
   memory: PromptMemoryEntity[];
   trackers: PromptTracker[];
   guides: PromptGuide[];
+  /** Selected prompt options, already resolved by cardinality (§13.5). */
+  options?: PromptOption[];
+  /** Banned constructions in force for this scene (§13.6). */
+  bans?: string[];
   preset: PromptPreset;
   /**
    * Drop the raw messages an injected summary covers (§11 raw eviction). The
@@ -378,6 +392,10 @@ export type PromptBlockId =
   | "guides"
   | "trackers"
   | "depth_prompts"
+  /** A selected prompt option, one block each so the inspector names it (§13.5). */
+  | "prompt_option"
+  /** The banned constructions in force (§13.6). */
+  | "ban_list"
   | "director_note"
   | "post_history"
   | "nudge"
@@ -411,6 +429,11 @@ export const DEFAULT_BLOCK_ORDER: readonly PromptBlockId[] = [
   "guides",
   "trackers",
   "depth_prompts",
+  // Instructions about *how* to write sit near the turn with the other
+  // instructions, not up in the system prompt where a long history separates
+  // them from the writing they govern.
+  "prompt_option",
+  "ban_list",
   "director_note",
   "post_history",
   "nudge",

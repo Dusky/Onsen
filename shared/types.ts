@@ -706,6 +706,73 @@ export interface RebuildGuidesRequest {
 }
 
 /* ------------------------------------------------------------------ */
+/* Prompt option groups and the ban list (SPEC §13.5, §13.6)           */
+/* ------------------------------------------------------------------ */
+
+export type OptionCardinality = "one_of" | "any_of";
+
+/**
+ * One toggleable prompt fragment (SPEC §13.5). The token count travels with it
+ * because that is the argument for modelling this natively: every option is
+ * visible as a labelled block with a cost, rather than a switch whose effect on
+ * the prompt you cannot see.
+ */
+export interface OptionDto {
+  id: string;
+  key: string;
+  name: string;
+  fragment: string;
+  tokenCount: number;
+  selected: boolean;
+  isBuiltin: boolean;
+}
+
+export interface OptionGroupDto {
+  id: string;
+  key: string;
+  name: string;
+  description: string;
+  /** `one_of` is enforced on write: picking one clears the rest of its group. */
+  cardinality: OptionCardinality;
+  options: OptionDto[];
+}
+
+export interface SceneOptionsDto {
+  groups: OptionGroupDto[];
+  /** False while the scene is running on the shipped configuration (§22). */
+  configured: boolean;
+  /** What every selected option costs on every turn, together. */
+  tokenCount: number;
+}
+
+/**
+ * A banned construction (SPEC §13.6). `proposed` is what the analyser writes
+ * and is not enforced until somebody accepts it — a task that silently banned
+ * phrases would be editing the user's prose on its own authority.
+ */
+export interface BanPhraseDto {
+  id: string;
+  phrase: string;
+  origin: "builtin" | "user" | "proposed";
+  /** How often the analyser has seen it. Recurrence is the evidence (§13.6). */
+  hits: number;
+  enabled: boolean;
+  isGlobal: boolean;
+}
+
+export interface BanListDto {
+  phrases: BanPhraseDto[];
+  /** What the ban block costs on every turn. */
+  tokenCount: number;
+}
+
+export interface AddBanRequest {
+  phrase: string;
+  /** Global by default; a scene's own list is the exception (§13.6). */
+  scoped?: boolean;
+}
+
+/* ------------------------------------------------------------------ */
 /* Rolling summarisation (SPEC §11)                                    */
 /* ------------------------------------------------------------------ */
 

@@ -22,6 +22,7 @@ import {
 import type { CharacterRow } from "../db/queries/characters.ts";
 import { activeGuides } from "../db/queries/guides.ts";
 import { injectedSummaries } from "../db/queries/summaries.ts";
+import { activeBans, listGroups, selectedOptions } from "../db/queries/options.ts";
 import { parseReasoningConfig, type ReasoningConfig } from "./reasoning.ts";
 import { guideOpKey } from "../tasks/registry.ts";
 import { taskConfig, templateOf } from "../db/queries/tasks.ts";
@@ -322,6 +323,9 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
   // Rolling summarisation (SPEC §11): which summaries this prompt carries, and
   // which raw messages they stand in for.
   const injected = injectedSummaries(options.db, options.scene, history);
+  // Resolved once: an option knows its group by id, and the inspector wants
+  // the group's name on every block it produces.
+  const groupNames = new Map(listGroups(options.db).map((row) => [row.id, row.name]));
 
   // Whoever the turn director chose, otherwise the first active member.
   const spotlightRow =
@@ -398,6 +402,24 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
       name: opKind(guideOpKey(row.kind))?.label ?? row.kind,
       content: row.content,
     })),
+    // The scene's prompt options (SPEC §13.5) and ban list (§13.6). An option
+    // with an empty fragment is a real choice — "no planning", "immersive
+    // prose" — that simply contributes nothing to the prompt.
+    options: selectedOptions(options.db, options.scene.id)
+      .filter((row) => row.fragment.trim() !== "")
+      .map((row) => ({
+        groupName: groupNames.get(row.group_id) ?? "Option",
+        name: row.name,
+        fragment: row.fragment,
+        placement:
+          row.position === "prefix"
+            ? ({ kind: "prefix" } as const)
+            : row.position === "outlet" && row.outlet_name !== null
+              ? ({ kind: "outlet", name: row.outlet_name } as const)
+              : ({ kind: "depth", depth: row.depth } as const),
+        role: row.role,
+      })),
+    bans: activeBans(options.db, options.scene.id).map((row) => row.phrase),
     preset,
     capabilities: options.capabilities,
     // The window is the smaller of what the preset asks for and what the
