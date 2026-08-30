@@ -429,6 +429,11 @@ export interface SceneDto {
   autoPasses: boolean;
   /** The question the custom guide asks. Null when it has not been written. */
   customGuidePrompt: string | null;
+  /**
+   * This scene's own framing, replacing the card's (SPEC §2). A card's scenario
+   * is written by whoever made it, for a scene nobody has had yet.
+   */
+  scenarioOverride: string | null;
   /** Rolling summarisation, all of §11's knobs, per scene. */
   summarise: boolean;
   summariseEveryMessages: number;
@@ -1071,6 +1076,7 @@ export interface SceneSetupRequest {
   autoPasses?: boolean;
   /** The question the custom guide asks (SPEC §8). */
   customGuidePrompt?: string | null;
+  scenarioOverride?: string | null;
   summarise?: boolean;
   summariseEveryMessages?: number;
   summariseEveryWords?: number;

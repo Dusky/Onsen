@@ -47,6 +47,8 @@ export interface SceneRow {
   auto_passes: number;
   /** The question the custom guide asks (SPEC §8). Null until written. */
   custom_guide_prompt: string | null;
+  /** This scene's own framing, in place of the card's (SPEC §2). */
+  scenario_override: string | null;
   /** Rolling summarisation, all of §11's knobs, per scene. */
   summarise: number;
   summarise_every_messages: number;
@@ -193,6 +195,7 @@ export function toSceneDto(
     directorNote: row.director_note,
     autoPasses: row.auto_passes === 1,
     customGuidePrompt: row.custom_guide_prompt,
+    scenarioOverride: row.scenario_override,
     summarise: row.summarise === 1,
     summariseEveryMessages: row.summarise_every_messages,
     summariseEveryWords: row.summarise_every_words,

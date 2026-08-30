@@ -517,6 +517,12 @@ export const strings = {
       "One question, asked of the story after every turn. The answer rides on every prompt until you flush it. Leave it empty and the custom guide stays off.",
     customGuidePlaceholder: "What does the crew believe about the captain?",
 
+    /** This scene's own framing, in place of the card's (SPEC §2). */
+    scenario: "Scenario",
+    scenarioHint:
+      "Replaces the scenario written on the card. A card's scenario was written for a scene nobody had had yet; this one is about the scene you are actually in.",
+    scenarioPlaceholder: "A relay station on the ridge, three days into a shortage…",
+
     /** Prompt option groups (SPEC §13.5). */
     options: "How it writes",
     optionsHint:

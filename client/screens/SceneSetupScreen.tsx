@@ -352,6 +352,23 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
             {strings.sceneSetup.autoPassesHint}
           </p>
 
+          {/* The scene's own framing (SPEC §2). */}
+          <p className="section-label mb-[8px]">{strings.sceneSetup.scenario}</p>
+          <textarea
+            rows={3}
+            className="field mb-[8px] resize-none py-[10px]"
+            placeholder={strings.sceneSetup.scenarioPlaceholder}
+            defaultValue={scene.scenarioOverride ?? ""}
+            onBlur={(event) => {
+              const value = event.target.value.trim();
+              if (value === (scene.scenarioOverride ?? "")) return;
+              setup.mutate({ scenarioOverride: value === "" ? null : value });
+            }}
+          />
+          <p className="chrome mb-[22px] text-[9.5px] leading-[1.5] text-ink-dim">
+            {strings.sceneSetup.scenarioHint}
+          </p>
+
           {/* Prompt option groups (SPEC §13.5). One row per group showing what
               is chosen; the options themselves are a sheet, because seven
               groups of four to six is thirty-odd switches on one screen. */}

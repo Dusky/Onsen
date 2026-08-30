@@ -238,6 +238,18 @@ export function sceneRoutes(ctx: AppContext): Hono<AppEnv> {
         prompt: prompt === null || prompt.trim() === "" ? null : prompt.trim(),
       });
     }
+    // This scene's own framing, in place of the card's (SPEC §2). Empty clears
+    // it, which puts the card's scenario back.
+    if ("scenarioOverride" in input) {
+      const scenario = input.scenarioOverride;
+      if (scenario !== null && typeof scenario !== "string") {
+        return c.json(badRequest("The scenario must be text, or nothing."), 400);
+      }
+      ctx.db.query("UPDATE scenes SET scenario_override = $scenario WHERE id = $id").run({
+        id: row.id,
+        scenario: scenario === null || scenario.trim() === "" ? null : scenario.trim(),
+      });
+    }
     // Whether a finished turn gets read by the passes without being asked
     // (SPEC §7.5). Which passes take part is the per-op switch.
     if ("autoPasses" in input) {

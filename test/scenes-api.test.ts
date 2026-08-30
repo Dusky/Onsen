@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { createHarness, completeSetup, type TestHarness } from "./helpers.ts";
+import { buildPromptContext } from "../server/generation/context.ts";
+import { buildPrompt } from "../server/prompt/index.ts";
+import { OPENAI_COMPATIBLE_CAPABILITIES } from "../server/adapters/index.ts";
+import { findScene } from "../server/db/queries/history.ts";
 import type {
   CheckpointDto,
   MessageDto,
@@ -156,6 +160,64 @@ describe("scenes", () => {
     const listed = await send<SceneDto[]>(t, "GET", "/api/scenes");
     expect(listed.body.map((scene) => scene.title)).toEqual(["first", "second"]);
     expect(second.title).toBe("second");
+  });
+});
+
+describe("the scene's own scenario", () => {
+  /**
+   * SPEC §2's `scenario_override`, and the reason the schema review went
+   * looking. The prompt builder has chosen between this and the character's
+   * scenario since phase 3, and a builder unit test covered that choice — but
+   * the context hardcoded null, so the branch could never be taken by anything
+   * a user did. A unit test on a value the real system cannot produce is not
+   * coverage, which is what this test exists to say.
+   */
+  function scenarioBlock(t: TestHarness, sceneId: string) {
+    const built = buildPrompt(
+      buildPromptContext({
+        db: t.ctx.db,
+        scene: findScene(t.ctx.db, sceneId)!,
+        capabilities: OPENAI_COMPATIBLE_CAPABILITIES,
+        now: Date.now(),
+        seed: 1,
+      }),
+    );
+    return built.debug.blocks.find((block) => block.id === "scenario") ?? null;
+  }
+
+  test("set on the scene, it reaches the prompt", async () => {
+    const t = await signedIn();
+    const scene = await newScene(t);
+    expect(scenarioBlock(t, scene.id)).toBeNull();
+
+    const patched = await send<SceneDto>(t, "PATCH", `/api/scenes/${scene.id}`, {
+      scenarioOverride: "The power has failed and nobody has said so yet.",
+    });
+    expect(patched.body.scenarioOverride).toBe("The power has failed and nobody has said so yet.");
+
+    const block = scenarioBlock(t, scene.id);
+    expect(block?.content).toContain("The power has failed");
+    // The block names where its words came from, so the inspector can say.
+    expect(block?.source).toBe("scene override");
+  });
+
+  test("cleared, the card's scenario comes back", async () => {
+    const t = await signedIn();
+    const scene = await newScene(t);
+    await send<SceneDto>(t, "PATCH", `/api/scenes/${scene.id}`, { scenarioOverride: "Mine." });
+    const cleared = await send<SceneDto>(t, "PATCH", `/api/scenes/${scene.id}`, {
+      scenarioOverride: "",
+    });
+    // Empty is a clear rather than a scenario of nothing.
+    expect(cleared.body.scenarioOverride).toBeNull();
+    expect(scenarioBlock(t, scene.id)).toBeNull();
+  });
+
+  test("a non-string is refused", async () => {
+    const t = await signedIn();
+    const scene = await newScene(t);
+    const bad = await send(t, "PATCH", `/api/scenes/${scene.id}`, { scenarioOverride: 42 });
+    expect(bad.status).toBe(400);
   });
 });
 

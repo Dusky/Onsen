@@ -359,7 +359,12 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
       : requested;
 
   return {
-    scene: { title: options.scene.title, scenarioOverride: null },
+    scene: {
+      title: options.scene.title,
+      // Read by the scenario block and by {{scenario}} since phase 3, and
+      // hardcoded null until the schema review noticed the column was missing.
+      scenarioOverride: options.scene.scenario_override,
+    },
     // Steer: a persistent note on the scene, applied until cleared (SPEC §7).
     ...(options.scene.director_note === null
       ? {}
