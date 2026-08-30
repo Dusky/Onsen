@@ -1463,3 +1463,118 @@ assertion was reading the fixture's own leftovers. Rebuilt so the setup stops on
 short of the budget and asserts that it did, which makes the fixture itself the
 guard: if folding ever starts firing early, those tests fail rather than pass
 for the wrong reason.
+
+---
+
+## Phase 17 — Samplers, reasoning and prefill
+
+SPEC §13. Roughly half of this had already landed as a side effect of phases 1
+and 4 — `MODERN_SAMPLER_DEFAULTS` carries §13's table exactly, and the adapter
+has been sending DRY and XTC since the first generation. What was missing was
+everything that made those facts reachable or true.
+
+### What was built
+
+**Reasoning extraction**, by both routes it arrives by. A provider field —
+DeepSeek's `reasoning_content`, OpenRouter's `reasoning` — the adapter surfaces
+directly. Inline `<think>` tags are the harder half and are a *streaming*
+problem rather than a parsing one: a tag can be split across frames, so `<thi`
+may arrive with the prose before it. A pure incremental splitter holds back
+anything that could still turn out to be a tag, which is what stops a stray
+`<think>` reaching the reader for a frame and then being retracted. It follows
+the beat parser's two rules — never lose text, and give the same answer whether
+the input came in one piece or fifty — and a test drives every fixture one
+character at a time to prove the second.
+
+An unterminated block is treated as reasoning, not prose. A model that forgets
+its closing tag must not have its planning printed into the scene.
+
+**Its own column**, which is what makes §13's "do not feed reasoning back into
+multi-turn context" free rather than a rule somebody has to remember: the
+history renderer reads a message's content, so reasoning cannot leak into a
+later prompt by accident. Re-injection of the last N blocks is the opt-in §13
+asks for, with the preset's own prefix and suffix, placed *before* the turn it
+produced because that is the order it happened in.
+
+**A reasoning strip in the log**, collapsed, entirely mono like a pass
+annotation — the machine talking about its own work rather than another voice in
+the scene. The closed state names the size, so it stays informative shut. It
+also streams: a model that thinks for twenty seconds before its first word shows
+a rising character count instead of looking stalled. Reasoning does not count as
+the first token, since a speed that measured planning the reader never sees
+would be a number about nothing.
+
+**Prefill on the send path.** The builder has emitted `built.prefill` since phase
+3 and no adapter consumed it. It is now sent as a trailing assistant message —
+but only where the endpoint accepts one, and that is a property of the endpoint
+rather than the wire format: OpenAI rejects it, most local servers speaking the
+same shape accept it. So providers carry a three-valued override where null
+means "whatever the adapter says", which is a different answer from "no". One
+switch moves both halves, since the builder already gates the prefill block on
+the capability the adapter reports.
+
+**A preset editor**, because until now there was none: §13's modern defaults had
+shipped since phase 1 and were unreachable, which is most of the way to not
+having them. Sliders for every sampler with the two modern tools grouped and
+explained — DRY is *why* repetition penalty ships off, XTC is why the prose is
+not the same every time — over the context budget, the prefill, and the
+reasoning settings. Bounds are shared with the route so the form can never send
+something the server refuses.
+
+**Verified end to end in a browser** at 390×844 in both themes, with a stub
+emitting seven-character frames so every tag landed split across several: no
+tag reached the prose at any point during streaming, the strip counted up while
+the model thought, and a prefill enabled on the provider arrived at the endpoint
+as a trailing assistant message.
+
+### Deliberately not built
+
+- **Sampler order.** §13 asks for it in advanced settings with a warning on
+  reorder. `ProviderCapabilities.samplerOrder` exists and is null for every
+  adapter that ships, so a reorder control today would be a control that does
+  nothing. It belongs with the text-completion and local backends of phase 22,
+  where the field becomes non-null.
+- **Grammars and constrained decoding.** §13 says "where the backend offers it";
+  the OpenAI-compatible adapter declares `supportsGrammar: false`, so there is
+  nothing to offer yet.
+- **The analysis-block preset.** §13 suggests shipping a think-step preset as an
+  option. That is a prompt option group, which is phase 18.
+- **Drag-to-reorder prompt blocks**, which §16 lists under the preset editor.
+  Block order interacts with option groups (phase 18) and is only legible beside
+  the inspector (phase 25); building a reorder UI before either is guessing at
+  the surface.
+
+### Spec changes
+
+§13 gains "settled while building phase 17": the two routes reasoning arrives
+by, tags being a streaming problem, an unterminated block being reasoning, the
+separate column making the default free, off being zero blocks, re-injection
+going before its turn, reasoning not counting as the first token, prefill being
+a property of the endpoint, one preset per generation, and the bounds being
+shared.
+
+### Surprises
+
+**Two of my own tests failed for the same reason, and it was a real bug rather
+than a test bug.** A preset attached to a scene drove the prompt; a preset
+attached to a connection profile drove the samplers. Two different reads, two
+different sources, and neither knew about the other — so a preset attached to
+one place governed half a generation. Worse, resolving to nothing fell back to
+hardcoded constants rather than to the default preset *row*, which meant editing
+the default preset changed nothing anywhere: the editor I had just built was
+writing to a row no generation read. Both are fixed under one rule — scene, then
+profile, then the row marked default — and a test now asserts that editing the
+default preset reaches a scene that never chose one.
+
+It had gone unnoticed since phase 4 because both columns are almost always null
+and the constants happened to match the seeded row, so every generation behaved
+correctly by coincidence. The feature that exposed it was the first one that
+made the values differ.
+
+A smaller one, caught by driving the UI rather than by a test: the sampler
+sliders stalled under the keyboard. Committing on key-up cleared the local draft
+immediately, so the next arrow press stepped from the server's value — which had
+not come back yet — and four presses moved one step. The draft is now kept for
+the life of the sheet. And the sliders were using the browser's own track, which
+in the dark theme is the brightest thing on the screen; they are drawn
+explicitly now, hairline track and the square red handle the design specifies.

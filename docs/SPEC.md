@@ -1557,6 +1557,43 @@ enforcing format and character consistency, particularly on Anthropic models.
 Treat it as a capability flag, and note it is incompatible with extended
 thinking on Anthropic.
 
+**Settled while building phase 17.**
+
+- **Reasoning arrives by two routes and both are handled.** A provider field
+  (`reasoning_content`, `reasoning`) needs no parsing. Inline `<think>` tags are
+  a *streaming* problem rather than a parsing one: a tag can be split across
+  frames, so anything that could still turn out to be a tag is held back. A
+  stray `<think>` shown to the reader for one frame and then retracted is the
+  failure this design exists to prevent.
+- **An unterminated block is reasoning, not prose.** A model that forgets its
+  closing tag must not have its private planning printed into the scene.
+- **Reasoning lives in its own column, and that is what makes the "do not feed
+  it back" default free** rather than a rule somebody has to remember: the
+  history renderer reads a message's content, so it cannot leak into a later
+  prompt by accident. Re-injection has to be built deliberately, which is the
+  right way round for a behaviour most providers advise against.
+- **Off is zero blocks, not a separate flag.** One thing to read, and no way for
+  a flag and a count to disagree.
+- **Re-injected reasoning goes before the turn it produced**, because that is
+  the order it happened in; after it, it reads as an afterword.
+- **Reasoning does not count as the first token.** A time-to-first-token that
+  measured planning the reader never sees would be a number about nothing.
+- **Prefill is a property of the endpoint, not the wire format.** OpenAI rejects
+  a trailing assistant message; most local servers speaking the same
+  OpenAI-compatible shape accept one. So a provider carries a three-valued
+  override, where null means "whatever the adapter says" — which is a different
+  answer from "no". One switch moves both halves, since the builder already
+  gates the prefill block on the capability the adapter reports.
+- **One preset per generation.** Two things can carry a preset — a scene and the
+  connection profile it routes through — and until this phase the samplers were
+  read from one and the prompt from the other, so a preset attached to either
+  drove half a generation. The rule is now the scene's preset if it has one,
+  else the profile's, else the one marked default; and resolving to nothing
+  falls back to the default *row* rather than to hardcoded constants, so an
+  edited default preset actually reaches a scene that never chose one.
+- **Sampler bounds are shared between the route and the editor**, so a value the
+  form accepts is never one the server refuses.
+
 ---
 
 ## 14. Regex and automation

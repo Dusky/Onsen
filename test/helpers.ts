@@ -141,7 +141,12 @@ export async function completeSetup(harness: TestHarness): Promise<Response> {
 /* A controllable adapter                                              */
 /* ------------------------------------------------------------------ */
 
-type ScriptItem = { text: string } | { end: true } | { error: Error };
+type ScriptItem =
+  | { text: string }
+  /** Reasoning in a field of its own, as DeepSeek and OpenRouter send it (§13). */
+  | { reasoning: string }
+  | { end: true }
+  | { error: Error };
 
 /**
  * An adapter whose output a test drives token by token. This is what makes the
@@ -188,6 +193,12 @@ export class ScriptedAdapter implements Adapter {
 
   push(text: string): void {
     this.queue.push({ text });
+    this.flush();
+  }
+
+  /** Push a provider-field reasoning delta, separate from the prose (§13). */
+  pushReasoning(reasoning: string): void {
+    this.queue.push({ reasoning });
     this.flush();
   }
 
@@ -268,6 +279,7 @@ export class ScriptedAdapter implements Adapter {
         continue;
       }
       if ("text" in item) yield { text: item.text };
+      else if ("reasoning" in item) yield { text: "", reasoning: item.reasoning };
       else if ("end" in item) return;
       else throw item.error;
     }
