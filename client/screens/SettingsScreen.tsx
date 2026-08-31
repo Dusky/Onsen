@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { ConnectionProfileDto, PresetDto, ProviderDto, TaskDto } from "@shared/types.ts";
 import { PROVIDER_KINDS, INJECTION_ROLES } from "@shared/types.ts";
 import { strings } from "../strings.ts";
+import { InstructPicker } from "../components/InstructPicker.tsx";
 import {
   useConnectionProfiles,
   useCreateProfile,
@@ -180,6 +181,22 @@ function ProviderEditor({
               {strings.settings.providerPrefillHint}
             </p>
           </>
+        )}
+
+        {/* Text completion only: how this model's turns are marked (SPEC §4).
+            The chat adapters send a message array and the provider applies its
+            own, so the setting would be a switch that does nothing. */}
+        {provider === null || provider.kind !== "text_completion" ? null : (
+          <InstructPicker
+            provider={provider}
+            onSelect={(templateId) =>
+              update.mutate(
+                { id: provider.id, instructTemplate: templateId },
+                { onError: (e: Error) => setError(e.message) },
+              )
+            }
+            onError={setError}
+          />
         )}
 
         {error === null ? null : (
@@ -469,7 +486,12 @@ export function SettingsScreen() {
   const presets = usePresets();
   const tasks = useTasks();
 
-  const [editingProvider, setEditingProvider] = useState<ProviderDto | null | undefined>(undefined);
+  // The provider being edited is held by **id**, not as a snapshot of its row.
+  // The editor changes settings in place — prefill, the instruct template — and
+  // a captured DTO never sees the result, so the buttons would write to the
+  // server and then show the old answer back. `undefined` is closed, `null` is
+  // the new-provider form.
+  const [editingProviderId, setEditingProviderId] = useState<string | null | undefined>(undefined);
   const [editingProfile, setEditingProfile] = useState<ConnectionProfileDto | null | undefined>(
     undefined,
   );
@@ -501,7 +523,7 @@ export function SettingsScreen() {
             <Row key={provider.id}>
               <button
                 type="button"
-                onClick={() => setEditingProvider(provider)}
+                onClick={() => setEditingProviderId(provider.id)}
                 className="flex w-full gap-[9px] text-left"
               >
                 {statusDot(provider.enabled && provider.baseUrl !== null)}
@@ -519,7 +541,7 @@ export function SettingsScreen() {
           <button
             type="button"
             className="btn mt-[12px] mb-[26px] w-full"
-            onClick={() => setEditingProvider(null)}
+            onClick={() => setEditingProviderId(null)}
           >
             {strings.settings.addProvider}
           </button>
@@ -642,10 +664,14 @@ export function SettingsScreen() {
         </div>
       </main>
 
-      {editingProvider !== undefined ? (
+      {editingProviderId !== undefined ? (
         <ProviderEditor
-          provider={editingProvider}
-          onClose={() => setEditingProvider(undefined)}
+          provider={
+            editingProviderId === null
+              ? null
+              : (providerList.find((row) => row.id === editingProviderId) ?? null)
+          }
+          onClose={() => setEditingProviderId(undefined)}
         />
       ) : null}
       {editingProfile !== undefined ? (
