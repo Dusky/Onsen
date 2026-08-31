@@ -804,6 +804,18 @@ export interface LoreEntryDto {
   updatedAt: number;
 }
 
+/** A book and its entries: what the editor screen loads in one call. */
+export interface LorebookWithEntriesDto {
+  lorebook: LorebookDto;
+  entries: LoreEntryDto[];
+}
+
+/** What an imported world info file turned into, and how much of it there was. */
+export interface ImportLorebookResponse {
+  lorebook: LorebookDto;
+  entries: number;
+}
+
 export type UpdateLoreEntryRequest = Partial<
   Omit<LoreEntryDto, "id" | "lorebookId" | "tokenCount" | "updatedAt">
 >;

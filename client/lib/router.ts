@@ -20,6 +20,8 @@ export type Route =
   | { name: "author"; authorId: string }
   | { name: "setup"; sceneId: string }
   | { name: "settings" }
+  | { name: "lorebooks" }
+  | { name: "lorebook"; bookId: string }
   /** Anything unrecognised lands on the scenes list. */
   | { name: "unknown" };
 
@@ -31,6 +33,9 @@ export function parseRoute(pathname: string): Route {
   if (scene !== null) return { name: "chat", sceneId: decodeURIComponent(scene[1]!) };
   if (pathname === "/characters") return { name: "characters" };
   if (pathname === "/settings") return { name: "settings" };
+  if (pathname === "/lorebooks") return { name: "lorebooks" };
+  const book = /^\/lorebooks\/([^/]+)\/?$/.exec(pathname);
+  if (book !== null) return { name: "lorebook", bookId: decodeURIComponent(book[1]!) };
   if (pathname === "/authors") return { name: "authors" };
   const author = /^\/authors\/([^/]+)\/?$/.exec(pathname);
   if (author !== null) return { name: "author", authorId: decodeURIComponent(author[1]!) };
@@ -57,6 +62,10 @@ export function pathFor(route: Route): string {
       return `/scenes/${encodeURIComponent(route.sceneId)}/setup`;
     case "settings":
       return "/settings";
+    case "lorebooks":
+      return "/lorebooks";
+    case "lorebook":
+      return `/lorebooks/${encodeURIComponent(route.bookId)}`;
     case "scenes":
     case "unknown":
       return "/";

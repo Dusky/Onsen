@@ -3,12 +3,12 @@ import type { ConnectionProfileDto } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { api } from "../lib/api.ts";
 import { navigate, useRoute, type Route } from "../lib/router.ts";
-import { useCreateScene, useScenes } from "../lib/queries.ts";
+import { useCreateScene, useLorebooks, useScenes } from "../lib/queries.ts";
 
 /**
  * The desktop sidebar (design `4a`).
  *
- * "The mobile tab bar turned vertical" — the same four destinations, the same
+ * "The mobile tab bar turned vertical" — the same five destinations, the same
  * mono uppercase, the same red for the active one, unrolled into a column with
  * room for the counts a bottom bar has no space for. The active row takes
  * `bg-inset` and a 2px red left border, which is the tab bar's red text given
@@ -22,6 +22,7 @@ export function Sidebar() {
   const route = useRoute();
   const scenes = useScenes();
   const create = useCreateScene();
+  const books = useLorebooks();
   const [profileId, setProfileId] = useState<string | null>(null);
 
   // A new roleplay needs somewhere to generate, the same way the roleplay list
@@ -44,6 +45,12 @@ export function Sidebar() {
     },
     { key: "characters", label: strings.nav.characters, route: { name: "characters" } },
     { key: "authors", label: strings.nav.authors, route: { name: "authors" } },
+    {
+      key: "lorebooks",
+      label: strings.nav.lore,
+      route: { name: "lorebooks" },
+      count: books.data?.length ?? 0,
+    },
     { key: "settings", label: strings.nav.settings, route: { name: "settings" } },
   ];
 
@@ -56,7 +63,9 @@ export function Sidebar() {
         ? "characters"
         : route.name === "author"
           ? "authors"
-          : route.name;
+          : route.name === "lorebook"
+            ? "lorebooks"
+            : route.name;
 
   const openSceneId = route.name === "chat" ? route.sceneId : null;
 

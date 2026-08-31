@@ -9,6 +9,8 @@ import { CharacterEditorScreen } from "./screens/CharacterEditorScreen.tsx";
 import { AuthorsScreen, AuthorEditorScreen } from "./screens/AuthorsScreen.tsx";
 import { SceneSetupScreen } from "./screens/SceneSetupScreen.tsx";
 import { SettingsScreen } from "./screens/SettingsScreen.tsx";
+import { LorebooksScreen } from "./screens/LorebooksScreen.tsx";
+import { LorebookEditorScreen } from "./screens/LorebookEditorScreen.tsx";
 import { api } from "./lib/api.ts";
 import { strings } from "./strings.ts";
 import { useRoute } from "./lib/router.ts";
@@ -123,6 +125,10 @@ function Routed() {
       return <SceneSetupScreen sceneId={route.sceneId} />;
     case "settings":
       return <SettingsScreen />;
+    case "lorebooks":
+      return <LorebooksScreen />;
+    case "lorebook":
+      return <LorebookEditorScreen bookId={route.bookId} />;
     case "scenes":
     case "unknown":
       return <ScenesScreen />;

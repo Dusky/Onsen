@@ -47,7 +47,8 @@ CREATE TABLE personas (
   name        TEXT    NOT NULL,
   avatar_path TEXT,
   description TEXT,
-  -- lorebook_id arrives with lorebooks in phase 19.
+  -- No lorebook_id: phase 21 gave books a bindings table instead, and a
+  -- persona-scoped binding does this job without a column per owner.
   is_default  INTEGER NOT NULL DEFAULT 0 CHECK (is_default IN (0, 1)),
   created_at  INTEGER NOT NULL,
   updated_at  INTEGER NOT NULL

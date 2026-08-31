@@ -32,6 +32,15 @@ import type {
   SceneDto,
   SceneWithHistoryDto,
   SetActiveLeafRequest,
+  LorebookDto,
+  LorebookWithEntriesDto,
+  LoreEntryDto,
+  LoreActivationDto,
+  LoreBindingScope,
+  CreateLorebookRequest,
+  UpdateLorebookRequest,
+  UpdateLoreEntryRequest,
+  ImportLorebookResponse,
   UpdateMessageRequest,
 } from "@shared/types.ts";
 
@@ -631,4 +640,134 @@ export function useBenchMember(sceneId: string) {
     ({ characterId, isActive }: { characterId: string; isActive: boolean }) =>
       api.patch<SceneDto>(`/scenes/${sceneId}/cast/${characterId}`, { isActive }),
   );
+}
+
+/* ------------------------------------------------------------------ */
+/* Lorebooks (SPEC §10, §20 phase 21)                                  */
+/* ------------------------------------------------------------------ */
+
+export const loreKeys = {
+  all: ["lorebooks"] as const,
+  one: (id: string) => ["lorebooks", id] as const,
+  activation: (sceneId: string) => ["scenes", sceneId, "lore"] as const,
+};
+
+export function useLorebooks() {
+  return useQuery({
+    queryKey: loreKeys.all,
+    queryFn: () => api.get<LorebookDto[]>("/lorebooks"),
+  });
+}
+
+export function useLorebook(id: string) {
+  return useQuery({
+    queryKey: loreKeys.one(id),
+    queryFn: () => api.get<LorebookWithEntriesDto>(`/lorebooks/${id}`),
+  });
+}
+
+export function useCreateLorebook() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateLorebookRequest) => api.post<LorebookDto>("/lorebooks", body),
+    onSuccess: () => void client.invalidateQueries({ queryKey: loreKeys.all }),
+  });
+}
+
+/** Import is multipart, like a character card, so it goes through fetch. */
+export function useImportLorebook() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File): Promise<ImportLorebookResponse> => {
+      const form = new FormData();
+      form.append("file", file);
+      const response = await fetch("/api/lorebooks/import", { method: "POST", body: form });
+      const body: unknown = await response.json();
+      if (!response.ok) {
+        throw new Error(
+          (body as { error?: { message?: string } }).error?.message ??
+            "That world info file could not be read.",
+        );
+      }
+      return body as ImportLorebookResponse;
+    },
+    onSuccess: () => void client.invalidateQueries({ queryKey: loreKeys.all }),
+  });
+}
+
+export function useUpdateLorebook(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: UpdateLorebookRequest) => api.patch<LorebookDto>(`/lorebooks/${id}`, patch),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: loreKeys.one(id) });
+      void client.invalidateQueries({ queryKey: loreKeys.all });
+    },
+  });
+}
+
+export function useDeleteLorebook() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/lorebooks/${id}`),
+    onSuccess: () => void client.invalidateQueries({ queryKey: loreKeys.all }),
+  });
+}
+
+export function useCreateLoreEntry(bookId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<LoreEntryDto>(`/lorebooks/${bookId}/entries`, {}),
+    onSuccess: () => void client.invalidateQueries({ queryKey: loreKeys.one(bookId) }),
+  });
+}
+
+export function useUpdateLoreEntry(bookId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ entryId, ...patch }: UpdateLoreEntryRequest & { entryId: string }) =>
+      api.patch<LoreEntryDto>(`/lorebooks/${bookId}/entries/${entryId}`, patch),
+    onSuccess: () => void client.invalidateQueries({ queryKey: loreKeys.one(bookId) }),
+  });
+}
+
+export function useDeleteLoreEntry(bookId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (entryId: string) =>
+      api.delete<void>(`/lorebooks/${bookId}/entries/${entryId}`),
+    onSuccess: () => void client.invalidateQueries({ queryKey: loreKeys.one(bookId) }),
+  });
+}
+
+export function useBindLorebook() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookId, ...body }: { bookId: string; scope: LoreBindingScope; targetId?: string }) =>
+      api.post<LorebookDto>(`/lorebooks/${bookId}/bindings`, body),
+    onSuccess: () => void client.invalidateQueries({ queryKey: loreKeys.all }),
+  });
+}
+
+export function useUnbindLorebook() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookId, bindingId }: { bookId: string; bindingId: string }) =>
+      api.delete<LorebookDto>(`/lorebooks/${bookId}/bindings/${bindingId}`),
+    onSuccess: () => void client.invalidateQueries({ queryKey: loreKeys.all }),
+  });
+}
+
+/**
+ * §16's activation test tool: what would fire for this scene right now, and
+ * what would not. Only fetched with the sheet open, and never cached long —
+ * every message the scene gains changes the answer.
+ */
+export function useLoreActivation(sceneId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: loreKeys.activation(sceneId),
+    queryFn: () => api.get<LoreActivationDto[]>(`/scenes/${sceneId}/lore`),
+    staleTime: 0,
+    enabled,
+  });
 }
