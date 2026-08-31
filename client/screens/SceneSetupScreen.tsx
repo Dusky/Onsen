@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { strings } from "../strings.ts";
 import { BanListSheet, OptionGroupSheet } from "../components/OptionSheets.tsx";
+import { LoreSheet, booksReaching } from "../components/LoreSheet.tsx";
 import { navigate } from "../lib/router.ts";
 import {
   useAddBan,
@@ -8,6 +9,10 @@ import {
   useAnalyseBans,
   useAuthors,
   useBans,
+  useBindLorebook,
+  useLoreActivation,
+  useLorebooks,
+  useUnbindLorebook,
   useCharacters,
   useConnectionProfiles,
   useCreatePersona,
@@ -32,8 +37,8 @@ import { TURN_STRATEGIES, type TurnStrategy } from "@shared/types.ts";
  * that changes what the app is — with an author, one partner plays the whole
  * cast; without one, it is a single character in a system prompt.
  *
- * The model profile, lorebook and guide rows the design draws belong to phases
- * that have not happened yet, and are left out rather than stubbed.
+ * The model profile and guide rows the design draws belong to phases that have
+ * not happened yet, and are left out rather than stubbed.
  */
 
 function labelFor(strategy: TurnStrategy): string {
@@ -117,6 +122,13 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
   const resetOptions = useResetOptions(sceneId);
   const [editingGroup, setEditingGroup] = useState<string | null>(null);
   const [bansOpen, setBansOpen] = useState(false);
+  // Lorebooks (SPEC §10). The books are cheap; the activation trace is not, so
+  // it is only fetched with the sheet open.
+  const [loreOpen, setLoreOpen] = useState(false);
+  const lorebooks = useLorebooks();
+  const loreActivation = useLoreActivation(sceneId, loreOpen);
+  const bindBook = useBindLorebook();
+  const unbindBook = useUnbindLorebook();
   // Only fetched with the sheet open: the list is long and nothing on the
   // setup screen needs it until then, beyond the count on its row.
   const bans = useBans(sceneId, true);
@@ -436,6 +448,38 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
             </span>
           </button>
 
+          {/* Which lorebooks reach this roleplay, and what they would do right
+              now (SPEC §10). The count on the row is books; the second number
+              is what is firing, which is the one worth glancing at. */}
+          <button
+            type="button"
+            onClick={() => setLoreOpen(true)}
+            className="flex w-full items-baseline gap-[9px] border-b border-rule py-[12px] text-left"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="chrome block text-[9.5px] tracking-[0.1em] text-ink-muted uppercase">
+                {strings.lore.sceneRow}
+              </span>
+              <span className="mt-[4px] block truncate text-[13.5px]">
+                {(() => {
+                  // Only the books that reach this roleplay: the row is the
+                  // scene's answer, not the library's.
+                  const reaching = booksReaching(lorebooks.data ?? [], {
+                    sceneId,
+                    personaId: scene.personaId,
+                    castIds: scene.cast.map((member) => member.characterId),
+                  });
+                  return reaching.length === 0
+                    ? strings.lore.sceneRowNone
+                    : reaching.map((book) => book.name).join(" · ");
+                })()}
+              </span>
+            </span>
+            <span className="chrome flex-none text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+              ›
+            </span>
+          </button>
+
           {/* Only offered once the scene has chosen for itself: a scene still
               running on the shipped configuration has nothing to go back to. */}
           {options.data?.configured === true ? (
@@ -625,6 +669,19 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
             />
           );
         })()
+      ) : null}
+
+      {loreOpen ? (
+        <LoreSheet
+          sceneId={sceneId}
+          personaId={scene.personaId}
+          castIds={scene.cast.map((member) => member.characterId)}
+          books={lorebooks.data ?? []}
+          activation={loreActivation.data}
+          onAttach={(bookId) => bindBook.mutate({ bookId, scope: "scene", targetId: sceneId })}
+          onDetach={(bookId, bindingId) => unbindBook.mutate({ bookId, bindingId })}
+          onClose={() => setLoreOpen(false)}
+        />
       ) : null}
 
       {bansOpen ? (
