@@ -49,6 +49,9 @@
   --onsen-color-blue-text: #b9c3ce;
   --onsen-color-blue-text-muted: #6f7d8c;
   --onsen-color-blue-prose: #cdd5de;
+  /* The reader's own words inside the blue OOC channel (design 2a). */
+  --onsen-color-ooc-reader-bg: #2b2118;
+  --onsen-color-ooc-reader-text: #e2cdb4;
 
   /* Connection OK. Settings only — nothing else in the app is green. */
   --onsen-color-green: #7fa65b;
@@ -135,6 +138,8 @@
     --onsen-color-blue-border-strong: #c3cfdb; /* derived */
     --onsen-color-blue-text-muted: #6b7a8a; /* derived */
     --onsen-color-blue-prose: #33414f; /* derived */
+    --onsen-color-ooc-reader-bg: #e8ddc9; /* derived */
+    --onsen-color-ooc-reader-text: #3a2c1d; /* derived */
 
     --onsen-color-green: #5d7f3f; /* derived */
 
@@ -180,6 +185,8 @@
   --onsen-color-blue-border-strong: #c3cfdb;
   --onsen-color-blue-text-muted: #6b7a8a;
   --onsen-color-blue-prose: #33414f;
+  --onsen-color-ooc-reader-bg: #e8ddc9;
+  --onsen-color-ooc-reader-text: #3a2c1d;
 
   --onsen-color-green: #5d7f3f;
 

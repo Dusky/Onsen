@@ -474,7 +474,7 @@ export interface SceneDto {
   summariseEvict: boolean;
   /**
    * Whether the author may step out of the scene to speak to the reader
-   * (SPEC §12). Off by default: an author that volunteers asides is a delight
+   * (SPEC §7). Off by default: an author that volunteers asides is a delight
    * when you want a collaborator and an intrusion when you want a story.
    */
   oocEnabled: boolean;

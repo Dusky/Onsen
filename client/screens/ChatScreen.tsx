@@ -11,7 +11,8 @@ import {
   useSiblings,
 } from "../lib/queries.ts";
 import { useGeneration } from "../lib/generation.ts";
-import { MessageBlock, MessageEditor, Reasoning } from "../components/MessageBlock.tsx";
+import { MessageBlock, MessageEditor, OocBlock, Reasoning } from "../components/MessageBlock.tsx";
+import { OocChannel } from "../components/OocChannel.tsx";
 import { Composer } from "../components/Composer.tsx";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
 import { CastStrip } from "../components/CastStrip.tsx";
@@ -141,6 +142,10 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const [cued, setCued] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [versionsFor, setVersionsFor] = useState<MessageDto | null>(null);
+  // The off-script channel (SPEC §7). Not a mode the reader lives in: notes
+  // arrive inline, and this is where one becomes a conversation.
+  const [oocOpen, setOocOpen] = useState(false);
+  const [oocAsked, setOocAsked] = useState(false);
   const siblings = useSiblings(sceneId, versionsFor?.id ?? null);
 
   const log = useRef<HTMLDivElement>(null);
@@ -196,6 +201,19 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     isGenerating && active.recast !== undefined
       ? { ...active.recast, text: active.text }
       : null;
+  // Whether the generation now running is an out-of-character answer.
+  //
+  // Tracked rather than inferred. The alternative is matching on what the
+  // director announced, which is a copy string, or on the shape of the tree,
+  // which is a race with the refetch — and this client is the one that asked,
+  // so it simply knows.
+  const oocInFlight = oocAsked && isGenerating;
+
+  // Cleared once the answer has landed, so the next ordinary turn is not drawn
+  // into the channel.
+  useEffect(() => {
+    if (oocAsked && !isGenerating) setOocAsked(false);
+  }, [oocAsked, isGenerating]);
 
   // Keep the newest content in view as it arrives. Bottom-anchored layout does
   // most of the work; this covers the case where the log has overflowed.
@@ -384,6 +402,17 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       },
     },
     {
+      key: "ooc",
+      glyph: strings.chat.opOocKey,
+      label: strings.chat.opOoc,
+      // The author's own voice, so the author's own colour (design 2a).
+      tone: "blue",
+      onPress: () => {
+        setOpsPanel(null);
+        setOocOpen(true);
+      },
+    },
+    {
       key: "no_reply",
       glyph: strings.chat.opNoReplyKey,
       label: strings.chat.opNoReply,
@@ -511,7 +540,16 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             ) : null}
 
             {messages.map((message) =>
-              editing === message.id ? (
+              // An off-script aside is not a turn in the scene and is not
+              // rendered as one: no swipe, no reroll, no versions (§7).
+              message.kind === "ooc" ? (
+                <OocBlock
+                  key={message.id}
+                  message={message}
+                  speakerName={message.authorType === "user" ? strings.chat.you : authorName}
+                  onOpenChannel={() => setOocOpen(true)}
+                />
+              ) : editing === message.id ? (
                 <MessageEditor
                   key={message.id}
                   initial={message.content}
@@ -556,7 +594,10 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             {/* Nothing is drawn until there is a speaker to attribute it to: while
                 the director is still choosing, the status row below already says
                 so, and a header over an empty body says it twice. */}
-            {isGenerating && recastInFlight === null && active.speaker !== null ? (
+            {/* An out-of-character answer is not a turn in the scene, so it does
+                not stream into one: it is drawn in the channel sheet, in the
+                bubble it is going to land in (§7). */}
+            {isGenerating && recastInFlight === null && !oocInFlight && active.speaker !== null ? (
               <article>
                 <header className="mb-[10px]">
                   <div className="flex items-center gap-[10px]">
@@ -917,6 +958,28 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             }
           />
         </Sheet>
+      ) : null}
+
+      {oocOpen ? (
+        <OocChannel
+          messages={messages.filter((message) => message.kind === "ooc")}
+          authorName={authorName}
+          personaName={strings.ooc.reader}
+          // An out-of-character answer streams like any other generation, but
+          // it never appears in the log behind the sheet — so it is drawn here
+          // instead, in the bubble it is going to land in.
+          pending={isGenerating && oocInFlight ? active.text : null}
+          onSend={(question) => {
+            setOocAsked(true);
+            void generation.start({
+              sceneId,
+              sceneTitle: scene.data?.scene.title ?? "",
+              speaker: authorName,
+              ooc: { question },
+            });
+          }}
+          onClose={() => setOocOpen(false)}
+        />
       ) : null}
 
       {versionsFor !== null ? (

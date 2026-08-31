@@ -191,6 +191,77 @@ function Annotation({
   );
 }
 
+/**
+ * An out-of-character aside, inline in the log (design `2a`, SPEC §7).
+ *
+ * The design's marginal treatment: an 18px inset with a 2px blue rule running
+ * its full height, a blue mono label, and the body in a bubble with the
+ * asymmetric corner that reads as a tail. It is one of the three places in the
+ * system allowed a rounded corner, and the only place the app sets story-column
+ * content in mono — the author speaking as itself rather than writing.
+ *
+ * Deliberately *not* a bubble in the reader's own colour when the reader wrote
+ * it. Inline, this is one aside in one margin; who said what is the label's
+ * job. The channel sheet is where the exchange becomes a conversation with
+ * sides, and that is where the alternating treatment lives.
+ */
+export function OocBlock({
+  message,
+  speakerName,
+  streamingText,
+  onOpenChannel,
+}: {
+  message: MessageDto;
+  /** Null with no author set: the label then just says what it is. */
+  speakerName: string | null;
+  streamingText?: string;
+  onOpenChannel?: (() => void) | undefined;
+}) {
+  const text = streamingText ?? message.content;
+  const fromReader = message.authorType === "user";
+
+  return (
+    <article
+      className="pl-[18px]"
+      style={{ borderLeft: "2px solid var(--onsen-color-blue)" }}
+      aria-label={`${speakerName} out of character: ${text.slice(0, 80)}`}
+    >
+      <div className="mb-[7px] flex items-baseline gap-[10px]">
+        <span
+          className="chrome shrink-0 text-[9px] tracking-[0.18em] uppercase"
+          style={{ color: "var(--onsen-color-blue-text-muted)" }}
+        >
+          {strings.chat.oocLabel(speakerName)}
+        </span>
+        <span className="flex-1" />
+        {onOpenChannel === undefined ? null : (
+          <button
+            type="button"
+            onClick={onOpenChannel}
+            className="chrome shrink-0 text-[8.5px] tracking-[0.12em] uppercase"
+            style={{ color: "var(--onsen-color-blue-text-muted)" }}
+          >
+            {strings.chat.oocOpenChannel}
+          </button>
+        )}
+      </div>
+      <div
+        className="chrome px-[12px] py-[9px] text-[12.5px] leading-[1.55] whitespace-pre-wrap"
+        style={{
+          background: "var(--onsen-color-blue-bg)",
+          border: "1px solid var(--onsen-color-blue-border)",
+          color: "var(--onsen-color-blue-text)",
+          // The asymmetric corner is the tail. It points the other way when the
+          // reader is the one who spoke.
+          borderRadius: fromReader ? "12px 3px 12px 12px" : "3px 12px 12px 12px",
+        }}
+      >
+        {text}
+      </div>
+    </article>
+  );
+}
+
 export function MessageBlock({
   message,
   speakerName,

@@ -2168,3 +2168,106 @@ Anthropic wire format, returning a 400 for anything the real API rejects —
 and a real generation driven through the real service against it. It passes, and
 if the adapter ever starts sending a sampler again it will fail loudly instead
 of quietly producing worse prose.
+
+## Phase 23 — The out-of-character channel
+
+The author is a collaborator, not a puppet. §2 has given it an `ooc_voice` since
+phase 5 and nothing had ever used one.
+
+### What was built
+
+**A streaming splitter for asides**, the same shape as §13's reasoning splitter
+and for the same reason: a marker can arrive split across two network chunks, so
+anything that might still turn out to be one is held back until it settles.
+
+Two rules are deliberately the *opposite* of the reasoning splitter's. An
+unclosed reasoning tag means the text is reasoning — better to hide a model's
+planning than print it. An unterminated aside is **prose, marker and all**,
+because `((` is an ordinary sequence that fiction contains and eating the rest
+of a turn on a stray double-paren is far worse than showing one. And removing an
+aside closes the gap it left, which is a small violation of "never lose text"
+and the right one: the alternative is a double space in the scene for every
+aside the author writes, which a reader notices and cannot explain.
+
+The parser also reads `[OOC: …]`, `[ooc]…[/ooc]` and `(OOC: …)`. Roleplay
+finetunes emit those unprompted, and an app that ignored them would put the
+aside in the scene. The single-paren form is safe only because of the literal
+tag inside it; without that it would swallow every parenthetical in the story.
+
+**The invitation now names the marker.** The block existed since phase 3 and
+said "mark it clearly", which is the gap this phase closes. Leaving a model to
+invent a marker means an aside the parser cannot find, and an aside the parser
+cannot find is an aside printed into the middle of a scene. It asks for
+`((this))`, says what goes inside and what does not, and says that saying
+nothing is a fine answer.
+
+**Migration 0020** adds `ooc_enabled` and `ooc_interval`, which §2 named in
+phase 1. Off by default: an author that volunteers asides is a delight when the
+reader wants a collaborator and an intrusion when they want a story. `oocDue` is
+counted along the active path, for the same reason §10's timed effects are — an
+aside on a branch the reader walked away from did not happen here.
+
+**An aside lands as a child of the turn it came out of**, not a sibling. History
+is a tree, and the aside belongs to that particular telling: rerolling the prose
+makes a sibling, which takes the reader down a path the aside is not on, and it
+disappears exactly when it should. Deleting the turn takes it by the same
+cascade. Both facts are tested.
+
+**The reader's direction** is a new turn kind rather than a new entry point:
+same cast, same lore, same history, different near-turn instruction. Most of
+that instruction's words go on the boundary rather than the question, because a
+model asked something mid-roleplay will very often answer it *and* write the
+next turn. An out-of-character turn skips three things — the turn director,
+because nobody in the cast is speaking; the post-generation pipeline, because
+all three of those read the turn as prose; and aside-splitting, because the
+whole answer is already the aside.
+
+**Both design treatments.** The inline marginal aside — 18px inset, 2px blue
+rule, `NAME · OOC`, a bubble with the asymmetric tail — and the channel sheet it
+promotes to, with alternating bubbles and the reader's own warm tint inside the
+blue panel. The design's own line is the reason both exist: "this is not a mode
+the user lives in. Notes arrive inline; the channel is where a note becomes a
+conversation."
+
+### Deliberately deferred
+
+- **`((ooc: …))` typed in the composer.** §19's inline commands parse the ops
+  out of an incoming message for external clients that have no director bar.
+  That is the outbound API's phase, and the splitter is written so it can be
+  reused there rather than reimplemented.
+- **An OOC-only connection profile.** Answering a question out of character is a
+  cheap call and §7's per-op routing could send it somewhere small, but adding
+  an op row for it means the per-op settings screen grows a switch for something
+  with no other configuration worth having yet.
+
+### Spec changes
+
+The OOC channel had no home in the SPEC at all — it was four scattered mentions
+in §2, §3, §16 and §19 with no section describing the behaviour. §7 now
+documents both directions and carries a `Settled while building phase 23` block.
+
+### Surprises
+
+**Every one of my §12 references was wrong.** I wrote "SPEC §12" in twenty-nine
+comments across ten files before checking, on the assumption that a feature this
+size had its own section. §12 is expressions and visual novel mode. The OOC
+channel had no section, which is exactly why the citation felt safe to guess —
+there was nothing to contradict it. Corrected to §7, and the section now exists.
+A wrong citation is worse than none: it sends the next reader somewhere real and
+unrelated.
+
+**The client showed the question and never the answer.** The OOC route started
+the generation server-side and returned a snapshot, and the client posted it as
+a plain mutation — which invalidated the scene once, at the moment the question
+landed, and then had nothing subscribed to the stream and nothing to invalidate
+on when the answer arrived. Fixed by routing it through the generation store
+like every other op, which is where the watching and the invalidation already
+live. The server was right the whole time; the API said so and the screen did
+not, which is the only reason it was found.
+
+**A helper reading `prompts.at(-1)` got the guide runner.** The post-generation
+pipeline shares the adapter with the turn it follows, so the *last* prompt the
+adapter saw is whichever background call finished most recently rather than the
+turn. It cost twenty minutes of believing the invitation block was missing when
+it was there. The fix is one word — the first new prompt, not the last — and the
+lesson is that a shared fixture needs to say which caller it is answering.

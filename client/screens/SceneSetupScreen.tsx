@@ -587,6 +587,46 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
             </>
           ) : null}
 
+          {/* Whether the author may step out of the scene (SPEC §7). Off by
+              default, and the hint says why rather than what: the reader is
+              choosing between a story and a collaborator. */}
+          <p className="section-label mb-[8px]">{strings.sceneSetup.ooc}</p>
+          <div className="mb-[8px] flex gap-[6px]">
+            {[true, false].map((on) => (
+              <button
+                key={String(on)}
+                type="button"
+                onClick={() => setup.mutate({ oocEnabled: on })}
+                className={`btn flex-1 ${scene.oocEnabled === on ? "btn-primary" : ""}`}
+              >
+                {on ? strings.sceneSetup.oocOn : strings.sceneSetup.oocOff}
+              </button>
+            ))}
+          </div>
+          <p className="chrome mb-[18px] text-[9.5px] leading-[1.5] text-ink-dim">
+            {strings.sceneSetup.oocHint}
+          </p>
+
+          {scene.oocEnabled ? (
+            <>
+              <div className="mb-[8px] flex gap-[10px]">
+                <NumberField
+                  label={strings.sceneSetup.oocInterval}
+                  unit={strings.sceneSetup.oocIntervalUnit}
+                  value={scene.oocInterval}
+                  min={1}
+                  max={500}
+                  onCommit={(value) => setup.mutate({ oocInterval: value })}
+                />
+              </div>
+              <p className="chrome mb-[22px] text-[9.5px] leading-[1.5] text-ink-dim">
+                {strings.sceneSetup.oocIntervalHint}
+              </p>
+            </>
+          ) : (
+            <div className="mb-[4px]" />
+          )}
+
           {/* SPEC §8's sixth guide. It is the only one with nothing built in to
               ask, so its question is scene configuration and lives here; the
               other five are switched on per op in Settings. */}

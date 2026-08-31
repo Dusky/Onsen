@@ -442,7 +442,7 @@ function turnInstruction(ctx: PromptContext): string {
 
 /**
  * Answering the reader directly, as the author rather than as a character
- * (SPEC §12).
+ * (SPEC §7).
  *
  * The hard part is not the answer, it is stopping the scene from moving. A
  * model asked a question mid-roleplay will very often answer it *and* write
@@ -622,7 +622,7 @@ export function draftBlocks(ctx: PromptContext): Map<PromptBlockId, DraftBlock[]
   // The marker is named exactly, because the app parses for it. "Mark it
   // clearly" leaves the model to invent one, and an aside the splitter cannot
   // find is an aside printed into the middle of the scene — the single most
-  // common way a roleplay turn is ruined (§12).
+  // common way a roleplay turn is ruined (§7).
   add(
     "ooc_invitation",
     "Out-of-character invitation",

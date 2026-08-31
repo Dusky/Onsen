@@ -207,7 +207,7 @@ function toPromptPersona(row: PersonaRow | null) {
 }
 
 /**
- * Is the author due an out-of-character aside (SPEC §12)?
+ * Is the author due an out-of-character aside (SPEC §7)?
  *
  * The interval is the earliest it may speak up *again*, so a scene that has
  * never had one is due immediately — the first invitation should not wait
@@ -477,7 +477,7 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
         role: row.role,
       })),
     bans: activeBans(options.db, options.scene.id).map((row) => row.phrase),
-    // Whether the author may step out of the scene this turn (SPEC §12).
+    // Whether the author may step out of the scene this turn (SPEC §7).
     // Counted along the active path rather than the scene, for the same reason
     // §10's timed effects are: an aside on a branch the reader walked away from
     // did not happen here, and should not still be suppressing the next one.

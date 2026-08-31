@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { OocSplitter, splitOoc } from "../server/generation/ooc.ts";
 
 /**
- * The OOC splitter (SPEC §12, §20 phase 23).
+ * The OOC splitter (SPEC §7, §20 phase 23).
  *
  * Two rules, the same two the beat parser and the reasoning splitter hold to:
  * never lose text, and end up with the same result whether the input arrived in

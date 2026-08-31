@@ -1,4 +1,4 @@
--- The OOC channel (SPEC §12, §2's scene fields, §20 phase 23).
+-- The OOC channel (SPEC §7, §2's scene fields, §20 phase 23).
 --
 -- Two columns §2 names and the schema has been missing since phase 1.
 --

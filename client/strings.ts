@@ -89,6 +89,15 @@ export const strings = {
   },
 
   chat: {
+    /**
+     * The design's `KESTREL · OOC` label above an inline aside. With no author
+     * set there is no name worth printing, and `Off script · OOC` says the same
+     * thing twice.
+     */
+    oocLabel: (name: string | null) => (name === null ? "OOC" : `${name} \u00b7 OOC`),
+    oocOpenChannel: "Open channel \u25be",
+    opOoc: "Off script",
+    opOocKey: "OOC",
     kicker: "Roleplay",
     composerPlaceholder: "Direct the scene…",
     send: "Send",
@@ -512,6 +521,16 @@ export const strings = {
     autoPassesOff: "Off",
 
     /** The custom guide's question, which is per scene (SPEC §8). */
+    ooc: "Off-script asides",
+    oocOn: "Allowed",
+    oocOff: "Never",
+    oocHint:
+      "Lets the author break off to ask you something \u2014 a check, a flag, a question about where this is going. A collaborator rather than a narrator. You can always ask it something yourself.",
+    oocInterval: "Not more often than",
+    oocIntervalUnit: "messages apart",
+    oocIntervalHint:
+      "The earliest it may speak up again, not a schedule it has to keep. It usually will not.",
+
     customGuide: "Custom guide",
     customGuideHint:
       "One question, asked of the story after every turn. The answer rides on every prompt until you flush it. Leave it empty and the custom guide stays off.",
@@ -589,6 +608,18 @@ export const strings = {
     directorProfileSame: "Same as the scene",
     directorProfileHint:
       "A one-line question, so it wants a small fast model. Left alone it uses the scene's own, which works and costs more.",
+  },
+
+  ooc: {
+    /** The bottom sheet an exchange is promoted to (design 2a). */
+    title: "Off script",
+    hint: "Speaking to the author, not to anyone in the scene. Nothing here is part of the story.",
+    empty: "Nothing off script yet. Ask the author something.",
+    placeholder: "Ask the author\u2026",
+    send: "Send",
+    back: "Back to scene",
+    thinking: "Answering\u2026",
+    reader: "You",
   },
 
   lore: {

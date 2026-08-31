@@ -931,6 +931,54 @@ down here") rather than terse system commands.
 | **Spellchecker** | Polish the user's input, returning it to the composer. |
 | **Edit Intros** | Rewrite a scene's opening message; aware of alternate and group greetings. |
 | **Input Recovery** | Restore previously cleared composer input from a client-side ring buffer. |
+| **Off script** | Ask the author something out of character. Both halves are kept as `ooc` messages; the answer must not advance the scene. |
+
+### The out-of-character channel
+
+The author is a collaborator, not a puppet. §2 gives it an `ooc_voice`; this is
+where it uses one. Two directions, and they are not symmetric.
+
+**The author stepping out.** When `scenes.ooc_enabled` is on and
+`ooc_interval` messages have passed since the last aside, the prompt carries an
+invitation to step out briefly at the end of the turn — a question, a check, a
+flag — wrapped in a named marker. The aside is split out of the stream and
+stored as its own `ooc` message rather than left in the prose, because a line of
+authorial commentary in the middle of a scene is the single most common way a
+roleplay turn is ruined. Declining the invitation is a good answer and the
+instruction says so.
+
+**The reader asking.** A question and its answer are both `ooc` messages,
+distinguished by `author_type`; the answer must not advance the scene.
+
+### Settled while building phase 23
+
+- **The invitation names the marker.** "Mark it clearly" leaves the model to
+  invent one, and an aside the parser cannot find is an aside printed into the
+  scene. It asks for `((this))` — the same convention §19's inline commands use
+  in the other direction — and says what goes inside and what does not.
+- **Splitting is unconditional; the invitation is not.** A model that
+  volunteers an aside unprompted must still not have it land in the prose. The
+  parser also reads `[OOC: …]`, `[ooc]…[/ooc]` and `(OOC: …)`, which roleplay
+  finetunes emit without being asked. The single-paren form is safe only
+  because of the literal tag inside it.
+- **An unterminated aside is prose, marker and all.** The opposite of §13's rule
+  for an unclosed reasoning tag, and deliberately: `((` is a sequence fiction
+  contains, and eating the rest of a turn on a stray double-paren is far worse
+  than showing one.
+- **An aside is a child of the turn it came from**, not a sibling. History is a
+  tree (§1), and the aside belongs to that telling: rerolling the prose makes a
+  sibling, the reader walks down a path the aside is not on, and it disappears
+  exactly when it should.
+- **An out-of-character turn skips the director, the post-generation pipeline,
+  and aside-splitting.** Nobody in the cast is speaking; all three passes read
+  the turn as prose; and the whole answer is already the aside.
+- **Removing an aside closes the gap it left.** A small, deliberate violation of
+  "never lose text": the alternative is a double space in the scene for every
+  aside written. Spaces and tabs only — a newline is a paragraph break the
+  author meant.
+- **The channel is not a mode.** Notes arrive inline in the log; the sheet is
+  where a note becomes a conversation, and is reachable from any aside and from
+  the ops menu.
 
 ### Per-op configuration
 

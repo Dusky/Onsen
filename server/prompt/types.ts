@@ -175,7 +175,7 @@ export type PromptTurn =
       instructions?: string;
     }
   /**
-   * Answering the reader out of character (SPEC §12).
+   * Answering the reader out of character (SPEC §7).
    *
    * Not a turn in the scene at all: the author is being asked a question as
    * itself, and the scene must not move. It is a `PromptTurn` rather than a

@@ -135,7 +135,7 @@ interface ActiveGeneration {
   /** Splits inline `<think>` tags out of the stream. Stateful across chunks. */
   splitter: ReasoningSplitter;
   /**
-   * Splits out-of-character asides out of the stream (§12). Runs whether or not
+   * Splits out-of-character asides out of the stream (§7). Runs whether or not
    * the scene invited one: a model that volunteers `((…))` unprompted must
    * still not have it land in the middle of the scene.
    */
@@ -258,7 +258,7 @@ export interface StartOptions {
    */
   revise?: { message: MessageRow; mode: "expand" | "correct" | "continue"; instructions?: string };
   /**
-   * Answer the reader out of character (SPEC §12). The question is already a
+   * Answer the reader out of character (SPEC §7). The question is already a
    * message in the tree by the time this is called — unlike a nudge, an OOC
    * question *is* something the reader said, and the answer would make no sense
    * beside a transcript that did not contain it.
@@ -292,7 +292,7 @@ type ResolvedTurn =
       /** A revised beat is still a beat, and still needs parsing into parts. */
       targetKind: MessageKind;
     }
-  /** Answering the reader out of character (SPEC §12). The scene does not move. */
+  /** Answering the reader out of character (SPEC §7). The scene does not move. */
   | { kind: "ooc"; question: string };
 
 export class GenerationError extends Error {
@@ -628,7 +628,7 @@ export class GenerationService {
         }
       }
       // An unterminated aside is prose, marker and all — the opposite of the
-      // rule above, and deliberately so (§12): `((` is a sequence fiction does
+      // rule above, and deliberately so (§7): `((` is a sequence fiction does
       // contain, and eating the rest of a turn on a stray double-paren is far
       // worse than showing one.
       if (splitAsides) {
@@ -696,7 +696,7 @@ export class GenerationService {
    */
   private async direct(generation: ActiveGeneration, scene: SceneRow): Promise<void> {
     // Nobody in the cast is speaking on an out-of-character turn: the author is
-    // answering as itself (§12). Asking a director who should speak would spend
+    // answering as itself (§7). Asking a director who should speak would spend
     // a model call to pick a character who is not going to say anything.
     if (generation.turn.kind === "ooc") {
       this.announce(generation, {
@@ -1006,7 +1006,7 @@ export class GenerationService {
     // Not after an out-of-character answer. Every one of the three reads the
     // turn as prose — the passes annotate it, the guides describe what the
     // characters are doing, the summariser condenses the story — and an aside
-    // to the reader is none of those things (§12).
+    // to the reader is none of those things (§7).
     if (!cancelled && generation.landedMessageId !== null && generation.turn.kind !== "ooc") {
       void this.runPasses(generation.sceneId, generation.landedMessageId);
     }
@@ -1034,7 +1034,7 @@ export class GenerationService {
 
     // An out-of-character answer is the author speaking as itself, so it is
     // filed as one: `ooc` on both counts, attributed to nobody in the cast, and
-    // never parsed for segments. It is not a turn in the scene (§12).
+    // never parsed for segments. It is not a turn in the scene (§7).
     if (generation.turn.kind === "ooc") {
       return appendMessage(this.db, {
         sceneId: generation.sceneId,
@@ -1057,7 +1057,7 @@ export class GenerationService {
       // whole turn, original and continuation, so the log reads as one piece of
       // writing rather than a fragment beside its own beginning.
       // Trimmed, which matters once an aside can be lifted off the end of a
-      // turn (§12): the prose before it keeps the space that separated them,
+      // turn (§7): the prose before it keeps the space that separated them,
       // and a turn should not end in whitespace the reader cannot see.
       content:
         revise?.mode === "continue"
@@ -1072,7 +1072,7 @@ export class GenerationService {
   }
 
   /**
-   * File an out-of-character aside as its own message (SPEC §12).
+   * File an out-of-character aside as its own message (SPEC §7).
    *
    * A **child** of the turn it came out of, rather than a sibling. §1 says
    * history is a tree, and the aside belongs to that particular telling of the

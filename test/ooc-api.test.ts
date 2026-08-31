@@ -10,7 +10,7 @@ import type {
 } from "../shared/types.ts";
 
 /**
- * The OOC channel through the real system (SPEC §12, §20 phase 23).
+ * The OOC channel through the real system (SPEC §7, §20 phase 23).
  *
  * Two directions, and they are not symmetric. The author's asides are *split
  * out of prose it is already writing*, so the risk is a marker the parser

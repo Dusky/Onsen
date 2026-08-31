@@ -114,7 +114,7 @@ const SUMMARY_NUMBERS: readonly [string, string, number, number][] = [
   ["summariseEveryWords", "summarise_every_words", 100, 100_000],
   ["summariseThreshold", "summarise_threshold", 0, 500],
   ["summariseFreeze", "summarise_freeze", 1, 100],
-  // How long before the author may step out of the scene again (SPEC §12).
+  // How long before the author may step out of the scene again (SPEC §7).
   ["oocInterval", "ooc_interval", 1, 500],
 ];
 
@@ -271,7 +271,7 @@ export function sceneRoutes(ctx: AppContext): Hono<AppEnv> {
         .query("UPDATE scenes SET summarise = $on WHERE id = $id")
         .run({ id: row.id, on: input.summarise ? 1 : 0 });
     }
-    // Whether the author may step out of character at all (SPEC §12).
+    // Whether the author may step out of character at all (SPEC §7).
     if ("oocEnabled" in input) {
       if (typeof input.oocEnabled !== "boolean") {
         return c.json(badRequest("oocEnabled must be a boolean."), 400);

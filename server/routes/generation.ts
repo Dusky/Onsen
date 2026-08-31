@@ -494,7 +494,7 @@ export function sceneGenerationRoutes(
   });
 
   /**
-   * Ask the author something out of character, and have it answer (SPEC §12).
+   * Ask the author something out of character, and have it answer (SPEC §7).
    *
    * Two messages, not one. The question is appended to the tree first, because
    * unlike a nudge an OOC question *is* something the reader said — the answer

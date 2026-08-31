@@ -27,6 +27,15 @@ interface StartArgs {
   nudge?: string;
   /** Produce a better version of an existing turn, as a sibling (SPEC §7). */
   revise?: { messageId: string; mode: ReviseMode; instructions?: string };
+  /**
+   * Ask the author something out of character (SPEC §7).
+   *
+   * It goes through here rather than through a plain mutation because the
+   * answer arrives on the stream like any other generation — and a caller that
+   * only posted would show the question, never the answer, and have nothing to
+   * invalidate on.
+   */
+  ooc?: { question: string };
   /** One voice or the whole room (SPEC §3.5). Defaults to a spotlight. */
   scope?: TurnScope;
   beatBound?: BeatBound;
@@ -165,9 +174,15 @@ export function useGeneration() {
 
   const start = useCallback(
     async (args: StartArgs) => {
-      const { recast, revise } = args;
+      const { recast, revise, ooc } = args;
       const started =
-        recast !== undefined
+        ooc !== undefined
+          ? (
+              await api.post<{ generation: { id: string } }>(`/scenes/${args.sceneId}/ooc`, {
+                question: ooc.question,
+              })
+            ).generation
+          : recast !== undefined
           ? await api.post<{ id: string }>(
               `/scenes/${args.sceneId}/messages/${recast.messageId}/recast`,
               { ordinal: recast.ordinal },

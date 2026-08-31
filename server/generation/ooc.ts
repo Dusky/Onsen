@@ -1,5 +1,5 @@
 /**
- * Pulling out-of-character asides out of a turn (SPEC §12, §20 phase 23).
+ * Pulling out-of-character asides out of a turn (SPEC §7, §20 phase 23).
  *
  * The author is a collaborator, not a puppet, and §2 gives it an `ooc_voice`
  * for exactly this: stepping out of the scene to ask a question, flag a
