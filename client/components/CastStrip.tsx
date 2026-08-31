@@ -33,6 +33,13 @@ interface CastStripProps {
   onScope(scope: TurnScope): void;
   strategy: TurnStrategy;
   /**
+   * The autopilot switch (SPEC §6), which the design puts on this bar because
+   * it is a decision about the next turns, the same thing the cue and the
+   * scope below it are.
+   */
+  autopilotOn: boolean;
+  onToggleAutopilot(on: boolean): void;
+  /**
    * True when the classifier will choose the speaker at send time, so there is
    * nobody to cue-highlight yet and saying otherwise would be a guess.
    */
@@ -47,6 +54,8 @@ export function CastStrip({
   scope,
   onScope,
   strategy,
+  autopilotOn,
+  onToggleAutopilot,
   decidesOnSend,
 }: CastStripProps) {
   if (cast.length === 0) return null;
@@ -157,6 +166,23 @@ export function CastStrip({
           ))}
         </div>
       ) : null}
+
+      {/* Autopilot (SPEC §6). Same border treatment as the scope row, red when
+          live — it is the same kind of decision: what the next turns will be. */}
+      <button
+        type="button"
+        onClick={() => onToggleAutopilot(!autopilotOn)}
+        aria-pressed={autopilotOn}
+        className="chrome mt-[6px] w-full border py-[8px] text-[9px] tracking-[0.14em] uppercase"
+        style={{
+          borderColor: autopilotOn
+            ? "var(--onsen-color-red)"
+            : "var(--onsen-color-border-quiet)",
+          color: autopilotOn ? "var(--onsen-color-red)" : "var(--onsen-color-text-muted)",
+        }}
+      >
+        {strings.chat.autopilot}
+      </button>
 
       {/* Printed, always. No tooltip, no modal. In a beat the director's choice
           is who opens rather than who speaks, so the caption says what is

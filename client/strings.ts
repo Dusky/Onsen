@@ -104,6 +104,19 @@ export const strings = {
     continueWithout: "Reply without me",
     writing: (speaker: string) => `${speaker} is writing`,
     stop: "Stop",
+
+    /** Autopilot (SPEC §6) — the strip while it runs, the line when it stops. */
+    autopilot: "Autopilot",
+    autopilotCount: (turns: number, max: number) => `${turns}/${max}`,
+    autopilotStopped: (reason: string) => `Autopilot stopped — ${reason}`,
+    autopilotReasons: {
+      cap: "it wrote its turns",
+      user: "you sent a message",
+      stopped: "you stopped it",
+      addressed: "the scene turned to you",
+      off: "it was switched off",
+      error: "a turn failed",
+    } as Record<string, string>,
     edited: "Edited",
     /** The reasoning strip (SPEC §13), collapsed by default. */
     reasoning: (chars: number) => `Thought · ${chars} chars`,
@@ -549,6 +562,13 @@ export const strings = {
     oocIntervalUnit: "messages apart",
     oocIntervalHint:
       "The earliest it may speak up again, not a schedule it has to keep. It usually will not.",
+
+    /** Autopilot (SPEC §6). The switch is on the cast strip; the cap lives here. */
+    autopilot: "Autopilot",
+    autopilotHint:
+      "The scene keeps writing after a reply, up to a bound you set, and hands itself back the moment it turns to face you.",
+    autopilotMaxTurns: "Turns per run",
+    autopilotMaxTurnsUnit: "turns",
 
     customGuide: "Custom guide",
     customGuideHint:

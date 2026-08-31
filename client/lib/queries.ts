@@ -4,6 +4,7 @@ import type { UpdateStatusDto } from "@shared/types.ts";
 import type {
   AppendMessageRequest,
   AuthorDto,
+  AutopilotStateDto,
   ConnectionProfileDto,
   CreateConnectionProfileRequest,
   CreateProviderRequest,
@@ -57,6 +58,7 @@ export const keys = {
   scene: (id: string) => ["scenes", id] as const,
   siblings: (sceneId: string, messageId: string) =>
     ["scenes", sceneId, "messages", messageId, "siblings"] as const,
+  autopilot: (sceneId: string) => ["scenes", sceneId, "autopilot"] as const,
   update: ["update"] as const,
 };
 
@@ -847,5 +849,44 @@ export function useApplyUpdate() {
   return useMutation({
     mutationFn: () => api.post<UpdateStatusDto>("/system/update/apply"),
     onSuccess: (status) => void client.setQueryData(keys.update, status),
+  });
+}
+
+/* ---------------- autopilot (SPEC §6) ---------------- */
+
+/**
+ * Where the scene's autopilot stands. Refetched whenever a generation settles
+ * and whenever the scene is, because the loop outlives any one generation the
+ * client watched — the row is how the screen learns another turn is coming.
+ */
+export function useAutopilot(sceneId: string) {
+  return useQuery({
+    queryKey: keys.autopilot(sceneId),
+    queryFn: () => api.get<AutopilotStateDto>(`/scenes/${sceneId}/autopilot`),
+  });
+}
+
+/** §6's prominent stop. Cancels the turn in flight and ends the loop. */
+export function useStopAutopilot(sceneId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<AutopilotStateDto>(`/scenes/${sceneId}/autopilot/stop`),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: keys.autopilot(sceneId) });
+      void client.invalidateQueries({ queryKey: keys.scene(sceneId) });
+    },
+  });
+}
+
+/** The scene's own settings — the director bar's autopilot switch lives here. */
+export function useUpdateScene(sceneId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: Record<string, unknown>) =>
+      api.patch<unknown>(`/scenes/${sceneId}`, patch),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: keys.scene(sceneId) });
+      void client.invalidateQueries({ queryKey: keys.scenes });
+    },
   });
 }

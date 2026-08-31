@@ -34,7 +34,10 @@ import {
   useRunPasses,
   useSceneSetup,
   useSplitBeat,
+  useStopAutopilot,
   useTasks,
+  useAutopilot,
+  useUpdateScene,
 } from "../lib/queries.ts";
 import type {
   GuideKind,
@@ -89,6 +92,11 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const bench = useBenchMember(sceneId);
   const split = useSplitBeat(sceneId);
   const setup = useSceneSetup(sceneId);
+  // Autopilot (SPEC §6): the row that says whether the scene is writing
+  // itself, and the one control that has to stop it from anywhere.
+  const autopilot = useAutopilot(sceneId);
+  const stopAutopilot = useStopAutopilot(sceneId);
+  const updateScene = useUpdateScene(sceneId);
   // Per-op configuration (SPEC §7): a hidden button is not a disabled op, so
   // this only decides what the grid shows.
   const tasks = useTasks();
@@ -214,6 +222,40 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   useEffect(() => {
     if (oocAsked && !isGenerating) setOocAsked(false);
   }, [oocAsked, isGenerating]);
+
+  // Autopilot (SPEC §6). The loop outlives any one generation this client
+  // watched, so its row is what says another turn is coming — and the turn it
+  // starts is adopted into the same streaming row a locally-started one uses.
+  const autopilotActive = autopilot.data?.active === true;
+  const apState = autopilot.data ?? null;
+  // The reason a run ended, shown once: it is news for a moment, then it is
+  // furniture. Tracked locally so it clears the next time the reader acts,
+  // rather than living on the row forever.
+  const sawAutopilot = useRef(false);
+  const [autopilotNote, setAutopilotNote] = useState<string | null>(null);
+  useEffect(() => {
+    if (apState === null) return;
+    if (apState.active) {
+      sawAutopilot.current = true;
+      setAutopilotNote(null);
+      return;
+    }
+    if (sawAutopilot.current && apState.stopReason !== null) {
+      sawAutopilot.current = false;
+      setAutopilotNote(strings.chat.autopilotStopped(
+        strings.chat.autopilotReasons[apState.stopReason] ?? apState.stopReason,
+      ));
+    }
+  }, [apState]);
+  // A turn the server started — autopilot's next, or one that began while
+  // this tab was suspended — is watched like one this client started. The
+  // offset it resumes from is the server's to remember (§5), which is why
+  // adopting is just a subscription with no POST.
+  const adoptable = autopilotActive ? (apState?.generationId ?? null) : null;
+  useEffect(() => {
+    if (adoptable === null || active !== null) return;
+    void generation.adopt({ generationId: adoptable, sceneId, sceneTitle: title });
+  }, [adoptable, active, sceneId, title, generation]);
 
   // Keep the newest content in view as it arrives. Bottom-anchored layout does
   // most of the work; this covers the case where the log has overflowed.
@@ -632,27 +674,46 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
               </p>
             ) : null}
 
-            {/* Stop is reachable at all times while writing (design handoff). */}
-            {isGenerating ? (
+            {/* Stop is reachable at all times while writing (design handoff) —
+                and under autopilot the control is the loop's stop, not the
+                turn's: cancelling one turn would leave the next already
+                queued, which is a stop that stops nothing (§6). */}
+            {autopilotActive || isGenerating ? (
               <div className="flex items-center gap-[10px]">
                 <span
                   className="h-[6px] w-[6px] flex-none"
                   style={{ background: "var(--onsen-color-red)" }}
                 />
                 <span className="chrome flex-1 text-[9.5px] tracking-[0.14em] text-ink-muted uppercase">
-                  {active.speaker === null
-                    ? strings.chat.choosing
-                    : strings.chat.writing(active.speaker)}
+                  {autopilotActive
+                    ? apState !== null
+                      ? `${strings.chat.autopilot} · ${strings.chat.autopilotCount(apState.turns, apState.maxTurns)}`
+                      : strings.chat.autopilot
+                    : active === null || active.speaker === null
+                      ? strings.chat.choosing
+                      : strings.chat.writing(active.speaker)}
                 </span>
                 <button
                   type="button"
-                  onClick={() => void generation.cancel()}
+                  onClick={() =>
+                    autopilotActive
+                      ? stopAutopilot.mutate()
+                      : void generation.cancel()
+                  }
                   className="chrome border border-red-border px-[10px] py-[6px] text-[9.5px] tracking-[0.14em] uppercase"
                   style={{ color: "var(--onsen-color-red)" }}
                 >
                   {strings.chat.stop}
                 </button>
               </div>
+            ) : null}
+
+            {/* Why a run ended, for the moment after it did. News, not furniture:
+              cleared the next time the loop runs or the reader acts. */}
+            {autopilotNote !== null && !autopilotActive ? (
+              <p className="chrome text-[9px] leading-[1.5] tracking-[0.06em] text-ink-dim uppercase">
+                {autopilotNote}
+              </p>
             ) : null}
           </div>
         </div>
@@ -685,6 +746,8 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                 scope={scope}
                 onScope={setScope}
                 strategy={strategy}
+                autopilotOn={scene.data?.scene.autopilotEnabled ?? false}
+                onToggleAutopilot={(on) => updateScene.mutate({ autopilotEnabled: on })}
                 decidesOnSend={decidesOnSend}
               />
             </div>
@@ -774,6 +837,8 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             onMember={(member) => setCastActing(member)}
             writingName={isGenerating ? active.speaker : null}
             guidesCost={guides.reduce((sum, guide) => sum + guide.tokenCount, 0)}
+            autopilotOn={scene.data?.scene.autopilotEnabled ?? false}
+            onToggleAutopilot={(on) => updateScene.mutate({ autopilotEnabled: on })}
             onGuides={() => {
               setContextTab("guides");
               setGuidesOpen(true);

@@ -36,6 +36,8 @@ export function CastRail({
   writingName,
   guidesCost,
   onGuides,
+  autopilotOn,
+  onToggleAutopilot,
 }: {
   cast: SceneMemberDto[];
   nextSpeaker: NextSpeakerDto | null;
@@ -50,6 +52,9 @@ export function CastRail({
   writingName: string | null;
   guidesCost: number;
   onGuides(): void;
+  /** The autopilot switch (SPEC §6) — the phone puts it on the cast strip. */
+  autopilotOn: boolean;
+  onToggleAutopilot(on: boolean): void;
 }) {
   // Who spoke most recently, and what they said. Walked once rather than per
   // card: a long scene is a long array and there are only a handful of cards.
@@ -86,6 +91,19 @@ export function CastRail({
           </div>
         </div>
       ) : null}
+
+      {/* Autopilot (SPEC §6), beside the scope it belongs with. */}
+      <div className="flex-none px-[14px] pt-[6px] pb-[6px]">
+        <button
+          type="button"
+          onClick={() => onToggleAutopilot(!autopilotOn)}
+          aria-pressed={autopilotOn}
+          className={`btn w-full ${autopilotOn ? "btn-primary" : ""}`}
+          style={{ minHeight: "32px", fontSize: "8.5px", padding: "0 8px" }}
+        >
+          {strings.chat.autopilot}
+        </button>
+      </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-[14px] py-[12px]">
         {cast.length === 0 ? (

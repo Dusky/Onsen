@@ -627,6 +627,24 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
             <div className="mb-[4px]" />
           )}
 
+          {/* Autopilot (SPEC §6). The switch itself lives on the cast strip,
+              where the next turn is decided; what lives here is the bound,
+              because a number is scene configuration wherever its switch is. */}
+          <p className="section-label mb-[8px]">{strings.sceneSetup.autopilot}</p>
+          <div className="mb-[8px] flex gap-[10px]">
+            <NumberField
+              label={strings.sceneSetup.autopilotMaxTurns}
+              unit={strings.sceneSetup.autopilotMaxTurnsUnit}
+              value={scene.autopilotMaxTurns}
+              min={1}
+              max={100}
+              onCommit={(value) => setup.mutate({ autopilotMaxTurns: value })}
+            />
+          </div>
+          <p className="chrome mb-[22px] text-[9.5px] leading-[1.5] text-ink-dim">
+            {strings.sceneSetup.autopilotHint}
+          </p>
+
           {/* SPEC §8's sixth guide. It is the only one with nothing built in to
               ask, so its question is scene configuration and lives here; the
               other five are switched on per op in Settings. */}

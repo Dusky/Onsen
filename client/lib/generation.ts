@@ -165,9 +165,12 @@ export function useGeneration() {
       }
 
       abortRef.current = null;
-      // The message landed in the tree, so the scene has to be re-read.
+      // The message landed in the tree, so the scene has to be re-read. The
+      // autopilot row too: a settled turn is exactly when the loop decides
+      // whether another one follows (§6), and the strip must not lag it.
       void client.invalidateQueries({ queryKey: keys.scene(sceneId) });
       void client.invalidateQueries({ queryKey: keys.scenes });
+      void client.invalidateQueries({ queryKey: keys.autopilot(sceneId) });
     },
     [client, offsetOf],
   );
@@ -223,9 +226,29 @@ export function useGeneration() {
     await api.post(`/generations/${active.generationId}/cancel`);
   }, []);
 
+  /**
+   * Watch a generation this client did not start — autopilot's next turn, or
+   * one that began while the tab was suspended. Same stream, same store, same
+   * streaming row; the only thing not done here is the POST (SPEC §5, §6).
+   */
+  const adopt = useCallback(
+    async (args: { generationId: string; sceneId: string; sceneTitle: string }) => {
+      const current = useGenerationStore.getState().active;
+      if (current !== null && current.generationId === args.generationId) return;
+      useGenerationStore.getState().begin({
+        generationId: args.generationId,
+        sceneId: args.sceneId,
+        sceneTitle: args.sceneTitle,
+        speaker: null,
+      });
+      void consume(args.generationId, args.sceneId);
+    },
+    [consume],
+  );
+
   // Stop reading when the app unmounts. The generation itself keeps going —
   // that is the whole point of the server owning it.
   useEffect(() => () => abortRef.current?.abort(), []);
 
-  return { active: store.active, start, cancel, clear: store.clear };
+  return { active: store.active, start, adopt, cancel, clear: store.clear };
 }
