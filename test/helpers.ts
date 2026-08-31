@@ -17,7 +17,7 @@ import type { AppContext } from "../server/context.ts";
 import type { Hono } from "hono";
 import type { AppEnv } from "../server/context.ts";
 import type { Adapter, TokenChunk } from "../server/adapters/index.ts";
-import type { BuiltPrompt } from "../server/prompt/index.ts";
+import type { BuiltPrompt, ProviderCapabilities } from "../server/prompt/index.ts";
 import { OPENAI_COMPATIBLE_CAPABILITIES } from "../server/adapters/index.ts";
 
 export interface TestHarness {
@@ -164,7 +164,12 @@ type ScriptItem =
  */
 export class ScriptedAdapter implements Adapter {
   readonly kind = "scripted";
-  readonly capabilities = OPENAI_COMPATIBLE_CAPABILITIES;
+  /**
+   * Chat-shaped by default, because that is what most tests want. A test about
+   * text-completion mode passes the text capabilities instead — the builder
+   * branches on these, so this is the switch that makes it render `rawText`.
+   */
+  readonly capabilities: ProviderCapabilities;
 
   /** Set when the generation service aborted this adapter. */
   aborted = false;
@@ -194,7 +199,8 @@ export class ScriptedAdapter implements Adapter {
   private wake: (() => void) | null = null;
   private markStarted!: () => void;
 
-  constructor() {
+  constructor(capabilities: ProviderCapabilities = OPENAI_COMPATIBLE_CAPABILITIES) {
+    this.capabilities = capabilities;
     this.started = new Promise((resolve) => {
       this.markStarted = resolve;
     });

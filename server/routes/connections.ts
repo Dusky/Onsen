@@ -24,6 +24,18 @@ import {
   type PresetPatch,
 } from "../db/queries/connections.ts";
 import { parseReasoningConfig } from "../generation/reasoning.ts";
+import {
+  allTemplates,
+  deleteCustomTemplate,
+  findCustomTemplate,
+  insertCustomTemplate,
+  updateCustomTemplate,
+} from "../db/queries/instruct.ts";
+import {
+  findInstructTemplate,
+  parseInstructTemplate,
+  type InstructTemplate,
+} from "../prompt/instruct.ts";
 import { encryptSecret } from "../lib/crypto.ts";
 import {
   PROVIDER_KINDS,
@@ -181,6 +193,26 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
       }
       patch.supportsPrefill = value;
     }
+    // Which instruct template marks this model's turns (§4). Null restores the
+    // shipped default; an unknown id is refused rather than silently ignored,
+    // because a template that does not exist renders as the plain transcript
+    // and the prose just quietly gets worse.
+    if ("instructTemplate" in body) {
+      const value = body["instructTemplate"];
+      if (value === null) {
+        patch.instructTemplate = null;
+      } else if (typeof value !== "string") {
+        return c.json(badRequest("instructTemplate must be a template id, or null."), 400);
+      } else if (
+        findInstructTemplate(value) === null &&
+        findCustomTemplate(ctx.db, value) === null
+      ) {
+        return c.json(badRequest("No such instruct template."), 400);
+      } else {
+        patch.instructTemplate = value;
+      }
+    }
+
     // Absent leaves the key alone; null clears it; a string replaces it. A form
     // that came back empty must not delete a credential nobody touched.
     if ("apiKey" in body) {
@@ -312,6 +344,86 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
     return row === null ? INVALID : row.id;
   }
 
+  /* -------------------------------------------------------------- */
+  /* Instruct templates (SPEC §4)                                     */
+  /* -------------------------------------------------------------- */
+
+  /**
+   * The shipped six plus whatever the user has written.
+   *
+   * One list rather than two, because the choice a user is making is "how are
+   * this model's turns marked" and where the answer came from is not part of
+   * that question. `builtIn` is on each row for the editor, which may not offer
+   * to edit a shipped one.
+   */
+  app.get("/instruct-templates", (c) =>
+    c.json(
+      allTemplates(ctx.db).map((template) => ({
+        ...template,
+        builtIn: findInstructTemplate(template.id) !== null,
+      })),
+    ),
+  );
+
+  app.post("/instruct-templates", async (c) => {
+    const body = await readJson(c);
+    if (body === null) return c.json(badRequest("Expected a JSON body."), 400);
+    const name = text(body["name"], 80);
+    if (name === null) return c.json(badRequest("A template needs a name."), 400);
+
+    // Starting from a copy is the common case: a new format is almost always
+    // an existing one with different markers, and an empty eight-field form is
+    // a worse starting point than ChatML.
+    const source = text(body["copyFrom"], 60);
+    const base: InstructTemplate | null =
+      source === null
+        ? null
+        : (findInstructTemplate(source) ??
+          (() => {
+            const row = findCustomTemplate(ctx.db, source);
+            return row === null ? null : parseInstructTemplate(JSON.parse(row.body), source);
+          })());
+
+    const template = parseInstructTemplate({ ...(base ?? {}), ...body, name }, "pending");
+    if (template === null) return c.json(badRequest("That is not a template."), 400);
+    const row = insertCustomTemplate(ctx.db, { name, template });
+    return c.json({ ...toTemplateDto(row.template_id, row.name, row.body) }, 201);
+  });
+
+  app.patch("/instruct-templates/:id", async (c) => {
+    const id = c.req.param("id");
+    // A shipped template is not editable: correcting a format for everyone is a
+    // release, not a setting, and a user who edited ChatML in place would
+    // silently change every provider using it.
+    if (findInstructTemplate(id) !== null) {
+      return c.json(badRequest("A built-in template cannot be edited. Copy it first."), 400);
+    }
+    const row = findCustomTemplate(ctx.db, id);
+    if (row === null) return c.json(notFound("instruct template"), 404);
+
+    const body = await readJson(c);
+    if (body === null) return c.json(badRequest("Expected a JSON body."), 400);
+    const name = text(body["name"], 80) ?? row.name;
+    const template = parseInstructTemplate(
+      { ...(JSON.parse(row.body) as Record<string, unknown>), ...body, name },
+      row.template_id,
+    );
+    if (template === null) return c.json(badRequest("That is not a template."), 400);
+    const updated = updateCustomTemplate(ctx.db, row.id, { name, template });
+    return c.json(toTemplateDto(updated.template_id, updated.name, updated.body));
+  });
+
+  app.delete("/instruct-templates/:id", (c) => {
+    const id = c.req.param("id");
+    if (findInstructTemplate(id) !== null) {
+      return c.json(badRequest("A built-in template cannot be deleted."), 400);
+    }
+    const row = findCustomTemplate(ctx.db, id);
+    if (row === null) return c.json(notFound("instruct template"), 404);
+    deleteCustomTemplate(ctx.db, row.id);
+    return c.json({ ok: true });
+  });
+
   return app;
 }
 
@@ -334,6 +446,12 @@ async function readJson(c: { req: { json: () => Promise<unknown> } }): Promise<
   } catch {
     return null;
   }
+}
+
+/** A stored template row as the wire shape, without re-deriving it twice. */
+function toTemplateDto(templateId: string, name: string, body: string) {
+  const parsed = parseInstructTemplate(JSON.parse(body) as unknown, templateId);
+  return { ...(parsed ?? { id: templateId, name }), name, builtIn: false };
 }
 
 /** A trimmed string, or null for absent, empty, or the wrong type. */

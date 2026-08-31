@@ -16,6 +16,7 @@ import reasoning from "./0015_reasoning.sql" with { type: "text" };
 import options from "./0016_options.sql" with { type: "text" };
 import scenarioOverride from "./0017_scenario_override.sql" with { type: "text" };
 import lorebooks from "./0018_lorebooks.sql" with { type: "text" };
+import instruct from "./0019_instruct.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -49,4 +50,5 @@ export const migrations: readonly Migration[] = [
   { version: 16, name: "options", sql: options },
   { version: 17, name: "scenario_override", sql: scenarioOverride },
   { version: 18, name: "lorebooks", sql: lorebooks },
+  { version: 19, name: "instruct", sql: instruct },
 ];

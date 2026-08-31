@@ -39,6 +39,8 @@ import type { PassPipeline } from "../passes/pipeline.ts";
 import type { GuideRunner } from "../guides/runner.ts";
 import type { SummaryRunner } from "../summaries/runner.ts";
 import { ReasoningSplitter, parseReasoningConfig } from "./reasoning.ts";
+import { templateFor } from "../db/queries/instruct.ts";
+import type { InstructTemplate } from "../prompt/index.ts";
 import type { TaskRunStatus } from "../../shared/types.ts";
 
 /**
@@ -501,12 +503,20 @@ export class GenerationService {
     route: ResolvedRoute,
   ): Promise<void> {
     let adapter: Adapter;
+    let instruct: InstructTemplate | null = null;
     try {
+      // Text completion only, and the same object is handed to the builder
+      // below: the template that renders the prompt and the template whose stop
+      // sequences end the turn have to be one template, or the model is stopped
+      // on markers it was never given.
+      instruct =
+        route.kind === "text_completion" ? templateFor(this.db, route.instructTemplateId) : null;
       adapter = this.makeAdapter(route.kind, {
         baseUrl: route.baseUrl,
         apiKey: route.apiKey,
         model: route.model,
         ...(route.supportsPrefill === null ? {} : { supportsPrefill: route.supportsPrefill }),
+        ...(instruct === null ? {} : { instruct }),
       });
     } catch (caught) {
       this.fail(generation, caught);
@@ -533,6 +543,7 @@ export class GenerationService {
         db: this.db,
         scene,
         capabilities: adapter.capabilities,
+        ...(instruct === null ? {} : { instruct }),
         presetId,
         spotlightId: generation.spotlightId,
         turn: promptTurnOf(generation.turn),

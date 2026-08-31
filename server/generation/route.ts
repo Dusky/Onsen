@@ -25,6 +25,12 @@ export interface ResolvedRoute {
    * format, so an operator can say what their local server actually does.
    */
   supportsPrefill: boolean | null;
+  /**
+   * Text completion only: which instruct template marks the turns (§4). Null
+   * takes the shipped default. Named rather than resolved here so this module
+   * stays a plain read of the two rows.
+   */
+  instructTemplateId: string | null;
 }
 
 export class RouteError extends Error {
@@ -57,7 +63,8 @@ export function resolveRoute(
     .query(
       `SELECT cp.model AS profile_model, cp.preset_id,
               p.name AS provider_name, p.kind, p.base_url, p.api_key_encrypted,
-              p.model AS provider_model, p.enabled, p.supports_prefill
+              p.model AS provider_model, p.enabled, p.supports_prefill,
+              p.instruct_template
          FROM connection_profiles cp
          JOIN providers p ON p.id = cp.provider_id
         WHERE cp.id = $id`,
@@ -73,6 +80,7 @@ export function resolveRoute(
         provider_model: string | null;
         enabled: number;
         supports_prefill: number | null;
+        instruct_template: string | null;
       }
     | null;
 
@@ -111,5 +119,6 @@ export function resolveRoute(
     model,
     presetId: row.preset_id,
     supportsPrefill: row.supports_prefill === null ? null : row.supports_prefill === 1,
+    instructTemplateId: row.instruct_template,
   };
 }

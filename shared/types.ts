@@ -139,8 +139,36 @@ export interface ProviderDto {
    * same shape accept one.
    */
   supportsPrefill: boolean | null;
+  /**
+   * Text completion only: which instruct template marks this model's turns
+   * (SPEC §4). Null takes the shipped default. Ignored by the chat adapters,
+   * whose providers apply their own.
+   */
+  instructTemplate: string | null;
   createdAt: number;
   updatedAt: number;
+}
+
+/**
+ * An instruct template, shipped or user-authored (SPEC §4).
+ *
+ * `builtIn` is what separates the two: a shipped template can be chosen and
+ * copied but not edited, because correcting a format for everyone is a release,
+ * not a setting.
+ */
+export interface InstructTemplateDto {
+  id: string;
+  name: string;
+  builtIn: boolean;
+  bos: string;
+  systemPrefix: string;
+  systemSuffix: string;
+  userPrefix: string;
+  userSuffix: string;
+  assistantPrefix: string;
+  assistantSuffix: string;
+  systemInUser: boolean;
+  stopSequences: string[];
 }
 
 export interface PresetDto {

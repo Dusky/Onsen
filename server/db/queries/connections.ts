@@ -26,6 +26,7 @@ interface ProviderRow {
   capabilities: string | null;
   enabled: number;
   supports_prefill: number | null;
+  instruct_template: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -86,6 +87,7 @@ export function toProviderDto(row: ProviderRow, keyring: Keyring): ProviderDto {
     apiKeyMask: mask,
     enabled: row.enabled === 1,
     supportsPrefill: row.supports_prefill === null ? null : row.supports_prefill === 1,
+    instructTemplate: row.instruct_template,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -273,6 +275,8 @@ export interface ProviderPatch {
   enabled?: boolean;
   /** Null restores the adapter's own answer rather than meaning "no" (§13). */
   supportsPrefill?: boolean | null;
+  /** Text completion only: which instruct template marks the turns (§4). */
+  instructTemplate?: string | null;
 }
 
 export function updateProvider(db: Database, id: number, patch: ProviderPatch): ProviderRow {
@@ -282,7 +286,7 @@ export function updateProvider(db: Database, id: number, patch: ProviderPatch): 
       `UPDATE providers
           SET name = $name, base_url = $base_url, api_key_encrypted = $key,
               model = $model, enabled = $enabled, supports_prefill = $prefill,
-              updated_at = $now
+              instruct_template = $instruct, updated_at = $now
         WHERE id = $id
         RETURNING *`,
     )
@@ -303,6 +307,8 @@ export function updateProvider(db: Database, id: number, patch: ProviderPatch): 
             : patch.supportsPrefill
               ? 1
               : 0,
+      instruct:
+        patch.instructTemplate === undefined ? current.instruct_template : patch.instructTemplate,
       now: Date.now(),
     }) as ProviderRow;
 }

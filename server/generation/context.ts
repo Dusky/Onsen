@@ -3,6 +3,7 @@ import { MODERN_SAMPLER_DEFAULTS, type SamplerSettings } from "../../shared/type
 import { createEstimatingTokenizer } from "../prompt/index.ts";
 import type {
   BeatBound,
+  InstructTemplate,
   ProviderCapabilities,
   PromptCharacter,
   PromptContext,
@@ -209,6 +210,8 @@ export interface BuildContextOptions {
   db: Database;
   scene: SceneRow;
   capabilities: ProviderCapabilities;
+  /** Text-completion mode only: how this model's turns are marked (SPEC §4). */
+  instruct?: InstructTemplate;
   /**
    * Whose turn this is. Defaults to the first cast member; the turn director
    * chooses in phase 8, and a guided op can force a speaker.
@@ -456,6 +459,7 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
     bans: activeBans(options.db, options.scene.id).map((row) => row.phrase),
     preset,
     capabilities: options.capabilities,
+    ...(options.instruct === undefined ? {} : { instruct: options.instruct }),
     // The window is the smaller of what the preset asks for and what the
     // provider actually has: exceeding the latter fails at the provider.
     budget: Math.min(contextSize, options.capabilities.maxContext),
