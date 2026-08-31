@@ -61,6 +61,7 @@ import { capabilitiesFor } from "../adapters/index.ts";
 import type { ProviderKind } from "../../shared/types.ts";
 import type { SceneRow } from "../db/queries/history.ts";
 import { GenerationError, type GenerationEvent, type GenerationService } from "../generation/service.ts";
+import type { AutopilotRunner } from "../generation/autopilot.ts";
 
 /**
  * Generation over HTTP (SPEC §5).
@@ -145,9 +146,37 @@ export function sceneGenerationRoutes(
   guides: GuideRunner,
   summaries: SummaryRunner,
   bans: BanAnalyser,
+  autopilot: AutopilotRunner,
 ): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
   app.use("*", requireAuth());
+
+  /**
+   * Where a scene's autopilot stands (SPEC §6). Read by the chat screen on
+   * every settle, because the loop outlives any one generation the client
+   * watched: the state row is how it learns another turn is coming.
+   */
+  app.get("/:sceneId/autopilot", (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    return c.json(autopilot.stateOf(scene.id));
+  });
+
+  /**
+   * §6's prominent stop, as an endpoint: end the loop, cancel the turn in
+   * flight — keeping what it produced, as cancel always does — and hand the
+   * scene back.
+   */
+  app.post("/:sceneId/autopilot/stop", async (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    await autopilot.stop(scene.id, "stopped");
+    return c.json(autopilot.stateOf(scene.id));
+  });
 
   /**
    * Start generating. Returns as soon as the work is queued; the generation
@@ -158,6 +187,10 @@ export function sceneGenerationRoutes(
     if (scene === null) {
       return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
     }
+
+    // The reader is driving: the loop steps aside first (SPEC §6), so a send
+    // during autopilot is a stop, not a refusal to generate.
+    await autopilot.yieldToUser(scene.id);
 
     let body: {
       parentId?: string | null;
@@ -271,6 +304,8 @@ export function sceneGenerationRoutes(
     if (scene === null) {
       return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
     }
+    // A revision is the reader intervening; the loop steps aside (SPEC §6).
+    await autopilot.yieldToUser(scene.id);
     const message = findMessage(ctx.db, c.req.param("messageId"));
     if (message === null || message.scene_id !== scene.id) {
       return c.json({ error: { code: "not_found", message: "No such message." } }, 404);
@@ -510,6 +545,9 @@ export function sceneGenerationRoutes(
     if (scene === null) {
       return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
     }
+    // Asking the author something is the reader steering; the loop steps
+    // aside, or the answer would race a turn nobody is watching anymore.
+    await autopilot.yieldToUser(scene.id);
 
     let question = "";
     try {
@@ -937,6 +975,8 @@ export function sceneGenerationRoutes(
     if (scene === null) {
       return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
     }
+    // As with a revision: the reader is editing, and the loop steps aside.
+    await autopilot.yieldToUser(scene.id);
     const message = findMessage(ctx.db, c.req.param("messageId"));
     if (message === null || message.scene_id !== scene.id) {
       return c.json({ error: { code: "not_found", message: "No such message." } }, 404);

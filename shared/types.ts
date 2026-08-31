@@ -480,6 +480,10 @@ export interface SceneDto {
   oocEnabled: boolean;
   /** The earliest it may speak up again, in messages. A nudge, not a schedule. */
   oocInterval: number;
+  /** Whether the scene keeps writing itself after a reply (SPEC §6). */
+  autopilotEnabled: boolean;
+  /** How many turns the loop may write before it stops (SPEC §6). */
+  autopilotMaxTurns: number;
   /** Move the injection point only every N turns, for the prompt cache (§11). */
   summariseFreeze: number;
   /** The cast, in display order. One member until group scenes (phase 8). */
@@ -887,6 +891,36 @@ export interface LoreActivationDto {
 }
 
 /* ------------------------------------------------------------------ */
+/* Autopilot (SPEC §6)                                                 */
+/* ------------------------------------------------------------------ */
+
+/** Why an autopilot loop ended, in one word the row can carry (SPEC §6). */
+export type AutopilotStopReason =
+  | "cap" /** wrote its allotted turns */
+  | "user" /** the reader sent a message */
+  | "stopped" /** the stop control */
+  | "addressed" /** a character turned to face the reader */
+  | "off" /** the scene switched autopilot off mid-run */
+  | "error" /** a turn failed */;
+
+/**
+ * Where a scene's autopilot stands. The loop itself is memory, not a row: it
+ * is an activity this process is performing, and a restart ending it is the
+ * honest behaviour rather than a defect to paper over.
+ */
+export interface AutopilotStateDto {
+  active: boolean;
+  /** Turns the loop has written this run. */
+  turns: number;
+  /** The scene's cap, read fresh, so a settings change is reflected at once. */
+  maxTurns: number;
+  /** Set when the loop has ended; null while it runs or before it ever ran. */
+  stopReason: AutopilotStopReason | null;
+  /** The generation in flight for the loop, if it is mid-turn. */
+  generationId: string | null;
+}
+
+/* ------------------------------------------------------------------ */
 /* Self-update (SPEC §17)                                              */
 /* ------------------------------------------------------------------ */
 
@@ -1290,6 +1324,8 @@ export interface SceneSetupRequest {
   summariseEvict?: boolean;
   oocEnabled?: boolean;
   oocInterval?: number;
+  autopilotEnabled?: boolean;
+  autopilotMaxTurns?: number;
   summariseFreeze?: number;
   title?: string;
 }

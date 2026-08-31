@@ -40,6 +40,7 @@ import type { GuideRunner } from "../guides/runner.ts";
 import type { SummaryRunner } from "../summaries/runner.ts";
 import { ReasoningSplitter, parseReasoningConfig } from "./reasoning.ts";
 import { OocSplitter } from "./ooc.ts";
+import type { AutopilotRunner } from "./autopilot.ts";
 import { templateFor } from "../db/queries/instruct.ts";
 import type { InstructTemplate } from "../prompt/index.ts";
 import type { TaskRunStatus } from "../../shared/types.ts";
@@ -510,6 +511,36 @@ export class GenerationService {
   shutdown(): void {
     this.stopped = true;
     for (const generation of this.active.values()) generation.abort.abort();
+  }
+
+  /**
+   * Bound after both exist: the service reports landings, the runner starts
+   * turns (SPEC §6). Until this is set, scenes simply never autopilot.
+   */
+  setAutopilot(runner: AutopilotRunner): void {
+    this.autopilot = runner;
+  }
+
+  private autopilot: AutopilotRunner | null = null;
+
+  /**
+   * Resolves when the generation is no longer running — the drain half of
+   * autopilot's stop, and the reason a stop can hand the tree back safely.
+   */
+  awaitSettled(id: string): Promise<GenerationSnapshot | null> {
+    const generation = this.active.get(id);
+    if (generation === undefined) return Promise.resolve(this.get(id));
+    if (generation.status !== "pending" && generation.status !== "streaming") {
+      return Promise.resolve(this.snapshot(generation));
+    }
+    return new Promise((resolve) => {
+      const unsubscribe = this.subscribe(id, generation.buffer.length, (event) => {
+        if (event.type === "done" || event.type === "cancelled" || event.type === "error") {
+          unsubscribe?.();
+          resolve(this.snapshot(generation));
+        }
+      });
+    });
   }
 
   /* ---------------- the work ---------------- */
@@ -1011,6 +1042,26 @@ export class GenerationService {
       void this.runPasses(generation.sceneId, generation.landedMessageId);
     }
 
+    // Autopilot's moment (SPEC §6): a reply has completed. Spotlight and beat
+    // turns only — a revise is an edit and a recast is a splice, and neither is
+    // the "reply completes" the loop continues from. The runner decides
+    // whether anything follows; most scenes, most of the time, will not.
+    if (
+      !cancelled &&
+      generation.landedMessageId !== null &&
+      (generation.turn.kind === "spotlight" || generation.turn.kind === "beat")
+    ) {
+      this.autopilot?.onTurnFinished(
+        generation.sceneId,
+        generation.id,
+        generation.landedMessageId,
+        true,
+        "complete",
+      );
+    } else if (cancelled) {
+      this.autopilot?.onTurnFinished(generation.sceneId, generation.id, null, false, "cancelled");
+    }
+
     this.scheduleEviction(generation);
   }
 
@@ -1117,6 +1168,9 @@ export class GenerationService {
     if (this.stopped) return;
     this.persist(generation);
     this.emit(generation, { type: "error", message, detail });
+    // A failed turn ends the loop, as §6's last stop says it must — retrying
+    // into a dead provider is a loop that costs money to learn nothing.
+    this.autopilot?.onTurnFinished(generation.sceneId, generation.id, null, false, "error");
     this.scheduleEviction(generation);
   }
 

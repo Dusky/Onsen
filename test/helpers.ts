@@ -277,7 +277,11 @@ export class ScriptedAdapter implements Adapter {
     // A side call builds its own small prompt and names itself as the source;
     // a turn's prompt is assembled from §3's blocks and never looks like this.
     const source = prompt.debug.blocks[0]?.source;
-    if (source === "turn director" || source === "guided op") {
+    if (
+      source === "turn director" ||
+      source === "guided op" ||
+      source === "autopilot"
+    ) {
       this.taskCalls += 1;
       if (this.taskFails) throw new Error("the model is unreachable");
       const chosen = this.taskReplyFor?.(prompt) ?? this.taskReply;

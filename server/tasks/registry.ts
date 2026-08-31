@@ -88,6 +88,7 @@ export type OpKind = SideCallOp | TurnOp;
 export type TaskKind = SideCallOp;
 
 export const TURN_CLASSIFIER = "turn_classifier";
+export const AUTOPILOT_CHECK = "autopilot_check";
 export const IMPERSONATE = "impersonate";
 export const NUDGE = "nudge";
 export const STEER = "steer";
@@ -185,6 +186,19 @@ export const OP_KINDS: readonly OpKind[] = [
     // talking, and the answer is on the first line anyway.
     replyLimit: 600,
     variables: ["cast", "transcript", "reader"],
+    hideable: false,
+  },
+  {
+    key: AUTOPILOT_CHECK,
+    runs: "side_call",
+    label: "Addressed check",
+    description:
+      "Reads a turn autopilot just wrote and says whether anyone in it turned to face you. That is the moment autopilot hands the scene back.",
+    stage: "post_generation",
+    samplers: { temperature: 0.2, top_p: 0.9 },
+    timeoutMs: 12_000,
+    replyLimit: 300,
+    variables: ["persona", "speaker", "text"],
     hideable: false,
   },
   {

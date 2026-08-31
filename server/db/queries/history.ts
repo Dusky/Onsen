@@ -59,6 +59,10 @@ export interface SceneRow {
   summarise_evict: number;
   ooc_enabled: number;
   ooc_interval: number;
+  /** Whether the scene keeps writing itself after a reply (SPEC §6). */
+  autopilot_enabled: number;
+  /** How many turns the loop may write before it stops (SPEC §6). */
+  autopilot_max_turns: number;
   /** Move the injection point only every N turns, for the prompt cache (§11). */
   summarise_freeze: number;
   active_leaf_id: number | null;
@@ -205,6 +209,8 @@ export function toSceneDto(
     summariseEvict: row.summarise_evict === 1,
     oocEnabled: row.ooc_enabled === 1,
     oocInterval: row.ooc_interval,
+    autopilotEnabled: row.autopilot_enabled === 1,
+    autopilotMaxTurns: row.autopilot_max_turns,
     summariseFreeze: row.summarise_freeze,
     authorId: extras.authorUlid,
     authorName: extras.authorName,

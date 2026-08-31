@@ -18,6 +18,7 @@ import scenarioOverride from "./0017_scenario_override.sql" with { type: "text" 
 import lorebooks from "./0018_lorebooks.sql" with { type: "text" };
 import instruct from "./0019_instruct.sql" with { type: "text" };
 import ooc from "./0020_ooc.sql" with { type: "text" };
+import autopilot from "./0021_autopilot.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -53,4 +54,5 @@ export const migrations: readonly Migration[] = [
   { version: 18, name: "lorebooks", sql: lorebooks },
   { version: 19, name: "instruct", sql: instruct },
   { version: 20, name: "ooc", sql: ooc },
+  { version: 21, name: "autopilot", sql: autopilot },
 ];

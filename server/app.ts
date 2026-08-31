@@ -14,6 +14,7 @@ import { PassPipeline } from "./passes/pipeline.ts";
 import { GuideRunner } from "./guides/runner.ts";
 import { SummaryRunner } from "./summaries/runner.ts";
 import { BanAnalyser } from "./options/runner.ts";
+import { AutopilotRunner } from "./generation/autopilot.ts";
 import { taskRoutes } from "./routes/tasks.ts";
 import { systemRoutes } from "./routes/system.ts";
 import { loreRoutes } from "./routes/lore.ts";
@@ -52,6 +53,8 @@ export interface CreatedApp {
   summaries: SummaryRunner;
   /** Proposing bans (SPEC §13.6), for the same reason. */
   bans: BanAnalyser;
+  /** The scene-writing loop (SPEC §6). Owned so shutdown can stop it. */
+  autopilot: AutopilotRunner;
 }
 
 /** Build the app and the services it owns. */
@@ -70,6 +73,11 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   const generation =
     options.generationService ??
     new GenerationService({ db: ctx.db, keyring: ctx.keyring, tasks, passes, guides, summaries });
+  const autopilot = new AutopilotRunner({ db: ctx.db, tasks });
+  // Bound both ways, late, because each needs the other: the service reports
+  // landings, the runner starts turns (SPEC §6).
+  generation.setAutopilot(autopilot);
+  autopilot.attach(generation);
   const app = new Hono<AppEnv>();
 
   app.use("*", sessionMiddleware(ctx));
@@ -79,10 +87,10 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   api.route("/", authRoutes(ctx));
   api.route("/", setupRoutes(ctx));
   api.route("/connections", connectionRoutes(ctx));
-  api.route("/scenes", sceneRoutes(ctx));
+  api.route("/scenes", sceneRoutes(ctx, autopilot));
   api.route(
     "/scenes",
-    sceneGenerationRoutes(ctx, generation, tasks, passes, guides, summaries, bans),
+    sceneGenerationRoutes(ctx, generation, tasks, passes, guides, summaries, bans, autopilot),
   );
   api.route("/generations", generationRoutes(generation));
   api.route("/characters", characterRoutes(ctx));
@@ -104,7 +112,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
     app.use("*", spaStatic(ctx.config.clientDir));
   }
 
-  return { app, generation, tasks, passes, guides, summaries, bans };
+  return { app, generation, tasks, passes, guides, summaries, bans, autopilot };
 }
 
 /** The app alone, for callers that do not need the services. */

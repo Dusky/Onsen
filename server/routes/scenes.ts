@@ -42,6 +42,7 @@ import {
 } from "../db/queries/authors.ts";
 import { findCharacter } from "../db/queries/characters.ts";
 import { activeGuides, editGuide, findGuide, flushGuides, toGuideDto } from "../db/queries/guides.ts";
+import type { AutopilotRunner } from "../generation/autopilot.ts";
 import { resolveNextSpeaker } from "../generation/turn.ts";
 import {
   isMessageAuthorType,
@@ -118,7 +119,7 @@ const SUMMARY_NUMBERS: readonly [string, string, number, number][] = [
   ["oocInterval", "ooc_interval", 1, 500],
 ];
 
-export function sceneRoutes(ctx: AppContext): Hono<AppEnv> {
+export function sceneRoutes(ctx: AppContext, autopilot: AutopilotRunner | null = null): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
   app.use("*", requireAuth());
 
@@ -280,6 +281,37 @@ export function sceneRoutes(ctx: AppContext): Hono<AppEnv> {
         .query("UPDATE scenes SET ooc_enabled = $on WHERE id = $id")
         .run({ id: row.id, on: input.oocEnabled ? 1 : 0 });
     }
+    // Autopilot (SPEC §6). Throwing the switch off is itself a stop: the
+    // reader has said what they want, and "one more turn" is one too many.
+    if ("autopilotEnabled" in input) {
+      if (typeof input.autopilotEnabled !== "boolean") {
+        return c.json(badRequest("autopilotEnabled must be a boolean."), 400);
+      }
+      ctx.db
+        .query("UPDATE scenes SET autopilot_enabled = $on WHERE id = $id")
+        .run({ id: row.id, on: input.autopilotEnabled ? 1 : 0 });
+      if (!input.autopilotEnabled && autopilot !== null) {
+        await autopilot.stop(row.id, "off");
+      }
+    }
+    if ("autopilotMaxTurns" in input) {
+      const value = input.autopilotMaxTurns;
+      if (
+        typeof value !== "number" ||
+        !Number.isInteger(value) ||
+        value < 1 ||
+        value > 100
+      ) {
+        return c.json(
+          badRequest("autopilotMaxTurns must be a whole number between 1 and 100."),
+          400,
+        );
+      }
+      ctx.db.query("UPDATE scenes SET autopilot_max_turns = $value WHERE id = $id").run({
+        id: row.id,
+        value,
+      });
+    }
     if ("summariseEvict" in input) {
       if (typeof input.summariseEvict !== "boolean") {
         return c.json(badRequest("summariseEvict must be a boolean."), 400);
@@ -383,6 +415,11 @@ export function sceneRoutes(ctx: AppContext): Hono<AppEnv> {
   app.post("/:sceneId/messages", async (c) => {
     const sceneRow = scene(c.req.param("sceneId"));
     if (sceneRow === null) return c.json(notFound("scene"), 404);
+
+    // A message from the reader is §6's second stop, and it must be acted on
+    // *before* the append: the loop's in-flight turn would otherwise land
+    // after — and on top of — what the reader just said.
+    if (autopilot !== null) await autopilot.yieldToUser(sceneRow.id);
 
     const body = await readJson(c);
     if (body === BAD_JSON) return c.json(badRequest("Expected a JSON body."), 400);
