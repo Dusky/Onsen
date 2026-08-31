@@ -516,6 +516,17 @@ function UpdateGroup() {
   }
 
   const behind = s.behind;
+  // The state, read strictly: unknown before a check, absent from the remote
+  // once a check has looked. A branch the remote does not carry is a fact
+  // about the deployment, not a nag to press the button again.
+  const state =
+    behind === null
+      ? s.lastCheckedAt === null
+        ? strings.settings.updateUnchecked
+        : strings.settings.updateNoRemote
+      : behind === 0
+        ? strings.settings.updateUpToDate
+        : strings.settings.updateBehind(behind);
   return (
     <>
       <p className="section-label mb-[4px]">{strings.settings.update}</p>
@@ -525,22 +536,25 @@ function UpdateGroup() {
       <Row>
         <div className="flex items-baseline gap-[9px]">
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[15px] font-medium">{s.subject ?? "—"}</span>
+            {/* What the install is, not what its last commit said: a commit
+                subject is machinery, and one glance at a real log shows why it
+                makes a poor label. */}
+            <span className="block truncate text-[15px] font-medium">
+              {strings.settings.updateInstall}
+            </span>
             <span className="chrome block truncate text-[9px] tracking-[0.06em] text-ink-dim uppercase">
               {[s.branch, s.commit?.slice(0, 7), s.dirty ? strings.settings.updateChanged : null]
                 .filter((part) => part !== null && part !== undefined && part !== "")
                 .join(" · ")}
             </span>
           </span>
+          {/* Red is attention — owed by "behind" alone, not by every state
+              that is not an error. */}
           <span
             className="chrome flex-none text-[9px] tracking-[0.06em] uppercase"
-            style={{ color: behind === null ? undefined : "var(--onsen-color-red)" }}
+            style={{ color: behind !== null && behind > 0 ? "var(--onsen-color-red)" : undefined }}
           >
-            {behind === null
-              ? strings.settings.updateUnchecked
-              : behind === 0
-                ? strings.settings.updateUpToDate
-                : strings.settings.updateBehind(behind)}
+            {state}
           </span>
         </div>
       </Row>

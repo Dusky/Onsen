@@ -172,6 +172,21 @@ describe("self-update (SPEC §17)", () => {
     expect(again.body.behind).toBe(0);
   });
 
+  test("a branch the remote does not carry reads unknown, not zero", async () => {
+    base = mkdtempSync(join(tmpdir(), "onsen-update-"));
+    const { clone } = makeDeployment(base);
+    gitSync(clone, ["checkout", "-b", "side"]);
+    const t = await signedIn(clone);
+
+    // Counted against `origin/<branch>` (§17): a locally-created branch has
+    // no remote counterpart, and pretending it was level with one would make
+    // an unpushed deployment look up to date.
+    const { body } = await json<UpdateStatusDto>(t, "GET", "/api/system/update");
+    expect(body.branch).toBe("side");
+    expect(body.behind).toBeNull();
+    expect(body.ahead).toBeNull();
+  });
+
   test("a directory with no checkout says so", async () => {
     base = mkdtempSync(join(tmpdir(), "onsen-update-"));
     const empty = join(base, "empty");

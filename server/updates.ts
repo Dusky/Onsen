@@ -95,26 +95,34 @@ export async function readUpdateStatus(repoDir: string): Promise<UpdateStatusDto
   }
   if (!inside.ok) return emptyStatus("not_a_repo");
 
-  const [branch, commit, subject, remote, porcelain, counts] = await Promise.all([
+  const [branch, commit, subject, remote, porcelain] = await Promise.all([
     git(repoDir, ["branch", "--show-current"]),
     git(repoDir, ["rev-parse", "HEAD"]),
     git(repoDir, ["log", "-1", "--format=%s"]),
     git(repoDir, ["remote", "get-url", "origin"]),
     git(repoDir, ["status", "--porcelain", "--untracked-files=no"]),
-    git(repoDir, ["rev-list", "--left-right", "--count", "@{upstream}...HEAD"]),
   ]);
 
-  // `N\tM`: N commits only the upstream has (behind), M only this checkout
-  // (ahead). Unknown before the first fetch, so failure means null, not zero.
+  // `N\tM`: N commits only the remote side has (behind), M only this
+  // checkout (ahead). Counted against `origin/<branch>` rather than
+  // `@{upstream}` — a branch created locally and pushed later has no upstream
+  // configured, and would read "unknown" forever. Null when the remote has no
+  // such branch, which is the truth, not before-the-first-fetch.
   let ahead: number | null = null;
   let behind: number | null = null;
-  if (counts.ok) {
-    const [left, right] = counts.stdout.split("\t");
-    const parsedBehind = Number(left);
-    const parsedAhead = Number(right);
-    if (Number.isFinite(parsedBehind) && Number.isFinite(parsedAhead)) {
-      behind = parsedBehind;
-      ahead = parsedAhead;
+  if (branch.ok && branch.stdout !== "") {
+    const counts = await git(
+      repoDir,
+      ["rev-list", "--left-right", "--count", `origin/${branch.stdout}...HEAD`],
+    );
+    if (counts.ok) {
+      const [left, right] = counts.stdout.split("\t");
+      const parsedBehind = Number(left);
+      const parsedAhead = Number(right);
+      if (Number.isFinite(parsedBehind) && Number.isFinite(parsedAhead)) {
+        behind = parsedBehind;
+        ahead = parsedAhead;
+      }
     }
   }
 

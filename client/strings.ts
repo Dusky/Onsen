@@ -344,12 +344,14 @@ export const strings = {
 
     /** Self-update for a git-checkout deployment (SPEC §17). */
     update: "Update",
+    updateInstall: "This install",
     updateHint:
       "A checkout can pull its own commits and rebuild. Restart the server afterwards to run them.",
     updateUpToDate: "Up to date",
     updateBehind: (n: number) => `${n} ${n === 1 ? "commit" : "commits"} behind`,
     updateAhead: (n: number) => `${n} ahead`,
     updateUnchecked: "Not checked yet",
+    updateNoRemote: "Not on the remote",
     updateChanged: "Changed",
     updateCheck: "Check for updates",
     updateChecking: "Checking…",
