@@ -32,6 +32,7 @@ import type {
   SceneDto,
   SceneWithHistoryDto,
   SetActiveLeafRequest,
+  InstructTemplateDto,
   LorebookDto,
   LorebookWithEntriesDto,
   LoreEntryDto,
@@ -74,6 +75,7 @@ export const connectionKeys = {
   profiles: ["connection-profiles"] as const,
   presets: ["connection-presets"] as const,
   tasks: ["tasks"] as const,
+  instruct: ["instruct-templates"] as const,
 };
 
 /** Invalidate everything a connection change can touch. */
@@ -121,6 +123,46 @@ export function useCreateProvider() {
 export function useUpdateProvider() {
   return useConnectionMutation(({ id, ...body }: UpdateProviderRequest & { id: string }) =>
     api.patch<ProviderDto>(`/connections/providers/${id}`, body),
+  );
+}
+
+/* ---------------- instruct templates (SPEC §4) ---------------- */
+
+export function useInstructTemplates() {
+  return useQuery({
+    queryKey: connectionKeys.instruct,
+    queryFn: () => api.get<InstructTemplateDto[]>("/connections/instruct-templates"),
+  });
+}
+
+function useTemplateMutation<TArgs, TResult>(fn: (args: TArgs) => Promise<TResult>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: connectionKeys.instruct });
+      // Deleting a template clears the providers pointing at it, so their rows
+      // are stale too.
+      void client.invalidateQueries({ queryKey: connectionKeys.providers });
+    },
+  });
+}
+
+export function useCreateInstructTemplate() {
+  return useTemplateMutation((body: { name: string; copyFrom?: string }) =>
+    api.post<InstructTemplateDto>("/connections/instruct-templates", body),
+  );
+}
+
+export function useUpdateInstructTemplate() {
+  return useTemplateMutation(({ id, ...patch }: Partial<InstructTemplateDto> & { id: string }) =>
+    api.patch<InstructTemplateDto>(`/connections/instruct-templates/${id}`, patch),
+  );
+}
+
+export function useDeleteInstructTemplate() {
+  return useTemplateMutation((id: string) =>
+    api.delete<void>(`/connections/instruct-templates/${id}`),
   );
 }
 

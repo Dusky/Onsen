@@ -247,6 +247,8 @@ export interface UpdateProviderRequest {
   enabled?: boolean;
   /** Null restores the adapter's own answer, rather than meaning "no" (§13). */
   supportsPrefill?: boolean | null;
+  /** Text completion only: which instruct template marks the turns (§4). */
+  instructTemplate?: string | null;
 }
 
 export interface CreateConnectionProfileRequest {
