@@ -326,15 +326,39 @@ describe("correct", () => {
 });
 
 describe("continue", () => {
+  test("is offered on a text-completion provider, which continues by nature", async () => {
+    const t = await signedIn();
+    const { sceneId } = await scene(t);
+    await run(t, `/api/scenes/${sceneId}/generate`, {}, "She began to say something");
+    const target = (await messages(t, sceneId)).at(-1)!;
+
+    // The harness runs on a text-completion provider, and a completion endpoint
+    // is a partial string continued — there is nothing to support, it is what
+    // the endpoint does.
+    const response = await t.fetch(`/api/scenes/${sceneId}/messages/${target.id}/revise`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "continue" }),
+    });
+    expect(response.status).toBe(201);
+  });
+
   test("is refused where the provider cannot do it", async () => {
     const t = await signedIn();
     const { sceneId } = await scene(t);
     await run(t, `/api/scenes/${sceneId}/generate`, {}, "She began to say something");
     const target = (await messages(t, sceneId)).at(-1)!;
 
-    // SPEC §7: disable where unsupported. The OpenAI-compatible adapter cannot
-    // accept a partial assistant turn, and a fresh turn dressed as a
-    // continuation would be worse than saying no.
+    // SPEC §7: disable where unsupported. `supportsPrefill` is the operator
+    // saying their endpoint rejects a trailing assistant turn — which is what
+    // OpenAI itself does — and a fresh turn dressed as a continuation would be
+    // worse than saying no. The override is the whole fixture: the op is gated
+    // on what the endpoint accepts, not on which adapter is scripted.
+    const providers = await json<{ id: string }[]>(t, "GET", "/api/connections/providers");
+    await json(t, "PATCH", `/api/connections/providers/${providers[0]!.id}`, {
+      supportsPrefill: false,
+    });
+
     const response = await t.fetch(`/api/scenes/${sceneId}/messages/${target.id}/revise`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
