@@ -39,6 +39,7 @@ import type { PassPipeline } from "../passes/pipeline.ts";
 import type { GuideRunner } from "../guides/runner.ts";
 import type { SummaryRunner } from "../summaries/runner.ts";
 import { ReasoningSplitter, parseReasoningConfig } from "./reasoning.ts";
+import { OocSplitter } from "./ooc.ts";
 import { templateFor } from "../db/queries/instruct.ts";
 import type { InstructTemplate } from "../prompt/index.ts";
 import type { TaskRunStatus } from "../../shared/types.ts";
@@ -133,6 +134,12 @@ interface ActiveGeneration {
   reasoning: string;
   /** Splits inline `<think>` tags out of the stream. Stateful across chunks. */
   splitter: ReasoningSplitter;
+  /**
+   * Splits out-of-character asides out of the stream (§12). Runs whether or not
+   * the scene invited one: a model that volunteers `((…))` unprompted must
+   * still not have it land in the middle of the scene.
+   */
+  oocSplitter: OocSplitter;
   meta: GenerationMeta;
   error: string | null;
   detail: string | null;
@@ -250,6 +257,13 @@ export interface StartOptions {
    * and disliking the result must leave the original one swipe away.
    */
   revise?: { message: MessageRow; mode: "expand" | "correct" | "continue"; instructions?: string };
+  /**
+   * Answer the reader out of character (SPEC §12). The question is already a
+   * message in the tree by the time this is called — unlike a nudge, an OOC
+   * question *is* something the reader said, and the answer would make no sense
+   * beside a transcript that did not contain it.
+   */
+  ooc?: { question: string };
 }
 
 /**
@@ -277,7 +291,9 @@ type ResolvedTurn =
       parentId: number | null;
       /** A revised beat is still a beat, and still needs parsing into parts. */
       targetKind: MessageKind;
-    };
+    }
+  /** Answering the reader out of character (SPEC §12). The scene does not move. */
+  | { kind: "ooc"; question: string };
 
 export class GenerationError extends Error {
   readonly code: string;
@@ -379,6 +395,7 @@ export class GenerationService {
       buffer: "",
       reasoning: "",
       splitter: new ReasoningSplitter(),
+      oocSplitter: new OocSplitter(),
       meta: {
         provider: route.providerName,
         model: route.model,
@@ -566,6 +583,7 @@ export class GenerationService {
       dispatchedAt = this.now();
 
       const parseInline = reasoningConfig.parseInline;
+      const splitAsides = generation.turn.kind !== "ooc";
       for await (const chunk of adapter.generate(prompt, samplers, generation.abort.signal)) {
         if (generation.abort.signal.aborted) break;
         // Reasoning does not count as the first token: §13 hides it from the
@@ -583,8 +601,18 @@ export class GenerationService {
           : { prose: chunk.text, reasoning: "" };
         if (split.reasoning !== "") this.appendReasoning(generation, split.reasoning);
         if (split.prose === "") continue;
+        // Then the OOC markers, out of what is left. Second because reasoning
+        // is a wrapper around the whole turn and an aside is a passage inside
+        // it: splitting the other way round would look for `((` in text that
+        // has not been established as prose yet. Not on an out-of-character
+        // turn: the whole answer is already the aside, and a `((…))` inside one
+        // is just something the author wrote.
+        const staged = splitAsides
+          ? generation.oocSplitter.push(split.prose)
+          : { prose: split.prose };
+        if (staged.prose === "") continue;
         if (generation.meta.ttftMs === null) generation.meta.ttftMs = this.now() - dispatchedAt;
-        this.append(generation, split.prose);
+        this.append(generation, staged.prose);
       }
       // An unclosed block is reasoning, not prose. Printing a model's private
       // planning into the scene because it forgot a closing tag would be the
@@ -592,7 +620,20 @@ export class GenerationService {
       if (parseInline) {
         const rest = generation.splitter.flush();
         if (rest.reasoning !== "") this.appendReasoning(generation, rest.reasoning);
-        if (rest.prose !== "") this.append(generation, rest.prose);
+        if (rest.prose !== "") {
+          const staged = splitAsides
+            ? generation.oocSplitter.push(rest.prose)
+            : { prose: rest.prose };
+          if (staged.prose !== "") this.append(generation, staged.prose);
+        }
+      }
+      // An unterminated aside is prose, marker and all — the opposite of the
+      // rule above, and deliberately so (§12): `((` is a sequence fiction does
+      // contain, and eating the rest of a turn on a stray double-paren is far
+      // worse than showing one.
+      if (splitAsides) {
+        const trailing = generation.oocSplitter.flush();
+        if (trailing.prose !== "") this.append(generation, trailing.prose);
       }
     } catch (caught) {
       // An abort surfaces here as a thrown error on some runtimes and as a
@@ -654,6 +695,20 @@ export class GenerationService {
    * whose speaker was chosen by a silent fallback is the thing this replaces.
    */
   private async direct(generation: ActiveGeneration, scene: SceneRow): Promise<void> {
+    // Nobody in the cast is speaking on an out-of-character turn: the author is
+    // answering as itself (§12). Asking a director who should speak would spend
+    // a model call to pick a character who is not going to say anything.
+    if (generation.turn.kind === "ooc") {
+      this.announce(generation, {
+        characterId: null,
+        name: this.authorNameOf(scene),
+        source: "user",
+        reason: "Answering you out of character",
+        scope: "spotlight",
+      });
+      return;
+    }
+
     if (generation.turn.kind === "recast") {
       const name = generation.turn.characterName;
       this.announce(generation, {
@@ -929,6 +984,7 @@ export class GenerationService {
         this.db
           .query("UPDATE generations SET target_message_id = $target WHERE id = $id")
           .run({ id: generation.rowId, target: message.id });
+        this.landAside(generation, message.id);
       }
     }
 
@@ -947,7 +1003,11 @@ export class GenerationService {
     // is absolute that a background task must never block a user-facing
     // generation, and three extra model calls in front of every reply would be
     // a worse product than no pipeline at all (§7.5).
-    if (!cancelled && generation.landedMessageId !== null) {
+    // Not after an out-of-character answer. Every one of the three reads the
+    // turn as prose — the passes annotate it, the guides describe what the
+    // characters are doing, the summariser condenses the story — and an aside
+    // to the reader is none of those things (§12).
+    if (!cancelled && generation.landedMessageId !== null && generation.turn.kind !== "ooc") {
       void this.runPasses(generation.sceneId, generation.landedMessageId);
     }
 
@@ -972,6 +1032,20 @@ export class GenerationService {
       return replaceSegment(this.db, beat, generation.turn.ordinal, generation.buffer);
     }
 
+    // An out-of-character answer is the author speaking as itself, so it is
+    // filed as one: `ooc` on both counts, attributed to nobody in the cast, and
+    // never parsed for segments. It is not a turn in the scene (§12).
+    if (generation.turn.kind === "ooc") {
+      return appendMessage(this.db, {
+        sceneId: generation.sceneId,
+        parentId: generation.parentId,
+        kind: "ooc",
+        authorType: "ooc",
+        content: generation.buffer.trim(),
+        characterId: null,
+      });
+    }
+
     const revise = generation.turn.kind === "revise" ? generation.turn : null;
     const isBeat = revise === null ? generation.turn.kind === "beat" : revise.targetKind === "beat";
     const message = appendMessage(this.db, {
@@ -982,16 +1056,55 @@ export class GenerationService {
       // Continue extends rather than replaces: the message that lands is the
       // whole turn, original and continuation, so the log reads as one piece of
       // writing rather than a fragment beside its own beginning.
+      // Trimmed, which matters once an aside can be lifted off the end of a
+      // turn (§12): the prose before it keeps the space that separated them,
+      // and a turn should not end in whitespace the reader cannot see.
       content:
         revise?.mode === "continue"
           ? `${revise.original.trimEnd()} ${generation.buffer.trimStart()}`
-          : generation.buffer,
+          : generation.buffer.trim(),
       // A beat is filed under whoever opened it, so the log has something to
       // attribute it to; who spoke *last* in it comes from its segments (§6).
       characterId: generation.spotlightId,
     });
     if (isBeat) reparseSegments(this.db, message);
     return message;
+  }
+
+  /**
+   * File an out-of-character aside as its own message (SPEC §12).
+   *
+   * A **child** of the turn it came out of, rather than a sibling. §1 says
+   * history is a tree, and the aside belongs to that particular telling of the
+   * turn: rerolling the prose makes a new sibling, which takes the reader down
+   * a path the aside is not on, and it disappears exactly when it should.
+   * Deleting the turn takes it too, by the same cascade.
+   *
+   * `author_type` is `ooc` rather than `character`, because the author is
+   * speaking as itself here — that is the whole distinction §2 draws between a
+   * partner and the roles it plays, and it is what the blue pencil in the
+   * design marks.
+   */
+  private landAside(generation: ActiveGeneration, parentId: number): void {
+    const aside = generation.oocSplitter.result().trim();
+    if (aside === "") return;
+    appendMessage(this.db, {
+      sceneId: generation.sceneId,
+      parentId,
+      kind: "ooc",
+      authorType: "ooc",
+      content: aside,
+      characterId: null,
+    });
+  }
+
+  /** The author's name, for announcing a turn nobody in the cast is speaking. */
+  private authorNameOf(scene: SceneRow): string {
+    if (scene.author_id === null) return "Out of character";
+    const row = this.db
+      .query("SELECT name FROM authors WHERE id = $id")
+      .get({ id: scene.author_id }) as { name: string } | null;
+    return row?.name ?? "Out of character";
   }
 
   private fail(generation: ActiveGeneration, caught: unknown): void {
@@ -1281,6 +1394,8 @@ function resolveTurn(db: Database, options: StartOptions): ResolvedTurn {
       targetKind: target.kind,
     };
   }
+
+  if (options.ooc !== undefined) return { kind: "ooc", question: options.ooc.question };
 
   if (options.scope === "beat") return { kind: "beat", bound: options.beatBound ?? DEFAULT_BEAT_BOUND };
   if (options.scope === "auto") return { kind: "auto", bound: options.beatBound ?? DEFAULT_BEAT_BOUND };

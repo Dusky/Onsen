@@ -56,7 +56,7 @@ import {
 } from "../db/queries/guides.ts";
 import { isGuideKind } from "../../shared/types.ts";
 import { findAnnotation, revertAnnotation } from "../db/queries/annotations.ts";
-import { messageDto } from "../db/queries/history.ts";
+import { appendMessage, messageDto } from "../db/queries/history.ts";
 import { capabilitiesFor } from "../adapters/index.ts";
 import type { ProviderKind } from "../../shared/types.ts";
 import type { SceneRow } from "../db/queries/history.ts";
@@ -491,6 +491,67 @@ export function sceneGenerationRoutes(
     }
     flushGuides(ctx.db, scene.id, raw === "all" ? null : raw);
     return c.json(activeGuides(ctx.db, scene.id).map(toGuideDto));
+  });
+
+  /**
+   * Ask the author something out of character, and have it answer (SPEC §12).
+   *
+   * Two messages, not one. The question is appended to the tree first, because
+   * unlike a nudge an OOC question *is* something the reader said — the answer
+   * would make no sense beside a transcript that did not contain it, and a
+   * reader scrolling back should find both halves of the exchange.
+   *
+   * Both are `ooc` messages; what separates them is `author_type`, which is who
+   * spoke. That is the distinction §2 draws between the partner and the roles
+   * it plays, and the one the blue pencil marks in the design.
+   */
+  app.post("/:sceneId/ooc", async (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+
+    let question = "";
+    try {
+      const parsed: unknown = await c.req.json();
+      if (typeof parsed === "object" && parsed !== null) {
+        const value = (parsed as { question?: unknown }).question;
+        if (typeof value === "string") question = value.trim();
+      }
+    } catch {
+      /* Handled by the emptiness check below. */
+    }
+    if (question === "") {
+      return c.json({ error: { code: "bad_request", message: "Say something first." } }, 400);
+    }
+
+    const asked = appendMessage(ctx.db, {
+      sceneId: scene.id,
+      parentId: scene.active_leaf_id,
+      kind: "ooc",
+      authorType: "user",
+      content: question,
+      characterId: null,
+    });
+
+    try {
+      // Generating from the question rather than from the leaf as it was: the
+      // answer is a reply to it, and the author has to be able to see it.
+      const snapshot = service.start({
+        scene: findScene(ctx.db, c.req.param("sceneId"))!,
+        parentId: asked.id,
+        ooc: { question },
+      });
+      return c.json({ question: messageDto(ctx.db, asked, scene.ulid), generation: snapshot }, 201);
+    } catch (caught) {
+      if (caught instanceof GenerationError) {
+        // The question stays: the reader said it, and deleting it because the
+        // scene was busy would lose what they typed.
+        const status = caught.code === "already_generating" ? 409 : 400;
+        return c.json({ error: { code: caught.code, message: caught.message } }, status);
+      }
+      throw caught;
+    }
   });
 
   /**
