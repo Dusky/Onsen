@@ -77,31 +77,49 @@ import { GenerationError, type GenerationEvent, type GenerationService } from ".
  * make before offering itself. Unknown means unknown, not "assume the best":
  * an op that pretends to work is worse than one that says it cannot.
  */
-function providerKindOf(ctx: AppContext, scene: SceneRow): ProviderKind | null {
+interface SceneProvider {
+  kind: ProviderKind;
+  model: string | null;
+  /** The operator's override, where they set one. Null means "ask the adapter". */
+  supportsPrefill: boolean | null;
+}
+
+function providerOf(ctx: AppContext, scene: SceneRow): SceneProvider | null {
   if (scene.connection_profile_id === null) return null;
   const row = ctx.db
     .query(
-      `SELECT p.kind FROM connection_profiles cp JOIN providers p ON p.id = cp.provider_id
+      `SELECT p.kind AS kind, p.model AS model, p.supports_prefill AS prefill
+         FROM connection_profiles cp JOIN providers p ON p.id = cp.provider_id
         WHERE cp.id = $id`,
     )
-    .get({ id: scene.connection_profile_id }) as { kind: ProviderKind } | null;
-  return row?.kind ?? null;
+    .get({ id: scene.connection_profile_id }) as
+    | { kind: ProviderKind; model: string | null; prefill: number | null }
+    | null;
+  if (row === null) return null;
+  return {
+    kind: row.kind,
+    model: row.model,
+    supportsPrefill: row.prefill === null ? null : row.prefill === 1,
+  };
 }
 
 /**
  * Continue needs the provider to accept a partial assistant turn (SPEC §7).
  * Where it cannot, the op says so rather than producing a fresh turn that
  * pretends to be a continuation.
+ *
+ * Three things can answer, in order of authority. The operator's own
+ * `supportsPrefill` wins, because they know their endpoint — that field exists
+ * precisely because prefill is a property of the endpoint rather than of the
+ * wire format. Otherwise the adapter decides, and for Anthropic that depends on
+ * the model: prefill was removed from the 4.6 generation onward, so the same
+ * provider row answers differently depending on which Claude it names.
  */
 function canContinue(ctx: AppContext, scene: SceneRow): boolean {
-  const kind = providerKindOf(ctx, scene);
-  if (kind === null) return false;
-  try {
-    return capabilitiesFor(kind).supportsPrefill;
-  } catch {
-    // An adapter that does not exist yet has no capabilities to read.
-    return false;
-  }
+  const provider = providerOf(ctx, scene);
+  if (provider === null) return false;
+  if (provider.supportsPrefill !== null) return provider.supportsPrefill;
+  return capabilitiesFor(provider.kind, provider.model ?? undefined).supportsPrefill;
 }
 
 /** SPEC §5: heartbeat every 15s so proxies do not close an idle stream. */
