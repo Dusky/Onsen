@@ -1,6 +1,7 @@
 import { draftBlocks, HISTORY_PLACEHOLDER, type DraftBlock } from "./blocks.ts";
 import { renderHistory, type RenderedTurn } from "./history.ts";
 import { resolveMacros, type MacroEnvironment } from "./macros.ts";
+import { findInstructTemplate, renderInstruct } from "./instruct.ts";
 import {
   DEFAULT_BLOCK_ORDER,
   PromptBudgetError,
@@ -17,6 +18,7 @@ import {
 export * from "./types.ts";
 export { createEstimatingTokenizer, createExactTokenizer } from "./tokenizer.ts";
 export { renderHistory } from "./history.ts";
+export * from "./instruct.ts";
 export { resolveMacros } from "./macros.ts";
 export { defaultTemplateOf, fillTemplate, TEMPLATED_OPS } from "./op-templates.ts";
 
@@ -241,7 +243,7 @@ export function buildPrompt(ctx: PromptContext): BuiltPrompt {
   if (shaped.system !== undefined) built.system = shaped.system;
   if (prefill !== undefined) built.prefill = prefill;
   if (ctx.capabilities.mode === "text") {
-    built.rawText = renderText(shaped.system, shaped.messages, prefill);
+    built.rawText = renderText(ctx, shaped.system, shaped.messages, prefill);
   }
   return built;
 }
@@ -358,18 +360,23 @@ function shapeForProvider(
 }
 
 /**
- * Text-completion rendering. A plain labelled transcript: instruct templates
- * (ChatML, Llama 3, Mistral and the rest) are data shipped with the
- * text-completion adapter in phase 20, and wrap this rather than replace it.
+ * Text-completion rendering (SPEC §4).
+ *
+ * The instruct template does the work; without one this falls back to the plain
+ * labelled transcript, which is the right answer for a base model and the wrong
+ * one for anything instruct-tuned.
+ *
+ * This runs *before* costing, which is the reason it lives here rather than in
+ * the adapter: on a long scene the turn markers are hundreds of tokens, and a
+ * wrapper applied after the budget was struck overflows a window the builder
+ * had already reported as fitting.
  */
 function renderText(
+  ctx: PromptContext,
   system: string | undefined,
   messages: NormalizedMessage[],
   prefill: string | undefined,
 ): string {
-  const parts: string[] = [];
-  if (system !== undefined && system !== "") parts.push(system);
-  for (const message of messages) parts.push(message.content);
-  const body = parts.join("\n\n");
-  return prefill === undefined ? body : `${body}\n\n${prefill}`;
+  const template = ctx.instruct ?? findInstructTemplate("plain")!;
+  return renderInstruct(template, system, messages, prefill);
 }

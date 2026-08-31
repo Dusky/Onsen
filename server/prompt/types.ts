@@ -14,6 +14,7 @@
  */
 
 import type { MessageAuthorType, MessageKind } from "../../shared/types.ts";
+import type { InstructTemplate } from "./instruct.ts";
 
 export type PromptRole = "system" | "user" | "assistant";
 
@@ -364,6 +365,14 @@ export interface PromptContext {
   seed: number;
   /** Milliseconds since the last user message, for {{idle_duration}}. */
   idleDuration?: number;
+  /**
+   * The instruct template, in text-completion mode (SPEC §4).
+   *
+   * Passed in rather than looked up, because the builder is pure and because a
+   * user-authored template is a database row. Absent in chat mode, and absent
+   * in text mode means the plain labelled transcript.
+   */
+  instruct?: InstructTemplate;
 }
 
 /* ------------------------------------------------------------------ */
