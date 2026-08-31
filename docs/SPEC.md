@@ -893,6 +893,26 @@ to `autopilot_max_turns`, stopping when: the cap is reached, the user sends a
 message or taps stop, a character addresses the user's persona directly, or an
 error occurs. Give it a prominent, always-reachable stop control.
 
+Settled while building phase 24.
+
+- **The loop lives on the server, in memory.** A phone suspending its tab must
+  not stop the scene, and a client that vanishes mid-run must find it still
+  going — the same ownership rule as generation (§0.7). It is not a row: a
+  restart ends it, because a scene writing itself with nobody watching is a
+  different and worse feature than the one the reader turned on.
+- **A reply arms it; only its own turns are checked.** The reply the reader
+  just received is an answer to something they said, and addressing them is
+  what an answer does — checking it for that would stop the loop before its
+  first turn. The addressed check reads only turns the loop wrote.
+- **The addressed check is a side call** (`autopilot_check`), like the
+  classifier and for the same reasons: cheap, routed per §7, and never able to
+  fail the thing it serves. An unreadable or unreachable check reads as *not
+  addressed*; the cap remains the bound either way.
+- **The reader's ops yield, they do not collide.** Send, revise, recast, OOC
+  and the stop endpoint all stop the loop and drain its in-flight turn before
+  proceeding — so a send during autopilot is a stop, never a 409, and the
+  partial turn keeps what it produced (§5.6).
+
 ---
 
 ## 7. Guided generation (director tools)

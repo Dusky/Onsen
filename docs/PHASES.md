@@ -2271,3 +2271,88 @@ adapter saw is whichever background call finished most recently rather than the
 turn. It cost twenty minutes of believing the invitation block was missing when
 it was there. The fix is one word — the first new prompt, not the last — and the
 lesson is that a shared fixture needs to say which caller it is answering.
+
+## Phase 24 — Autopilot
+
+§6 gives autopilot one paragraph, and the paragraph gives five stops. Everything
+this phase decided is in service of those five being *true* rather than
+approximately true.
+
+### What was built
+
+**A server-owned loop**, wired into the generation service the way the passes
+are: the service reports that a turn landed, the runner decides whether another
+follows. In memory, deliberately — a restart ends a run, because a scene writing
+itself with nobody watching it is not the feature the reader turned on.
+
+**Arming is the reply, not a button.** The reader sends, the scene answers, and
+the loop continues from there — `autopilot_enabled` on the scene is the whole
+contract. The addressed check never runs on the arming reply: that reply is an
+answer to something the reader said, and addressing them is what an answer does.
+The first version checked it anyway, and the test that caught it was the one
+where the loop was supposed to write five turns and wrote none — a reply that
+faces the reader arms the loop *more* surely than one that does not, because
+that is the conversation they are in.
+
+**The addressed check is a side call** (`autopilot_check`), registered like the
+classifier and for the same reasons: cheap, per-op routable, and structurally
+incapable of failing the thing it serves. An unreachable or unreadable check
+reads as *not addressed* and the cap still bounds the run. It reads the turn
+through the same task runner every other side call uses, so its failures are
+logged where the failures of the others already are.
+
+**The reader's operations yield rather than collide.** Send, revise, recast,
+OOC — every reader-driven entry point stops the loop and drains its in-flight
+turn before doing its own work. A send during autopilot is a stop, never a 409;
+the cancelled turn keeps whatever it had produced, as cancel always does. The
+stop endpoint is the fifth stop made pressable, and the strip that carries it
+also carries `turns / max` — a loop with a bound should show the bound being
+spent.
+
+**The client adopts the loop's turns.** The state row is read on every settle,
+and the generation it names is adopted into the same streaming row a
+locally-started turn uses — one code path, one offset discipline. A tab that
+suspends mid-run comes back and adopts at the offset the server remembers,
+which is what §5's resumable stream was for.
+
+**The switch is on the director bar, both widths**, where the design's §16 puts
+it: a decision about the next turns, beside the cue and the scope. The cap is
+scene setup, because a number is configuration wherever its switch lives.
+Migration 0021 adds the two §2 columns, off by default with a cap of three —
+enough to feel the scene running itself, short enough that a runaway loop on a
+metered provider is a bounded accident.
+
+### Deliberately deferred
+
+- **A wait between turns.** The loop starts its next turn as soon as the check
+  answers, which is a second or two of natural pacing on its own. A
+  configurable delay would be a knob for a problem nobody has reported, and
+  the stop control is always reachable in the meantime.
+- **Autopilot on the outbound API.** §19's external clients cannot see the
+  loop's turns arrive; when head sync (phase 36) lands, adoption is the
+  mechanism they will need, and it is already how this client sees them.
+- **Streaming the state row.** It is refetched on settle rather than pushed.
+  The gap it leaves is the addressed check's duration, during which the strip
+  says autopilot with no count beside it — an honest half-second rather than a
+  second stream to keep alive through a phone suspend.
+
+### Spec changes
+
+§6's autopilot paragraph gained a `Settled while building phase 24` block: the
+loop's ownership and lifetime, the arming rule, the check as a side call, and
+the yield rule that keeps the reader's sends from ever colliding with the
+loop's turns.
+
+### Surprises
+
+**The arming bug above was found by its own test failing**, which is the
+argument for writing the five stops as five tests before writing the loop — the
+cap test passed while the addressed test failed, and the difference between
+them was exactly the defect: both replies addressed the reader, and only one
+kind of turn was supposed to care.
+
+**`ScriptedAdapter` routes side calls by their prompt's declared source**, and
+a new side call that names a new source silently becomes a *turn* — waiting on
+the queue that never arrives. The adapter now treats `autopilot` as a side
+call; the general lesson is that the fixture's contract is `source ∈ {side
+call sources}`, and that set has to grow with the registry.
