@@ -1294,6 +1294,48 @@ just text.
 
 Import/export SillyTavern world-info JSON. Round-trip unknown fields.
 
+### Settled while building phase 21
+
+- **The activation model is a pure function, and everything else asks it.**
+  Entries, a transcript window, the cast and the timed-effect state go in; what
+  fires and why comes out. No database, no clock, no randomness of its own —
+  the roll is passed in, seeded per generation, because the probability above
+  has to be replayable. Six rules that each look simple alone and interact in
+  ways nobody can hold in their head is the argument for building it this way.
+- **Rule order is the behaviour.** What cannot fire at all is filtered first
+  (disabled, delay, cooldown), then constants skip scanning, then secondary
+  keys *qualify* a match rather than causing one, then the character filter,
+  then sticky before probability — an entry that rolled well once should not
+  have to keep rolling well for a duration it was already granted — and groups
+  pick their winner last, from whatever survived. A group is settled once it
+  picks: a loser must not come back through recursion and insert a second
+  member of a group this section says inserts one.
+- **Whole-word matching is the default.** The single most common complaint
+  about world info is an entry keyed on "ash" firing on "washed". A key with no
+  word characters at its edges falls back to substring, rather than silently
+  never matching.
+- **A book reaching a scene is a four-way union, computed once.** Global, bound
+  to the scene, carried by a character in the cast, or carried by the persona —
+  and a book bound several of those ways contributes its entries *once*.
+  Counting it twice spends the token budget twice and lets a one-member group
+  insert two. The client repeats the same union to decide what to show as
+  attached, from one function, because a screen that disagrees with the prompt
+  builder about what is attached is worse than no screen.
+- **Timed effects are counted along the active path, not along the scene.**
+  Sticky, cooldown and delay are durations measured in messages, and §1 says
+  history is a tree. An effect anchored on a branch the user walked away from
+  did not happen on this branch. `delay_from` therefore offers both: from scene
+  start, and from the last branch point.
+- **The activation test tool runs the real engine.** §16's "what would fire
+  against the current scene" is one endpoint over the same activation a
+  generation performs, seeded with a constant rather than per-generation so a
+  probability entry does not flicker on every refresh. A test tool with its own
+  second implementation is a tool that lies — which is precisely how
+  `scenario_override` survived seventeen migrations unwired in phase 20.
+- **Lore is a top-level destination, not a page inside a roleplay.** One book
+  can be global, bound to a scene, and carried by a character at once, so there
+  is no single owner to file it under. This is the design's fifth tab.
+
 ---
 
 ## 11. Memory

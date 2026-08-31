@@ -1904,3 +1904,142 @@ columns against `PRAGMA table_info`, and grepping every column name against the
 whole server source, took a few minutes and found both real problems. The parts
 I expected to be hard — reasoning about cascade correctness — turned out to be
 answerable by inserting rows and deleting them.
+
+## Phase 21 — Lorebooks
+
+The largest phase in the Depth block, and the one where SillyTavern's power
+users actually live. §10 is six activation rules, three timed effects, inclusion
+groups, seven insertion positions, recursion levels and a character filter —
+and the reason it is hard is not any one of them, it is that they interact.
+
+### What was built
+
+**Migration 0018 and four tables.** `lorebooks`, `lore_entries`,
+`lorebook_bindings`, `lore_timed_effects`. Bindings rather than a foreign key on
+the book, because §10 wants one book to be global, attached to a roleplay,
+carried by a character and carried by a persona — potentially all at once — and
+a single owner column cannot express that.
+
+**The activation model as a pure function** (`server/lore/activate.ts`).
+Entries, a transcript window, the cast and the timed-effect state in; what fired
+and why out. No database, no clock, no randomness of its own — the roll is
+passed in, seeded per generation, because §10's probability has to be
+replayable. Thirty-nine tests, and they found two real bugs before any of it ran
+in the app: a group loser came back through recursion and inserted a second
+member of a group §10 says inserts one, and the trace kept a row per *attempt*,
+so an entry that missed on the first pass and fired on the second read as a
+miss.
+
+Rule order is the behaviour, and it is written down in §10 now rather than
+living in the code's shape: what cannot fire at all is filtered first, then
+constants skip scanning, then secondary keys qualify a match rather than causing
+one, then the character filter, then sticky before probability, then groups pick
+a winner from whatever survived.
+
+**Whole-word matching is the default.** The single most-repeated complaint about
+world info is an entry keyed on "ash" firing on "washed". A key with no word
+characters at its edges falls back to substring rather than silently never
+matching, so a key like `:::` still works.
+
+**Storage that answers two questions carefully.** `candidatesFor` dedupes by
+entry id, so a book bound several ways contributes its entries once — counting
+it twice spends the budget twice and lets a one-member group insert two.
+`timedStateFor` counts messages-ago along the *active path*, because §1 says
+history is a tree and an effect anchored on a branch the user walked away from
+did not happen here.
+
+**SillyTavern world info import**, following the rule `raw_card` set in phase 4:
+keep the source object per entry and re-emit from it. The reading is
+deliberately forgiving — each field is read from a list of names it has been
+known by, keys arrive as an array *or* one comma-separated string, and anything
+unreadable takes the schema default rather than failing the whole import. Half a
+book beats an error. Two things are enums on the wire and need translating:
+`selectiveLogic` (0 and_any, 1 not_all, 2 not_any, 3 and_all — 1 and 2 are not
+in the order you would guess) and `position` 0–4.
+
+**The editor, design `3h`.** One entry open inline at the top in a red-bordered
+container with `EDITING` and its token cost; Title, Keys as mono chips with the
+dashed `+ key` chip, Content in Spectral; the footer row with the activation
+summary, Priority and a solid red `SAVE`. The rest of the book stays visible
+beneath as hairline rows — Spectral title over a mono line of keys and rule,
+token count right, disabled entries at 55% reading `DISABLED`. Everything else
+§10 asks for is behind `ADVANCED ▾`, which is where secondary logic, the three
+timed effects, inclusion groups, the character filter, position and recursion
+live.
+
+The open entry commits on `SAVE` rather than on blur, which is the opposite of
+every other editor in this app. An entry is a set of fields that only mean
+something together — a key with no content, a group label with no weight — and
+§10 clears timed effects on every edit, so a save per keystroke would reset a
+sticky window per keystroke.
+
+**Lore as the fifth tab.** The design draws five and the TabBar has carried a
+comment about the missing one since phase 6. It is a top-level destination
+rather than a page inside a roleplay for the same reason bindings exist: no
+single owner to file a book under.
+
+**The activation test tool** (§16), reached from a `LOREBOOKS` row on scene
+setup, in one sheet with attaching and detaching. Attaching and testing belong
+together because the question a user actually has is never "is this attached",
+it is "why did that entry not fire" — and the two most common answers are that
+the book reaches nothing and that the key did not match, which now sit one above
+the other. The trace lists what fired first and then every miss with the rule
+that stopped it: `NO MATCH`, `DISABLED`, `GROUP NOT CHOSEN`.
+
+### Deliberately deferred
+
+- **Similarity-based activation** (§10) needs the embedding index documents
+  build in §11's third layer. Keyword activation is the whole of what phase 21
+  promises.
+- **Automation IDs.** The column exists and round-trips; nothing fires on
+  activation yet, because the actions it would fire (background tasks, tracker
+  refreshes, regex scripts) are §15's tier and mostly unbuilt.
+- **A `use_regex` switch in the editor.** The matcher honours the flag and it
+  round-trips through import and export, so a SillyTavern book that uses one
+  keeps working. What the advanced panel does not do is *offer* the switch,
+  because there is a real gap behind it: a pattern runs untimed against every
+  message in the scan window, and a pathological one from an imported file can
+  wedge the request. That guard is worth having before the app invites people
+  to hand-write patterns. Recorded here rather than fixed quietly, since import
+  already exposes it.
+- **`personas.lorebook_id`.** §2 names it and §10 flags it as a gap itself.
+  A persona-scoped *binding* does the same job through the binding table, which
+  is strictly more general, so the column stays unbuilt rather than duplicating
+  it. The placeholder comment in migration 0005 that promised it now says so.
+- **The design's `6 HIT LAST TURN`** in the editor footer. It needs a scene, and
+  the editor has none — a book is edited from the library, not from inside a
+  roleplay. The footer reads `BOOK TOTAL · N TOK · M ENTRIES`, and the firing
+  count lives in the scene-setup sheet where a scene actually exists.
+
+### Spec changes
+
+A `Settled while building phase 21` block in §10, recording six decisions: the
+pure activation model and its seeded roll, rule order as behaviour, whole-word
+matching as the default, the four-way binding union computed once and shared
+with the client, timed effects counted along the active path, and the test tool
+running the real engine.
+
+### Surprises
+
+**The activation model's own tests were worth more than the browser.** That is
+not usually true in this project — phases 17, 19 and 20 all found their bugs by
+driving the real system. Here the two bugs were interaction bugs between rules,
+which is exactly what a fixture suite over a pure function is good at and what a
+screenshot cannot see. The rule seems to be: test the thing whose difficulty is
+combinatorial with fixtures, and test the thing whose difficulty is wiring by
+running it.
+
+**The browser still found two, and both were labels.** The book's token budget
+was labelled `PRIORITY` and its scan depth carried the *entry's* hint about
+leaving the field blank — both from reusing strings that read correctly in the
+context I copied them from. Nothing typechecks a label. And the scene-setup row
+listed every book in the library rather than the ones reaching that scene, which
+is how the "reaches this scene" rule ended up as one exported function that the
+row and the sheet both call, mirroring the server's single `booksForScene`.
+
+**Phase 20's lesson had teeth immediately.** The activation test tool was one
+plausible refactor away from being a second implementation of activation — it
+needs the same rows, the same window and the same cast, and writing that
+inline in the route would have looked entirely reasonable. `activateForScene`
+exists so the tool cannot disagree with the generation, which is the same
+mistake `scenario_override` made in reverse.
