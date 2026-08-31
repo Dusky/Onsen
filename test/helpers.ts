@@ -45,11 +45,16 @@ export interface HarnessOptions {
    * exactly when tokens arrive.
    */
   adapter?: Adapter;
+  /** Where the updater looks for a git checkout (§17). Defaults to the cwd. */
+  repoDir?: string;
 }
 
 export function createHarness(options: HarnessOptions = {}): TestHarness {
   const dataDir = mkdtempSync(join(tmpdir(), "onsen-test-"));
-  const config = loadConfig({ ONSEN_DATA_DIR: dataDir } as NodeJS.ProcessEnv);
+  const config = loadConfig({
+    ONSEN_DATA_DIR: dataDir,
+    ...(options.repoDir === undefined ? {} : { ONSEN_REPO_DIR: options.repoDir }),
+  } as NodeJS.ProcessEnv);
   ensureDataDirs(config);
 
   const db = openDatabase(":memory:");

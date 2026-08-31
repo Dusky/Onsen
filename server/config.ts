@@ -18,6 +18,8 @@ export interface Config {
   secureCookies: boolean;
   /** Directory holding the built SPA, served by the same process as the API. */
   clientDir: string;
+  /** Git checkout the updater pulls from (§17). Falls back to the cwd. */
+  repoDir: string;
 }
 
 function envFlag(name: string, fallback: boolean): boolean {
@@ -37,6 +39,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     host: env.ONSEN_HOST ?? "0.0.0.0",
     secureCookies: envFlag("ONSEN_SECURE_COOKIES", false),
     clientDir: resolve(env.ONSEN_CLIENT_DIR ?? "./dist/client"),
+    repoDir: resolve(env.ONSEN_REPO_DIR ?? "."),
   };
 }
 

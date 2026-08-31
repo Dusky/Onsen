@@ -887,6 +887,36 @@ export interface LoreActivationDto {
 }
 
 /* ------------------------------------------------------------------ */
+/* Self-update (SPEC §17)                                              */
+/* ------------------------------------------------------------------ */
+
+/** How this deployment can be updated, if it can be. */
+export type UpdateMode = "git" | "no_git" | "not_a_repo";
+
+/** Where the running code stands against its remote (SPEC §17). */
+export interface UpdateStatusDto {
+  mode: UpdateMode;
+  branch: string | null;
+  /** Full sha of HEAD. */
+  commit: string | null;
+  /** First line of HEAD's commit message. */
+  subject: string | null;
+  remoteUrl: string | null;
+  /** Tracked files with local modifications — an update would be refused. */
+  dirty: boolean;
+  /** Commits the remote is ahead. Null before the first check. */
+  behind: number | null;
+  /** Commits this checkout is ahead of the remote. */
+  ahead: number | null;
+  /** ISO timestamp of the last successful check this process performed. */
+  lastCheckedAt: string | null;
+  /** Why the last check failed, when it did. */
+  error: string | null;
+  /** Set once an update is pulled; cleared only by a process restart. */
+  restartRequired: boolean;
+}
+
+/* ------------------------------------------------------------------ */
 /* Prompt option groups and the ban list (SPEC §13.5, §13.6)           */
 /* ------------------------------------------------------------------ */
 
