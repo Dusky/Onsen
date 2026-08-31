@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api.ts";
+import type { UpdateStatusDto } from "@shared/types.ts";
 import type {
   AppendMessageRequest,
   AuthorDto,
@@ -56,6 +57,7 @@ export const keys = {
   scene: (id: string) => ["scenes", id] as const,
   siblings: (sceneId: string, messageId: string) =>
     ["scenes", sceneId, "messages", messageId, "siblings"] as const,
+  update: ["update"] as const,
 };
 
 /** The connection profiles, for anything that routes an operation (§6, §13). */
@@ -811,5 +813,39 @@ export function useLoreActivation(sceneId: string, enabled: boolean) {
     queryFn: () => api.get<LoreActivationDto[]>(`/scenes/${sceneId}/lore`),
     staleTime: 0,
     enabled,
+  });
+}
+
+/* ---------------- self-update (SPEC §17) ---------------- */
+
+/**
+ * Where the running code stands against its remote.
+ *
+ * The GET behind this is local facts only — no network — so it is cheap enough
+ * to ask on every settings screen load. The interesting half (behind by how
+ * much) is null until a check runs, which is its own button, not this hook.
+ */
+export function useUpdateStatus() {
+  return useQuery({
+    queryKey: keys.update,
+    queryFn: () => api.get<UpdateStatusDto>("/system/update"),
+  });
+}
+
+/** Fetch the remote, then report against it. */
+export function useCheckUpdate() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<UpdateStatusDto>("/system/update/check"),
+    onSuccess: (status) => void client.setQueryData(keys.update, status),
+  });
+}
+
+/** Pull and rebuild. A refusal arrives as a thrown 409 with the reason. */
+export function useApplyUpdate() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<UpdateStatusDto>("/system/update/apply"),
+    onSuccess: (status) => void client.setQueryData(keys.update, status),
   });
 }

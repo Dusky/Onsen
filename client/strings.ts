@@ -342,6 +342,23 @@ export const strings = {
     budgetHint:
       "The window is what the prompt is built to fit. What is reserved for the reply comes off it before anything is placed.",
 
+    /** Self-update for a git-checkout deployment (SPEC §17). */
+    update: "Update",
+    updateHint:
+      "A checkout can pull its own commits and rebuild. Restart the server afterwards to run them.",
+    updateUpToDate: "Up to date",
+    updateBehind: (n: number) => `${n} ${n === 1 ? "commit" : "commits"} behind`,
+    updateAhead: (n: number) => `${n} ahead`,
+    updateUnchecked: "Not checked yet",
+    updateChanged: "Changed",
+    updateCheck: "Check for updates",
+    updateChecking: "Checking…",
+    updateApply: (n: number) => `Pull ${n === 1 ? "commit" : n + " commits"}`,
+    updateApplying: "Pulling…",
+    updateDirty: "Tracked files have local changes. Commit or stash them first.",
+    updateRestart: "Pulled. Restart the server to run the new code.",
+    updateNotGit: "Not a git checkout — update by redeploying.",
+
     prefill: "Prefill",
     prefillHint:
       "Seeds the start of the assistant's turn, which is the strongest way to enforce a format. Only sent where the endpoint accepts it.",

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ConnectionProfileDto, PresetDto, ProviderDto, TaskDto } from "@shared/types.ts";
+import type { ConnectionProfileDto, PresetDto, ProviderDto, TaskDto, UpdateStatusDto } from "@shared/types.ts";
 import { PROVIDER_KINDS, INJECTION_ROLES } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { InstructPicker } from "../components/InstructPicker.tsx";
@@ -15,6 +15,9 @@ import {
   useUpdateProfile,
   useUpdateProvider,
   useUpdateTask,
+  useApplyUpdate,
+  useCheckUpdate,
+  useUpdateStatus,
 } from "../lib/queries.ts";
 import { TabBar } from "../components/TabBar.tsx";
 import { Sheet } from "../components/Sheet.tsx";
@@ -479,6 +482,118 @@ function OpEditor({
 }
 
 /* ------------------------------------------------------------------ */
+/* Update (SPEC §17)                                                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Where the running code stands against its remote, for a git-checkout
+ * deployment. The same layout as every other group — a row that states the
+ * facts, buttons that act on them — because an update is a fact about this
+ * install, not a preference in it.
+ */
+function UpdateGroup() {
+  const status = useUpdateStatus();
+  const check = useCheckUpdate();
+  const apply = useApplyUpdate();
+  const [refusal, setRefusal] = useState<string | null>(null);
+
+  const s = status.data;
+  if (s === undefined) return null;
+
+  // A container image or the standalone executable has no checkout to pull.
+  // The group stays rather than vanishing, saying why — an updater that is
+  // silently absent looks like an up-to-date install.
+  if (s.mode !== "git") {
+    return (
+      <>
+        <p className="section-label mb-[4px]">{strings.settings.update}</p>
+        <p className="chrome mb-[10px] text-[9px] leading-[1.5] text-ink-dim">
+          {strings.settings.updateNotGit}
+        </p>
+        <div className="mb-[26px]" />
+      </>
+    );
+  }
+
+  const behind = s.behind;
+  return (
+    <>
+      <p className="section-label mb-[4px]">{strings.settings.update}</p>
+      <p className="chrome mb-[10px] text-[9px] leading-[1.5] text-ink-dim">
+        {strings.settings.updateHint}
+      </p>
+      <Row>
+        <div className="flex items-baseline gap-[9px]">
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[15px] font-medium">{s.subject ?? "—"}</span>
+            <span className="chrome block truncate text-[9px] tracking-[0.06em] text-ink-dim uppercase">
+              {[s.branch, s.commit?.slice(0, 7), s.dirty ? strings.settings.updateChanged : null]
+                .filter((part) => part !== null && part !== undefined && part !== "")
+                .join(" · ")}
+            </span>
+          </span>
+          <span
+            className="chrome flex-none text-[9px] tracking-[0.06em] uppercase"
+            style={{ color: behind === null ? undefined : "var(--onsen-color-red)" }}
+          >
+            {behind === null
+              ? strings.settings.updateUnchecked
+              : behind === 0
+                ? strings.settings.updateUpToDate
+                : strings.settings.updateBehind(behind)}
+          </span>
+        </div>
+      </Row>
+      <div className="mt-[12px] flex gap-[8px]">
+        <button
+          type="button"
+          className="btn flex-1"
+          disabled={check.isPending || apply.isPending}
+          onClick={() => {
+            setRefusal(null);
+            check.mutate(undefined, { onError: (e: Error) => setRefusal(e.message) });
+          }}
+        >
+          {check.isPending ? strings.settings.updateChecking : strings.settings.updateCheck}
+        </button>
+        {behind !== null && behind > 0 ? (
+          <button
+            type="button"
+            className="btn btn-primary flex-1"
+            disabled={check.isPending || apply.isPending || s.dirty}
+            onClick={() =>
+              apply.mutate(undefined, { onError: (e: Error) => setRefusal(e.message) })
+            }
+          >
+            {apply.isPending
+              ? strings.settings.updateApplying
+              : strings.settings.updateApply(behind)}
+          </button>
+        ) : null}
+      </div>
+      {/* Chrome, not rows: these are conditions, not things to tap. */}
+      {s.dirty ? (
+        <p className="chrome mt-[10px] text-[9px] leading-[1.5] text-ink-dim">
+          {strings.settings.updateDirty}
+        </p>
+      ) : null}
+      {s.error === null ? null : (
+        <p className="chrome mt-[10px] text-[9.5px] leading-[1.5] text-red-text">{s.error}</p>
+      )}
+      {refusal === null ? null : (
+        <p className="chrome mt-[10px] text-[9.5px] leading-[1.5] text-red-text">{refusal}</p>
+      )}
+      {s.restartRequired ? (
+        <p className="chrome mt-[10px] text-[9px] leading-[1.5] text-ink-dim">
+          {strings.settings.updateRestart}
+        </p>
+      ) : null}
+      <div className="mb-[26px]" />
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 
 export function SettingsScreen() {
   const providers = useProviders();
@@ -661,6 +776,8 @@ export function SettingsScreen() {
             );
           })}
           <div className="h-[20px]" />
+
+          <UpdateGroup />
         </div>
       </main>
 

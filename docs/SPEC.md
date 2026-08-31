@@ -1937,8 +1937,16 @@ toggle.
   Tunnel, with the password as defense in depth.
 - Rate-limit auth attempts.
 - Dockerfile plus plain `bun run` instructions.
+- Built-in updater for git-checkout deployments, in Settings: a status row
+  (local facts only — a `GET` never touches the network), an explicit check
+  that fetches, and an apply that runs `git pull --ff-only` followed by
+  `bun install` and a client build. Refuses a dirty tracked tree — untracked
+  files such as `data/` do not count — and reports a restart requirement that
+  only replacing the process clears. Deployments without a checkout (Docker,
+  the standalone executable) say so instead of appearing up to date.
 - Data directory configurable via env: SQLite DB, avatars, sprites, uploads,
-  vector index.
+  vector index. The checkout the updater pulls from is configurable too
+  (`ONSEN_REPO_DIR`, default the working directory).
 
 ---
 

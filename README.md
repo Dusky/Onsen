@@ -98,6 +98,7 @@ Everything is environment variables; all state lives under one data directory.
 | `ONSEN_DATA_DIR` | `./data` | SQLite database, uploads, avatars, root secret |
 | `ONSEN_DB_PATH` | `$ONSEN_DATA_DIR/onsen.db` | Override the database location |
 | `ONSEN_CLIENT_DIR` | `./dist/client` | Built SPA to serve |
+| `ONSEN_REPO_DIR` | `.` | Git checkout the Settings updater pulls from |
 | `ONSEN_PORT` | `8787` | Listen port |
 | `ONSEN_HOST` | `0.0.0.0` | Listen address |
 | `ONSEN_SECURE_COOKIES` | `false` | Set when terminating TLS in front of the app |
