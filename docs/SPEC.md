@@ -692,13 +692,15 @@ interface ProviderCapabilities {
 }
 ```
 
-Note: prefill and extended thinking are mutually exclusive on Anthropic. The
-capability flags must express that, not just list both.
+Note: prefill and extended thinking were mutually exclusive on Anthropic, and
+this is now stronger than that — see phase 22 below. Either way the capability
+flags must express it rather than just listing both.
 
 ### Required adapters for v1
 
 - **OpenAI-compatible** — OpenAI, OpenRouter, most local OpenAI shims.
-- **Anthropic** — separate system param, strict alternation, prefill.
+- **Anthropic** — separate system param, strict alternation, required
+  `max_tokens`, and prefill only on models old enough to still take one.
 - **Text completion** — llama.cpp server, KoboldCpp, TabbyAPI.
 
 ### Instruct templates
@@ -723,6 +725,46 @@ interface Adapter {
 Aborting the client request **must** propagate the `AbortSignal` upstream so
 local inference actually stops. Verify explicitly against llama.cpp — a leaked
 generation pins a GPU.
+
+### Settled while building phase 22
+
+- **Capabilities are not always a constant.** Anthropic removed `temperature`,
+  `top_p` and `top_k` from its 4.6 generation onward, and removed assistant
+  prefill with them. Sending either to a current model is a 400, not a politely
+  ignored field. So what that endpoint accepts depends on which model is behind
+  it, `capabilitiesFor` takes an optional model, and on a current Claude §13's
+  sampler list is empty — an editor showing nothing is the correct result, not a
+  bug. This supersedes the older note above: prefill is not merely exclusive
+  with thinking there, it is gone.
+- **An unknown model takes the narrower contract.** A proxy's own naming, or a
+  model released after this was written, is read as current. The two failure
+  directions are not symmetric: sending a sampler a model rejects fails the
+  whole generation, while not sending one costs a knob and still writes the
+  turn. `providers.supports_prefill` is the operator's escape hatch.
+- **`max_tokens` is required on Anthropic and there is no "unlimited".** The
+  builder's own `reservedForResponse` is the honest number, because it is what
+  the prompt was fitted around; a floor applies only to the side calls that
+  reserve nothing. Asking for more than was reserved would overflow a window the
+  builder already reported as fitting.
+- **Instruct templates are rendered by the builder, not the adapter.** On a long
+  scene the turn markers are hundreds of tokens. A wrapper applied after the
+  budget was struck overflows the context window, and the symptom is a truncated
+  prompt with a passing budget calculation.
+- **The template is a property of the provider.** It describes the weights
+  behind the endpoint, so every scene routed there wants the same answer. The
+  six shipped templates live in code as data and are never seeded into the
+  database — they are not the user's material and a copy would go stale the
+  first time one is corrected. A user-authored template is the same shape,
+  shares the id space, and cannot shadow a shipped id.
+- **One template object serves both halves of a generation.** The template the
+  builder renders with and the template whose stop sequences end the turn are
+  the same object, or the model is stopped on markers it was never given.
+- **Text-completion mode exists for prompt control, not for compatibility.**
+  llama.cpp, KoboldCpp and TabbyAPI all speak `/chat/completions` too, but their
+  chat endpoints apply an instruct template of their own from the GGUF metadata
+  and silently reshape what §3 assembled. The cost of that control is that a
+  wrong template is a wrong prompt with no error to show for it, which is why
+  the editor ships with a live preview.
 
 ---
 

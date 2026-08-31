@@ -2043,3 +2043,128 @@ needs the same rows, the same window and the same cast, and writing that
 inline in the route would have looked entirely reasonable. `activateForScene`
 exists so the tool cannot disagree with the generation, which is the same
 mistake `scenario_override` made in reverse.
+
+## Phase 22 — The remaining adapters
+
+Anthropic and text completion, which completes §4's three required adapters and
+means the registry no longer throws for two of its three kinds.
+
+### What was built
+
+**The Anthropic adapter**, against the wire format rather than the official SDK.
+That is a deliberate call and worth stating: this is a provider *adapter* in a
+multi-provider app, and it has to honour an operator-supplied base URL because
+much of this audience reaches Anthropic through a proxy, stream through the one
+SSE parser whose tests cover events split across network chunks, and take an
+injected `fetch` so the suite runs on fixtures rather than a live API and a
+bill. An SDK client satisfies none of the three cleanly, and one adapter written
+differently from its two neighbours is a codebase with two ways to do the same
+thing.
+
+Three shapes differ from the OpenAI-compatible endpoint. `system` is its own
+parameter. The conversation must open on a user turn. And `max_tokens` is
+required, with no sentinel for "as much as you like" — the builder's own
+reservation is the honest number, since it is what the prompt was fitted around.
+
+**The finding that changed the SPEC:** this API removed `temperature`, `top_p`
+and `top_k` from the 4.6 generation onward, and removed assistant prefill with
+them. Sending either to a current model is a 400, not a politely ignored field.
+§4 had a note saying prefill and extended thinking were *mutually exclusive*
+there; the truth is now stronger, and the note is corrected.
+
+That makes Anthropic the only provider in the app whose capabilities are not a
+constant — they depend on which Claude is behind the endpoint. `capabilitiesFor`
+takes an optional model, and on a current Claude §13's sampler list is empty. An
+editor showing nothing is the correct answer, not a bug.
+
+An unrecognised model takes the narrower reading, because the two failure
+directions are not symmetric: sending a sampler a model rejects fails the whole
+generation, while not sending one costs a knob and still writes the turn. The
+existing `supports_prefill` override is the escape hatch for an operator on a
+proxy who knows better than the heuristic.
+
+Thinking is requested with `display: "summarized"`. Its default omits the text,
+which on a thinking model reads as a long silence before the first word and
+leaves §13's reasoning strip with nothing to put in it.
+
+**The six instruct templates, as data.** ChatML, Llama 3, Mistral, Alpaca,
+Vicuna, Metharme, plus a plain transcript for base models. Each is written out
+longhand rather than derived from a shared shape — they look similar and are
+not, the differences are exactly the newlines and spaces, and a generator would
+hide the one thing that matters. Mistral and Alpaca have no system turn at all,
+so their system text folds into the first user turn; putting one in anyway is
+the most common way to get subtly worse prose out of a Mistral finetune.
+
+Rendering happens in the prompt builder, not the adapter. On a long scene the
+markers are hundreds of tokens, and a wrapper applied after the budget was
+struck overflows a context window the builder already measured as fitting — a
+truncated prompt with a passing budget calculation.
+
+**The text-completion adapter**, speaking the OpenAI-shaped `/v1/completions`
+that llama.cpp, KoboldCpp and TabbyAPI all expose. It exists for prompt control
+rather than compatibility: those servers' chat endpoints apply a template of
+their own from the GGUF metadata and silently reshape everything §3 assembled.
+The stop sequences go with every request, because without them a completion
+model writes the reader's next turn as well — the complaint that makes people
+give up on text mode.
+
+**Migration 0019, and templates a user can write.** §4 says "users must be able
+to add custom ones", so they can: copy a shipped one, edit the markers, watch a
+live preview. Shipped templates are never written to the database and cannot be
+edited or deleted, only copied — correcting a format for everyone is a release,
+not a setting, and a user who edited ChatML in place would silently change every
+provider using it. A custom name that would slug onto a shipped id takes a
+different one rather than shadowing it.
+
+The editor ships with a live preview because this is the one setting in the app
+where a wrong answer produces no error at all. It is the only feedback there is.
+
+### Deliberately deferred
+
+- **`output_config.effort`.** Anthropic's replacement for the sampler knobs it
+  removed. It belongs beside the samplers in §13's preset editor rather than
+  bolted onto the adapter, and putting it there properly means the editor has to
+  branch on capabilities per provider — which is the block-order work already
+  waiting on phase 25.
+- **Prompt caching breakpoints.** `supportsPromptCaching` is declared and the
+  prefix is already stable by §3's construction, but nothing sends
+  `cache_control` yet. Placement is a §3 question about which blocks are
+  genuinely frozen, not an adapter one.
+- **A native KoboldCpp or TabbyAPI adapter.** Their own APIs expose sampler
+  ordering and grammars that the OpenAI-shaped completions endpoint does not.
+  One endpoint common to all three is the right first answer; a second adapter
+  is worth it only once someone wants a knob this one cannot reach.
+
+### Spec changes
+
+§4's note about prefill and thinking on Anthropic was factually behind the API
+and is corrected. A `Settled while building phase 22` block records seven
+decisions, the load-bearing ones being that capabilities can depend on a model,
+that an unknown model takes the narrower contract, and that instruct templates
+are rendered by the builder so their markers are counted.
+
+### Surprises
+
+**Two bugs, and both were things being written and never read.** The suite's
+`continue` test asserted a refusal that came from `capabilitiesFor` throwing for
+an unbuilt adapter, not from a capability — so building the adapter made the
+test fail, correctly. Following it found that `canContinue` had been reading the
+adapter default and ignoring `providers.supports_prefill` entirely: the override
+had a route, a column, a three-state UI and a hint string, and nothing consulted
+it. The second was the settings screen holding the provider being edited as a
+*snapshot* of its row, so every in-place setting — prefill included, long before
+this phase — wrote to the server and then displayed the old answer back.
+
+Neither was found by a unit test. The first came from a test failing for a
+reason I did not expect and being worth reading rather than patching; the second
+from a screenshot where the button I had just clicked was still the wrong
+colour. That is the same lesson as phase 20, arriving by a different route:
+**the bugs live in the wiring, and the only thing that exercises wiring is
+running it.**
+
+The end-to-end check is the shape worth keeping. A stub speaking the real
+Anthropic wire format, returning a 400 for anything the real API rejects —
+`temperature`, a missing `max_tokens`, a conversation opening on the assistant —
+and a real generation driven through the real service against it. It passes, and
+if the adapter ever starts sending a sampler again it will fail loudly instead
+of quietly producing worse prose.

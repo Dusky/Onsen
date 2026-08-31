@@ -4,7 +4,7 @@ A self-hosted, mobile-first AI roleplay frontend. Group scenes are the primary
 case: one AI **author** with its own personality plays the whole cast, like a GM
 running a table, while you direct.
 
-> **Status: phase 21 of 43 — usable.** Set it up, import character cards, give
+> **Status: phase 22 of 43 — usable.** Set it up, import character cards, give
 > the AI an author persona of its own, and run a group scene: one writing
 > partner voicing a whole cast, **beats** — a whole exchange between several
 > characters written in one go, which you can then correct one character at a
@@ -29,7 +29,12 @@ running a table, while you direct.
 > knowledge out of one shared book, and recursion — with a test that shows what
 > would fire against your scene right now *and why each miss missed*. It reads
 > SillyTavern world info and hands back every field it was given, including ones
-> it has never heard of. Built for a phone first, and on a
+> it has never heard of. It talks to **OpenAI-compatible endpoints, Anthropic,
+> and raw text-completion servers** — llama.cpp, KoboldCpp, TabbyAPI — with the
+> named instruct templates those need (ChatML, Llama 3, Mistral, Alpaca, Vicuna,
+> Metharme) and an editor for writing your own, previewed as you type, because a
+> wrong template does not error, it just quietly makes the prose worse. Built
+> for a phone first, and on a
 > wide screen the same pieces unroll into a sidebar, a capped prose column and a
 > cast rail. See
 > [`docs/SPEC.md` §20](docs/SPEC.md) for the build order and
