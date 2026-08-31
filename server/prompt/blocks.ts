@@ -428,10 +428,38 @@ function turnInstruction(ctx: PromptContext): string {
         ? recastInstruction(ctx, turn.beatText)
         : turn.kind === "revise"
           ? reviseInstruction(ctx, turn)
-          : spotlightInstruction(ctx);
+          : turn.kind === "ooc"
+            ? oocInstruction(ctx, turn.question)
+            : spotlightInstruction(ctx);
 
+  // An out-of-character answer is not in the scene, so the rules about who can
+  // see and hear what do not apply to it — and appending them would read as an
+  // instruction to answer in character after all.
+  if (turn.kind === "ooc") return base;
   const presence = presenceConstraints(ctx);
   return presence === null ? base : `${base}\n\n${presence}`;
+}
+
+/**
+ * Answering the reader directly, as the author rather than as a character
+ * (SPEC §12).
+ *
+ * The hard part is not the answer, it is stopping the scene from moving. A
+ * model asked a question mid-roleplay will very often answer it *and* write
+ * the next turn, so the instruction spends most of its words on the boundary
+ * rather than on the question.
+ */
+function oocInstruction(ctx: PromptContext, question: string): string {
+  const name = ctx.author?.name ?? "the author";
+  const reader = ctx.persona.name ?? "the reader";
+  return (
+    `${reader} is speaking to you directly, out of character. Step out of the story and answer ` +
+    `as ${name} — yourself, the writer — not as anyone in the scene.\n\n` +
+    `${reader} asked:\n${question.trim()}\n\n` +
+    `Answer them and stop. Do not write the next turn, do not continue the scene, do not put ` +
+    `words in any character's mouth, and do not narrate anything. Plain speech, no markers ` +
+    `around it. Be brief unless brevity would be unhelpful.`
+  );
 }
 
 /** What the inspector calls the near-turn instruction, by kind. */
@@ -448,6 +476,8 @@ function turnInstructionLabel(ctx: PromptContext): string {
         : turn.mode === "correct"
           ? "Correction instruction"
           : "Continue instruction";
+    case "ooc":
+      return "Out-of-character question";
     default:
       return "Spotlight instruction";
   }
@@ -589,13 +619,21 @@ export function draftBlocks(ctx: PromptContext): Map<PromptBlockId, DraftBlock[]
     NEAR_TURN,
     nudgeOp?.role ?? "system",
   );
+  // The marker is named exactly, because the app parses for it. "Mark it
+  // clearly" leaves the model to invent one, and an aside the splitter cannot
+  // find is an aside printed into the middle of the scene — the single most
+  // common way a roleplay turn is ruined (§12).
   add(
     "ooc_invitation",
     "Out-of-character invitation",
     "scene",
-    ctx.oocDue === true
+    // Never on an out-of-character turn: the author is already out of the scene
+    // there, and inviting it out again reads as an instruction to come back in.
+    ctx.oocDue === true && ctx.turn?.kind !== "ooc"
       ? `You may step out of character briefly at the end of this turn to speak to the reader as ` +
-          `${ctx.author?.name ?? "yourself"}. Keep it short, and mark it clearly.`
+          `${ctx.author?.name ?? "yourself"} — a question, a check, a flag. Keep it to a sentence ` +
+          `or two, put it in double parentheses like ((this)), and put nothing else inside them. ` +
+          `Everything outside them is the scene. Say nothing at all if you have nothing to ask.`
       : null,
     NEAR_TURN,
   );

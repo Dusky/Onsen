@@ -472,6 +472,14 @@ export interface SceneDto {
   summariseThreshold: number;
   /** Drop the raw messages an injected summary covers (§11). */
   summariseEvict: boolean;
+  /**
+   * Whether the author may step out of the scene to speak to the reader
+   * (SPEC §12). Off by default: an author that volunteers asides is a delight
+   * when you want a collaborator and an intrusion when you want a story.
+   */
+  oocEnabled: boolean;
+  /** The earliest it may speak up again, in messages. A nudge, not a schedule. */
+  oocInterval: number;
   /** Move the injection point only every N turns, for the prompt cache (§11). */
   summariseFreeze: number;
   /** The cast, in display order. One member until group scenes (phase 8). */
@@ -1250,6 +1258,8 @@ export interface SceneSetupRequest {
   summariseEveryWords?: number;
   summariseThreshold?: number;
   summariseEvict?: boolean;
+  oocEnabled?: boolean;
+  oocInterval?: number;
   summariseFreeze?: number;
   title?: string;
 }

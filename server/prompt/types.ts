@@ -173,7 +173,17 @@ export type PromptTurn =
       original: string;
       /** What the user asked for. Only `correct` has any. */
       instructions?: string;
-    };
+    }
+  /**
+   * Answering the reader out of character (SPEC §12).
+   *
+   * Not a turn in the scene at all: the author is being asked a question as
+   * itself, and the scene must not move. It is a `PromptTurn` rather than a
+   * separate entry point because everything else about the prompt is the same
+   * — the same cast, the same lore, the same history — and only the near-turn
+   * instruction differs.
+   */
+  | { kind: "ooc"; question: string };
 
 /** What a user may change about one op's contribution to a prompt (SPEC §7). */
 export interface PromptOpConfig {

@@ -206,6 +206,25 @@ function toPromptPersona(row: PersonaRow | null) {
     : { name: row.name, description: row.description };
 }
 
+/**
+ * Is the author due an out-of-character aside (SPEC §12)?
+ *
+ * The interval is the earliest it may speak up *again*, so a scene that has
+ * never had one is due immediately — the first invitation should not wait
+ * twelve messages to arrive. After that it is measured from the last aside on
+ * this path.
+ */
+export function oocDueFor(
+  scene: { ooc_enabled: number; ooc_interval: number },
+  history: { kind: string }[],
+): boolean {
+  if (scene.ooc_enabled !== 1) return false;
+  for (let at = history.length - 1; at >= 0; at -= 1) {
+    if (history[at]?.kind === "ooc") return history.length - 1 - at >= scene.ooc_interval;
+  }
+  return true;
+}
+
 export interface BuildContextOptions {
   db: Database;
   scene: SceneRow;
@@ -242,7 +261,8 @@ export interface BuildContextOptions {
         mode: "expand" | "correct" | "continue";
         original: string;
         instructions?: string;
-      };
+      }
+    | { kind: "ooc"; question: string };
   /**
    * A one-shot instruction for this generation only (SPEC §7). Never persisted
    * as a message — that is what separates a nudge from something the reader
@@ -457,6 +477,11 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
         role: row.role,
       })),
     bans: activeBans(options.db, options.scene.id).map((row) => row.phrase),
+    // Whether the author may step out of the scene this turn (SPEC §12).
+    // Counted along the active path rather than the scene, for the same reason
+    // §10's timed effects are: an aside on a branch the reader walked away from
+    // did not happen here, and should not still be suppressing the next one.
+    oocDue: oocDueFor(options.scene, history),
     preset,
     capabilities: options.capabilities,
     ...(options.instruct === undefined ? {} : { instruct: options.instruct }),

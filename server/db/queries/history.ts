@@ -57,6 +57,8 @@ export interface SceneRow {
   summarise_threshold: number;
   /** Drop raw messages an injected summary covers (§11). */
   summarise_evict: number;
+  ooc_enabled: number;
+  ooc_interval: number;
   /** Move the injection point only every N turns, for the prompt cache (§11). */
   summarise_freeze: number;
   active_leaf_id: number | null;
@@ -201,6 +203,8 @@ export function toSceneDto(
     summariseEveryWords: row.summarise_every_words,
     summariseThreshold: row.summarise_threshold,
     summariseEvict: row.summarise_evict === 1,
+    oocEnabled: row.ooc_enabled === 1,
+    oocInterval: row.ooc_interval,
     summariseFreeze: row.summarise_freeze,
     authorId: extras.authorUlid,
     authorName: extras.authorName,
