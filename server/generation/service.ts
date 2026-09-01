@@ -610,6 +610,15 @@ export class GenerationService {
       generation.meta.promptTokens = prompt.debug.totalTokens;
       generation.meta.tokensAreEstimated = prompt.debug.tokensAreEstimated;
 
+      // Captured the moment the prompt is built, before a token streams, so
+      // the inspector can answer for a cancelled or failed generation too
+      // (§16, phase 25): "what did the model see" is about the ask.
+      if (!this.stopped) {
+        this.db
+          .query("UPDATE generations SET prompt_debug = $debug WHERE id = $id")
+          .run({ id: generation.rowId, debug: JSON.stringify(prompt.debug) });
+      }
+
       this.setStatus(generation, "streaming");
       dispatchedAt = this.now();
 

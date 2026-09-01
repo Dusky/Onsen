@@ -108,6 +108,8 @@ export function buildAddressedPrompt(input: AddressedInput, tokenizer: Tokenizer
       historyIncluded: [],
       unresolvedOutlets: [],
       unknownMacros: [],
+      // A side call's prompt has no lore to explain.
+      loreTrace: [],
     },
   };
 }

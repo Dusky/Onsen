@@ -8,6 +8,8 @@ import {
   isReviseMode,
   isTurnScope,
   type ImpersonateResponse,
+  type PromptDebugInfo,
+  type PromptInspectorDto,
 } from "../../shared/types.ts";
 import { buildImpersonatePrompt, cleanImpersonation } from "../generation/impersonate.ts";
 import { createEstimatingTokenizer } from "../prompt/index.ts";
@@ -590,6 +592,82 @@ export function sceneGenerationRoutes(
       }
       throw caught;
     }
+  });
+
+  /**
+   * The prompt inspector (SPEC §16, §20 phase 25): the exact assembled
+   * prompt behind a message — its own generation where it has one, the
+   * generation that answered it where it does not, and the scene's most
+   * recent built prompt as the fallback, because "the last generation" is
+   * what §16 names and any message is how you reach it.
+   */
+  app.get("/:sceneId/inspector/:messageId", (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    const message = findMessage(ctx.db, c.req.param("messageId"));
+    if (message === null || message.scene_id !== scene.id) {
+      return c.json({ error: { code: "not_found", message: "No such message." } }, 404);
+    }
+
+    // Stored at build time (migration 0022), so a cancelled or failed
+    // generation answers as completely as a finished one.
+    const withDebug = "prompt_debug IS NOT NULL";
+    const row = (
+      [
+        // The generation that wrote this message.
+        ctx.db.query(
+          `SELECT ulid, target_message_id, started_at, prompt_debug FROM generations
+            WHERE target_message_id = $message AND ${withDebug}
+            ORDER BY id DESC LIMIT 1`,
+        ).get({ message: message.id }),
+        // The generation that answered it — a reader's message reaches the
+        // prompt of the reply it prompted.
+        ctx.db.query(
+          `SELECT ulid, target_message_id, started_at, prompt_debug FROM generations
+            WHERE scene_id = $scene AND parent_id = $message AND ${withDebug}
+            ORDER BY id DESC LIMIT 1`,
+        ).get({ scene: scene.id, message: message.id }),
+        // The scene's last built prompt, whatever it was for.
+        ctx.db.query(
+          `SELECT ulid, target_message_id, started_at, prompt_debug FROM generations
+            WHERE scene_id = $scene AND ${withDebug}
+            ORDER BY id DESC LIMIT 1`,
+        ).get({ scene: scene.id }),
+      ] as Array<{ ulid: string; target_message_id: number | null; started_at: number; prompt_debug: string } | null>
+    ).find((candidate) => candidate !== null) ?? null;
+
+    if (row === null) {
+      return c.json(
+        { error: { code: "not_found", message: "No prompt has been built for this scene yet." } },
+        404,
+      );
+    }
+
+    let debug: PromptDebugInfo;
+    try {
+      debug = JSON.parse(row.prompt_debug) as PromptDebugInfo;
+    } catch {
+      return c.json(
+        { error: { code: "corrupt", message: "The stored prompt could not be read." } },
+        500,
+      );
+    }
+
+    const targetUlid =
+      row.target_message_id === null
+        ? null
+        : ((ctx.db
+            .query("SELECT ulid FROM messages WHERE id = $id")
+            .get({ id: row.target_message_id }) as { ulid: string } | null)?.ulid ?? null);
+
+    return c.json({
+      generationId: row.ulid,
+      messageId: targetUlid,
+      createdAt: row.started_at,
+      debug,
+    } satisfies PromptInspectorDto);
   });
 
   /**

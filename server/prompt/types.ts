@@ -13,8 +13,31 @@
  * touch these fields cannot break prompt assembly.
  */
 
-import type { MessageAuthorType, MessageKind } from "../../shared/types.ts";
+import type {
+  ActivationTrace,
+  BlockPlacement,
+  EvictedItem,
+  EvictionReason,
+  MessageAuthorType,
+  MessageKind,
+  PromptBlock,
+  PromptDebugInfo,
+  SkipReason,
+} from "../../shared/types.ts";
 import type { InstructTemplate } from "./instruct.ts";
+
+// The inspector's shapes are the client/server contract, so they live in
+// /shared and are re-exported here, where the builder and its tests import
+// them from (SPEC §16, phase 25).
+export type {
+  ActivationTrace,
+  BlockPlacement,
+  EvictedItem,
+  EvictionReason,
+  PromptBlock,
+  PromptDebugInfo,
+  SkipReason,
+};
 
 export type PromptRole = "system" | "user" | "assistant";
 
@@ -328,6 +351,14 @@ export interface PromptContext {
   history: PromptMessage[];
   /** Already matched and resolved by the activation model (§10). */
   lore: PromptLoreEntry[];
+  /**
+   * The full activation trace, fired and skipped both (§10), handed straight
+   * through to the debug output. The builder never reads it — it copies it —
+   * because the trace is for the inspector, and the inspector reads the built
+   * prompt's debug, so that is where it has to arrive (phase 25). Optional on
+   * the context because a side call's context has no lore at all.
+   */
+  loreTrace?: ActivationTrace[];
   /** Already retrieved (§11). */
   documents: PromptDocumentChunk[];
   summaries: PromptSummary[];
@@ -462,79 +493,19 @@ export const DEFAULT_BLOCK_ORDER: readonly PromptBlockId[] = [
   "prefill",
 ];
 
-export type BlockPlacement =
-  /** In the prefix, in assembly order. */
-  | { kind: "prefix" }
-  /** N messages from the end of history; 0 is immediately before the response. */
-  | { kind: "depth"; depth: number }
-  /** Wherever {{outlet::Name}} appears (§3). */
-  | { kind: "outlet"; name: string };
-
-export interface PromptBlock {
-  id: PromptBlockId;
-  /** Human label for the inspector. */
-  label: string;
-  /** Where the content came from, for the inspector's provenance line. */
-  source: string;
-  role: PromptRole;
-  content: string;
-  placement: BlockPlacement;
-  tokens: number;
-}
+// BlockPlacement and PromptBlock are defined in /shared (the inspector's
+// contract) and re-exported above. Note their `id` is `PromptBlockId` here in
+// the builder's vocabulary — the shared type widens it to `string` so the
+// client does not import the builder's full union.
 
 /* ------------------------------------------------------------------ */
 /* Debug output                                                        */
 /* ------------------------------------------------------------------ */
 
-export type EvictionReason =
-  /** Trimmed oldest-first to make history fit the remaining budget. */
-  | "history_budget"
-  /** Excluded by the user, not by the budget. */
-  | "hidden"
-  /** Replaced by a summary that covers it (§11 raw eviction). */
-  | "summarized";
-
-export interface EvictedItem {
-  blockId: PromptBlockId;
-  /** Message identifier where the evicted item was a message. */
-  itemId: string | null;
-  label: string;
-  tokens: number;
-  reason: EvictionReason;
-}
-
-/**
- * SPEC §3: not optional, and it must record what was *trimmed*, not only what
- * was included. "The character forgot" is almost always "the model never saw
- * it", and the inspector is the only way a user can discover that.
- */
-export interface PromptDebugInfo {
-  mode: "author" | "single_character";
-  /** True when counts came from an estimator rather than a real tokenizer. */
-  tokensAreEstimated: boolean;
-  tokenizerId: TokenizerId;
-
-  budget: number;
-  /** Held back for the response. */
-  reservedForResponse: number;
-  /** budget - reservedForResponse. */
-  available: number;
-  /** Everything except history. */
-  fixedTokens: number;
-  historyTokens: number;
-  totalTokens: number;
-  /** available - totalTokens. Never negative in a successful build. */
-  headroom: number;
-
-  blocks: PromptBlock[];
-  evicted: EvictedItem[];
-  /** Messages the prompt carried, oldest first. */
-  historyIncluded: string[];
-  /** Outlets the preset declared but nothing filled. */
-  unresolvedOutlets: string[];
-  /** Macros encountered that the engine does not implement (§18). */
-  unknownMacros: string[];
-}
+// The debug shapes (BlockPlacement, PromptBlock, EvictedItem,
+// EvictionReason, ActivationTrace, PromptDebugInfo) are the inspector's
+// contract, so they live in /shared and are re-exported at the top of this
+// file (SPEC §16, phase 25).
 
 export interface BuiltPrompt {
   system?: string;

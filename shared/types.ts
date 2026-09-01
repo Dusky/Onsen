@@ -921,6 +921,101 @@ export interface AutopilotStateDto {
 }
 
 /* ------------------------------------------------------------------ */
+/* The prompt inspector (SPEC §3, §16, §20 phase 25)                  */
+/* ------------------------------------------------------------------ */
+
+/** Where a block sits in the assembled prompt. */
+export type BlockPlacement =
+  | { kind: "prefix" }
+  | { kind: "depth"; depth: number }
+  | { kind: "outlet"; name: string };
+
+/** One assembled piece of the prompt, as the inspector shows it (§3). */
+export interface PromptBlock {
+  id: string;
+  /** Human label. */
+  label: string;
+  /** Where the content came from, for the provenance line. */
+  source: string;
+  role: "system" | "user" | "assistant";
+  content: string;
+  placement: BlockPlacement;
+  tokens: number;
+}
+
+export type EvictionReason = "history_budget" | "hidden" | "summarized";
+
+/** What the budget could not carry, and why (§3). */
+export interface EvictedItem {
+  blockId: string;
+  /** Message identifier where the evicted item was a message. */
+  itemId: string | null;
+  label: string;
+  tokens: number;
+  reason: EvictionReason;
+}
+
+export type SkipReason =
+  | "disabled"
+  | "delayed"
+  | "cooling_down"
+  | "no_match"
+  | "secondary_keys"
+  | "character_filter"
+  | "probability"
+  | "group_not_chosen"
+  | "book_budget";
+
+/** One lore entry the activation engine considered, and its verdict (§10). */
+export interface ActivationTrace {
+  entryId: string;
+  title: string;
+  /** Which key matched, for the "why did this fire" line. */
+  matchedKey: string | null;
+  /** 0 for the first pass; higher once recursion picked it up. */
+  round: number;
+  sticky: boolean;
+  constant: boolean;
+  skipped: SkipReason | null;
+}
+
+/**
+ * The prompt as it was assembled for one generation: every block, what was
+ * evicted, and which lore entries fired and why (§3, §16).
+ */
+export interface PromptDebugInfo {
+  mode: "author" | "single_character";
+  tokensAreEstimated: boolean;
+  tokenizerId: string;
+
+  budget: number;
+  reservedForResponse: number;
+  available: number;
+  fixedTokens: number;
+  historyTokens: number;
+  totalTokens: number;
+  headroom: number;
+
+  blocks: PromptBlock[];
+  evicted: EvictedItem[];
+  /** Message identifiers the prompt carried, oldest first. */
+  historyIncluded: string[];
+  unresolvedOutlets: string[];
+  unknownMacros: string[];
+  /** Every lore entry considered for this prompt, fired or not (§10). */
+  loreTrace: ActivationTrace[];
+}
+
+/** The inspector's answer for one message: the prompt that wrote it. */
+export interface PromptInspectorDto {
+  generationId: string;
+  /** The message the generation produced, when it produced one. */
+  messageId: string | null;
+  createdAt: number;
+  debug: PromptDebugInfo;
+}
+
+/* ------------------------------------------------------------------ */
 /* Self-update (SPEC §17)                                              */
 /* ------------------------------------------------------------------ */
 

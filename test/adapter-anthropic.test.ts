@@ -101,6 +101,8 @@ const PROMPT: BuiltPrompt = {
     historyIncluded: [],
     unresolvedOutlets: [],
     unknownMacros: [],
+    // A side call's prompt has no lore to explain.
+    loreTrace: [],
   },
 };
 

@@ -442,6 +442,10 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
       insertionRole: entry.insertionRole,
       outletName: entry.outletName,
     })),
+    // The trace rides along untouched: the inspector's "which lore fired and
+    // why" is this, and it is captured at build time because a later
+    // recomputation could disagree — the RNG is seeded per generation (§10).
+    loreTrace: lore.trace,
     documents: [],
     // Rolling summarisation (SPEC §11). Which of the scene's summaries reach
     // the prompt is decided by the threshold and the freeze, not by this call.

@@ -2356,3 +2356,73 @@ a new side call that names a new source silently becomes a *turn* — waiting on
 the queue that never arrives. The adapter now treats `autopilot` as a side
 call; the general lesson is that the fixture's contract is `source ∈ {side
 call sources}`, and that set has to grow with the registry.
+
+## Phase 25 — The prompt inspector
+
+§3 has promised a debug record since phase 3, §16 has promised a screen for it
+since the design landed, and every one of those promises ended with "the
+inspector is the only way a user can discover that". This phase is the only way.
+
+### What was built
+
+**The debug record, kept.** Every generation now stores its assembled prompt's
+debug the moment the prompt is built — before the first token — so a cancelled
+or failed generation answers as completely as a finished one: "what did the
+model see" is a question about the ask, not the answer. Migration 0022 is one
+nullable JSON column on `generations`; nothing else about the generation row
+changed.
+
+**The lore trace rides along.** The activation engine has produced a full
+trace — every entry considered, fired or not, with the reason — since phase 21,
+and has thrown it away at the door of the context builder. It is now handed
+through `PromptContext` and copied into the debug by the builder, which stays
+pure: data in, data out, and the inspector's "which lore fired and why" is the
+same trace the activation test tool shows, captured at the moment it was true
+rather than recomputed and hoped to agree.
+
+**One endpoint, three ways to reach it.** `GET /scenes/:id/inspector/:messageId`
+resolves a message to the generation that wrote it; a reader's message to the
+generation that answered it; and anything else to the scene's most recent built
+prompt — §16's "reachable from any message" with "the last generation" as the
+floor. A scene that has never built a prompt says so.
+
+**A sheet, not a screen.** The budget arithmetic in one chrome line; the blocks
+in assembly order with label, provenance, placement, role and cost, content on
+demand in mono; the history resolved against the scene the reader is already
+looking at, so there is one source of truth for what was said; the evicted with
+their reasons in red — §3's "the character forgot is almost always the model
+never saw it", made checkable; the lore verdicts; and the two quiet failure
+modes §3 and §18 insist on naming, unresolved outlets and unknown macros.
+
+**The shapes moved to /shared.** The debug and trace types were the contract
+the client was about to consume, so that is where they live now, re-exported
+from the modules that defined them — the builder's vocabulary
+(`PromptBlockId`) stays server-side, and the shared block widens `id` to
+`string` so the client does not import the builder's union.
+
+### Deliberately deferred
+
+- **Retrieved chunks and scores** — §16 lists them, and phase 30's data bank
+  does not exist yet. The debug carries `documents` as a block and nothing to
+  score; the sheet will grow the section when there is something to put in it.
+- **A diff between two generations.** The version carousel makes the question
+  natural — "what changed in the prompt between this swipe and the last" — and
+  the answer is buildable from two stored records, but it is a viewer of its
+  own and this phase's job was to make the records exist.
+- **The raw rendered wire form.** The blocks carry the full content and the
+  placement; what the adapter finally emitted (`messages`, `rawText`) is a
+  rendering of exactly those, and storing it too would double the row to save
+  the sheet a join it does not need.
+
+### Surprises
+
+**The bindings route takes `scope` and `targetId`, not `sceneId`** — and my
+first test posted the wrong shape, got a 400, and read like a lore bug. A test
+helper that ignores the status of a setup call is lying about what it set up;
+the fix was asserting on the binding's own response.
+
+**The eviction test had to be calibrated against the fixture card** — five
+hundred fixed tokens on a card whose description is one sentence, because the
+shipped prompt options ride on every turn. The interesting number in the
+inspector is not the window; it is fixed-minus-window, and the sheet puts both
+on its first line for exactly that reason.

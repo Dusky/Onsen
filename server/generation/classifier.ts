@@ -171,6 +171,8 @@ export function buildClassifierPrompt(input: ClassifierInput, tokenizer: Tokeniz
       historyIncluded: [],
       unresolvedOutlets: [],
       unknownMacros: [],
+      // A side call's prompt has no lore to explain.
+      loreTrace: [],
     },
   };
 }

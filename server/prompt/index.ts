@@ -231,6 +231,9 @@ export function buildPrompt(ctx: PromptContext): BuiltPrompt {
     historyIncluded: kept.map((turn) => turn.messageId),
     unresolvedOutlets: [...env.unresolvedOutlets],
     unknownMacros: [...unknownMacros],
+    // Handed in on the context and copied, not computed: the builder stays
+    // pure (§3), and the trace belongs beside the blocks it explains anyway.
+    loreTrace: [...(ctx.loreTrace ?? [])],
   };
 
   const prefill = blocks.find((block) => block.id === "prefill")?.content;

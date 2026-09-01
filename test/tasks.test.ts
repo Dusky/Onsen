@@ -143,6 +143,8 @@ function somePrompt(text = "Answer with one word."): BuiltPrompt {
       historyIncluded: [],
       unresolvedOutlets: [],
       unknownMacros: [],
+      // A side call's prompt has no lore to explain.
+      loreTrace: [],
     },
   };
 }

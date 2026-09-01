@@ -107,28 +107,8 @@ export interface ActivationInput {
   countTokens: (text: string) => number;
 }
 
-export type SkipReason =
-  | "disabled"
-  | "delayed"
-  | "cooling_down"
-  | "no_match"
-  | "secondary_keys"
-  | "character_filter"
-  | "probability"
-  | "group_not_chosen"
-  | "book_budget";
-
-export interface ActivationTrace {
-  entryId: string;
-  title: string;
-  /** Which key matched, for the inspector's "why did this fire" line. */
-  matchedKey: string | null;
-  /** 0 for the first pass; higher once recursion picked it up. */
-  round: number;
-  sticky: boolean;
-  constant: boolean;
-  skipped: SkipReason | null;
-}
+export type { SkipReason, ActivationTrace } from "../../shared/types.ts";
+import type { ActivationTrace, SkipReason } from "../../shared/types.ts";
 
 export interface ActivationResult {
   activated: LoreCandidate[];

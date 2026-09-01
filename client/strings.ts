@@ -126,6 +126,49 @@ export const strings = {
     setup: "Setup",
     back: "‹",
 
+    /** The prompt inspector (SPEC §16, phase 25). */
+    inspect: "Inspect the prompt",
+    inspectorTitle: "The prompt",
+    inspectorTotal: (total: number, available: number) => `${total} / ${available}`,
+    inspectorBudget: (debug: {
+      budget: number;
+      reservedForResponse: number;
+      fixedTokens: number;
+      historyTokens: number;
+      headroom: number;
+    }) =>
+      `window ${debug.budget} · reply ${debug.reservedForResponse} · fixed ${debug.fixedTokens} · history ${debug.historyTokens} · left ${debug.headroom}`,
+    inspectorEstimated: "Estimated tokens",
+    inspectorCounted: "Counted tokens",
+    inspectorNoHeadroom: "Nothing left — the window is full",
+    inspectorBlocks: "Blocks",
+    inspectorEvicted: "What the window could not carry",
+    inspectorLore: "Lore",
+    inspectorPrefix: "prefix",
+    inspectorDepth: (depth: number) => `depth ${depth}`,
+    inspectorOutlet: (name: string) => `outlet ${name}`,
+    inspectorTokens: (n: number) => `${n} tok`,
+    inspectorEviction: {
+      history_budget: "trimmed",
+      hidden: "hidden",
+      summarized: "summarised",
+    } as Record<string, string>,
+    inspectorLoreFired: (key: string) => `fired on “${key}”`,
+    inspectorLoreConstant: "always on",
+    inspectorSkip: {
+      disabled: "off",
+      delayed: "not yet due",
+      cooling_down: "cooling down",
+      no_match: "no match",
+      secondary_keys: "blocked by its other keys",
+      character_filter: "not present for it",
+      probability: "not drawn",
+      group_not_chosen: "group lost",
+      book_budget: "book was full",
+    } as Record<string, string>,
+    inspectorOutlets: (names: string) => `Outlets nothing filled: ${names}`,
+    inspectorMacros: (names: string) => `Macros this app does not know: ${names}`,
+
     /** Long-press action sheet (§16). */
     actions: "Message",
     reroll: "Reroll",
@@ -143,6 +186,8 @@ export const strings = {
     /** Before the director has answered — with a classifier, that takes a moment. */
     choosing: "Choosing who speaks",
     chooseInitials: "?",
+    /** The reader, as the history listing names them. */
+    youLabel: "You",
     /** The cast rail's heading, and the statuses a card can be in (design 4a). */
     whoSpeaksNext: "Who speaks next",
     statusCued: "Cued",

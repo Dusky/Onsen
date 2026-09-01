@@ -442,6 +442,12 @@ in, same prompt out:
 - **`seed: number`** — resolves `{{random}}` and `{{roll}}`.
 - **`idleDuration?: number`** and **`oocDue?: boolean`** — inputs to
   `{{idle_duration}}` and the OOC invitation block.
+- **`loreTrace?: ActivationTrace[]`** — settled while building phase 25. The
+  full lore activation trace, computed by the I/O layer and handed in for the
+  builder to copy into the debug output verbatim. It is an injected input for
+  the same reason `now` is: the trace is seeded per generation, and a builder
+  that recomputed it would be a second implementation that could disagree with
+  the one that chose the lore.
 
 A test reads the source of every file under `/prompt` and fails on an import
 from `/db`, `/routes` or `/middleware`, and on `Date.now`, `new Date()`,

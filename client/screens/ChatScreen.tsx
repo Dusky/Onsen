@@ -15,6 +15,7 @@ import { MessageBlock, MessageEditor, OocBlock, Reasoning } from "../components/
 import { OocChannel } from "../components/OocChannel.tsx";
 import { Composer } from "../components/Composer.tsx";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
+import { InspectorSheet } from "../components/InspectorSheet.tsx";
 import { CastStrip } from "../components/CastStrip.tsx";
 import { OpsGrid, OpsRow, OpPrompt, type Op } from "../components/OpsGrid.tsx";
 import { CastRail } from "../components/CastRail.tsx";
@@ -38,6 +39,7 @@ import {
   useTasks,
   useAutopilot,
   useUpdateScene,
+  useInspector,
 } from "../lib/queries.ts";
 import type {
   GuideKind,
@@ -117,6 +119,9 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const editSummary = useEditSummary(sceneId);
   const forgetSummary = useForgetSummary(sceneId);
   const [acting, setActing] = useState<MessageDto | null>(null);
+  /** The message whose prompt the inspector sheet is showing (SPEC §16). */
+  const [inspecting, setInspecting] = useState<MessageDto | null>(null);
+  const inspector = useInspector(sceneId, inspecting?.id ?? null);
   /** The beat whose parts are being picked from, for a recast. */
   const [recasting, setRecasting] = useState<MessageDto | null>(null);
   /**
@@ -851,6 +856,16 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
 
       {acting !== null ? (
         <Sheet title={strings.chat.actions} onClose={() => setActing(null)}>
+          {/* §16: the inspector is reachable from any message — its own
+              generation where it has one, the reply it prompted where it does
+              not, and never more than a long-press away. */}
+          <SheetAction
+            label={strings.chat.inspect}
+            onClick={() => {
+              setInspecting(acting);
+              setActing(null);
+            }}
+          />
           <SheetAction label={strings.chat.reroll} onClick={() => void reroll(acting)} />
           <SheetAction
             label={strings.chat.edit}
@@ -962,6 +977,18 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           onEditSummary={(summaryId, content) => editSummary.mutate({ summaryId, content })}
           onForgetSummary={(summaryId) => forgetSummary.mutate(summaryId)}
           onClose={() => setGuidesOpen(false)}
+        />
+      ) : null}
+
+      {/* The inspector (§16): the exact prompt behind the message, with its
+          costs, its evictions and its lore verdicts. Opened only with something
+          to show — a message with no built prompt behind it gets a 404, and a
+          sheet that opens to say nothing is not worth the trip. */}
+      {inspecting !== null && inspector.data !== undefined ? (
+        <InspectorSheet
+          inspection={inspector.data}
+          messages={messages}
+          onClose={() => setInspecting(null)}
         />
       ) : null}
 

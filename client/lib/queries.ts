@@ -6,6 +6,7 @@ import type {
   AuthorDto,
   AutopilotStateDto,
   ConnectionProfileDto,
+  PromptInspectorDto,
   CreateConnectionProfileRequest,
   CreateProviderRequest,
   PresetDto,
@@ -875,6 +876,22 @@ export function useStopAutopilot(sceneId: string) {
       void client.invalidateQueries({ queryKey: keys.autopilot(sceneId) });
       void client.invalidateQueries({ queryKey: keys.scene(sceneId) });
     },
+  });
+}
+
+/* ---------------- the prompt inspector (SPEC §16, phase 25) ---------------- */
+
+/**
+ * The exact prompt behind a message. Fetched when the sheet is open and never
+ * cached long — the next generation is a different prompt, and a stale answer
+ * to "what did the model see" is worse than none.
+ */
+export function useInspector(sceneId: string, messageId: string | null) {
+  return useQuery({
+    queryKey: ["scenes", sceneId, "inspector", messageId] as const,
+    queryFn: () => api.get<PromptInspectorDto>(`/scenes/${sceneId}/inspector/${messageId}`),
+    enabled: messageId !== null,
+    staleTime: 0,
   });
 }
 

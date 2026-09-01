@@ -63,6 +63,8 @@ function prompt(system: string, question: string, tokenizer: Tokenizer): BuiltPr
       historyIncluded: [],
       unresolvedOutlets: [],
       unknownMacros: [],
+      // A side call's prompt has no lore to explain.
+      loreTrace: [],
     },
   };
 }
