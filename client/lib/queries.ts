@@ -5,8 +5,14 @@ import type {
   AppendMessageRequest,
   AuthorDto,
   AutopilotStateDto,
+  BulkCharacterRequest,
+  BulkCharacterResponse,
+  CharacterFilterQuery,
+  CharacterSnapshotDto,
+  CharacterVersionDto,
   ConnectionProfileDto,
   PromptInspectorDto,
+  SavedFilterDto,
   CreateConnectionProfileRequest,
   CreateProviderRequest,
   PresetDto,
@@ -526,12 +532,25 @@ export function useSetLeaf(sceneId: string) {
 export const characterKeys = {
   all: ["characters"] as const,
   one: (id: string) => ["characters", id] as const,
+  tags: ["characters", "tags"] as const,
+  folders: ["characters", "folders"] as const,
+  versions: (id: string) => ["characters", id, "versions"] as const,
+  snapshot: (id: string, versionId: string) => ["characters", id, "versions", versionId] as const,
 };
 
-export function useCharacters() {
+/** The library, searched and filtered server-side (SPEC §9, phase 26). */
+export function useCharacters(filter: CharacterFilterQuery = {}) {
   return useQuery({
-    queryKey: characterKeys.all,
-    queryFn: () => api.get<CharacterDto[]>("/characters"),
+    queryKey: ["characters", filter] as const,
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      for (const key of ["q", "tag", "folder"] as const) {
+        const value = filter[key];
+        if (value !== undefined && value !== "") params.set(key, value);
+      }
+      const qs = params.toString();
+      return api.get<CharacterDto[]>(qs === "" ? "/characters" : `/characters?${qs}`);
+    },
   });
 }
 
@@ -905,5 +924,100 @@ export function useUpdateScene(sceneId: string) {
       void client.invalidateQueries({ queryKey: keys.scene(sceneId) });
       void client.invalidateQueries({ queryKey: keys.scenes });
     },
+  });
+}
+
+/* ---------------- the library at scale (SPEC §9, phase 26) ---------------- */
+
+export function useCharacterTags() {
+  return useQuery({
+    queryKey: characterKeys.tags,
+    queryFn: () => api.get<string[]>("/characters/tags"),
+  });
+}
+
+export function useCharacterFolders() {
+  return useQuery({
+    queryKey: characterKeys.folders,
+    queryFn: () => api.get<string[]>("/characters/folders"),
+  });
+}
+
+export function useBulkCharacters() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: BulkCharacterRequest) => api.post<BulkCharacterResponse>("/characters/bulk", body),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: characterKeys.all });
+      void client.invalidateQueries({ queryKey: characterKeys.tags });
+      void client.invalidateQueries({ queryKey: characterKeys.folders });
+    },
+  });
+}
+
+export function useSavedFilters() {
+  return useQuery({
+    queryKey: ["filters"] as const,
+    queryFn: () => api.get<SavedFilterDto[]>("/filters"),
+  });
+}
+
+export function useCreateFilter() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name: string; query: CharacterFilterQuery }) =>
+      api.post<SavedFilterDto>("/filters", body),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["filters"] }),
+  });
+}
+
+export function useDeleteFilter() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/filters/${id}`),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["filters"] }),
+  });
+}
+
+export function useCharacterVersions(characterId: string) {
+  return useQuery({
+    queryKey: characterKeys.versions(characterId),
+    queryFn: () => api.get<CharacterVersionDto[]>(`/characters/${characterId}/versions`),
+  });
+}
+
+export function useCharacterSnapshot(characterId: string, versionId: string | null) {
+  return useQuery({
+    queryKey: characterKeys.snapshot(characterId, versionId ?? ""),
+    queryFn: () => api.get<CharacterSnapshotDto>(`/characters/${characterId}/versions/${versionId}`),
+    enabled: versionId !== null,
+  });
+}
+
+export function useRestoreVersion(characterId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (versionId: string) =>
+      api.post<CharacterDto>(`/characters/${characterId}/versions/${versionId}/restore`),
+    onSuccess: (character) => {
+      client.setQueryData(characterKeys.one(characterId), character);
+      void client.invalidateQueries({ queryKey: characterKeys.all });
+      void client.invalidateQueries({ queryKey: characterKeys.versions(characterId) });
+    },
+  });
+}
+
+export function useDeriveCharacter(characterId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name?: string }) =>
+      api.post<CharacterDto>(`/characters/${characterId}/derive`, body),
+    onSuccess: () => void client.invalidateQueries({ queryKey: characterKeys.all }),
+  });
+}
+
+export function useSuggestTags(characterId: string) {
+  return useMutation({
+    mutationFn: () => api.post<{ tags: string[] }>(`/characters/${characterId}/suggest-tags`),
   });
 }

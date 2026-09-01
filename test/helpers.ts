@@ -280,7 +280,8 @@ export class ScriptedAdapter implements Adapter {
     if (
       source === "turn director" ||
       source === "guided op" ||
-      source === "autopilot"
+      source === "autopilot" ||
+      source === "character library"
     ) {
       this.taskCalls += 1;
       if (this.taskFails) throw new Error("the model is unreachable");

@@ -1204,6 +1204,10 @@ export interface CharacterDto {
 
   /** How the card arrived, so export can offer its original format. */
   format: CardFormat;
+  /** A loose grouping label, not a tree (SPEC §9). Null means unsorted. */
+  folder: string | null;
+  /** The card this one was derived from, where it is a variant. */
+  parentId: string | null;
   /**
    * Fields present in the original card that this app does not model. They are
    * preserved verbatim and survive export; this names them so the user knows.
@@ -1236,6 +1240,52 @@ export interface UpdateCharacterRequest {
   tags?: string[];
   creator?: string | null;
   characterVersion?: string | null;
+  folder?: string | null;
+}
+
+/** One snapshot in a character's version history (SPEC §9). */
+export interface CharacterVersionDto {
+  id: string;
+  /** The character's name at that point — a rename is itself a version. */
+  name: string;
+  createdAt: number;
+}
+
+/** A full snapshot, for diff and restore (SPEC §9). */
+export interface CharacterSnapshotDto {
+  id: string;
+  createdAt: number;
+  /** The editable fields, in the editor's own shape. */
+  character: UpdateCharacterRequest & { name: string };
+}
+
+/** A saved filter over the library (SPEC §9). */
+export interface SavedFilterDto {
+  id: string;
+  name: string;
+  query: CharacterFilterQuery;
+}
+
+export interface CharacterFilterQuery {
+  q?: string;
+  tag?: string;
+  folder?: string;
+}
+
+/** A bulk edit over a multi-selection (SPEC §9). */
+export interface BulkCharacterRequest {
+  ids: string[];
+  op: "tag" | "untag" | "move" | "delete";
+  /** For tag/untag. */
+  tag?: string;
+  /** For move. */
+  folder?: string;
+}
+
+export interface BulkCharacterResponse {
+  /** Characters touched, in their new state. */
+  characters: CharacterDto[];
+  deleted: number;
 }
 
 /** What an import produced, including anything worth telling the user. */

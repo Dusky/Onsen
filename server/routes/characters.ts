@@ -21,7 +21,25 @@ import {
   updateCharacter,
   type CharacterRow,
 } from "../db/queries/characters.ts";
+import {
+  bulkApply,
+  characterFolders,
+  characterTags,
+  characterVersions,
+  findVersion,
+  listCharactersFiltered,
+  restoreVersion,
+} from "../db/queries/library.ts";
+import type { TaskRunner } from "../tasks/runner.ts";
+import { SUGGEST_TAGS, taskKind } from "../tasks/registry.ts";
+import {
+  buildSuggestTagsPrompt,
+  parseTagSuggestions,
+} from "../generation/tags.ts";
+import { createEstimatingTokenizer } from "../prompt/index.ts";
 import type {
+  BulkCharacterRequest,
+  CharacterFilterQuery,
   ImportCharacterResponse,
   PromptRoleName,
   UpdateCharacterRequest,
@@ -49,7 +67,7 @@ function notFound() {
   return { error: { code: "not_found", message: "No such character." } } as const;
 }
 
-export function characterRoutes(ctx: AppContext): Hono<AppEnv> {
+export function characterRoutes(ctx: AppContext, tasks: TaskRunner): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
   app.use("*", requireAuth());
 
@@ -57,7 +75,48 @@ export function characterRoutes(ctx: AppContext): Hono<AppEnv> {
     return row.avatar_path === null ? null : join(ctx.config.avatarsDir, row.avatar_path);
   }
 
-  app.get("/", (c) => c.json(listCharacters(ctx.db).map(toCharacterDto)));
+  app.get("/", (c) => {
+    const q = c.req.query("q");
+    const tag = c.req.query("tag");
+    const folder = c.req.query("folder");
+    const filter: CharacterFilterQuery = {
+      ...(q === undefined ? {} : { q }),
+      ...(tag === undefined ? {} : { tag }),
+      ...(folder === undefined ? {} : { folder }),
+    };
+    const rows = listCharactersFiltered(ctx.db, filter);
+    return c.json(rows.map((row) => toCharacterDto(ctx.db, row)));
+  });
+
+  /** The controlled vocabulary for tag autocomplete (SPEC §9). */
+  app.get("/tags", (c) => c.json(characterTags(ctx.db)));
+
+  /** Every folder in the library, for the folder filter. */
+  app.get("/folders", (c) => c.json(characterFolders(ctx.db)));
+
+  /** A bulk edit over a multi-selection (SPEC §9). */
+  app.post("/bulk", async (c) => {
+    let body: BulkCharacterRequest;
+    try {
+      body = (await c.req.json()) as BulkCharacterRequest;
+    } catch {
+      return c.json(badRequest("Expected a JSON body."), 400);
+    }
+    if (!Array.isArray(body.ids) || !["tag", "untag", "move", "delete"].includes(body.op)) {
+      return c.json(badRequest("Bulk edits need a list of ids and an operation."), 400);
+    }
+    const { characters, deleted } = bulkApply(
+      ctx.db,
+      body.ids,
+      body.op,
+      body.tag ?? null,
+      body.folder ?? null,
+    );
+    return c.json({
+      characters: characters.map((row) => toCharacterDto(ctx.db, row)),
+      deleted,
+    });
+  });
 
   /**
    * Import a card. The file's own bytes decide the format; a card renamed from
@@ -90,7 +149,7 @@ export function characterRoutes(ctx: AppContext): Hono<AppEnv> {
     const existing = findByHash(ctx.db, imported.sourceHash);
     if (existing !== null) {
       const body: ImportCharacterResponse = {
-        character: toCharacterDto(existing),
+        character: toCharacterDto(ctx.db, existing),
         duplicateOf: existing.ulid,
         warnings: [`${existing.name} is already in the library.`],
       };
@@ -124,7 +183,7 @@ export function characterRoutes(ctx: AppContext): Hono<AppEnv> {
     }
 
     const body: ImportCharacterResponse = {
-      character: toCharacterDto(row),
+      character: toCharacterDto(ctx.db, row),
       duplicateOf: null,
       warnings,
     };
@@ -172,12 +231,12 @@ export function characterRoutes(ctx: AppContext): Hono<AppEnv> {
       sourceFilename: null,
       sourceHash: null,
     });
-    return c.json(toCharacterDto(row), 201);
+    return c.json(toCharacterDto(ctx.db, row), 201);
   });
 
   app.get("/:characterId", (c) => {
     const row = findCharacter(ctx.db, c.req.param("characterId"));
-    return row === null ? c.json(notFound(), 404) : c.json(toCharacterDto(row));
+    return row === null ? c.json(notFound(), 404) : c.json(toCharacterDto(ctx.db, row));
   });
 
   app.patch("/:characterId", async (c) => {
@@ -206,7 +265,7 @@ export function characterRoutes(ctx: AppContext): Hono<AppEnv> {
       return c.json(badRequest("Depth must be a number."), 400);
     }
 
-    return c.json(toCharacterDto(updateCharacter(ctx.db, row.id, { ...patch })));
+    return c.json(toCharacterDto(ctx.db, updateCharacter(ctx.db, row.id, { ...patch })));
   });
 
   app.delete("/:characterId", (c) => {
@@ -223,6 +282,116 @@ export function characterRoutes(ctx: AppContext): Hono<AppEnv> {
       }
     }
     return c.body(null, 204);
+  });
+
+  /** The version history, newest first (SPEC §9). */
+  app.get("/:characterId/versions", (c) => {
+    const row = findCharacter(ctx.db, c.req.param("characterId"));
+    if (row === null) return c.json(notFound(), 404);
+    return c.json(characterVersions(ctx.db, row.id));
+  });
+
+  /** One snapshot, for the diff the editor draws against the current state. */
+  app.get("/:characterId/versions/:versionUlid", (c) => {
+    const row = findCharacter(ctx.db, c.req.param("characterId"));
+    if (row === null) return c.json(notFound(), 404);
+    const version = findVersion(ctx.db, row.id, c.req.param("versionUlid"));
+    if (version === null) {
+      return c.json({ error: { code: "not_found", message: "No such version." } }, 404);
+    }
+    return c.json(version);
+  });
+
+  /** Restore a snapshot — the state before it becomes a new version itself. */
+  app.post("/:characterId/versions/:versionUlid/restore", (c) => {
+    const row = findCharacter(ctx.db, c.req.param("characterId"));
+    if (row === null) return c.json(notFound(), 404);
+    const restored = restoreVersion(ctx.db, row.id, c.req.param("versionUlid"));
+    if (restored === null) {
+      return c.json({ error: { code: "not_found", message: "No such version." } }, 404);
+    }
+    return c.json(toCharacterDto(ctx.db, restored));
+  });
+
+  /**
+   * Derive a variant (SPEC §9): a copy with a link back to its parent, for
+   * alternate-universe versions of the same character. The copy carries the
+   * parent's card rebuilt, not its raw document — a variant is a new original.
+   */
+  app.post("/:characterId/derive", async (c) => {
+    const row = findCharacter(ctx.db, c.req.param("characterId"));
+    if (row === null) return c.json(notFound(), 404);
+
+    let name = `${row.name} (variant)`;
+    try {
+      const body = (await c.req.json()) as { name?: unknown };
+      if (typeof body.name === "string" && body.name.trim() !== "") name = body.name.trim();
+    } catch {
+      /* The default name stands. */
+    }
+
+    const card = { ...toNormalisedCard(row), name };
+    const derived = insertCharacter(ctx.db, {
+      card,
+      rawCard: buildCardDocument(card, null),
+      format: "native",
+      avatarPath: row.avatar_path,
+      sourceFilename: null,
+      sourceHash: null,
+    });
+    ctx.db
+      .query("UPDATE characters SET parent_character_id = $parent, folder = $folder WHERE id = $id")
+      .run({ id: derived.id, parent: row.id, folder: row.folder });
+    const withParent = findCharacter(ctx.db, derived.ulid);
+    return c.json(toCharacterDto(ctx.db, withParent ?? derived), 201);
+  });
+
+  /**
+   * AI-assisted tagging (SPEC §9): read the card, propose tags from the
+   * library's own vocabulary. Proposals only — the user is the gate, and a
+   * side call that failed returns no tags rather than a failed request.
+   */
+  app.post("/:characterId/suggest-tags", async (c) => {
+    const row = findCharacter(ctx.db, c.req.param("characterId"));
+    if (row === null) return c.json(notFound(), 404);
+
+    // No scene here, so the task's own profile and the default profile are
+    // the two rungs it can climb — a character-level op has nowhere else to
+    // look (§7's routing order, minus the scene).
+    const fallback = (ctx.db.query(
+      "SELECT id FROM connection_profiles ORDER BY is_default DESC, id LIMIT 1",
+    ).get() ?? null) as { id: number } | null;
+
+    const kind = taskKind(SUGGEST_TAGS)!;
+    const outcome = await tasks.run({
+      kind,
+      sceneId: null,
+      profileId: null,
+      fallbackProfileId: fallback?.id ?? null,
+      prompt: buildSuggestTagsPrompt(
+        {
+          name: row.name,
+          description: row.description,
+          personality: row.personality,
+          creatorNotes: row.creator_notes,
+          vocabulary: characterTags(ctx.db),
+        },
+        createEstimatingTokenizer(),
+      ),
+    });
+    if (!outcome.ok) {
+      return c.json(
+        { error: { code: "unavailable", message: outcome.detail } },
+        502,
+      );
+    }
+    // Proposals only ever narrow: the model may not invent tags outside the
+    // library's vocabulary, except where there is none.
+    const vocabulary = new Set(characterTags(ctx.db));
+    const proposals = parseTagSuggestions(outcome.text).filter(
+      (tag) => vocabulary.size === 0 || vocabulary.has(tag),
+    );
+    return c.json({ tags: proposals });
   });
 
   /** Export in any supported format, re-emitting from the preserved original. */

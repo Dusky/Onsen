@@ -44,6 +44,8 @@ export interface CharacterRow {
   extensions: string;
   source_filename: string | null;
   source_hash: string | null;
+  folder: string | null;
+  parent_character_id: number | null;
   created_at: number;
   updated_at: number;
 }
@@ -109,7 +111,7 @@ function unmodelledOf(row: CharacterRow): string[] {
   return unmodelledFieldsOfDocument(row.raw_card);
 }
 
-export function toCharacterDto(row: CharacterRow): CharacterDto {
+export function toCharacterDto(db: Database, row: CharacterRow): CharacterDto {
   return {
     id: row.ulid,
     name: row.name,
@@ -132,6 +134,8 @@ export function toCharacterDto(row: CharacterRow): CharacterDto {
     creator: row.creator,
     characterVersion: row.character_version,
     format: row.raw_card_format,
+    folder: row.folder,
+    parentId: parentUlidOf(db, row.parent_character_id),
     unmodelledFields: unmodelledOf(row),
     tokens: tokenCostsFor(row),
     createdAt: row.created_at,
@@ -180,7 +184,7 @@ export interface NewCharacter {
 
 export function insertCharacter(db: Database, input: NewCharacter): CharacterRow {
   const now = Date.now();
-  return db
+  const row = db
     .query(
       `INSERT INTO characters (
          ulid, name, avatar_path, description, personality, scenario, first_message,
@@ -226,6 +230,11 @@ export function insertCharacter(db: Database, input: NewCharacter): CharacterRow
       source_hash: input.sourceHash,
       now,
     }) as CharacterRow;
+
+  // The baseline snapshot — the card as it arrived — so restore can always
+  // take the character back to unedited (SPEC §9).
+  snapshotCharacter(db, row);
+  return row;
 }
 
 export function listCharacters(db: Database): CharacterRow[] {
@@ -262,6 +271,7 @@ const PATCHABLE = {
   creatorNotes: "creator_notes",
   creator: "creator",
   characterVersion: "character_version",
+  folder: "folder",
 } as const;
 
 const PATCHABLE_ARRAYS = {
@@ -297,6 +307,12 @@ export function updateCharacter(
     return db.query("SELECT * FROM characters WHERE id = $id").get({ id }) as CharacterRow;
   }
 
+  // A save is a version: snapshot what is about to change, then change it.
+  // Bulk tag/folder moves bypass this path, which is why organisational churn
+  // does not fill the history with noise (SPEC §9).
+  const before = db.query("SELECT * FROM characters WHERE id = $id").get({ id }) as CharacterRow;
+  if (before !== null) snapshotCharacter(db, before);
+
   return db
     .query(
       `UPDATE characters SET ${assignments.join(", ")}, updated_at = $now
@@ -307,4 +323,54 @@ export function updateCharacter(
 
 export function deleteCharacter(db: Database, id: number): void {
   db.query("DELETE FROM characters WHERE id = $id").run({ id });
+}
+
+/** The ulid of a character's parent variant, or null (SPEC §9). */
+function parentUlidOf(db: Database, parentId: number | null): string | null {
+  if (parentId === null) return null;
+  const row = db.query("SELECT ulid FROM characters WHERE id = $id").get({ id: parentId }) as
+    | { ulid: string }
+    | null;
+  return row?.ulid ?? null;
+}
+
+/* ------------------------------------------------------------------ */
+/* Version snapshots (SPEC §9)                                        */
+/* ------------------------------------------------------------------ */
+
+/** The fields a snapshot remembers — the editor's own shape, minus folder. */
+function snapshotOfCharacter(row: CharacterRow): Record<string, unknown> {
+  return {
+    name: row.name,
+    description: row.description,
+    personality: row.personality,
+    scenario: row.scenario,
+    firstMessage: row.first_message,
+    alternateGreetings: parseArray(row.alternate_greetings),
+    groupGreetings: parseArray(row.group_greetings),
+    exampleDialogue: row.example_dialogue,
+    voiceNotes: row.voice_notes,
+    depthPrompt: row.depth_prompt,
+    depthPromptDepth: row.depth_prompt_depth,
+    depthPromptRole: row.depth_prompt_role,
+    systemPrompt: row.system_prompt,
+    postHistoryInstructions: row.post_history_instructions,
+    creatorNotes: row.creator_notes,
+    tags: parseArray(row.tags),
+    creator: row.creator,
+    characterVersion: row.character_version,
+  };
+}
+
+/** Record a snapshot of the row's current state — the state *before* an edit. */
+export function snapshotCharacter(db: Database, row: CharacterRow): void {
+  db.query(
+    `INSERT INTO character_versions (ulid, character_id, snapshot, created_at)
+     VALUES ($ulid, $character, $snapshot, $now)`,
+  ).run({
+    ulid: ulid(),
+    character: row.id,
+    snapshot: JSON.stringify(snapshotOfCharacter(row)),
+    now: Date.now(),
+  });
 }

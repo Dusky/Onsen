@@ -2426,3 +2426,79 @@ hundred fixed tokens on a card whose description is one sentence, because the
 shipped prompt options ride on every turn. The interesting number in the
 inspector is not the window; it is fixed-minus-window, and the sheet puts both
 on its first line for exactly that reason.
+
+## Phase 26 — The character library at scale
+
+§9 names the problem in SillyTavern's own tracker: hundreds of cards, manual and
+inconsistent tagging, and no way back from a bad save. The answer is SQLite,
+which has been in the stack since phase 1 — this phase is mostly the decision to
+let it do the work.
+
+### What was built
+
+**Search moved to the server.** Full-text search over name, description,
+personality and creator notes, on an external-content FTS5 table kept in sync by
+triggers — so the source of truth stays the `characters` table and no query that
+writes a character has to remember to update an index. The query syntax is
+sanitised rather than passed through: a stray `"` turns a search into a syntax
+error, and a search box is not a place to teach FTS5.
+
+**Tags, folders and saved filters.** Tags are a controlled vocabulary with an
+autocomplete source (`/characters/tags`), folders are a label column rather
+than a tree — §9 says "folders" the way SillyTavern users mean it, and a
+hierarchy is a phase 43 question. Saved filters are a name over a query, three
+columns and nothing else.
+
+**Bulk edits over a selection.** Tag, untag, move and delete across a
+multi-selection, one request. These bypass the version hook deliberately —
+organisational churn would otherwise fill the history with noise.
+
+**Version history, on the message-tree principle.** Every save snapshots the
+state *before* the edit, so the baseline is the card as imported and restore is
+always a step backwards, never a no-op copying the present onto itself.
+Restoring is itself a save, so the state it replaced becomes a version too —
+the same "nothing is lost" the tree gives messages. The snapshot is the
+editor's own field shape, so the diff the editor could draw is a field compare,
+not a string diff.
+
+**Derive.** A variant is a copy with a `parent_character_id` link, its own card
+document (a variant is a new original, not a fork of the parent's bytes), and
+its own history. `ON DELETE SET NULL` — a variant survives its parent, which is
+the point.
+
+**Instant scene assignment.** `POST /scenes/:id/cast` takes a list; the picker
+is one request rather than a loop of single adds, because adding a character is
+cheap and §9 says it should feel cheap.
+
+**AI-assisted tagging**, as a side call through the same task runner as every
+other side call. The card is read and tags proposed *from the library's own
+vocabulary* — the spec's one hard requirement, because the manual-and-
+inconsistent problem is only fixed if every new card speaks the library's
+language, not the model's. Proposals only; the user is the gate, and the
+proposals are filtered to the vocabulary before they reach the gate.
+
+### Deliberately deferred
+
+- **A diff view between two versions.** The snapshots make it a field compare,
+  and the version sheet lists names and dates; drawing the changed lines is a
+  viewer this phase's job was to make possible, not to build.
+- **Tag renaming across the library.** A rename is a bulk untag+tag, which the
+  bulk route already does; the UI does not yet offer it as one action.
+- **Chub import and folder import** — §9's import work is phase 42.
+- **Drag-to-reorder folders** — there is no hierarchy to reorder.
+
+### Surprises
+
+**The suggest-tags task had no scene to route through.** Every side call before
+it rode a scene's profile; this one is character-level, and the task runner's
+routing order starts from the scene. The default profile is the fallback rung,
+and `resolveRoute`'s null-refusal — "no connection profile" — surfaced as a 502
+on a route that had a profile sitting right there. The lesson is that §7's
+routing order is scene-shaped, and anything outside a scene has to name its own
+bottom rung.
+
+**FTS5 needed the rebuild command.** The external-content index does not
+retroactively see rows that predate it; migrations run on databases full of
+imported cards, so `INSERT INTO characters_fts(characters_fts) VALUES
+('rebuild')` is not a dev convenience, it is the migration actually applying to
+existing libraries.

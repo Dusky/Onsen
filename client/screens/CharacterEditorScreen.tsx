@@ -2,7 +2,15 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { CharacterDto, UpdateCharacterRequest } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { navigate } from "../lib/router.ts";
-import { useCharacter, useDeleteCharacter, useUpdateCharacter } from "../lib/queries.ts";
+import {
+  useCharacter,
+  useCharacterVersions,
+  useDeleteCharacter,
+  useRestoreVersion,
+  useSuggestTags,
+  useUpdateCharacter,
+} from "../lib/queries.ts";
+import { Sheet, SheetAction } from "../components/Sheet.tsx";
 
 /**
  * The character editor.
@@ -130,7 +138,12 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
   const query = useCharacter(characterId);
   const update = useUpdateCharacter(characterId);
   const remove = useDeleteCharacter();
+  const versions = useCharacterVersions(characterId);
+  const restore = useRestoreVersion(characterId);
+  const suggest = useSuggestTags(characterId);
   const [tab, setTab] = useState<Tab>("card");
+  const [tagDraft, setTagDraft] = useState("");
+  const [versionsOpen, setVersionsOpen] = useState(false);
 
   const character: CharacterDto | undefined = query.data;
   if (character === undefined) {
@@ -346,6 +359,70 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                 />
               </FieldRow>
 
+              {/* Tags (SPEC §9): chips of what the card has, an add box, and the
+                  background task that proposes more from the library's own
+                  vocabulary. */}
+              <p className="section-label mb-[8px]">{strings.characters.tagFilter}</p>
+              <div className="mb-[8px] flex flex-wrap gap-[6px]">
+                {character.tags.map((existing) => (
+                  <button
+                    key={existing}
+                    type="button"
+                    onClick={() =>
+                      save({ tags: character.tags.filter((tag) => tag !== existing) })
+                    }
+                    className="chrome border px-[10px] py-[6px] text-[9px] tracking-[0.08em] uppercase"
+                    style={{
+                      borderColor: "var(--onsen-color-border-quiet)",
+                      color: "var(--onsen-color-text-muted)",
+                    }}
+                  >
+                    {existing} ×
+                  </button>
+                ))}
+              </div>
+              <div className="mb-[8px] flex gap-[6px]">
+                <input
+                  className="field flex-1"
+                  placeholder={strings.characters.tagPrompt}
+                  value={tagDraft}
+                  onChange={(event) => setTagDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter") return;
+                    const next = tagDraft.trim().toLowerCase();
+                    if (next === "" || character.tags.includes(next)) return;
+                    save({ tags: [...character.tags, next] });
+                    setTagDraft("");
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn flex-none"
+                  disabled={suggest.isPending}
+                  onClick={() =>
+                    suggest.mutate(undefined, {
+                      onSuccess: ({ tags }) => {
+                        const added = tags.filter((tag) => !character.tags.includes(tag));
+                        if (added.length > 0) save({ tags: [...character.tags, ...added] });
+                      },
+                    })
+                  }
+                >
+                  {suggest.isPending ? strings.characters.suggestingTags : strings.characters.suggestTags}
+                </button>
+              </div>
+
+              {/* Version history (SPEC §9): every save left one behind, and
+                  restore takes the card back through them. */}
+              <p className="section-label mt-[16px] mb-[8px]">{strings.characters.versions}</p>
+              <button
+                type="button"
+                className="btn w-full"
+                onClick={() => setVersionsOpen(true)}
+              >
+                {strings.characters.versions} · {(versions.data ?? []).length}
+              </button>
+
               {/* What the original card carried that this editor does not show.
                   It survives export; saying so is what stops it feeling lost. */}
               {character.unmodelledFields.length > 0 ? (
@@ -422,6 +499,29 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
           </div>
         </div>
       </footer>
+
+      {versionsOpen ? (
+        <Sheet title={strings.characters.versions} onClose={() => setVersionsOpen(false)}>
+          {(versions.data ?? []).length === 0 ? (
+            <p className="chrome py-[10px] text-[9px] tracking-[0.12em] text-ink-dim uppercase">
+              {strings.characters.noVersions}
+            </p>
+          ) : (
+            (versions.data ?? []).map((version) => (
+              <SheetAction
+                key={version.id}
+                label={`${version.name} · ${new Date(version.createdAt).toLocaleString()}`}
+                onClick={() => {
+                  if (!window.confirm(strings.characters.restoreConfirm)) return;
+                  restore.mutate(version.id, {
+                    onSuccess: () => setVersionsOpen(false),
+                  });
+                }}
+              />
+            ))
+          )}
+        </Sheet>
+      ) : null}
     </div>
   );
 }

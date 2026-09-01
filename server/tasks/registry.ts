@@ -89,6 +89,7 @@ export type TaskKind = SideCallOp;
 
 export const TURN_CLASSIFIER = "turn_classifier";
 export const AUTOPILOT_CHECK = "autopilot_check";
+export const SUGGEST_TAGS = "suggest_tags";
 export const IMPERSONATE = "impersonate";
 export const NUDGE = "nudge";
 export const STEER = "steer";
@@ -199,6 +200,19 @@ export const OP_KINDS: readonly OpKind[] = [
     timeoutMs: 12_000,
     replyLimit: 300,
     variables: ["persona", "speaker", "text"],
+    hideable: false,
+  },
+  {
+    key: SUGGEST_TAGS,
+    runs: "side_call",
+    label: "Propose tags",
+    description:
+      "Reads a character card and proposes tags from the library's own vocabulary. The user accepts or rejects them one at a time.",
+    stage: "sidecar",
+    samplers: { temperature: 0.3, top_p: 0.9 },
+    timeoutMs: 20_000,
+    replyLimit: 400,
+    variables: ["card", "vocabulary"],
     hideable: false,
   },
   {

@@ -1,74 +1,142 @@
-import { useMemo, useRef, useState } from "react";
-import type { CharacterDto } from "@shared/types.ts";
+import { useRef, useState } from "react";
+import type { CharacterDto, SavedFilterDto } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { navigate } from "../lib/router.ts";
-import { useCharacters, useCreateCharacter, useImportCharacter } from "../lib/queries.ts";
+import {
+  useBulkCharacters,
+  useCharacterFolders,
+  useCharacters,
+  useCharacterTags,
+  useCreateCharacter,
+  useCreateFilter,
+  useDeleteCharacter,
+  useDeleteFilter,
+  useDeriveCharacter,
+  useImportCharacter,
+  useSavedFilters,
+} from "../lib/queries.ts";
 import { TabBar } from "../components/TabBar.tsx";
 import { Notice } from "../components/Notice.tsx";
+import { Sheet, SheetAction } from "../components/Sheet.tsx";
 
 /**
- * The character library: a three-column grid of cards.
+ * The character library (SPEC §9, phase 26).
  *
- * Where a card has no image, the tile shows the diagonal-stripe placeholder the
- * design uses everywhere for user-supplied imagery, rather than an invented
- * silhouette.
+ * Search is the server's now, not a name filter: full-text across name,
+ * description, personality and creator notes, then narrowed by tag and folder.
+ * A selection turns the grid into the subject of bulk edits; a card's own
+ * menu offers derivation and deletion.
  */
 
-function Tile({ character }: { character: CharacterDto }) {
+function Tile({
+  character,
+  selecting,
+  selected,
+  onToggle,
+  onMenu,
+}: {
+  character: CharacterDto;
+  selecting: boolean;
+  selected: boolean;
+  onToggle(): void;
+  onMenu(): void;
+}) {
   return (
-    <button
-      type="button"
-      onClick={() => navigate({ name: "character", characterId: character.id })}
-      className="text-left"
-    >
-      <div
-        className="h-[128px] w-full border border-rule bg-cover bg-center"
-        style={
-          character.hasAvatar
-            ? { backgroundImage: `url(/api/characters/${character.id}/avatar)` }
-            : { background: "var(--onsen-stripe)" }
-        }
-      />
-      <p className="mt-[7px] truncate text-[14px] font-medium">{character.name}</p>
-      <p className="chrome mt-[2px] text-[8.5px] tracking-[0.06em] text-ink-dim uppercase">
-        {strings.characters.tokens(character.tokens.total)}
-      </p>
-    </button>
+    <div className="relative text-left">
+      <button
+        type="button"
+        onClick={() => (selecting ? onToggle() : navigate({ name: "character", characterId: character.id }))}
+        className="block w-full text-left"
+      >
+        <div
+          className="h-[128px] w-full border bg-cover bg-center"
+          style={{
+            borderColor: selected ? "var(--onsen-color-red)" : "var(--onsen-color-rule)",
+            outline: selected ? "2px solid var(--onsen-color-red)" : "none",
+            ...(character.hasAvatar
+              ? { backgroundImage: `url(/api/characters/${character.id}/avatar)` }
+              : { background: "var(--onsen-stripe)" }),
+          }}
+        />
+        <p className="mt-[7px] truncate text-[14px] font-medium">{character.name}</p>
+        <p className="chrome mt-[2px] truncate text-[8.5px] tracking-[0.06em] text-ink-dim uppercase">
+          {[character.folder, strings.characters.tokens(character.tokens.total)]
+            .filter((part) => part !== null && part !== "")
+            .join(" · ")}
+        </p>
+      </button>
+      {!selecting ? (
+        <button
+          type="button"
+          aria-label={strings.characters.actions}
+          onClick={onMenu}
+          className="chrome absolute top-[6px] right-[6px] flex h-[24px] w-[24px] items-center justify-center text-[13px]"
+          style={{ background: "rgba(0,0,0,0.45)", color: "var(--onsen-color-text-bright)" }}
+        >
+          ⋯
+        </button>
+      ) : null}
+    </div>
   );
 }
 
 export function CharactersScreen() {
-  const characters = useCharacters();
+  const [q, setQ] = useState("");
+  const [tag, setTag] = useState("");
+  const [folder, setFolder] = useState("");
+  const [savedId, setSavedId] = useState<string>("");
+
+  const characters = useCharacters({ q, tag, folder });
+  const tags = useCharacterTags();
+  const folders = useCharacterFolders();
+  const savedFilters = useSavedFilters();
   const importCard = useImportCharacter();
   const create = useCreateCharacter();
-  const [filter, setFilter] = useState("");
+  const bulk = useBulkCharacters();
+  const createFilter = useCreateFilter();
+  const deleteFilter = useDeleteFilter();
+  const remove = useDeleteCharacter();
+
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [menuFor, setMenuFor] = useState<CharacterDto | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const derive = useDeriveCharacter(menuFor?.id ?? "");
 
-  // Full-text search, tags, saved filters and bulk operations are the library
-  // at scale (SPEC §9, phase 24). A name filter is what this phase needs.
-  const shown = useMemo(() => {
-    const list = characters.data ?? [];
-    const needle = filter.trim().toLowerCase();
-    return needle === ""
-      ? list
-      : list.filter((character) => character.name.toLowerCase().includes(needle));
-  }, [characters.data, filter]);
+  const list = characters.data ?? [];
 
   function onFile(file: File | undefined) {
     if (file === undefined) return;
     setNotice(null);
     importCard.mutate(file, {
       onSuccess: (result) => {
-        // Stay on the library rather than jumping into the editor: importing
-        // several cards in a row is the common case, and being thrown into an
-        // editor after each one makes that tedious.
-        setNotice(
-          [strings.characters.imported(result.character.name), ...result.warnings].join(" "),
-        );
+        setNotice([strings.characters.imported(result.character.name), ...result.warnings].join(" "));
       },
       onError: (error) => setNotice(error.message),
     });
+  }
+
+  function toggleOne(id: string) {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function applyFilter(filter: SavedFilterDto) {
+    setSavedId(filter.id);
+    setQ(filter.query.q ?? "");
+    setTag(filter.query.tag ?? "");
+    setFolder(filter.query.folder ?? "");
+  }
+
+  function promptFor(question: string, fallback: string): string | null {
+    const value = window.prompt(question, fallback);
+    if (value === null) return null;
+    return value.trim();
   }
 
   return (
@@ -78,7 +146,19 @@ export function CharactersScreen() {
         style={{ paddingTop: "calc(22px + env(safe-area-inset-top))" }}
       >
         <p className="screen-kicker">{strings.characters.kicker}</p>
-        <h1 className="screen-title mt-[6px]">{strings.characters.title}</h1>
+        <div className="mt-[6px] flex items-center gap-[8px]">
+          <h1 className="screen-title flex-1">{strings.characters.title}</h1>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => {
+              setSelecting((value) => !value);
+              setSelected(new Set());
+            }}
+          >
+            {selecting ? strings.characters.done : strings.characters.select}
+          </button>
+        </div>
       </header>
 
       <main className="min-h-0 flex-1 overflow-y-auto px-[22px] py-[14px]">
@@ -86,72 +166,227 @@ export function CharactersScreen() {
           {notice !== null ? <Notice>{notice}</Notice> : null}
 
           <input
-            className="field mb-[16px]"
+            className="field mb-[10px]"
             placeholder={strings.characters.searchPlaceholder}
-            value={filter}
-            onChange={(event) => setFilter(event.target.value)}
+            value={q}
+            onChange={(event) => setQ(event.target.value)}
             aria-label={strings.characters.search}
           />
 
-          {characters.data !== undefined && characters.data.length === 0 ? (
-            <p className="chrome text-[10px] tracking-[0.14em] text-ink-dim uppercase">
-              {strings.characters.empty}
-            </p>
-          ) : null}
+          {/* Tag and folder narrow the search; the saved filter row keeps the
+              combination. All three are the server's filter, not the client's
+              — the library is too big to sort in a phone's memory. */}
+          <div className="mb-[10px] flex gap-[6px]">
+            <select
+              className="field flex-1"
+              value={tag}
+              onChange={(event) => setTag(event.target.value)}
+              aria-label={strings.characters.tagFilter}
+            >
+              <option value="">{strings.characters.allTags}</option>
+              {(tags.data ?? []).map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+            <select
+              className="field flex-1"
+              value={folder}
+              onChange={(event) => setFolder(event.target.value)}
+              aria-label={strings.characters.folderFilter}
+            >
+              <option value="">{strings.characters.allFolders}</option>
+              {(folders.data ?? []).map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          {characters.data !== undefined && characters.data.length > 0 && shown.length === 0 ? (
+          <div className="mb-[16px] flex gap-[6px]">
+            <select
+              className="field flex-1"
+              value={savedId}
+              onChange={(event) => {
+                const chosen = (savedFilters.data ?? []).find(
+                  (filter) => filter.id === event.target.value,
+                );
+                if (chosen !== undefined) applyFilter(chosen);
+                else setSavedId("");
+              }}
+              aria-label={strings.characters.savedFilters}
+            >
+              <option value="">{strings.characters.savedFilters}</option>
+              {(savedFilters.data ?? []).map((filter) => (
+                <option key={filter.id} value={filter.id}>
+                  {filter.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="btn flex-none"
+              onClick={() => {
+                const name = promptFor(strings.characters.filterName, "");
+                if (name === null || name === "") return;
+                createFilter.mutate({ name, query: { q, tag, folder } });
+              }}
+            >
+              {strings.characters.saveFilter}
+            </button>
+            {savedId !== "" ? (
+              <button
+                type="button"
+                className="btn flex-none"
+                onClick={() => {
+                  deleteFilter.mutate(savedId);
+                  setSavedId("");
+                }}
+              >
+                ×
+              </button>
+            ) : null}
+          </div>
+
+          {list.length === 0 && characters.data !== undefined ? (
             <p className="chrome text-[10px] tracking-[0.14em] text-ink-dim uppercase">
               {strings.characters.noResults}
             </p>
           ) : null}
 
           <div className="grid grid-cols-3 gap-x-[10px] gap-y-[12px]">
-            {shown.map((character) => (
-              <Tile key={character.id} character={character} />
+            {list.map((character) => (
+              <Tile
+                key={character.id}
+                character={character}
+                selecting={selecting}
+                selected={selected.has(character.id)}
+                onToggle={() => toggleOne(character.id)}
+                onMenu={() => setMenuFor(character)}
+              />
             ))}
           </div>
         </div>
       </main>
 
+      {/* The bulk bar appears in place of the import row while a selection is
+          open: what you selected is the subject now, not the import button. */}
       <footer className="flex-none border-t border-rule bg-bg-raised px-[22px] py-[12px]">
-        <div className="mx-auto flex w-full max-w-[var(--onsen-prose-measure)] gap-[8px]">
-          <input
-            ref={fileInput}
-            type="file"
-            hidden
-            accept=".png,.charx,.json,image/png,application/zip,application/json"
-            onChange={(event) => {
-              onFile(event.target.files?.[0]);
-              // Reset so re-picking the same file fires a change event again.
-              event.target.value = "";
-            }}
-          />
-          <button
-            type="button"
-            className="btn btn-primary flex-1"
-            disabled={importCard.isPending}
-            onClick={() => fileInput.current?.click()}
-          >
-            {importCard.isPending ? strings.characters.importing : strings.characters.import}
-          </button>
-          <button
-            type="button"
-            className="btn flex-1"
-            disabled={create.isPending}
-            onClick={() =>
-              create.mutate(
+        {selecting ? (
+          <div className="mx-auto w-full max-w-[var(--onsen-prose-measure)]">
+            <p className="chrome mb-[8px] text-[9px] tracking-[0.12em] text-ink-dim uppercase">
+              {strings.characters.selected(selected.size)}
+            </p>
+            <div className="flex gap-[6px]">
+              <button
+                type="button"
+                className="btn flex-1"
+                disabled={selected.size === 0}
+                onClick={() => {
+                  const value = promptFor(strings.characters.tagPrompt, "");
+                  if (value === null || value === "") return;
+                  bulk.mutate({ ids: [...selected], op: "tag", tag: value });
+                  setSelected(new Set());
+                }}
+              >
+                {strings.characters.bulkTag}
+              </button>
+              <button
+                type="button"
+                className="btn flex-1"
+                disabled={selected.size === 0}
+                onClick={() => {
+                  const value = promptFor(strings.characters.folderPrompt, "");
+                  if (value === null) return;
+                  bulk.mutate({ ids: [...selected], op: "move", folder: value });
+                  setSelected(new Set());
+                }}
+              >
+                {strings.characters.bulkMove}
+              </button>
+              <button
+                type="button"
+                className="btn flex-1"
+                style={{ color: "var(--onsen-color-red)" }}
+                disabled={selected.size === 0}
+                onClick={() => {
+                  if (!window.confirm(strings.characters.bulkDeleteConfirm(selected.size))) return;
+                  bulk.mutate({ ids: [...selected], op: "delete" });
+                  setSelected(new Set());
+                }}
+              >
+                {strings.characters.bulkDelete}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="mx-auto flex w-full max-w-[var(--onsen-prose-measure)] gap-[8px]">
+            <input
+              ref={fileInput}
+              type="file"
+              hidden
+              accept=".png,.charx,.json,image/png,application/zip,application/json"
+              onChange={(event) => {
+                onFile(event.target.files?.[0]);
+                event.target.value = "";
+              }}
+            />
+            <button
+              type="button"
+              className="btn btn-primary flex-1"
+              disabled={importCard.isPending}
+              onClick={() => fileInput.current?.click()}
+            >
+              {importCard.isPending ? strings.characters.importing : strings.characters.import}
+            </button>
+            <button
+              type="button"
+              className="btn flex-1"
+              disabled={create.isPending}
+              onClick={() =>
+                create.mutate(
+                  {},
+                  {
+                    onSuccess: (character) =>
+                      navigate({ name: "character", characterId: character.id }),
+                  },
+                )
+              }
+            >
+              {strings.characters.create}
+            </button>
+          </div>
+        )}
+      </footer>
+
+      {menuFor !== null ? (
+        <Sheet title={menuFor.name} onClose={() => setMenuFor(null)}>
+          <SheetAction
+            label={strings.characters.derive}
+            onClick={() => {
+              derive.mutate(
                 {},
                 {
-                  onSuccess: (character) =>
-                    navigate({ name: "character", characterId: character.id }),
+                  onSuccess: (character) => {
+                    setMenuFor(null);
+                    navigate({ name: "character", characterId: character.id });
+                  },
                 },
-              )
-            }
-          >
-            {strings.characters.create}
-          </button>
-        </div>
-      </footer>
+              );
+            }}
+          />
+          <SheetAction
+            label={strings.characters.deleteCharacter}
+            onClick={() => {
+              if (!window.confirm(strings.characters.deleteConfirm(menuFor.name))) return;
+              remove.mutate(menuFor.id);
+              setMenuFor(null);
+            }}
+          />
+        </Sheet>
+      ) : null}
 
       <TabBar active="characters" />
     </div>

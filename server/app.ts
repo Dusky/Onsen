@@ -17,6 +17,7 @@ import { BanAnalyser } from "./options/runner.ts";
 import { AutopilotRunner } from "./generation/autopilot.ts";
 import { taskRoutes } from "./routes/tasks.ts";
 import { systemRoutes } from "./routes/system.ts";
+import { filterRoutes } from "./routes/filters.ts";
 import { loreRoutes } from "./routes/lore.ts";
 import type { createAdapter } from "./adapters/index.ts";
 import { spaStatic } from "./static.ts";
@@ -93,11 +94,12 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
     sceneGenerationRoutes(ctx, generation, tasks, passes, guides, summaries, bans, autopilot),
   );
   api.route("/generations", generationRoutes(generation));
-  api.route("/characters", characterRoutes(ctx));
+  api.route("/characters", characterRoutes(ctx, tasks));
   api.route("/authors", authorRoutes(ctx));
   api.route("/personas", personaRoutes(ctx));
   api.route("/tasks", taskRoutes(ctx));
   api.route("/system", systemRoutes(ctx));
+  api.route("/filters", filterRoutes(ctx));
   api.route("/lorebooks", loreRoutes(ctx));
 
   // An unknown API path is an API error, not the SPA shell — returning HTML

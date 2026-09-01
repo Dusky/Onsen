@@ -369,6 +369,33 @@ export function sceneRoutes(ctx: AppContext, autopilot: AutopilotRunner | null =
     return c.json(sceneDto(ctx.db, sceneRow));
   });
 
+  /**
+   * Instant scene assignment (SPEC §9): add several cast members at once, the
+   * character-picker's bulk half. The same cheap add as the single route, so
+   * the picker is one request, not a loop.
+   */
+  app.post("/:sceneId/cast", async (c) => {
+    const sceneRow = scene(c.req.param("sceneId"));
+    if (sceneRow === null) return c.json(notFound("scene"), 404);
+
+    let body: { characterIds?: unknown };
+    try {
+      body = (await c.req.json()) as { characterIds?: unknown };
+    } catch {
+      return c.json(badRequest("Expected a JSON body."), 400);
+    }
+    if (!Array.isArray(body.characterIds)) {
+      return c.json(badRequest("A list of characterIds is required."), 400);
+    }
+
+    for (const id of body.characterIds) {
+      if (typeof id !== "string") continue;
+      const character = findCharacter(ctx.db, id);
+      if (character !== null) addSceneMember(ctx.db, sceneRow.id, character.id);
+    }
+    return c.json(sceneDto(ctx.db, sceneRow));
+  });
+
   /** Bench or un-bench a cast member: they stay, but stop being chosen. */
   app.patch("/:sceneId/cast/:characterId", async (c) => {
     const sceneRow = scene(c.req.param("sceneId"));
