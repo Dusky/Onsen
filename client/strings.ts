@@ -500,6 +500,22 @@ export const strings = {
     suggestTags: "Suggest tags",
     suggestingTags: "Reading the card…",
     noTagSuggestions: "No suggestions came back.",
+
+    /** AI-assisted authoring (SPEC §9, phase 27). */
+    writeWithAi: "Write",
+    writeTitle: "Write a character",
+    writePlaceholder: "Describe the character in a sentence or two…",
+    writeGo: "Write the card",
+    writingCard: "Writing the card…",
+    reviseWithAi: "Revise with AI",
+    revisePrompt: "What should change?",
+    voiceWithAi: "Suggest voice notes",
+    extracting: "Reading the scene…",
+    extractFromScene: "Extract from this scene",
+    extractNamePrompt: "Name the character to extract",
+    suggestLore: "Suggest lore",
+    loreFromScene: "Lore from this scene",
+    addToBook: "Add",
     /** Cost is always a share of the context window (design handoff). */
     shareOfContext: (n: number, context: number) =>
       `${n} TOK · ${((n / context) * 100).toFixed(1)}% OF CTX`,

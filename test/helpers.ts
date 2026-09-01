@@ -281,7 +281,8 @@ export class ScriptedAdapter implements Adapter {
       source === "turn director" ||
       source === "guided op" ||
       source === "autopilot" ||
-      source === "character library"
+      source === "character library" ||
+      source === "authoring"
     ) {
       this.taskCalls += 1;
       if (this.taskFails) throw new Error("the model is unreachable");

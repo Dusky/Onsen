@@ -18,6 +18,7 @@ import { AutopilotRunner } from "./generation/autopilot.ts";
 import { taskRoutes } from "./routes/tasks.ts";
 import { systemRoutes } from "./routes/system.ts";
 import { filterRoutes } from "./routes/filters.ts";
+import { authoringRoutes } from "./routes/authoring.ts";
 import { loreRoutes } from "./routes/lore.ts";
 import type { createAdapter } from "./adapters/index.ts";
 import { spaStatic } from "./static.ts";
@@ -100,6 +101,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   api.route("/tasks", taskRoutes(ctx));
   api.route("/system", systemRoutes(ctx));
   api.route("/filters", filterRoutes(ctx));
+  api.route("/authoring", authoringRoutes(ctx, tasks));
   api.route("/lorebooks", loreRoutes(ctx));
 
   // An unknown API path is an API error, not the SPA shell — returning HTML

@@ -14,6 +14,7 @@ import {
   useDeriveCharacter,
   useImportCharacter,
   useSavedFilters,
+  useAuthorCreate,
 } from "../lib/queries.ts";
 import { TabBar } from "../components/TabBar.tsx";
 import { Notice } from "../components/Notice.tsx";
@@ -96,6 +97,9 @@ export function CharactersScreen() {
   const createFilter = useCreateFilter();
   const deleteFilter = useDeleteFilter();
   const remove = useDeleteCharacter();
+  const authorCreate = useAuthorCreate();
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiDraft, setAiDraft] = useState("");
 
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -344,6 +348,13 @@ export function CharactersScreen() {
             <button
               type="button"
               className="btn flex-1"
+              onClick={() => setAiOpen(true)}
+            >
+              {strings.characters.writeWithAi}
+            </button>
+            <button
+              type="button"
+              className="btn flex-1"
               disabled={create.isPending}
               onClick={() =>
                 create.mutate(
@@ -360,6 +371,39 @@ export function CharactersScreen() {
           </div>
         )}
       </footer>
+
+      {aiOpen ? (
+        <Sheet title={strings.characters.writeTitle} onClose={() => setAiOpen(false)}>
+          <div className="pt-[8px] pb-[14px]">
+            <textarea
+              className="field min-h-[96px] resize-y"
+              placeholder={strings.characters.writePlaceholder}
+              value={aiDraft}
+              onChange={(event) => setAiDraft(event.target.value)}
+            />
+            <button
+              type="button"
+              className="btn btn-primary mt-[10px] w-full"
+              disabled={authorCreate.isPending || aiDraft.trim() === ""}
+              onClick={() =>
+                authorCreate.mutate(
+                  { description: aiDraft.trim() },
+                  {
+                    onSuccess: (character) => {
+                      setAiOpen(false);
+                      setAiDraft("");
+                      navigate({ name: "character", characterId: character.id });
+                    },
+                    onError: (error) => setNotice(error.message),
+                  },
+                )
+              }
+            >
+              {authorCreate.isPending ? strings.characters.writingCard : strings.characters.writeGo}
+            </button>
+          </div>
+        </Sheet>
+      ) : null}
 
       {menuFor !== null ? (
         <Sheet title={menuFor.name} onClose={() => setMenuFor(null)}>

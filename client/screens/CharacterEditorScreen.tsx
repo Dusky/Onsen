@@ -9,6 +9,8 @@ import {
   useRestoreVersion,
   useSuggestTags,
   useUpdateCharacter,
+  useAuthorRevise,
+  useAuthorVoice,
 } from "../lib/queries.ts";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
 
@@ -141,6 +143,8 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
   const versions = useCharacterVersions(characterId);
   const restore = useRestoreVersion(characterId);
   const suggest = useSuggestTags(characterId);
+  const authorRevise = useAuthorRevise(characterId);
+  const authorVoice = useAuthorVoice(characterId);
   const [tab, setTab] = useState<Tab>("card");
   const [tagDraft, setTagDraft] = useState("");
   const [versionsOpen, setVersionsOpen] = useState(false);
@@ -422,6 +426,36 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
               >
                 {strings.characters.versions} · {(versions.data ?? []).length}
               </button>
+
+              {/* AI-assisted authoring (SPEC §9, phase 27): revise names the
+                  fields to change; voice notes come back as a proposal. */}
+              <p className="section-label mt-[16px] mb-[8px]">{strings.characters.writeWithAi}</p>
+              <div className="flex gap-[6px]">
+                <button
+                  type="button"
+                  className="btn flex-1"
+                  disabled={authorRevise.isPending}
+                  onClick={() => {
+                    const instructions = window.prompt(strings.characters.revisePrompt, "");
+                    if (instructions === null || instructions.trim() === "") return;
+                    authorRevise.mutate(instructions.trim());
+                  }}
+                >
+                  {authorRevise.isPending ? strings.characters.writingCard : strings.characters.reviseWithAi}
+                </button>
+                <button
+                  type="button"
+                  className="btn flex-1"
+                  disabled={authorVoice.isPending}
+                  onClick={() =>
+                    authorVoice.mutate(undefined, {
+                      onSuccess: ({ voiceNotes }) => save({ voiceNotes }),
+                    })
+                  }
+                >
+                  {authorVoice.isPending ? strings.characters.writingCard : strings.characters.voiceWithAi}
+                </button>
+              </div>
 
               {/* What the original card carried that this editor does not show.
                   It survives export; saying so is what stops it feeling lost. */}

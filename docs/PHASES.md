@@ -2502,3 +2502,64 @@ retroactively see rows that predate it; migrations run on databases full of
 imported cards, so `INSERT INTO characters_fts(characters_fts) VALUES
 ('rebuild')` is not a dev convenience, it is the migration actually applying to
 existing libraries.
+
+## Phase 27 — AI-assisted authoring
+
+§9 gives six tasks and one rule: each produces a *structured record*, and the
+schema is enforced server-side rather than trusted. Malformed structured output
+is the top complaint about the extensions that do this today, so the rule is
+the feature.
+
+### What was built
+
+**Six tasks through the one door.** Create character, revise character, extract
+character, suggest voice notes, suggest lore, revise lore — each a side call
+through the task runner, so each gets its own profile, samplers and timeout, and
+each is reachable from where the thing it edits lives. All under
+`/api/authoring`, one router owning the shape.
+
+**The schema is the parser, not the prompt.** Every reply is asked for as JSON
+and read by a server-side parser that either returns a typed record or a reason
+it refused. A model that wraps its JSON in prose still works — the parser finds
+the outermost object, not the fence. A model that returns `{"name": 42}` gets a
+422 "unreadable", never a card named "42". The refusal carries the problem to
+the user, because "the model wrote nothing useful" is a fact worth showing, not
+an error worth burying.
+
+**Create and extract insert; revise patches.** Create-character writes a full
+card from a description (optionally reading the current scene), extract distils
+one from how a character has actually behaved — the most useful version, and the
+one that reads history. Revise-character returns only the fields the model
+chose to change, so everything else stays untouched; the parser knows the
+difference between "omit this field" and "clear this field" because null is the
+clear and absence is the omission.
+
+**Suggestions are proposals, never edits.** Voice notes and lore entries come
+back for the user's gate, exactly like phase 26's tags — the spec's "assisted"
+means the human decides. The lore proposals carry title, content and keywords,
+and the scene setup screen can add them to a book one tap at a time.
+
+### Deliberately deferred
+
+- **The dossier tasks** — §9 lists them under their own heading and phase 32 is
+  their home, not this one.
+- **A diff on revise-character.** The response is the new card; the editor shows
+  it in place. Version history (phase 26) already snapshots the before-state, so
+  the diff is one viewer away.
+- **Scene-aware voice notes.** The task reads the card; reading the character's
+  dialogue needs the scene wiring that extract already has, and the prompt is
+  written to take it when it is threaded through.
+
+### Surprises
+
+**The transcript wants a speaker, not a character id.** The first draft labelled
+history rows with nothing but their author type, which turns a three-person
+scene into "The reader, Narration, Narration". The classifier had already
+solved this — `speakerLookup` plus the character's name — and the lesson is the
+one phase 23 wrote down: shared fixtures say who they are answering for, and a
+transcript is a fixture for the model.
+
+**`normalisedCardOf` almost smuggled voice notes into the card document.** Voice
+notes are this app's field, not a card field — they travel beside the card, not
+inside it. The type system caught it, which is the type system doing the same
+job the parser does for the model: refusing to let the wrong shape through.

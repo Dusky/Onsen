@@ -1021,3 +1021,55 @@ export function useSuggestTags(characterId: string) {
     mutationFn: () => api.post<{ tags: string[] }>(`/characters/${characterId}/suggest-tags`),
   });
 }
+
+/* ---------------- AI-assisted authoring (SPEC §9, phase 27) ---------------- */
+
+export function useAuthorCreate() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { description: string; sceneId?: string }) =>
+      api.post<CharacterDto>("/authoring/characters", body),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: characterKeys.all });
+      void client.invalidateQueries({ queryKey: characterKeys.tags });
+    },
+  });
+}
+
+export function useAuthorRevise(characterId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (instructions: string) =>
+      api.post<CharacterDto>(`/authoring/characters/${characterId}/revise`, { instructions }),
+    onSuccess: (character) => {
+      client.setQueryData(characterKeys.one(characterId), character);
+      void client.invalidateQueries({ queryKey: characterKeys.all });
+    },
+  });
+}
+
+export function useAuthorVoice(characterId: string) {
+  return useMutation({
+    mutationFn: () => api.post<{ voiceNotes: string }>(`/authoring/characters/${characterId}/voice-notes`),
+  });
+}
+
+export function useAuthorExtract(sceneId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (name?: string) =>
+      api.post<CharacterDto>(`/authoring/scenes/${sceneId}/extract-character`, { name }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: characterKeys.all });
+    },
+  });
+}
+
+export function useAuthorSuggestLore(sceneId: string) {
+  return useMutation({
+    mutationFn: () =>
+      api.post<{ entries: { title: string; content: string; keys: string[] }[] }>(
+        `/authoring/scenes/${sceneId}/suggest-lore`,
+      ),
+  });
+}

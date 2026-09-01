@@ -8,10 +8,14 @@ import {
   useAddToCast,
   useAnalyseBans,
   useAuthors,
+  useAuthorExtract,
+  useAuthorSuggestLore,
   useBans,
   useBindLorebook,
   useLoreActivation,
   useLorebooks,
+  useCreateLoreEntry,
+  useUpdateLoreEntry,
   useUnbindLorebook,
   useCharacters,
   useConnectionProfiles,
@@ -109,6 +113,14 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
   const setup = useSceneSetup(sceneId);
   const addToCast = useAddToCast(sceneId);
   const removeFromCast = useRemoveFromCast(sceneId);
+  const authorExtract = useAuthorExtract(sceneId);
+  const authorSuggestLore = useAuthorSuggestLore(sceneId);
+  const [loreProposals, setLoreProposals] = useState<
+    { title: string; content: string; keys: string[] }[] | null
+  >(null);
+  const [loreBookId, setLoreBookId] = useState<string>("");
+  const createLoreEntry = useCreateLoreEntry(loreBookId);
+  const updateLoreEntry = useUpdateLoreEntry(loreBookId);
   const createPersona = useCreatePersona();
   const profiles = useConnectionProfiles();
   // What the turn director has actually been doing. A side call may never fail
@@ -700,6 +712,44 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
           <button type="button" className="btn mb-[24px] w-full" onClick={() => setPicking(true)}>
             {strings.sceneSetup.addToCast}
           </button>
+
+          {/* AI-assisted authoring (SPEC §9, phase 27): a card from what this
+              scene's characters have actually done, and lore from its facts. */}
+          <div className="mb-[12px] flex gap-[6px]">
+            <button
+              type="button"
+              className="btn flex-1"
+              disabled={authorExtract.isPending}
+              onClick={() => {
+                const name = window.prompt(strings.characters.extractNamePrompt, "");
+                authorExtract.mutate(name ?? undefined, {
+                  onSuccess: (character) => addToCast.mutate(character.id),
+                });
+              }}
+            >
+              {authorExtract.isPending ? strings.characters.extracting : strings.characters.extractFromScene}
+            </button>
+            <button
+              type="button"
+              className="btn flex-1"
+              disabled={authorSuggestLore.isPending}
+              onClick={() =>
+                authorSuggestLore.mutate(undefined, {
+                  onSuccess: ({ entries }) => {
+                    setLoreProposals(entries);
+                    setLoreBookId((lorebooks.data ?? [])[0]?.id ?? "");
+                  },
+                })
+              }
+            >
+              {strings.characters.suggestLore}
+            </button>
+          </div>
+          {authorExtract.isError || authorSuggestLore.isError ? (
+            <p className="chrome mb-[12px] text-[9.5px] leading-[1.5] text-red-text">
+              {authorExtract.error?.message ?? authorSuggestLore.error?.message}
+            </p>
+          ) : null}
         </div>
       </main>
 
@@ -755,6 +805,57 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
           onDelete={(banId) => deleteBan.mutate(banId)}
           onClose={() => setBansOpen(false)}
         />
+      ) : null}
+
+      {loreProposals !== null ? (
+        <Sheet title={strings.characters.loreFromScene} onClose={() => setLoreProposals(null)}>
+          <div className="mt-[10px] mb-[6px] flex gap-[6px]">
+            <select
+              className="field flex-1"
+              value={loreBookId}
+              onChange={(event) => setLoreBookId(event.target.value)}
+            >
+              {(lorebooks.data ?? []).map((book) => (
+                <option key={book.id} value={book.id}>
+                  {book.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="btn flex-none"
+              disabled={loreBookId === ""}
+              onClick={() => {
+                for (const proposal of loreProposals) {
+                  createLoreEntry.mutate(undefined, {
+                    onSuccess: (entry) =>
+                      updateLoreEntry.mutate({
+                        entryId: entry.id,
+                        title: proposal.title,
+                        content: proposal.content,
+                        keys: proposal.keys,
+                      }),
+                  });
+                }
+                setLoreProposals(null);
+              }}
+            >
+              {strings.characters.addToBook}
+            </button>
+          </div>
+          {loreProposals.map((proposal, index) => (
+            <div key={index} className="border-b border-rule py-[10px]">
+              <p className="text-[13.5px] font-medium">{proposal.title}</p>
+              <p className="chrome mt-[4px] text-[10px] leading-[1.6] text-ink-dim">
+                {proposal.content}
+              </p>
+              <p className="chrome mt-[6px] text-[8.5px] tracking-[0.08em] text-ink-muted uppercase">
+                {proposal.keys.join(" · ")}
+              </p>
+            </div>
+          ))}
+          <div className="h-[10px]" />
+        </Sheet>
       ) : null}
 
       {picking ? (

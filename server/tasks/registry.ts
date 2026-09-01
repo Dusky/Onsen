@@ -90,6 +90,12 @@ export type TaskKind = SideCallOp;
 export const TURN_CLASSIFIER = "turn_classifier";
 export const AUTOPILOT_CHECK = "autopilot_check";
 export const SUGGEST_TAGS = "suggest_tags";
+export const CREATE_CHARACTER = "create_character";
+export const REVISE_CHARACTER = "revise_character";
+export const EXTRACT_CHARACTER = "extract_character";
+export const SUGGEST_VOICE = "suggest_voice_notes";
+export const SUGGEST_LORE = "suggest_lore";
+export const REVISE_LORE = "revise_lore";
 export const IMPERSONATE = "impersonate";
 export const NUDGE = "nudge";
 export const STEER = "steer";
@@ -213,6 +219,84 @@ export const OP_KINDS: readonly OpKind[] = [
     timeoutMs: 20_000,
     replyLimit: 400,
     variables: ["card", "vocabulary"],
+    hideable: false,
+  },
+  {
+    key: CREATE_CHARACTER,
+    runs: "side_call",
+    label: "Write a character",
+    description:
+      "A full character card from a short description, optionally reading the current scene. The result is a card, not a paragraph.",
+    stage: "sidecar",
+    samplers: { temperature: 0.4, top_p: 0.9 },
+    timeoutMs: 60_000,
+    replyLimit: 8_000,
+    variables: ["description", "transcript"],
+    hideable: false,
+  },
+  {
+    key: REVISE_CHARACTER,
+    runs: "side_call",
+    label: "Revise a character",
+    description:
+      "Targeted edits to the fields you name, leaving every other field exactly as it was.",
+    stage: "sidecar",
+    samplers: { temperature: 0.4, top_p: 0.9 },
+    timeoutMs: 60_000,
+    replyLimit: 8_000,
+    variables: ["card", "instructions"],
+    hideable: false,
+  },
+  {
+    key: EXTRACT_CHARACTER,
+    runs: "side_call",
+    label: "Extract a character",
+    description:
+      "Builds a card from how a character has actually behaved in a scene — the one that needs the history.",
+    stage: "sidecar",
+    samplers: { temperature: 0.4, top_p: 0.9 },
+    timeoutMs: 60_000,
+    replyLimit: 8_000,
+    variables: ["transcript", "name"],
+    hideable: false,
+  },
+  {
+    key: SUGGEST_VOICE,
+    runs: "side_call",
+    label: "Suggest voice notes",
+    description:
+      "Speech tics and rhythm, derived from the card or from the character's own dialogue.",
+    stage: "sidecar",
+    samplers: { temperature: 0.7, top_p: 0.9 },
+    timeoutMs: 30_000,
+    replyLimit: 1_500,
+    variables: ["card", "dialogue"],
+    hideable: false,
+  },
+  {
+    key: SUGGEST_LORE,
+    runs: "side_call",
+    label: "Propose lore",
+    description:
+      "Durable world facts from the scene so far, as entries the reader accepts one at a time.",
+    stage: "sidecar",
+    samplers: { temperature: 0.4, top_p: 0.9 },
+    timeoutMs: 60_000,
+    replyLimit: 8_000,
+    variables: ["transcript"],
+    hideable: false,
+  },
+  {
+    key: REVISE_LORE,
+    runs: "side_call",
+    label: "Revise lore",
+    description:
+      "Updates one entry against what has happened since it was written.",
+    stage: "sidecar",
+    samplers: { temperature: 0.4, top_p: 0.9 },
+    timeoutMs: 60_000,
+    replyLimit: 8_000,
+    variables: ["entry", "transcript"],
     hideable: false,
   },
   {
