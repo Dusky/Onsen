@@ -2563,3 +2563,65 @@ transcript is a fixture for the model.
 notes are this app's field, not a card field — they travel beside the card, not
 inside it. The type system caught it, which is the type system doing the same
 job the parser does for the model: refusing to let the wrong shape through.
+
+## Phase 28 — SillyTavern preset import
+
+§18 opens with the reason this exists: users arrive with preset suites they
+already depend on, and the format is not forgiving. Importing them is how the
+product gets used at all.
+
+### What was built
+
+**A pure parser** (`server/presets/st.ts`) that turns preset bytes into a typed
+record, with every §18 failure mode decided there rather than in the route that
+runs first: chat-completion vs text-completion detection, the sampler field
+mapping, the block/marker split, and the macro scan.
+
+**The report is the product.** Import creates two things — a sampler preset, and
+one option group holding the prompt blocks — and returns a report that names the
+loss: how many blocks, how many were off, which markers were overridden vs
+merely recognised, which samplers had no home here, which macros this app's
+engine does not implement. A silent partial import is the worst outcome §18
+names, so the report is not a log line; it is the response body.
+
+**Markers split three ways.** `main` and `jailbreak` land on the preset's own
+override columns — that is what those columns are for, and it has been true
+since the schema review. The rest (`charDescription`, `scenario`, `personaDescription`…)
+are recognised but not applied, because this app builds those blocks from the
+card and importing them would duplicate the character definition, which is the
+specific failure §18 calls out.
+
+**Enabled is honoured in the only direction that matters.** Imported blocks
+become option-group members that are selected per scene, never by default — so
+a suite that ships most blocks off does not bloat any prompt, and the report
+still says how many were off.
+
+**Text-completion presets are refused clearly.** Their context and instruct
+templates mean nothing in chat mode, and a 400 that says so beats a preset that
+looks imported and behaves inertly.
+
+**Lossy export, honestly labelled.** Own-format export round-trips the preset
+row; the SillyTavern export maps samplers back but ships an empty `prompts[]`
+and a `_onsen_lossy` field saying that blocks live in option groups now and do
+not round-trip. §18: don't pretend round-tripping is clean when it isn't.
+
+### Deliberately deferred
+
+- **The macro engine.** §18 allows either implementing `{{setvar}}`/conditionals
+  or degrading visibly; this phase degrades visibly — the report names every
+  unresolved macro, and the prompt inspector (phase 25) already shows the
+  literal text that would leak. A variable engine is a later, larger thing.
+- **Extension-dependent suite detection.** The report carries enough for a
+  user to recognise an inert suite; mapping known extensions to native
+  subsystems is its own project.
+- **`injection_order` is sort order, not a reorderable UI.** Imported options
+  keep the source order; the drag-to-reorder editor §16 wants is still absent.
+
+### Surprises
+
+**`outlet::Name` was nearly reported as unknown.** The macro scanner captured
+the whole `name::argument` and compared it against the base-name set, which
+would have flagged the one macro this app *does* implement with an argument as
+unsupported. The base name decides, the argument never does — same rule as the
+parser's null-versus-absence distinction: the decision is made on the shape,
+not the decoration.

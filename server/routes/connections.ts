@@ -24,6 +24,8 @@ import {
   type PresetPatch,
 } from "../db/queries/connections.ts";
 import { parseReasoningConfig } from "../generation/reasoning.ts";
+import { parseStPreset, StPresetError } from "../presets/st.ts";
+import { importStPreset } from "../presets/import.ts";
 import {
   allTemplates,
   deleteCustomTemplate,
@@ -62,6 +64,103 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
   );
 
   app.get("/presets", (c) => c.json(listPresets(ctx.db).map(toPresetDto)));
+
+  /**
+   * Import a SillyTavern chat-completion preset (SPEC §18, phase 28). The
+   * parser is pure and the report is the product: what mapped, what did not,
+   * and why — a silent partial import is the worst outcome §18 names.
+   */
+  app.post("/presets/import", async (c) => {
+    let file: File | null = null;
+    try {
+      const form = await c.req.formData();
+      const candidate = form.get("file");
+      if (candidate instanceof File) file = candidate;
+    } catch {
+      return c.json(badRequest("Expected a file upload."), 400);
+    }
+    if (file === null) return c.json(badRequest("No file was uploaded."), 400);
+    if (file.size > 4 * 1024 * 1024) return c.json(badRequest("That preset is too large."), 413);
+
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    let parsed;
+    try {
+      parsed = parseStPreset(bytes, file.name);
+    } catch (caught) {
+      if (caught instanceof StPresetError) return c.json(badRequest(caught.message), 400);
+      throw caught;
+    }
+
+    // §18: a text-completion preset has no prompt blocks, and its context and
+    // instruct templates mean nothing here. Refuse the mismatch clearly.
+    if (parsed.detected === "text_completion") {
+      return c.json(
+        {
+          error: {
+            code: "wrong_kind",
+            message:
+              "That is a text-completion preset. This app imports chat-completion presets.",
+          },
+        },
+        400,
+      );
+    }
+
+    const report = importStPreset(ctx.db, parsed);
+    return c.json(report, 201);
+  });
+
+  /**
+   * Export a preset. The app's own format is the preset row as it is stored;
+   * the SillyTavern format is lossy and says so — samplers map back, but the
+   * prompt blocks live in option groups now, not in the preset, and pretending
+   * the round trip is clean would be exactly what §18 forbids.
+   */
+  app.get("/presets/:id/export", (c) => {
+    const row = findPresetByUlid(ctx.db, c.req.param("id"));
+    if (row === null) return c.json(notFound("preset"), 404);
+
+    const format = c.req.query("format") ?? "onsen";
+    if (format === "sillytavern") {
+      const samplers = JSON.parse(row.sampler_settings) as Record<string, unknown>;
+      const body = {
+        name: row.name,
+        temperature: samplers["temperature"] ?? 1,
+        top_p: samplers["top_p"] ?? 1,
+        top_k: samplers["top_k"] ?? 0,
+        min_p: samplers["min_p"] ?? 0,
+        repetition_penalty: samplers["repetition_penalty"] ?? 1,
+        dry_multiplier: samplers["dry_multiplier"] ?? 0,
+        dry_base: samplers["dry_base"] ?? 0,
+        dry_allowed_length: samplers["dry_allowed_length"] ?? 2,
+        dry_sequence_breakers: samplers["dry_sequence_breakers"] ?? [],
+        xtc_threshold: samplers["xtc_threshold"] ?? 0,
+        xtc_probability: samplers["xtc_probability"] ?? 0,
+        max_context: row.context_size,
+        max_length: row.max_response_tokens,
+        prompts: [],
+        // The honest part of a lossy export: what the app could not carry back.
+        _onsen_lossy: {
+          note: "Prompt blocks were imported as option-group members and do not live on this preset. Samplers round-trip; blocks do not.",
+          system_prompt: row.system_prompt,
+          jailbreak: row.jailbreak,
+          prefill: row.prefill,
+        },
+      };
+      return c.json(body);
+    }
+
+    return c.json({
+      name: row.name,
+      samplerSettings: JSON.parse(row.sampler_settings) as unknown,
+      contextSize: row.context_size,
+      maxResponseTokens: row.max_response_tokens,
+      prefill: row.prefill,
+      systemPrompt: row.system_prompt,
+      jailbreak: row.jailbreak,
+      reasoningConfig: row.reasoning_config,
+    });
+  });
 
   /**
    * Edit a preset: samplers, the context budget, the prefill, and how reasoning

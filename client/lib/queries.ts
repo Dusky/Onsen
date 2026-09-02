@@ -118,6 +118,28 @@ export function useUpdatePreset() {
   );
 }
 
+/** Import a SillyTavern chat-completion preset (SPEC §18, phase 28). */
+export function useImportPreset() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File): Promise<{ presetName: string; blocksImported: number; blocksDisabled: number; unmappedSamplers: string[]; unsupportedMacros: string[] }> => {
+      const form = new FormData();
+      form.append("file", file);
+      const response = await fetch("/api/connections/presets/import", { method: "POST", body: form });
+      const body: unknown = await response.json();
+      if (!response.ok) {
+        const error = (body as { error?: { message?: string } })?.error;
+        throw new Error(error?.message ?? "The preset could not be imported.");
+      }
+      return body as { presetName: string; blocksImported: number; blocksDisabled: number; unmappedSamplers: string[]; unsupportedMacros: string[] };
+    },
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: connectionKeys.presets });
+      void client.invalidateQueries({ queryKey: ["scenes"] });
+    },
+  });
+}
+
 export function useProviders() {
   return useQuery({
     queryKey: connectionKeys.providers,

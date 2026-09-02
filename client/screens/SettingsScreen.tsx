@@ -9,6 +9,7 @@ import {
   useCreateProvider,
   useDeleteProfile,
   useDeleteProvider,
+  useImportPreset,
   usePresets,
   useProviders,
   useTasks,
@@ -613,6 +614,8 @@ export function SettingsScreen() {
   const providers = useProviders();
   const profiles = useConnectionProfiles();
   const presets = usePresets();
+  const importPreset = useImportPreset();
+  const [presetReport, setPresetReport] = useState<string | null>(null);
   const tasks = useTasks();
 
   // The provider being edited is held by **id**, not as a snapshot of its row.
@@ -742,6 +745,37 @@ export function SettingsScreen() {
               </button>
             </Row>
           ))}
+          <input
+            type="file"
+            hidden
+            accept=".json,application/json"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file === undefined) return;
+              importPreset.mutate(file, {
+                onSuccess: (report) =>
+                  setPresetReport(
+                    `${strings.settings.presetImported(report.presetName)} ${strings.settings.presetReport(report)}`,
+                  ),
+                onError: (error) => setPresetReport(error.message),
+              });
+              event.target.value = "";
+            }}
+            id="preset-import"
+          />
+          <button
+            type="button"
+            className="btn mt-[12px] w-full"
+            disabled={importPreset.isPending}
+            onClick={() => document.getElementById("preset-import")?.click()}
+          >
+            {importPreset.isPending
+              ? strings.settings.importingPreset
+              : strings.settings.importPreset}
+          </button>
+          {presetReport !== null ? (
+            <p className="chrome mt-[10px] text-[9px] leading-[1.5] text-ink-dim">{presetReport}</p>
+          ) : null}
           <div className="mb-[26px]" />
 
           {/* Routing by operation — the interesting one. */}

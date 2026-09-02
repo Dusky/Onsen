@@ -40,6 +40,8 @@ interface PresetRow {
   max_response_tokens: number;
   prefill: string | null;
   reasoning_config: string | null;
+  system_prompt: string | null;
+  jailbreak: string | null;
   is_default: number;
   created_at: number;
   updated_at: number;
@@ -200,6 +202,43 @@ export function insertDefaultPreset(db: Database, name: string): PresetRow {
 
 export function findDefaultPreset(db: Database): PresetRow | null {
   return (db.query("SELECT * FROM presets WHERE is_default = 1").get() ?? null) as PresetRow | null;
+}
+
+/**
+ * A preset that arrives from outside — an import, never the default. The
+ * system-prompt and jailbreak overrides ride on it because §18's marker import
+ * maps `main` and `jailbreak` onto exactly these columns (SPEC §18, phase 28).
+ */
+export function insertPreset(
+  db: Database,
+  input: {
+    name: string;
+    samplers: unknown;
+    contextSize: number;
+    maxResponseTokens: number;
+    systemPrompt?: string | null;
+    jailbreak?: string | null;
+  },
+): PresetRow {
+  const now = Date.now();
+  return db
+    .query(
+      `INSERT INTO presets
+         (ulid, name, sampler_settings, system_prompt, jailbreak,
+          context_size, max_response_tokens, is_default, created_at, updated_at)
+       VALUES ($ulid, $name, $samplers, $system, $jailbreak, $context, $max, 0, $now, $now)
+       RETURNING *`,
+    )
+    .get({
+      ulid: ulid(),
+      name: input.name,
+      samplers: JSON.stringify(input.samplers),
+      system: input.systemPrompt ?? null,
+      jailbreak: input.jailbreak ?? null,
+      context: input.contextSize,
+      max: input.maxResponseTokens,
+      now,
+    }) as PresetRow;
 }
 
 export function listPresets(db: Database): PresetRow[] {

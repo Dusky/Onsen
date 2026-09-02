@@ -393,6 +393,24 @@ export const strings = {
       "DRY penalises anything that would extend a sequence the model has already written. Far better than repetition penalty for roleplay, and the reason repetition penalty ships off.",
     xtcHint:
       "XTC drops the most-likely tokens while keeping one viable choice, which raises creativity. Threshold is how likely a token must be to qualify; probability is how often it fires.",
+    /** Preset import (SPEC §18, phase 28). */
+    importPreset: "Import a SillyTavern preset",
+    importingPreset: "Importing…",
+    presetImported: (name: string) => `Imported ${name}.`,
+    presetReport: (report: {
+      blocksImported: number;
+      blocksDisabled: number;
+      unmappedSamplers: string[];
+      unsupportedMacros: string[];
+    }) =>
+      `${report.blocksImported} blocks (${report.blocksDisabled} off)` +
+      (report.unmappedSamplers.length > 0
+        ? ` · not mapped: ${report.unmappedSamplers.join(", ")}`
+        : "") +
+      (report.unsupportedMacros.length > 0
+        ? ` · macros unknown: ${report.unsupportedMacros.join(", ")}`
+        : ""),
+
     contextSize: "Context window",
     contextSizeUnit: "tokens",
     maxResponseTokens: "Reserved for the reply",
