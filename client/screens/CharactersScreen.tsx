@@ -14,6 +14,7 @@ import {
   useDeleteFilter,
   useDeriveCharacter,
   useImportCharacter,
+  useSeedDemo,
   useSavedFilters,
   useAuthorCreate,
 } from "../lib/queries.ts";
@@ -93,6 +94,7 @@ export function CharactersScreen() {
   const folders = useCharacterFolders();
   const savedFilters = useSavedFilters();
   const importCard = useImportCharacter();
+  const seedDemo = useSeedDemo();
   const create = useCreateCharacter();
   const bulk = useBulkCharacters();
   const createFilter = useCreateFilter();
@@ -267,9 +269,25 @@ export function CharactersScreen() {
           </div>
 
           {list.length === 0 && characters.data !== undefined ? (
-            <p className="chrome text-[10px] tracking-[0.14em] text-ink-dim uppercase">
-              {strings.characters.noResults}
-            </p>
+            <>
+              <p className="chrome text-[10px] tracking-[0.14em] text-ink-dim uppercase">
+                {characters.data.length === 0 ? strings.characters.empty : strings.characters.noResults}
+              </p>
+              {characters.data.length === 0 ? (
+                <button
+                  type="button"
+                  className="btn mt-[10px] w-full"
+                  disabled={seedDemo.isPending}
+                  onClick={() =>
+                    seedDemo.mutate(undefined, {
+                      onSuccess: ({ sceneId }) => navigate({ name: "chat", sceneId }),
+                    })
+                  }
+                >
+                  {strings.characters.loadDemo}
+                </button>
+              ) : null}
+            </>
           ) : null}
 
           <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>

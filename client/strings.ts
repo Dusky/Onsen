@@ -504,6 +504,7 @@ export const strings = {
     kicker: "Library",
     title: "Cast",
     empty: "No characters yet. Import a card to start.",
+    loadDemo: "Load the demo cast",
     search: "Search",
     searchPlaceholder: "Search name, description, notes",
     import: "Import card",

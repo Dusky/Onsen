@@ -1255,3 +1255,16 @@ export function useReviseLore(entryId: string) {
     mutationFn: (body?: { sceneId?: string }) => api.post<LoreEntryDto>(`/authoring/lore/${entryId}/revise`, body),
   });
 }
+
+/** Seed the demo cast, scene, and the author's user guide (first run). */
+export function useSeedDemo() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<{ sceneId: string; charactersCreated: number; guideAdded: boolean }>("/demo/seed"),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: characterKeys.all });
+      void client.invalidateQueries({ queryKey: ["scenes"] });
+      void client.invalidateQueries({ queryKey: ["documents"] });
+    },
+  });
+}

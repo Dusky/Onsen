@@ -2875,3 +2875,19 @@ this closes the loop on it.
   fold, and swipes/rewind landing correctly — on a real device.
 - **The LORE tab** in the editor (§295) belongs to character-bound lore, which
   is phase 32's dossiers and their ilk, not this pass.
+
+## Demo content and the author's own user guide
+
+Not a build-order phase; a first-run fill. Two things seeded together because
+they serve the same first run: a cast to talk to, and a scene where the author
+already knows how the app works.
+
+- **A demo cast** — Elira Voss (the innkeeper), Dusky (the tracker) and the
+  Warden, with distinct voices and example dialogue — plus the author Mara and
+  a "You" persona, in a scene called *The Last Inn* with an opening line. A
+  "Load the demo cast" button on the empty library creates it all, idempotently.
+- **The user guide is the data bank's first global document.** A concise,
+  user-facing guide — not the dev spec — is ingested as a global document, so
+  the author can be asked "how do I make a beat" or "what is a lorebook" and
+  retrieval answers it from the same path that recalls any other reference
+  material. This is the data bank dogfooding itself.
