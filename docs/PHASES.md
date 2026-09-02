@@ -2687,3 +2687,63 @@ row never landed, which read as an upload that silently did nothing. A flat
 name inside the one directory that already exists is the fix, and the lesson is
 the same one phase 27 wrote down: a setup step that swallows its own failure
 lies about what it set up.
+
+## Phase 30 — The data bank (document RAG)
+
+§1 flagged this since phase 1: a pure-Bun vector store with no native modules.
+Pinecone was tried and rejected — not open source — which returns the question
+to where the spec left it. The answer here is the spec's own fallback, and it
+turns out to be the whole feature, not a compromise.
+
+### What was built
+
+**A flat index, in the process.** Chunks' vectors are JSON on the chunk row;
+cosine similarity is thirty lines of JS. No native module, no new dependency,
+works on every platform Bun runs on — and it sits behind the retrieval module's
+interface, so sqlite-vec can replace it if a library ever outgrows it.
+
+**Embeddings, two ways.** A dedicated single-row config — base URL, model, key —
+which is deliberately *not* a generation provider: it serves `/embeddings` and
+nothing else, and the providers table's kind CHECK rightly excludes it. When it
+is set, chunks and queries go through the OpenAI-compatible endpoint, which is
+the same one Ollama, LM Studio, llama.cpp server and every hosted API serve.
+When it is not, retrieval falls back to lexical vectors — a TF-IDF-flavoured
+bag of words over a shared corpus vocabulary. Not semantic, but it retrieves on
+what a passage is *about* rather than on nothing, which is what a fallback is
+for.
+
+**Retrieval runs in the I/O layer.** The query is the scene's own recent words;
+the recall feeds the prompt's `documents` block, which has sat empty in §3's
+assembly since the builder landed. The builder stays pure — the chunks are
+passed in, like history and nudge already were.
+
+**The inspector's missing section.** §16 promised "what was recalled, its score,
+why" since phase 25; the retrieval trace now rides on the prompt debug the same
+way the lore trace does, so the inspector names every recalled chunk with its
+score.
+
+**A test tool.** `/documents/retrieve` shows what would be recalled for a query,
+the data bank's answer to §16's lore activation test — the difference between
+"the model never saw it" and "the model ignored it" is the inspector's reason
+to exist.
+
+### Deliberately deferred
+
+- **sqlite-vec.** The interface is the point; the flat index is fine to a few
+  thousand chunks, and swapping backends is one module.
+- **An ONNX embedder.** Native, opt-in, and exactly the shape the embedder
+  interface was written to accept — but it needs a runtime, so it waits.
+- **Re-embedding on model change.** Changing the embeddings model leaves old
+  vectors in another model's space; cosine still runs (min-dimension), but the
+  honest repair — re-embed the library on config change — is a later job.
+- **Chunk-level document editing.** Documents are added whole and deleted
+  whole; a chunk editor is UI this phase's data model already allows.
+
+### Surprises
+
+**The providers table has a CHECK on `kind`**, and SQLite cannot alter it. The
+first design added `embeddings` as a provider kind and hit that wall at the
+database, not the typechecker. The dedicated single-row config is the better
+design anyway — an embeddings provider is not a generation provider — but the
+wall is the same one phase 20 warned about: schema mistakes are cheap to avoid
+and expensive to correct, and a CHECK you forgot is the expensive kind.

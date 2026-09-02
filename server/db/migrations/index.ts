@@ -22,6 +22,7 @@ import autopilot from "./0021_autopilot.sql" with { type: "text" };
 import inspector from "./0022_inspector.sql" with { type: "text" };
 import characterLibrary from "./0023_character_library.sql" with { type: "text" };
 import expressions from "./0024_expressions.sql" with { type: "text" };
+import documents from "./0025_documents.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -61,4 +62,5 @@ export const migrations: readonly Migration[] = [
   { version: 22, name: "inspector", sql: inspector },
   { version: 23, name: "character_library", sql: characterLibrary },
   { version: 24, name: "expressions", sql: expressions },
+  { version: 25, name: "documents", sql: documents },
 ];

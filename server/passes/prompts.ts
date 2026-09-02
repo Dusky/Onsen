@@ -65,6 +65,8 @@ function prompt(system: string, question: string, tokenizer: Tokenizer): BuiltPr
       unknownMacros: [],
       // A side call's prompt has no lore to explain.
       loreTrace: [],
+      // A side call's prompt recalls no documents.
+      retrievedChunks: [],
     },
   };
 }

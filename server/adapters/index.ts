@@ -31,6 +31,7 @@ export function createAdapter(kind: ProviderKind, config: CreateAdapterOptions):
     case "text_completion":
       return createTextCompletionAdapter(config);
   }
+  throw new Error(`Unknown adapter kind: ${kind}`);
 }
 
 /**

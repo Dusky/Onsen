@@ -1012,6 +1012,15 @@ export interface PromptDebugInfo {
   unknownMacros: string[];
   /** Every lore entry considered for this prompt, fired or not (§10). */
   loreTrace: ActivationTrace[];
+  /** Chunks the data bank recalled, with their scores (§11). */
+  retrievedChunks: RetrievedDocumentTrace[];
+}
+
+/** One recalled chunk, for the inspector's retrieval trace (§11). */
+export interface RetrievedDocumentTrace {
+  documentTitle: string;
+  score: number;
+  excerpt: string;
 }
 
 /** The inspector's answer for one message: the prompt that wrote it. */
@@ -1321,6 +1330,23 @@ export interface ExpressionPackDto {
   id: string;
   characterId: string;
   expressions: ExpressionDto[];
+}
+
+/** A document in the data bank (SPEC §11). */
+export interface DocumentDto {
+  id: string;
+  sceneId: string | null;
+  title: string;
+  chunkCount: number;
+  createdAt: number;
+}
+
+/** The data bank's embeddings provider (SPEC §11). */
+export interface EmbeddingsConfigDto {
+  baseUrl: string | null;
+  model: string | null;
+  hasApiKey: boolean;
+  apiKeyMask: string | null;
 }
 
 /* ------------------------------------------------------------------ */

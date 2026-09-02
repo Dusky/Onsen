@@ -11,6 +11,8 @@ import type {
   CharacterSnapshotDto,
   CharacterVersionDto,
   ConnectionProfileDto,
+  DocumentDto,
+  EmbeddingsConfigDto,
   ExpressionPackDto,
   PromptInspectorDto,
   SavedFilterDto,
@@ -1155,5 +1157,48 @@ export function useSetSceneBackground(sceneId: string) {
     onSuccess: (scene) => {
       void client.invalidateQueries({ queryKey: keys.scene(sceneId) });
     },
+  });
+}
+
+/* ---------------- the data bank (SPEC §11, phase 30) ---------------- */
+
+export function useEmbeddingsConfig() {
+  return useQuery({
+    queryKey: ["embeddings"] as const,
+    queryFn: () => api.get<EmbeddingsConfigDto>("/connections/embeddings"),
+  });
+}
+
+export function useSaveEmbeddingsConfig() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { baseUrl?: string | null; model?: string | null; apiKey?: string | null }) =>
+      api.put<EmbeddingsConfigDto>("/connections/embeddings", body),
+    onSuccess: (config) => client.setQueryData(["embeddings"], config),
+  });
+}
+
+export function useDocuments(sceneId: string | null) {
+  return useQuery({
+    queryKey: ["documents", sceneId] as const,
+    queryFn: () =>
+      api.get<DocumentDto[]>(sceneId === null ? "/documents" : `/documents?sceneId=${sceneId}`),
+  });
+}
+
+export function useIngestDocument() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { title: string; text: string; sceneId?: string | null }) =>
+      api.post<DocumentDto>("/documents", body),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["documents"] }),
+  });
+}
+
+export function useDeleteDocument() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/documents/${id}`),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["documents"] }),
   });
 }

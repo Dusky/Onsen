@@ -38,7 +38,7 @@ import {
   parseInstructTemplate,
   type InstructTemplate,
 } from "../prompt/instruct.ts";
-import { encryptSecret } from "../lib/crypto.ts";
+import { encryptSecret, decryptSecret, maskSecret } from "../lib/crypto.ts";
 import {
   PROVIDER_KINDS,
   samplerProblem,
@@ -62,6 +62,52 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
   app.get("/providers", (c) =>
     c.json(listProviders(ctx.db).map((row) => toProviderDto(row, ctx.keyring))),
   );
+
+  /** The data bank's embeddings provider — its own config, not a generation
+   * provider (§11, phase 30). Nulls mean the lexical fallback is in force. */
+  app.get("/embeddings", (c) => {
+    const row = ctx.db.query("SELECT * FROM embeddings_config WHERE id = 1").get() as
+      | { base_url: string | null; model: string | null; api_key_encrypted: string | null }
+      | null;
+    return c.json({
+      baseUrl: row?.base_url ?? null,
+      model: row?.model ?? null,
+      hasApiKey: (row?.api_key_encrypted ?? null) !== null,
+      apiKeyMask:
+        row?.api_key_encrypted == null
+          ? null
+          : maskSecret(decryptSecret(ctx.keyring, row.api_key_encrypted)),
+    });
+  });
+
+  app.put("/embeddings", async (c) => {
+    const body = await readJson(c);
+    if (body === null) return c.json(badRequest("Expected a JSON body."), 400);
+    const baseUrl = text(body["baseUrl"], 500);
+    const model = text(body["model"], 200);
+    const apiKey = text(body["apiKey"], 400);
+    const existing = ctx.db.query("SELECT api_key_encrypted FROM embeddings_config WHERE id = 1").get() as
+      | { api_key_encrypted: string | null }
+      | null;
+    const storedKey =
+      apiKey === null || apiKey === ""
+        ? (existing?.api_key_encrypted ?? null)
+        : encryptSecret(ctx.keyring, apiKey);
+    ctx.db
+      .query(
+        `INSERT INTO embeddings_config (id, base_url, model, api_key_encrypted, updated_at)
+         VALUES (1, $base, $model, $key, $now)
+         ON CONFLICT (id) DO UPDATE SET
+           base_url = $base, model = $model, api_key_encrypted = $key, updated_at = $now`,
+      )
+      .run({ base: baseUrl, model, key: storedKey, now: Date.now() });
+    return c.json({
+      baseUrl,
+      model,
+      hasApiKey: storedKey !== null,
+      apiKeyMask: storedKey === null ? null : maskSecret(decryptSecret(ctx.keyring, storedKey)),
+    });
+  });
 
   app.get("/presets", (c) => c.json(listPresets(ctx.db).map(toPresetDto)));
 

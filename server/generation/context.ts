@@ -7,6 +7,7 @@ import type {
   ProviderCapabilities,
   PromptCharacter,
   PromptContext,
+  PromptDocumentChunk,
   PromptMessage,
   PromptPreset,
   PromptTurn,
@@ -271,6 +272,8 @@ export interface BuildContextOptions {
   nudge?: string;
   now: number;
   seed: number;
+  /** Retrieved document chunks, resolved in the I/O layer before the build (§11). */
+  documents?: PromptDocumentChunk[];
 }
 
 /**
@@ -446,7 +449,7 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
     // why" is this, and it is captured at build time because a later
     // recomputation could disagree — the RNG is seeded per generation (§10).
     loreTrace: lore.trace,
-    documents: [],
+    documents: options.documents ?? [],
     // Rolling summarisation (SPEC §11). Which of the scene's summaries reach
     // the prompt is decided by the threshold and the freeze, not by this call.
     summaries: injected.summaries.map((row) => ({

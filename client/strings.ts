@@ -418,6 +418,17 @@ export const strings = {
     budgetHint:
       "The window is what the prompt is built to fit. What is reserved for the reply comes off it before anything is placed.",
 
+    /** The data bank's embeddings provider (SPEC §11, phase 30). */
+    embeddings: "Embeddings",
+    embeddingsHint:
+      "The model that embeds the data bank's documents. Leave empty and retrieval falls back to keyword matching.",
+    embeddingsBaseUrl: "Address",
+    embeddingsModel: "Model",
+    embeddingsKey: "API key",
+    embeddingsSave: "Save",
+    embeddingsSaved: "Saved.",
+    embeddingsLexical: "No embeddings provider — keyword matching is in force.",
+
     /** Self-update for a git-checkout deployment (SPEC §17). */
     update: "Update",
     updateInstall: "This install",
@@ -541,6 +552,14 @@ export const strings = {
     spriteLabel: "Label",
     spriteLabelPrompt: "Expression label, e.g. joy or worried",
     addSprite: "Add sprite",
+
+    /** The data bank (SPEC §11, phase 30). */
+    documents: "Data bank",
+    documentsHint: "Text the model can recall by meaning. Chunked and embedded, recalled into the prompt when the scene touches on it.",
+    addDocument: "Add a document",
+    documentTitle: "Title",
+    documentText: "Text",
+    noDocuments: "Nothing in the data bank yet.",
     /** Cost is always a share of the context window (design handoff). */
     shareOfContext: (n: number, context: number) =>
       `${n} TOK · ${((n / context) * 100).toFixed(1)}% OF CTX`,

@@ -234,6 +234,14 @@ export function buildPrompt(ctx: PromptContext): BuiltPrompt {
     // Handed in on the context and copied, not computed: the builder stays
     // pure (§3), and the trace belongs beside the blocks it explains anyway.
     loreTrace: [...(ctx.loreTrace ?? [])],
+    // The retrieval trace rides the same way: the chunks themselves are the
+    // documents block; their scores are this, for the inspector's "what was
+    // recalled and why" (§11).
+    retrievedChunks: ctx.documents.map((chunk) => ({
+      documentTitle: chunk.documentName,
+      score: chunk.score ?? 0,
+      excerpt: chunk.content.slice(0, 200),
+    })),
   };
 
   const prefill = blocks.find((block) => block.id === "prefill")?.content;

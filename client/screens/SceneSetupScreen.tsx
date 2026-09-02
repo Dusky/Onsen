@@ -11,6 +11,9 @@ import {
   useAuthorExtract,
   useAuthorSuggestLore,
   useSetSceneBackground,
+  useDocuments,
+  useIngestDocument,
+  useDeleteDocument,
   useBans,
   useBindLorebook,
   useLoreActivation,
@@ -117,6 +120,12 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
   const authorExtract = useAuthorExtract(sceneId);
   const authorSuggestLore = useAuthorSuggestLore(sceneId);
   const setBackground = useSetSceneBackground(sceneId);
+  const documents = useDocuments(sceneId);
+  const ingestDocument = useIngestDocument();
+  const removeDocument = useDeleteDocument();
+  const [documentsOpen, setDocumentsOpen] = useState(false);
+  const [docTitle, setDocTitle] = useState("");
+  const [docText, setDocText] = useState("");
   const [loreProposals, setLoreProposals] = useState<
     { title: string; content: string; keys: string[] }[] | null
   >(null);
@@ -789,6 +798,20 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               {authorExtract.error?.message ?? authorSuggestLore.error?.message}
             </p>
           ) : null}
+
+          {/* The data bank (SPEC §11, phase 30): documents recalled into the
+              prompt by meaning. A row, because the list itself is a sheet. */}
+          <p className="section-label mb-[8px]">{strings.characters.documents}</p>
+          <p className="chrome mb-[10px] text-[9.5px] leading-[1.5] text-ink-dim">
+            {strings.characters.documentsHint}
+          </p>
+          <button
+            type="button"
+            className="btn mb-[24px] w-full"
+            onClick={() => setDocumentsOpen(true)}
+          >
+            {strings.characters.addDocument} · {(documents.data ?? []).length}
+          </button>
         </div>
       </main>
 
@@ -894,6 +917,66 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
             </div>
           ))}
           <div className="h-[10px]" />
+        </Sheet>
+      ) : null}
+
+      {documentsOpen ? (
+        <Sheet title={strings.characters.documents} onClose={() => setDocumentsOpen(false)}>
+          <div className="pt-[8px] pb-[12px]">
+            {(documents.data ?? []).length === 0 ? (
+              <p className="chrome mb-[10px] text-[9px] tracking-[0.12em] text-ink-dim uppercase">
+                {strings.characters.noDocuments}
+              </p>
+            ) : (
+              (documents.data ?? []).map((document) => (
+                <div key={document.id} className="flex items-baseline gap-[8px] border-b border-rule py-[9px]">
+                  <span className="min-w-0 flex-1 truncate text-[13.5px]">{document.title}</span>
+                  <span className="chrome flex-none text-[9px] text-ink-muted uppercase">
+                    {document.chunkCount}
+                  </span>
+                  <button
+                    type="button"
+                    className="chrome flex-none text-[9px] uppercase"
+                    style={{ color: "var(--onsen-color-red)" }}
+                    onClick={() => removeDocument.mutate(document.id)}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))
+            )}
+
+            <p className="section-label mt-[12px] mb-[6px]">{strings.characters.documentTitle}</p>
+            <input
+              className="field mb-[8px]"
+              value={docTitle}
+              onChange={(event) => setDocTitle(event.target.value)}
+            />
+            <p className="section-label mb-[6px]">{strings.characters.documentText}</p>
+            <textarea
+              className="field min-h-[90px] resize-y"
+              value={docText}
+              onChange={(event) => setDocText(event.target.value)}
+            />
+            <button
+              type="button"
+              className="btn btn-primary mt-[10px] w-full"
+              disabled={docTitle.trim() === "" || docText.trim() === "" || ingestDocument.isPending}
+              onClick={() =>
+                ingestDocument.mutate(
+                  { title: docTitle.trim(), text: docText, sceneId },
+                  {
+                    onSuccess: () => {
+                      setDocTitle("");
+                      setDocText("");
+                    },
+                  },
+                )
+              }
+            >
+              {strings.characters.addDocument}
+            </button>
+          </div>
         </Sheet>
       ) : null}
 

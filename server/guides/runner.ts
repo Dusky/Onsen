@@ -116,6 +116,8 @@ export function buildGuidePrompt(question: string, tokenizer = createEstimatingT
       unknownMacros: [],
       // A side call's prompt has no lore to explain.
       loreTrace: [],
+      // A side call's prompt recalls no documents.
+      retrievedChunks: [],
     },
   };
 }

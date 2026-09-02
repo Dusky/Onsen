@@ -11,6 +11,7 @@ import type {
   SamplerSettings,
   TurnScope,
 } from "../../shared/types.ts";
+import type { PromptDocumentChunk } from "../prompt/types.ts";
 import {
   activePath,
   appendMessage,
@@ -42,6 +43,7 @@ import type { SummaryRunner } from "../summaries/runner.ts";
 import { ReasoningSplitter, parseReasoningConfig } from "./reasoning.ts";
 import { OocSplitter } from "./ooc.ts";
 import { ExprSplitter } from "./expression.ts";
+import { retrieve } from "../documents/store.ts";
 import type { AutopilotRunner } from "./autopilot.ts";
 import { templateFor } from "../db/queries/instruct.ts";
 import type { InstructTemplate } from "../prompt/index.ts";
@@ -608,6 +610,10 @@ export class GenerationService {
         ...(generation.parentId === null
           ? { history: [] }
           : { history: pathTo(this.db, generation.parentId) }),
+        // The data bank (SPEC §11): retrieved before the build, in the I/O
+        // layer, so the builder stays pure. A retrieval that fails or finds
+        // nothing is an empty block, never a failed turn.
+        documents: await this.retrieveDocuments(scene, generation.parentId),
       });
 
       const prompt = buildPrompt(context);
@@ -976,9 +982,37 @@ export class GenerationService {
     if (split.prose !== "") this.append(generation, split.prose);
   }
 
+  /**
+   * Recall data-bank chunks for this turn (SPEC §11). The query is the scene's
+   * own recent words; the answer feeds the prompt's documents block. A failure
+   * — a provider down, a bad vector — is an empty recall, never a failed turn.
+   */
+  private async retrieveDocuments(
+    scene: SceneRow,
+    parentId: number | null,
+  ): Promise<PromptDocumentChunk[]> {
+    try {
+      const path = parentId === null ? [] : pathTo(this.db, parentId);
+      const query = path
+        .slice(-2)
+        .map((message) => message.content)
+        .join("\n")
+        .trim();
+      if (query === "") return [];
+      const chunks = await retrieve(this.db, this.keyring, scene.id, query);
+      return chunks.map((chunk) => ({
+        id: chunk.documentId,
+        documentName: chunk.documentTitle,
+        content: chunk.text,
+        score: chunk.score,
+      }));
+    } catch {
+      return [];
+    }
+  }
+
   /** The preset's reasoning settings, or null for the built-in defaults (§13). */
-  private reasoningJson(presetId: number | null): string | null {
-    if (presetId === null) return null;
+  private reasoningJson(presetId: number | null): string | null {    if (presetId === null) return null;
     const row = this.db
       .query("SELECT reasoning_config FROM presets WHERE id = $id")
       .get({ id: presetId }) as { reasoning_config: string | null } | null;

@@ -19,6 +19,8 @@ import {
   useApplyUpdate,
   useCheckUpdate,
   useUpdateStatus,
+  useEmbeddingsConfig,
+  useSaveEmbeddingsConfig,
 } from "../lib/queries.ts";
 import { TabBar } from "../components/TabBar.tsx";
 import { Sheet } from "../components/Sheet.tsx";
@@ -609,6 +611,78 @@ function UpdateGroup() {
 }
 
 /* ------------------------------------------------------------------ */
+/* Embeddings (SPEC §11, phase 30)                                     */
+/* ------------------------------------------------------------------ */
+
+/** The data bank's embeddings provider — base URL, model, key — or nothing,
+ * which is the keyword fallback, and the section says so rather than hiding. */
+function EmbeddingsSection() {
+  const config = useEmbeddingsConfig();
+  const save = useSaveEmbeddingsConfig();
+  const [saved, setSaved] = useState(false);
+
+  return (
+    <>
+      <p className="section-label mb-[4px]">{strings.settings.embeddings}</p>
+      <p className="chrome mb-[10px] text-[9px] leading-[1.5] text-ink-dim">
+        {strings.settings.embeddingsHint}
+      </p>
+      {config.data !== undefined && config.data.baseUrl === null ? (
+        <p className="chrome mb-[10px] text-[9px] leading-[1.5] text-ink-dim">
+          {strings.settings.embeddingsLexical}
+        </p>
+      ) : null}
+      <form
+        className="mb-[14px]"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const form = new FormData(event.currentTarget);
+          const baseUrl = String(form.get("baseUrl") ?? "").trim();
+          const model = String(form.get("model") ?? "").trim();
+          const apiKey = String(form.get("apiKey") ?? "").trim();
+          save.mutate(
+            {
+              baseUrl: baseUrl === "" ? null : baseUrl,
+              model: model === "" ? null : model,
+              ...(apiKey === "" ? {} : { apiKey }),
+            },
+            { onSuccess: () => setSaved(true) },
+          );
+        }}
+      >
+        <p className="section-label mb-[6px]">{strings.settings.embeddingsBaseUrl}</p>
+        <input
+          name="baseUrl"
+          className="field mb-[10px]"
+          placeholder="http://localhost:11434/v1"
+          defaultValue={config.data?.baseUrl ?? ""}
+        />
+        <p className="section-label mb-[6px]">{strings.settings.embeddingsModel}</p>
+        <input
+          name="model"
+          className="field mb-[10px]"
+          placeholder="nomic-embed-text"
+          defaultValue={config.data?.model ?? ""}
+        />
+        <p className="section-label mb-[6px]">{strings.settings.embeddingsKey}</p>
+        <input name="apiKey" type="password" className="field mb-[10px]" autoComplete="off" />
+        <div className="flex items-center gap-[8px]">
+          <button type="submit" className="btn btn-primary flex-1">
+            {strings.settings.embeddingsSave}
+          </button>
+          {saved ? (
+            <span className="chrome text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+              {strings.settings.embeddingsSaved}
+            </span>
+          ) : null}
+        </div>
+      </form>
+      <div className="mb-[26px]" />
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 
 export function SettingsScreen() {
   const providers = useProviders();
@@ -824,6 +898,8 @@ export function SettingsScreen() {
             );
           })}
           <div className="h-[20px]" />
+
+          <EmbeddingsSection />
 
           <UpdateGroup />
         </div>
