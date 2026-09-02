@@ -581,6 +581,7 @@ export const strings = {
     editorKicker: "Character",
     tabCard: "Card",
     tabGreetings: "Greetings",
+    tabSprites: "Sprites",
     tabAdvanced: "Advanced",
 
     name: "Name",

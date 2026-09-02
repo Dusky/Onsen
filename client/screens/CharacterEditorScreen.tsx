@@ -32,7 +32,7 @@ import { Sheet, SheetAction } from "../components/Sheet.tsx";
 
 const CONTEXT_WINDOW = 32_768;
 
-type Tab = "card" | "greetings" | "advanced";
+type Tab = "card" | "greetings" | "sprites" | "advanced";
 
 /** A label row with the field's cost printed at its end. */
 function FieldRow({
@@ -173,6 +173,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
   const tabs: { key: Tab; label: string }[] = [
     { key: "card", label: strings.characters.tabCard },
     { key: "greetings", label: strings.characters.tabGreetings },
+    { key: "sprites", label: strings.characters.tabSprites },
     { key: "advanced", label: strings.characters.tabAdvanced },
   ];
 
@@ -316,6 +317,57 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                   onChange={(groupGreetings) => save({ groupGreetings })}
                 />
               </FieldRow>
+            </>
+          ) : null}
+
+          {tab === "sprites" ? (
+            <>
+              {/* Sprites (SPEC §12, DESIGN §295): a labelled image per expression,
+                  which the VN stage draws when the author declares that label. */}
+              <p className="section-label mb-[8px]">{strings.characters.sprites}</p>
+              <p className="chrome mb-[8px] text-[9px] leading-[1.5] text-ink-dim">
+                {strings.characters.spritesHint}
+              </p>
+              <div className="mb-[8px] flex flex-wrap gap-[6px]">
+                {(sprites.data?.expressions ?? []).map((expression) => (
+                  <button
+                    key={expression.id}
+                    type="button"
+                    onClick={() => removeSprite.mutate(expression.id)}
+                    className="chrome border px-[10px] py-[6px] text-[9px] tracking-[0.08em] uppercase"
+                    style={{ borderColor: "var(--onsen-color-border-quiet)", color: "var(--onsen-color-text-muted)" }}
+                  >
+                    {expression.label} ×
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="btn mb-[22px] w-full"
+                disabled={uploadSprite.isPending}
+                onClick={() => {
+                  const label = window.prompt(strings.characters.spriteLabelPrompt, "");
+                  if (label === null || label.trim() === "") return;
+                  setSpriteLabel(label.trim().toLowerCase());
+                  document.getElementById(`sprite-${characterId}`)?.click();
+                }}
+              >
+                {strings.characters.addSprite}
+              </button>
+              <input
+                id={`sprite-${characterId}`}
+                type="file"
+                hidden
+                accept="image/*"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file !== undefined && spriteLabel !== "") {
+                    uploadSprite.mutate({ label: spriteLabel, file });
+                    setSpriteLabel("");
+                  }
+                  event.target.value = "";
+                }}
+              />
             </>
           ) : null}
 
@@ -464,52 +516,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                 </button>
               </div>
 
-              {/* Sprites (SPEC §12): a labelled image per expression, which the
-                  VN stage draws when the author declares that label. */}
-              <p className="section-label mt-[16px] mb-[8px]">{strings.characters.sprites}</p>
-              <p className="chrome mb-[8px] text-[9px] leading-[1.5] text-ink-dim">
-                {strings.characters.spritesHint}
-              </p>
-              <div className="mb-[8px] flex flex-wrap gap-[6px]">
-                {(sprites.data?.expressions ?? []).map((expression) => (
-                  <button
-                    key={expression.id}
-                    type="button"
-                    onClick={() => removeSprite.mutate(expression.id)}
-                    className="chrome border px-[10px] py-[6px] text-[9px] tracking-[0.08em] uppercase"
-                    style={{ borderColor: "var(--onsen-color-border-quiet)", color: "var(--onsen-color-text-muted)" }}
-                  >
-                    {expression.label} ×
-                  </button>
-                ))}
-              </div>
-              <button
-                type="button"
-                className="btn mb-[22px] w-full"
-                disabled={uploadSprite.isPending}
-                onClick={() => {
-                  const label = window.prompt(strings.characters.spriteLabelPrompt, "");
-                  if (label === null || label.trim() === "") return;
-                  setSpriteLabel(label.trim().toLowerCase());
-                  document.getElementById(`sprite-${characterId}`)?.click();
-                }}
-              >
-                {strings.characters.addSprite}
-              </button>
-              <input
-                id={`sprite-${characterId}`}
-                type="file"
-                hidden
-                accept="image/*"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (file !== undefined && spriteLabel !== "") {
-                    uploadSprite.mutate({ label: spriteLabel, file });
-                    setSpriteLabel("");
-                  }
-                  event.target.value = "";
-                }}
-              />
+              {/* Sprites live on their own tab (DESIGN §295). */}
 
               {/* What the original card carried that this editor does not show.
                   It survives export; saying so is what stops it feeling lost. */}

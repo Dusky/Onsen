@@ -2838,3 +2838,38 @@ keys intact, and the dangerous pattern — widening a CHECK — had only happene
 once, and that once taught the rule. The debt was in the *map*, not the
 territory, which is the best possible version of schema drift and also the one
 easiest to fix with a lint test and a paragraph instead of a rewrite.
+
+## Phase 31½ — The completion sweep
+
+Not a build-order phase; a pass over the half-built things, run after the
+schema repair and against DESIGN.md this time. Each item was already a feature;
+this closes the loop on it.
+
+### What was done
+
+- **The §16 provider test button.** One round trip to the provider's own
+  endpoint, reported with its latency or the HTTP failure — so a bad key reads
+  there rather than on the first generation.
+- **Autopilot banner reconciled to DESIGN §256.** `AUTOPILOT · N OF M` and the
+  stop is `TAKE OVER`, as the design names them.
+- **Revise-lore reached its editor.** The lore entry editor has a revise-with-AI
+  action that updates title, content and keys from the finished entry.
+- **CharX sprite import.** CharX bundles now import expression sprites from
+  their `expressions/` tree into the pack, named by filename stem, with the
+  count reported rather than silent.
+- **Global documents.** The data bank gains a visible-in-every-scene toggle.
+- **The character grid is virtualized** (`@tanstack/react-virtual`), three to a
+  row, only visible rows mounted — DESIGN §289.
+- **The character editor's SPRITES tab.** DESIGN §295 gives sprites their own
+  tab; they had been buried in Advanced.
+
+### Still outstanding, deliberately
+
+- **The message log is not virtualized yet.** DESIGN §415 requires it — dynamic
+  row heights, bottom-anchored — and it is the single riskiest change in the
+  app: the log also hosts the streaming turn, reasoning, OOC blocks, and the
+  editor. It deserves its own careful pass with visual verification, not a
+  rushed one appended to a sweep. The character grid is done; the log is the
+  remaining half of §415.
+- **The LORE tab** in the editor (§295) belongs to character-bound lore, which
+  is phase 32's dossiers and their ilk, not this pass.
