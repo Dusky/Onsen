@@ -11,6 +11,7 @@ import type {
   CharacterSnapshotDto,
   CharacterVersionDto,
   ConnectionProfileDto,
+  ExpressionPackDto,
   PromptInspectorDto,
   SavedFilterDto,
   CreateConnectionProfileRequest,
@@ -1093,5 +1094,66 @@ export function useAuthorSuggestLore(sceneId: string) {
       api.post<{ entries: { title: string; content: string; keys: string[] }[] }>(
         `/authoring/scenes/${sceneId}/suggest-lore`,
       ),
+  });
+}
+
+/* ---------------- expressions and VN staging (SPEC §12, phase 29) ---------------- */
+
+export function useExpressionPack(characterId: string) {
+  return useQuery({
+    queryKey: ["characters", characterId, "expressions"] as const,
+    queryFn: () => api.get<ExpressionPackDto>(`/characters/${characterId}/expressions`),
+  });
+}
+
+export function useUploadExpression(characterId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ label, file }: { label: string; file: File }) => {
+      const form = new FormData();
+      form.append("label", label);
+      form.append("file", file);
+      const response = await fetch(`/api/characters/${characterId}/expressions`, {
+        method: "POST",
+        body: form,
+      });
+      const body: unknown = await response.json();
+      if (!response.ok) {
+        const error = (body as { error?: { message?: string } })?.error;
+        throw new Error(error?.message ?? "The sprite could not be uploaded.");
+      }
+      return body as ExpressionPackDto;
+    },
+    onSuccess: (pack) =>
+      void client.invalidateQueries({ queryKey: ["characters", characterId, "expressions"] }),
+  });
+}
+
+export function useDeleteExpression(characterId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (expressionId: string) =>
+      api.delete<void>(`/characters/expressions/${expressionId}`),
+    onSuccess: () =>
+      void client.invalidateQueries({ queryKey: ["characters", characterId, "expressions"] }),
+  });
+}
+
+export function useSetSceneBackground(sceneId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      const response = await fetch(`/api/scenes/${sceneId}/background`, {
+        method: "POST",
+        body: form,
+      });
+      if (!response.ok) throw new Error("The background could not be uploaded.");
+      return (await response.json()) as SceneDto;
+    },
+    onSuccess: (scene) => {
+      void client.invalidateQueries({ queryKey: keys.scene(sceneId) });
+    },
   });
 }

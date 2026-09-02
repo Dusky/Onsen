@@ -19,6 +19,7 @@ import { InspectorSheet } from "../components/InspectorSheet.tsx";
 import { CastStrip } from "../components/CastStrip.tsx";
 import { OpsGrid, OpsRow, OpPrompt, type Op } from "../components/OpsGrid.tsx";
 import { CastRail } from "../components/CastRail.tsx";
+import { VnStage } from "../components/VnStage.tsx";
 import { useIsDesktop } from "../lib/breakpoint.ts";
 import { ContextSheet, type ContextTab } from "../components/ContextSheet.tsx";
 import {
@@ -824,6 +825,17 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           {strings.chat.setup}
         </button>
       </header>
+      {/* The VN stage (SPEC §12): sprites above the log, on only when the
+          scene asked for staging. Below it the log is unchanged, so turning
+          the toggle off degrades to normal chat with nothing else moving. */}
+      {scene.data?.scene.vnModeEnabled === true ? (
+        <VnStage
+          cast={cast}
+          messages={messages}
+          background={scene.data.scene.hasBackground}
+          sceneId={sceneId}
+        />
+      ) : null}
       {/* The desktop shape: the log, the ops and the composer in a capped
           prose column, with the cast rail beside them (design `4a`). The
           pieces are identical either way — only their parent differs, which

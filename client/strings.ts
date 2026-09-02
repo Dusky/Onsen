@@ -534,6 +534,13 @@ export const strings = {
     suggestLore: "Suggest lore",
     loreFromScene: "Lore from this scene",
     addToBook: "Add",
+
+    /** Sprites and expressions (SPEC §12, phase 29). */
+    sprites: "Sprites",
+    spritesHint: "One image per expression label. The stage falls back to the avatar, then the placeholder.",
+    spriteLabel: "Label",
+    spriteLabelPrompt: "Expression label, e.g. joy or worried",
+    addSprite: "Add sprite",
     /** Cost is always a share of the context window (design handoff). */
     shareOfContext: (n: number, context: number) =>
       `${n} TOK · ${((n / context) * 100).toFixed(1)}% OF CTX`,
@@ -678,6 +685,12 @@ export const strings = {
       "The scene keeps writing after a reply, up to a bound you set, and hands itself back the moment it turns to face you.",
     autopilotMaxTurns: "Turns per run",
     autopilotMaxTurnsUnit: "turns",
+
+    /** Visual novel staging (SPEC §12). */
+    vnMode: "Visual novel stage",
+    vnModeOn: "On",
+    vnModeOff: "Off",
+    background: "Set a background",
 
     customGuide: "Custom guide",
     customGuideHint:

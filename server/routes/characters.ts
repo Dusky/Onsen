@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { unlinkSync } from "node:fs";
 import type { AppContext, AppEnv } from "../context.ts";
 import { requireAuth } from "../middleware/session.ts";
+import { ulid } from "../lib/ulid.ts";
 import {
   CardError,
   buildCardDocument,
@@ -30,6 +31,14 @@ import {
   listCharactersFiltered,
   restoreVersion,
 } from "../db/queries/library.ts";
+import {
+  addExpression,
+  deleteExpression,
+  ensurePack,
+  findExpression,
+  findPackByCharacter,
+  toPackDto,
+} from "../db/queries/expressions.ts";
 import type { TaskRunner } from "../tasks/runner.ts";
 import { SUGGEST_TAGS, taskKind } from "../tasks/registry.ts";
 import {
@@ -58,6 +67,13 @@ import type {
 const MAX_CARD_BYTES = 32 * 1024 * 1024;
 
 const ROLES: PromptRoleName[] = ["system", "user", "assistant"];
+
+/** A file's extension, or a safe default for images whose name has none. */
+function extensionOf(name: string): string {
+  const dot = name.lastIndexOf(".");
+  const extension = dot === -1 ? "png" : name.slice(dot + 1).toLowerCase();
+  return /^[a-z0-9]{1,5}$/.test(extension) ? extension : "png";
+}
 
 function badRequest(message: string) {
   return { error: { code: "bad_request", message } } as const;
@@ -437,6 +453,77 @@ export function characterRoutes(ctx: AppContext, tasks: TaskRunner): Hono<AppEnv
     // Content-addressed by hash, so it can be cached indefinitely.
     c.header("Cache-Control", "public, max-age=31536000, immutable");
     return c.body(file.stream(), 200, { "Content-Type": file.type });
+  });
+
+  /** The character's expression pack — the tag-to-sprite binding (§12). */
+  app.get("/:characterId/expressions", (c) => {
+    const row = findCharacter(ctx.db, c.req.param("characterId"));
+    if (row === null) return c.json(notFound(), 404);
+    const pack = findPackByCharacter(ctx.db, row.id);
+    if (pack === null) {
+      return c.json({ id: null, characterId: row.ulid, expressions: [] });
+    }
+    return c.json(toPackDto(ctx.db, pack, row.ulid));
+  });
+
+  /** Upload one sprite under a label, creating the pack on first use (§12). */
+  app.post("/:characterId/expressions", async (c) => {
+    const row = findCharacter(ctx.db, c.req.param("characterId"));
+    if (row === null) return c.json(notFound(), 404);
+
+    let file: File | null = null;
+    let label = "";
+    try {
+      const form = await c.req.formData();
+      const candidate = form.get("file");
+      if (candidate instanceof File) file = candidate;
+      const labelValue = form.get("label");
+      if (typeof labelValue === "string") label = labelValue.trim().toLowerCase();
+    } catch {
+      return c.json(badRequest("Expected a file and a label."), 400);
+    }
+    if (file === null) return c.json(badRequest("No image was uploaded."), 400);
+    if (label === "") return c.json(badRequest("An expression needs a label."), 400);
+    if (file.size > 8 * 1024 * 1024) return c.json(badRequest("That sprite is too large."), 413);
+
+    const pack = ensurePack(ctx.db, row.id, `${row.name} sprites`);
+    // A flat name keeps the write inside the one directory the config creates
+    // and makes the file content-addressed enough to never collide.
+    const path = `${row.id}-${label}-${ulid()}.${extensionOf(file.name)}`;
+    await Bun.write(join(ctx.config.spritesDir, path), new Uint8Array(await file.arrayBuffer()));
+    const expression = addExpression(ctx.db, pack.id, label, path, 0);
+    return c.json(toPackDto(ctx.db, pack, row.ulid), 201);
+  });
+
+  /** Serve a sprite by its expression id. */
+  app.get("/expressions/:expressionId/image", async (c) => {
+    const expression = findExpression(ctx.db, c.req.param("expressionId"));
+    if (expression === null) {
+      return c.json({ error: { code: "not_found", message: "No such expression." } }, 404);
+    }
+    const file = Bun.file(join(ctx.config.spritesDir, expression.image_path));
+    if (!(await file.exists())) {
+      return c.json({ error: { code: "not_found", message: "No image for that expression." } }, 404);
+    }
+    c.header("Cache-Control", "public, max-age=3600");
+    return c.body(file.stream(), 200, { "Content-Type": file.type });
+  });
+
+  app.delete("/expressions/:expressionId", async (c) => {
+    const expression = findExpression(ctx.db, c.req.param("expressionId"));
+    if (expression === null) {
+      return c.json({ error: { code: "not_found", message: "No such expression." } }, 404);
+    }
+    deleteExpression(ctx.db, expression.id);
+    const file = Bun.file(join(ctx.config.spritesDir, expression.image_path));
+    if (await file.exists()) {
+      try {
+        await file.delete();
+      } catch {
+        /* The row is gone; a leftover file is an orphan, not a failure. */
+      }
+    }
+    return c.body(null, 204);
   });
 
   return app;

@@ -363,6 +363,8 @@ export interface MessageSegmentDto {
   content: string;
   charStart: number;
   charEnd: number;
+  /** The expression the author declared for this segment, if any (§12). */
+  expression: string | null;
 }
 
 /**
@@ -429,6 +431,8 @@ export interface MessageDto {
   annotations: AnnotationDto[];
   /** True while the pipeline is still working on this message. */
   passesPending: boolean;
+  /** The expression the author declared for this turn, if any (§12). */
+  expression: string | null;
   /**
    * True when a beat arrived with no usable speaker labels and was kept whole
    * as narration (SPEC §3.5). The text is intact; the attribution is not.
@@ -484,6 +488,10 @@ export interface SceneDto {
   autopilotEnabled: boolean;
   /** How many turns the loop may write before it stops (SPEC §6). */
   autopilotMaxTurns: number;
+  /** Visual novel staging, sprites above the log (SPEC §12). */
+  vnModeEnabled: boolean;
+  /** Whether a background image is set (served at /scenes/:id/background). */
+  hasBackground: boolean;
   /** Move the injection point only every N turns, for the prompt cache (§11). */
   summariseFreeze: number;
   /** The cast, in display order. One member until group scenes (phase 8). */
@@ -1297,6 +1305,25 @@ export interface ImportCharacterResponse {
 }
 
 /* ------------------------------------------------------------------ */
+/* Expressions and sprites (SPEC §12, §20 phase 29)                   */
+/* ------------------------------------------------------------------ */
+
+/** One labelled sprite in a character's pack. */
+export interface ExpressionDto {
+  id: string;
+  label: string;
+  variantIndex: number;
+  hasImage: boolean;
+}
+
+/** A character's expression pack — the tag-to-sprite binding. */
+export interface ExpressionPackDto {
+  id: string;
+  characterId: string;
+  expressions: ExpressionDto[];
+}
+
+/* ------------------------------------------------------------------ */
 /* Authors and personas (SPEC §0.2, §2)                                */
 /* ------------------------------------------------------------------ */
 
@@ -1471,6 +1498,7 @@ export interface SceneSetupRequest {
   oocInterval?: number;
   autopilotEnabled?: boolean;
   autopilotMaxTurns?: number;
+  vnModeEnabled?: boolean;
   summariseFreeze?: number;
   title?: string;
 }

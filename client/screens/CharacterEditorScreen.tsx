@@ -11,6 +11,9 @@ import {
   useUpdateCharacter,
   useAuthorRevise,
   useAuthorVoice,
+  useExpressionPack,
+  useUploadExpression,
+  useDeleteExpression,
 } from "../lib/queries.ts";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
 
@@ -145,9 +148,13 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
   const suggest = useSuggestTags(characterId);
   const authorRevise = useAuthorRevise(characterId);
   const authorVoice = useAuthorVoice(characterId);
+  const sprites = useExpressionPack(characterId);
+  const uploadSprite = useUploadExpression(characterId);
+  const removeSprite = useDeleteExpression(characterId);
   const [tab, setTab] = useState<Tab>("card");
   const [tagDraft, setTagDraft] = useState("");
   const [versionsOpen, setVersionsOpen] = useState(false);
+  const [spriteLabel, setSpriteLabel] = useState("");
 
   const character: CharacterDto | undefined = query.data;
   if (character === undefined) {
@@ -456,6 +463,53 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                   {authorVoice.isPending ? strings.characters.writingCard : strings.characters.voiceWithAi}
                 </button>
               </div>
+
+              {/* Sprites (SPEC §12): a labelled image per expression, which the
+                  VN stage draws when the author declares that label. */}
+              <p className="section-label mt-[16px] mb-[8px]">{strings.characters.sprites}</p>
+              <p className="chrome mb-[8px] text-[9px] leading-[1.5] text-ink-dim">
+                {strings.characters.spritesHint}
+              </p>
+              <div className="mb-[8px] flex flex-wrap gap-[6px]">
+                {(sprites.data?.expressions ?? []).map((expression) => (
+                  <button
+                    key={expression.id}
+                    type="button"
+                    onClick={() => removeSprite.mutate(expression.id)}
+                    className="chrome border px-[10px] py-[6px] text-[9px] tracking-[0.08em] uppercase"
+                    style={{ borderColor: "var(--onsen-color-border-quiet)", color: "var(--onsen-color-text-muted)" }}
+                  >
+                    {expression.label} ×
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="btn mb-[22px] w-full"
+                disabled={uploadSprite.isPending}
+                onClick={() => {
+                  const label = window.prompt(strings.characters.spriteLabelPrompt, "");
+                  if (label === null || label.trim() === "") return;
+                  setSpriteLabel(label.trim().toLowerCase());
+                  document.getElementById(`sprite-${characterId}`)?.click();
+                }}
+              >
+                {strings.characters.addSprite}
+              </button>
+              <input
+                id={`sprite-${characterId}`}
+                type="file"
+                hidden
+                accept="image/*"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file !== undefined && spriteLabel !== "") {
+                    uploadSprite.mutate({ label: spriteLabel, file });
+                    setSpriteLabel("");
+                  }
+                  event.target.value = "";
+                }}
+              />
 
               {/* What the original card carried that this editor does not show.
                   It survives export; saying so is what stops it feeling lost. */}

@@ -14,6 +14,7 @@ import type {
 import {
   activePath,
   appendMessage,
+  applySegmentExpressions,
   findMessageById,
   findSceneById,
   reparseSegments,
@@ -40,6 +41,7 @@ import type { GuideRunner } from "../guides/runner.ts";
 import type { SummaryRunner } from "../summaries/runner.ts";
 import { ReasoningSplitter, parseReasoningConfig } from "./reasoning.ts";
 import { OocSplitter } from "./ooc.ts";
+import { ExprSplitter } from "./expression.ts";
 import type { AutopilotRunner } from "./autopilot.ts";
 import { templateFor } from "../db/queries/instruct.ts";
 import type { InstructTemplate } from "../prompt/index.ts";
@@ -141,6 +143,8 @@ interface ActiveGeneration {
    * still not have it land in the middle of the scene.
    */
   oocSplitter: OocSplitter;
+  /** Splits `<expr>` tags out of the prose, storing them apart (§12). */
+  exprSplitter: ExprSplitter;
   meta: GenerationMeta;
   error: string | null;
   detail: string | null;
@@ -397,6 +401,7 @@ export class GenerationService {
       reasoning: "",
       splitter: new ReasoningSplitter(),
       oocSplitter: new OocSplitter(),
+      exprSplitter: new ExprSplitter(),
       meta: {
         provider: route.providerName,
         model: route.model,
@@ -652,7 +657,7 @@ export class GenerationService {
           : { prose: split.prose };
         if (staged.prose === "") continue;
         if (generation.meta.ttftMs === null) generation.meta.ttftMs = this.now() - dispatchedAt;
-        this.append(generation, staged.prose);
+        this.appendProse(generation, staged.prose);
       }
       // An unclosed block is reasoning, not prose. Printing a model's private
       // planning into the scene because it forgot a closing tag would be the
@@ -664,7 +669,7 @@ export class GenerationService {
           const staged = splitAsides
             ? generation.oocSplitter.push(rest.prose)
             : { prose: rest.prose };
-          if (staged.prose !== "") this.append(generation, staged.prose);
+          if (staged.prose !== "") this.appendProse(generation, staged.prose);
         }
       }
       // An unterminated aside is prose, marker and all — the opposite of the
@@ -673,8 +678,12 @@ export class GenerationService {
       // worse than showing one.
       if (splitAsides) {
         const trailing = generation.oocSplitter.flush();
-        if (trailing.prose !== "") this.append(generation, trailing.prose);
+        if (trailing.prose !== "") this.appendProse(generation, trailing.prose);
       }
+      // An unclosed expression tag is prose too, for the same reason: showing
+      // a stray `<expr` is less wrong than eating the turn after it.
+      const exprRest = generation.exprSplitter.flush();
+      if (exprRest.prose !== "") this.append(generation, exprRest.prose);
     } catch (caught) {
       // An abort surfaces here as a thrown error on some runtimes and as a
       // clean end on others; a cancelled generation is not a failed one.
@@ -956,6 +965,17 @@ export class GenerationService {
     }
   }
 
+  /**
+   * Prose bound for the scene, after the expression tags are lifted out of it
+   * (§12). The tags never reach the buffer or the prompt; they ride alongside
+   * the turn and land on the message at `land` time.
+   */
+  private appendProse(generation: ActiveGeneration, text: string): void {
+    if (text === "") return;
+    const split = generation.exprSplitter.push(text);
+    if (split.prose !== "") this.append(generation, split.prose);
+  }
+
   /** The preset's reasoning settings, or null for the built-in defaults (§13). */
   private reasoningJson(presetId: number | null): string | null {
     if (presetId === null) return null;
@@ -1128,6 +1148,24 @@ export class GenerationService {
       characterId: generation.spotlightId,
     });
     if (isBeat) reparseSegments(this.db, message);
+
+    // The author's declared expressions (§12), lifted out of the stream and
+    // stored against the message. A spotlight carries one label; a beat's tags
+    // name their character and land on that character's segment.
+    const expressions = generation.exprSplitter.result();
+    if (expressions.length > 0) {
+      if (isBeat) {
+        applySegmentExpressions(this.db, message.id, expressions);
+      } else {
+        const label = expressions.at(-1)?.label ?? null;
+        if (label !== null) {
+          this.db.query("UPDATE messages SET expression = $e WHERE id = $id").run({
+            id: message.id,
+            e: label,
+          });
+        }
+      }
+    }
     return message;
   }
 

@@ -2625,3 +2625,65 @@ would have flagged the one macro this app *does* implement with an argument as
 unsupported. The base name decides, the argument never does — same rule as the
 parser's null-versus-absence distinction: the decision is made on the shape,
 not the decoration.
+
+## Phase 29 — Expressions, sprite packs and the VN stage
+
+§12's premise is that in author mode the author already knows who is emoting
+and how, so the classifier the other frontends run is a cost this app does not
+have to pay. The expression is declared, parsed, and stored — zero extra
+inference.
+
+### What was built
+
+**The tag, parsed like the others.** `<expr>ana:worried</expr>` is lifted out of
+the stream by a splitter with the OOC splitter's exact mechanics — a partial
+tag is held until it settles, and an unclosed one is prose, because showing a
+stray `<expr` is less wrong than eating the turn after it. The label never
+reaches the buffer, so it can never leak into the prompt. A spotlight turn
+carries one label on the message; a beat's tags name their character and land
+on that character's segment, joined by name rather than position.
+
+**The binding, not the image.** An expression pack is a character's named set
+of labels, each pointing at an image path. Where the image came from — an
+upload, a CharX bundle, or a generated sprite in phase 41 — is a fact about the
+file, not the binding. This is the seam that makes generation additive: phase
+41 writes into the same table, and the stage does not change.
+
+**The stage.** Sprites above the log when the scene is switched to VN mode,
+one per active member, changed by the expression the last turn declared. The
+label that has no sprite falls back to the avatar, then the stripe — the
+graceful degradation §12 names in order. The last speaker is full-opacity, the
+rest dim, and the whole row sits on an optional per-scene background. The
+toggle is scene setup; off, the log is exactly what it was before.
+
+### Deliberately deferred
+
+- **The classifier fallback.** §12 wants a text-classifier background task when
+  the author omits the tag; the author-declared path is the primary one and
+  needs no inference, so the fallback waits on the same ONNX question the spec
+  itself flags as optional.
+- **CharX expression import.** The assets tree is already preserved on import
+  (phase 6); reading expression images out of it is a refinement of the same
+  path, not a new one.
+- **Costume overrides and numeric variants.** The schema has `variant_index`,
+  and the binding is the part that matters; the picker that switches variants
+  is UI this phase's data model was built to allow.
+- **Inactive members on stage.** §12 wants them dimmed rather than hidden; this
+  stage hides them and dims the non-speakers, which is the dimming rule
+  applied to a smaller cast.
+
+### Surprises
+
+**The beat parser needs full names.** A tag naming a character by first name
+fails against a cast whose names are two words — `Aldan` does not match `Aldan
+Marsh` in the label reader, so the segment was never attributed and the
+expression had nowhere to land. The join is by name, and the name has to be the
+name the beat parser already knows, which is the cast's full name.
+
+**A sprite file needed a flat path.** The first draft wrote under a per-
+character subdirectory that the config's directory setup does not create, and
+`Bun.write` does not make parents — the pack was created but the expression
+row never landed, which read as an upload that silently did nothing. A flat
+name inside the one directory that already exists is the fix, and the lesson is
+the same one phase 27 wrote down: a setup step that swallows its own failure
+lies about what it set up.

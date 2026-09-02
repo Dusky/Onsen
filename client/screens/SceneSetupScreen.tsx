@@ -10,6 +10,7 @@ import {
   useAuthors,
   useAuthorExtract,
   useAuthorSuggestLore,
+  useSetSceneBackground,
   useBans,
   useBindLorebook,
   useLoreActivation,
@@ -115,6 +116,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
   const removeFromCast = useRemoveFromCast(sceneId);
   const authorExtract = useAuthorExtract(sceneId);
   const authorSuggestLore = useAuthorSuggestLore(sceneId);
+  const setBackground = useSetSceneBackground(sceneId);
   const [loreProposals, setLoreProposals] = useState<
     { title: string; content: string; keys: string[] }[] | null
   >(null);
@@ -656,6 +658,43 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
           <p className="chrome mb-[22px] text-[9.5px] leading-[1.5] text-ink-dim">
             {strings.sceneSetup.autopilotHint}
           </p>
+
+          {/* Visual novel staging (SPEC §12): sprites above the log, and a
+              background to put behind them. */}
+          <p className="section-label mb-[8px]">{strings.sceneSetup.vnMode}</p>
+          <div className="mb-[8px] flex gap-[6px]">
+            {[true, false].map((on) => (
+              <button
+                key={String(on)}
+                type="button"
+                onClick={() => setup.mutate({ vnModeEnabled: on })}
+                className={`btn flex-1 ${scene.vnModeEnabled === on ? "btn-primary" : ""}`}
+              >
+                {on ? strings.sceneSetup.vnModeOn : strings.sceneSetup.vnModeOff}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="btn mb-[22px] w-full"
+            disabled={setBackground.isPending}
+            onClick={() =>
+              document.getElementById(`vn-background-${sceneId}`)?.click()
+            }
+          >
+            {strings.sceneSetup.background}
+          </button>
+          <input
+            id={`vn-background-${sceneId}`}
+            type="file"
+            hidden
+            accept="image/*"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file !== undefined) setBackground.mutate(file);
+              event.target.value = "";
+            }}
+          />
 
           {/* SPEC §8's sixth guide. It is the only one with nothing built in to
               ask, so its question is scene configuration and lives here; the

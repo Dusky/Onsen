@@ -1,6 +1,8 @@
 import { Hono } from "hono";
+import { join } from "node:path";
 import type { AppContext, AppEnv } from "../context.ts";
 import { requireAuth } from "../middleware/session.ts";
+import { ulid } from "../lib/ulid.ts";
 import {
   activePathDtos,
   appendMessage,
@@ -68,6 +70,13 @@ function badRequest(message: string) {
 
 function notFound(what: string) {
   return { error: { code: "not_found", message: `No such ${what}.` } } as const;
+}
+
+/** A file's extension, or a safe default for images whose name has none. */
+function extensionOfName(name: string): string {
+  const dot = name.lastIndexOf(".");
+  const extension = dot === -1 ? "png" : name.slice(dot + 1).toLowerCase();
+  return /^[a-z0-9]{1,5}$/.test(extension) ? extension : "png";
 }
 
 async function readJson(c: { req: { json: () => Promise<unknown> } }): Promise<unknown | symbol> {
@@ -312,6 +321,17 @@ export function sceneRoutes(ctx: AppContext, autopilot: AutopilotRunner | null =
         value,
       });
     }
+    // Visual novel staging (SPEC §12): sprites above the log. Off by default —
+    // a reader who wants prose wants prose.
+    if ("vnModeEnabled" in input) {
+      if (typeof input.vnModeEnabled !== "boolean") {
+        return c.json(badRequest("vnModeEnabled must be a boolean."), 400);
+      }
+      ctx.db.query("UPDATE scenes SET vn_mode_enabled = $on WHERE id = $id").run({
+        id: row.id,
+        on: input.vnModeEnabled ? 1 : 0,
+      });
+    }
     if ("summariseEvict" in input) {
       if (typeof input.summariseEvict !== "boolean") {
         return c.json(badRequest("summariseEvict must be a boolean."), 400);
@@ -348,6 +368,39 @@ export function sceneRoutes(ctx: AppContext, autopilot: AutopilotRunner | null =
     if (row === null) return c.json(notFound("scene"), 404);
     deleteScene(ctx.db, row.id);
     return c.body(null, 204);
+  });
+
+  /** Set a scene's background image (SPEC §12). */
+  app.post("/:sceneId/background", async (c) => {
+    const row = scene(c.req.param("sceneId"));
+    if (row === null) return c.json(notFound("scene"), 404);
+    let file: File | null = null;
+    try {
+      const form = await c.req.formData();
+      const candidate = form.get("file");
+      if (candidate instanceof File) file = candidate;
+    } catch {
+      return c.json(badRequest("Expected a file upload."), 400);
+    }
+    if (file === null) return c.json(badRequest("No image was uploaded."), 400);
+    if (file.size > 16 * 1024 * 1024) return c.json(badRequest("That background is too large."), 413);
+
+    const path = `${row.id}-${ulid()}.${extensionOfName(file.name)}`;
+    await Bun.write(join(ctx.config.dataDir, "backgrounds", path), new Uint8Array(await file.arrayBuffer()));
+    ctx.db.query("UPDATE scenes SET background_path = $path WHERE id = $id").run({
+      id: row.id,
+      path,
+    });
+    return c.json(sceneDto(ctx.db, findScene(ctx.db, row.ulid)!));
+  });
+
+  app.get("/:sceneId/background", async (c) => {
+    const row = scene(c.req.param("sceneId"));
+    if (row === null || row.background_path === null) return c.json(notFound("scene"), 404);
+    const file = Bun.file(join(ctx.config.dataDir, "backgrounds", row.background_path));
+    if (!(await file.exists())) return c.json(notFound("scene"), 404);
+    c.header("Cache-Control", "public, max-age=3600");
+    return c.body(file.stream(), 200, { "Content-Type": file.type });
   });
 
   /* -------------------------------------------------------------- */

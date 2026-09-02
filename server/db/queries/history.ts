@@ -63,6 +63,10 @@ export interface SceneRow {
   autopilot_enabled: number;
   /** How many turns the loop may write before it stops (SPEC §6). */
   autopilot_max_turns: number;
+  /** Visual novel staging, sprites above the log (SPEC §12). */
+  vn_mode_enabled: number;
+  /** A scene background, when one is set (SPEC §12). */
+  background_path: string | null;
   /** Move the injection point only every N turns, for the prompt cache (§11). */
   summarise_freeze: number;
   active_leaf_id: number | null;
@@ -93,6 +97,8 @@ export interface MessageRow {
   reasoning: string | null;
   created_at: number;
   edited_at: number | null;
+  /** The expression the author declared for a spotlight turn (§12). */
+  expression: string | null;
 }
 
 /** A message row plus its position among its siblings — the swipe counter. */
@@ -164,6 +170,7 @@ export function toMessageDto(
     reasoning: row.reasoning,
     isHidden: row.is_hidden === 1,
     tokenCount: row.token_count,
+    expression: row.expression,
     createdAt: row.created_at,
     editedAt: row.edited_at,
     siblingIndex: row.sibling_index,
@@ -211,6 +218,8 @@ export function toSceneDto(
     oocInterval: row.ooc_interval,
     autopilotEnabled: row.autopilot_enabled === 1,
     autopilotMaxTurns: row.autopilot_max_turns,
+    vnModeEnabled: row.vn_mode_enabled === 1,
+    hasBackground: row.background_path !== null,
     summariseFreeze: row.summarise_freeze,
     authorId: extras.authorUlid,
     authorName: extras.authorName,
@@ -787,6 +796,34 @@ export function segmentRowsOf(db: Database, messageId: number): SegmentRow[] {
 }
 
 /**
+ * Attribute author-declared expressions to a beat's segments (§12, phase 29).
+ *
+ * The tag names the character (`<expr>ana:worried</expr>`), and the segments
+ * carry the name as written, so the two are joined by name rather than by
+ * position — a segment whose label is a nickname still matches its tag.
+ */
+export function applySegmentExpressions(
+  db: Database,
+  messageId: number,
+  expressions: { character: string | null; label: string }[],
+): void {
+  if (expressions.length === 0) return;
+  const segments = segmentRowsOf(db, messageId);
+  for (const expression of expressions) {
+    if (expression.character === null) continue;
+    const name = expression.character.toLowerCase();
+    const segment = segments.find(
+      (row) => row.speaker_label !== null && row.speaker_label.toLowerCase() === name,
+    );
+    if (segment === undefined) continue;
+    db.query("UPDATE message_segments SET expression = $e WHERE id = $id").run({
+      id: segment.id,
+      e: expression.label,
+    });
+  }
+}
+
+/**
  * Parse a beat's content and replace its stored segments.
  *
  * Called after a beat is generated and after any edit to one, so the parsed
@@ -857,6 +894,7 @@ export function segmentDtosOf(
         content: message.content,
         charStart: 0,
         charEnd: message.content.length,
+        expression: message.expression,
       },
     ];
   }
@@ -874,6 +912,7 @@ export function segmentDtosOf(
     content: row.content,
     charStart: row.char_start,
     charEnd: row.char_end,
+    expression: row.expression,
   }));
 }
 
