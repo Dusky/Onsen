@@ -40,6 +40,7 @@ import type { TaskRunner } from "../tasks/runner.ts";
 import type { PassPipeline } from "../passes/pipeline.ts";
 import type { GuideRunner } from "../guides/runner.ts";
 import type { SummaryRunner } from "../summaries/runner.ts";
+import type { TrackerRunner } from "../trackers/runner.ts";
 import { ReasoningSplitter, parseReasoningConfig } from "./reasoning.ts";
 import { OocSplitter } from "./ooc.ts";
 import { ExprSplitter } from "./expression.ts";
@@ -190,6 +191,8 @@ export interface GenerationServiceOptions {
   passes: PassPipeline;
   /** Keeps the persistent guides current (SPEC §8). */
   guides: GuideRunner;
+  /** Keeps the structured trackers current (SPEC §8). */
+  trackers: TrackerRunner;
   /** Condenses old history when it is time to (SPEC §11). */
   summaries: SummaryRunner;
 }
@@ -319,6 +322,7 @@ export class GenerationService {
   private readonly tasks: TaskRunner;
   private readonly passes: PassPipeline;
   private readonly guides: GuideRunner;
+  private readonly trackers: TrackerRunner;
   private readonly summaries: SummaryRunner;
   private readonly active = new Map<string, ActiveGeneration>();
   /**
@@ -337,6 +341,7 @@ export class GenerationService {
     this.tasks = options.tasks;
     this.passes = options.passes;
     this.guides = options.guides;
+    this.trackers = options.trackers;
     this.summaries = options.summaries;
   }
 
@@ -725,9 +730,14 @@ export class GenerationService {
         const current = findSceneById(this.db, sceneId);
         if (current !== null) await this.guides.refresh(current, { automatic: true });
       }
-      // Summarisation last of the three, and for the same reason: it reads the
-      // turn, so it wants the version the passes settled on. It also runs least
-      // often — only when one of §11's thresholds has been crossed.
+      // Trackers read the same turn, after the guides: a tracker's fields are
+      // the strict, structured sibling of a guide's prose (§8).
+      if (this.trackers.willRunAutomatically()) {
+        const current = findSceneById(this.db, sceneId);
+        if (current !== null) await this.trackers.refresh(current, { automatic: true });
+      }
+      // Summarisation last, and for the same reason: it reads the turn, so it
+      // wants the version the passes settled on. It also runs least often.
       const afterGuides = findSceneById(this.db, sceneId);
       if (afterGuides !== null && this.summaries.willRunAutomatically(afterGuides)) {
         await this.summaries.run(afterGuides, { automatic: true });

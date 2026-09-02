@@ -172,6 +172,24 @@ The rest recur because they are filler: stock descriptive phrases, worn imagery,
 
 Reply with only the filler ones, one per line, copied exactly as written above. No numbering, no explanation, nothing else. If none of them are filler, reply with nothing at all.`;
 
+const TRACKER_SCENE_TEMPLATE = `You keep one structured note about a story in progress: where the scene is, the time of day, and who is present. You rewrite it as the story moves.
+
+{{transcript}}
+
+{{previous}}
+
+Reply with JSON only, no commentary, in exactly this shape:
+{"location": "where they are", "time_of_day": "morning, afternoon, evening or night", "present": ["names of everyone there"]}`;
+
+const TRACKER_CHARACTERS_TEMPLATE = `You keep one structured note about a story in progress: what each character is currently doing and feeling, including what they know privately. You rewrite it as the story moves.
+
+{{transcript}}
+
+{{previous}}
+
+Reply with JSON only, no commentary, in exactly this shape:
+{"characters": [{"name": "...", "mood": "...", "position": "...", "notable_state": "...", "private_knowledge": "..."}]}`;
+
 const DEFAULTS: Record<string, string> = {
   [ANALYSE_SLOP]: ANALYSE_SLOP_TEMPLATE,
   [SUMMARISE]: SUMMARISE_TEMPLATE,
@@ -182,6 +200,8 @@ const DEFAULTS: Record<string, string> = {
   guide_state: STATE_TEMPLATE,
   guide_rules: RULES_TEMPLATE,
   guide_custom: CUSTOM_TEMPLATE,
+  tracker_scene: TRACKER_SCENE_TEMPLATE,
+  tracker_characters: TRACKER_CHARACTERS_TEMPLATE,
   [EXPAND]: EXPAND_TEMPLATE,
   [CORRECT]: CORRECT_TEMPLATE,
   [CONTINUE]: CONTINUE_TEMPLATE,

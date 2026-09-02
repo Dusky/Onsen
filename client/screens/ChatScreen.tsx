@@ -20,6 +20,7 @@ import { CastStrip } from "../components/CastStrip.tsx";
 import { OpsGrid, OpsRow, OpPrompt, type Op } from "../components/OpsGrid.tsx";
 import { CastRail } from "../components/CastRail.tsx";
 import { VnStage } from "../components/VnStage.tsx";
+import { TrackerPanel } from "../components/TrackerPanel.tsx";
 import { useIsDesktop } from "../lib/breakpoint.ts";
 import { ContextSheet, type ContextTab } from "../components/ContextSheet.tsx";
 import {
@@ -723,6 +724,9 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             ) : null}
           </div>
         </div>
+
+        {/* The tracker panel (§8, phase 31): collapsible, above the composer. */}
+        {opsPanel === null ? <TrackerPanel sceneId={sceneId} /> : null}
 
         {/* Steer, when it is set: a hairline strip above the composer, so a note
             that changes every turn is visible while you write (design handoff). */}

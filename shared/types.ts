@@ -1350,6 +1350,23 @@ export interface EmbeddingsConfigDto {
 }
 
 /* ------------------------------------------------------------------ */
+/* Structured trackers (SPEC §8, phase 31)                            */
+/* ------------------------------------------------------------------ */
+
+export type TrackerKind = "scene" | "characters";
+
+/** One tracker's state, as JSON the panel renders field by field. */
+export interface TrackerDto {
+  id: string;
+  kind: TrackerKind;
+  /** The state as a JSON string — the schema is enforced at parse time. */
+  content: string;
+  tokenCount: number;
+  isPinned: boolean;
+  updatedAt: number;
+}
+
+/* ------------------------------------------------------------------ */
 /* Authors and personas (SPEC §0.2, §2)                                */
 /* ------------------------------------------------------------------ */
 

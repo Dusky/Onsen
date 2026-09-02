@@ -251,6 +251,14 @@ export const strings = {
     guidesEmpty: "No guides yet. Writing one reads the scene so far and takes a note on it.",
     guidesNone: "None",
     guidesTotal: (n: number) => `${n} TOK`,
+
+    /** Structured trackers (SPEC §8, phase 31). */
+    trackers: "Trackers",
+    trackerScene: "Scene",
+    trackerCharacters: "Characters",
+    flush: "Flush",
+    rebuild: "Rebuild",
+    doneEditing: "Done",
     /** Marks a version somebody wrote themselves, which a refresh leaves alone. */
     guidesPinned: "Yours",
     guidesRebuild: "Rebuild",

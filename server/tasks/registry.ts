@@ -96,6 +96,8 @@ export const EXTRACT_CHARACTER = "extract_character";
 export const SUGGEST_VOICE = "suggest_voice_notes";
 export const SUGGEST_LORE = "suggest_lore";
 export const REVISE_LORE = "revise_lore";
+export const TRACKER_SCENE = "tracker_scene";
+export const TRACKER_CHARACTERS = "tracker_characters";
 export const IMPERSONATE = "impersonate";
 export const NUDGE = "nudge";
 export const STEER = "steer";
@@ -126,6 +128,8 @@ export const GUIDE_KINDS = [
   "rules",
   "custom",
 ] as const;
+
+export const TRACKER_KINDS = ["scene", "characters"] as const;
 
 export type GuideKind = (typeof GUIDE_KINDS)[number];
 
@@ -178,6 +182,37 @@ const GUIDE_OPS: readonly SideCallOp[] = GUIDE_KINDS.map((kind) => ({
   variables: kind === "custom" ? ["input", "transcript", "previous"] : ["transcript", "previous"],
   hideable: false,
   autoByDefault: GUIDES_ON_BY_DEFAULT.includes(kind),
+}));
+
+/** Structured trackers (SPEC §8, phase 31): JSON state, strictly parsed. */
+const TRACKER_LABELS = {
+  scene: {
+    label: "Scene tracker",
+    description: "Where the scene is, the time of day, and who is present — as strict fields, not prose.",
+  },
+  characters: {
+    label: "Character tracker",
+    description: "Per-member mood, position, notable state and private knowledge, as strict fields.",
+  },
+} as const;
+
+export function trackerOpKey(kind: (typeof TRACKER_KINDS)[number]): string {
+  return `tracker_${kind}`;
+}
+
+const TRACKER_OPS: readonly SideCallOp[] = TRACKER_KINDS.map((kind) => ({
+  key: trackerOpKey(kind),
+  runs: "side_call" as const,
+  label: TRACKER_LABELS[kind].label,
+  description: TRACKER_LABELS[kind].description,
+  stage: "post_generation" as const,
+  // JSON out wants it cool: a tracker is a record, not a reading.
+  samplers: { temperature: 0.3, top_p: 0.9 },
+  timeoutMs: 30_000,
+  replyLimit: 2_000,
+  variables: ["transcript", "previous"],
+  hideable: false,
+  autoByDefault: true,
 }));
 
 export const OP_KINDS: readonly OpKind[] = [
@@ -443,6 +478,7 @@ export const OP_KINDS: readonly OpKind[] = [
     hideable: false,
   },
   ...GUIDE_OPS,
+  ...TRACKER_OPS,
   {
     key: SUMMARISE,
     runs: "side_call",

@@ -17,6 +17,8 @@ import { IMPERSONATE, taskKind } from "../tasks/registry.ts";
 import type { TaskRunner } from "../tasks/runner.ts";
 import type { PassPipeline } from "../passes/pipeline.ts";
 import type { GuideRunner } from "../guides/runner.ts";
+import type { TrackerRunner } from "../trackers/runner.ts";
+import { activeTrackers, editTracker, findTracker, flushTrackers, toTrackerDto } from "../db/queries/trackers.ts";
 import type { SummaryRunner } from "../summaries/runner.ts";
 import type { BanAnalyser } from "../options/runner.ts";
 import { activateForScene } from "../lore/scene.ts";
@@ -146,6 +148,7 @@ export function sceneGenerationRoutes(
   tasks: TaskRunner,
   passes: PassPipeline,
   guides: GuideRunner,
+  trackers: TrackerRunner,
   summaries: SummaryRunner,
   bans: BanAnalyser,
   autopilot: AutopilotRunner,
@@ -528,6 +531,66 @@ export function sceneGenerationRoutes(
     }
     flushGuides(ctx.db, scene.id, raw === "all" ? null : raw);
     return c.json(activeGuides(ctx.db, scene.id).map(toGuideDto));
+  });
+
+  /** The structured trackers (SPEC §8, phase 31) — the panel's source. */
+  app.get("/:sceneId/trackers", (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    return c.json(activeTrackers(ctx.db, scene.id).map(toTrackerDto));
+  });
+
+  /** Refresh every tracker that is switched on — a rebuild the reader asked for. */
+  app.post("/:sceneId/trackers/rebuild", async (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    await trackers.refresh(scene, { automatic: false });
+    return c.json(activeTrackers(ctx.db, scene.id).map(toTrackerDto));
+  });
+
+  /** Hand-edit a tracker, which pins it against the next refresh (SPEC §8). */
+  app.patch("/:sceneId/trackers/:trackerId", async (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    const tracker = findTracker(ctx.db, c.req.param("trackerId"));
+    if (tracker === null || tracker.scene_id !== scene.id) {
+      return c.json({ error: { code: "not_found", message: "No such tracker." } }, 404);
+    }
+    let content: unknown;
+    try {
+      const parsed: unknown = await c.req.json();
+      if (typeof parsed === "object" && parsed !== null) {
+        content = (parsed as { content?: unknown }).content;
+      }
+    } catch {
+      /* Falls through. */
+    }
+    if (typeof content !== "string" || content.trim() === "") {
+      return c.json(
+        { error: { code: "bad_request", message: "A tracker with nothing in it is a flush." } },
+        400,
+      );
+    }
+    return c.json(toTrackerDto(editTracker(ctx.db, tracker.id, content.trim())));
+  });
+
+  app.delete("/:sceneId/trackers/:kind", (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    const raw = c.req.param("kind");
+    if (raw !== "all" && raw !== "scene" && raw !== "characters") {
+      return c.json({ error: { code: "not_found", message: "No such tracker." } }, 404);
+    }
+    flushTrackers(ctx.db, scene.id, raw === "all" ? null : raw);
+    return c.json(activeTrackers(ctx.db, scene.id).map(toTrackerDto));
   });
 
   /**

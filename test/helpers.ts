@@ -11,6 +11,7 @@ import { GenerationService } from "../server/generation/service.ts";
 import { TaskRunner } from "../server/tasks/runner.ts";
 import { PassPipeline } from "../server/passes/pipeline.ts";
 import { GuideRunner } from "../server/guides/runner.ts";
+import { TrackerRunner } from "../server/trackers/runner.ts";
 import { SummaryRunner } from "../server/summaries/runner.ts";
 import { BanAnalyser } from "../server/options/runner.ts";
 import type { AppContext } from "../server/context.ts";
@@ -69,6 +70,7 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
   const tasks = new TaskRunner({ db, keyring: ctx.keyring, ...adapterOption });
   const passes = new PassPipeline({ db, tasks });
   const guides = new GuideRunner({ db, tasks });
+  const trackers = new TrackerRunner({ db, tasks });
   const summaries = new SummaryRunner({ db, tasks });
   const banAnalyser = new BanAnalyser({ db, tasks });
   const generation = new GenerationService({
@@ -77,6 +79,7 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
     tasks,
     passes,
     guides,
+    trackers,
     summaries,
     ...adapterOption,
   });
@@ -86,6 +89,7 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
     taskRunner: tasks,
     passPipeline: passes,
     guideRunner: guides,
+    trackerRunner: trackers,
     summaryRunner: summaries,
     banAnalyser,
   });

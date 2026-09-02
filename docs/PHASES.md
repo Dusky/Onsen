@@ -2747,3 +2747,55 @@ database, not the typechecker. The dedicated single-row config is the better
 design anyway — an embeddings provider is not a generation provider — but the
 wall is the same one phase 20 warned about: schema mistakes are cheap to avoid
 and expensive to correct, and a CHECK you forgot is the expensive kind.
+
+## Phase 31 — Structured trackers
+
+§8 ships two flavours of maintained scene state and is explicit about why: they
+fail differently. Guides are free prose with no parse step. Trackers are strict
+JSON with a parse step — and the rule that makes them safe is §8's last line: a
+parse failure keeps the previous state and logs, never blocking generation.
+
+### What was built
+
+**Two trackers, as ops.** Scene (location, time of day, present) and Characters
+(per-member mood, position, notable state, private knowledge), each a side call
+with a JSON-shaped prompt template, its own model routing, and auto-trigger on
+by default. They refresh after the guides, because both read the same finished
+turn and a tracker is the strict sibling of a guide's prose.
+
+**Strict parse, keep-on-failure.** The reply must be a JSON object — a fenced
+one is read, prose and arrays are refused. A refused reply logs `unusable` and
+leaves the previous state standing, which is the difference between a tracker
+and a way to lose state on a bad answer.
+
+**Versioned per message, pinned, flushed** — the guides' exact shape, because
+the requirements are the guides' requirements: a row per version anchored to a
+message, a hand-edit pins the version, a flush takes every version. The query is
+the same "newest on the active path" walk, so rewinding rewinds trackers too.
+
+**The prompt's `trackers` block**, empty since the builder landed, now carries
+the two trackers as `### Scene` / `### Characters` with their JSON.
+
+**A collapsible panel above the composer.** Each tracker's fields shown as
+fields, editable as JSON — an edit pins it — with flush and rebuild, and the
+token cost on the header. It lives where §8 says it lives: above the composer,
+not behind the blue sheet.
+
+### Deliberately deferred
+
+- **Per-field pinning.** §8 wants individual fields pinned, not the whole
+  tracker; version-level pinning is the first cut, and the field granularity is
+  a schema question (a pin map per version) rather than a missing feature.
+- **A schema editor.** The JSON shape lives in the prompt template; a UI that
+  adds or renames fields is a later, larger thing.
+- **Tracker-specific refresh intervals.** §8 names a refresh interval; this
+  phase refreshes on every turn like the guides, and a per-tracker cadence can
+  land on the same op row later.
+
+### Surprises
+
+**The prompt block appears one turn late, correctly.** Trackers refresh after
+a turn lands, so the turn that *produced* them never carries them — only the
+next turn does. The test read the inspector of the wrong turn and saw no
+`trackers` block, which is the inspector doing its job: the prompt really did
+not contain them yet.

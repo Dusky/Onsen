@@ -22,7 +22,7 @@ if (result.applied.length > 0) {
 seedBuiltins(db);
 
 const ctx: AppContext = { db, config, keyring: loadOrCreateKeyring(config) };
-const { app, generation, tasks, passes, guides, autopilot } = createServer(ctx);
+const { app, generation, tasks, passes, guides, trackers, autopilot } = createServer(ctx);
 
 const server = Bun.serve({
   port: config.port,
@@ -45,6 +45,7 @@ function shutdown(signal: string): void {
   tasks.shutdown();
   passes.shutdown();
   guides.shutdown();
+  trackers.shutdown();
   // The loop ends with the process — a scene writing itself with nobody
   // watching is not the feature the reader turned on (SPEC §6).
   autopilot.shutdown();

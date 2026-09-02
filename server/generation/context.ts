@@ -13,6 +13,7 @@ import type {
   PromptTurn,
 } from "../prompt/index.ts";
 import { activePath, type MessageRowWithSiblings, type SceneRow } from "../db/queries/history.ts";
+import { activeTrackers } from "../db/queries/trackers.ts";
 import {
   castRowsOf,
   findAuthorById,
@@ -459,7 +460,10 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
       coversToMessageId: messageUlids.get(row.covers_to_message_id) ?? null,
     })),
     memory: [],
-    trackers: [],
+    trackers: activeTrackers(options.db, options.scene.id).map((row) => ({
+      name: row.kind === "scene" ? "Scene" : "Characters",
+      content: row.content,
+    })),
     // Written once by a side call and injected every turn until flushed
     // (SPEC §8). Versioned per message, so this follows the active path.
     guides: activeGuides(options.db, options.scene.id).map((row) => ({

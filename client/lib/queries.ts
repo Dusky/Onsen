@@ -16,6 +16,7 @@ import type {
   ExpressionPackDto,
   PromptInspectorDto,
   SavedFilterDto,
+  TrackerDto,
   CreateConnectionProfileRequest,
   CreateProviderRequest,
   PresetDto,
@@ -1200,5 +1201,40 @@ export function useDeleteDocument() {
   return useMutation({
     mutationFn: (id: string) => api.delete<void>(`/documents/${id}`),
     onSuccess: () => void client.invalidateQueries({ queryKey: ["documents"] }),
+  });
+}
+
+/* ---------------- structured trackers (SPEC §8, phase 31) ---------------- */
+
+export function useTrackers(sceneId: string) {
+  return useQuery({
+    queryKey: ["scenes", sceneId, "trackers"] as const,
+    queryFn: () => api.get<TrackerDto[]>(`/scenes/${sceneId}/trackers`),
+  });
+}
+
+export function useEditTracker(sceneId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, content }: { id: string; content: string }) =>
+      api.patch<TrackerDto>(`/scenes/${sceneId}/trackers/${id}`, { content }),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["scenes", sceneId, "trackers"] }),
+  });
+}
+
+export function useFlushTrackers(sceneId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (kind: "scene" | "characters" | "all") =>
+      api.delete<TrackerDto[]>(`/scenes/${sceneId}/trackers/${kind}`),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["scenes", sceneId, "trackers"] }),
+  });
+}
+
+export function useRebuildTrackers(sceneId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<TrackerDto[]>(`/scenes/${sceneId}/trackers/rebuild`),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["scenes", sceneId, "trackers"] }),
   });
 }
