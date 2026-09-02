@@ -21,6 +21,7 @@ import { OpsGrid, OpsRow, OpPrompt, type Op } from "../components/OpsGrid.tsx";
 import { CastRail } from "../components/CastRail.tsx";
 import { VnStage } from "../components/VnStage.tsx";
 import { TrackerPanel } from "../components/TrackerPanel.tsx";
+import { VirtualizedLog } from "../components/VirtualizedLog.tsx";
 import { useIsDesktop } from "../lib/breakpoint.ts";
 import { ContextSheet, type ContextTab } from "../components/ContextSheet.tsx";
 import {
@@ -84,6 +85,11 @@ function initialsOf(name: string): string {
     .join("")
     .toUpperCase();
 }
+
+/** Below this many messages the plain render runs; above it, the virtualized
+ * log (DESIGN §415). The threshold keeps short scenes on the exact behaviour
+ * the reader has been using, and only long ones pay for virtualization. */
+const LOG_VIRTUALIZE_THRESHOLD = 200;
 
 export function ChatScreen({ sceneId }: { sceneId: string }) {
   const scene = useScene(sceneId);
@@ -568,6 +574,119 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     }
   }
 
+  // One message, in every shape it can be: an aside, an edit, or a turn.
+  // Shared by the plain and virtualized paths so they can never disagree.
+  const renderMessage = (message: MessageDto) =>
+    message.kind === "ooc" ? (
+      <OocBlock
+        key={message.id}
+        message={message}
+        speakerName={message.authorType === "user" ? strings.chat.you : authorName}
+        onOpenChannel={() => setOocOpen(true)}
+      />
+    ) : editing === message.id ? (
+      <MessageEditor
+        key={message.id}
+        initial={message.content}
+        onCancel={() => setEditing(null)}
+        onSave={(content) => {
+          setEditing(null);
+          edit.mutate({ messageId: message.id, content });
+        }}
+      />
+    ) : (
+      <MessageBlock
+        key={message.id}
+        message={message}
+        speakerName={speakerFor(message, authorName)}
+        onReroll={() => void reroll(message)}
+        onOpenVersions={() => setVersionsFor(message)}
+        onLongPress={() => setActing(message)}
+        onRevert={(note) => revert.mutate(note.id)}
+        {...(isDesktop
+          ? {
+              hoverActions: {
+                onBranch: () => setLeaf.mutate({ messageId: message.id, descend: false }),
+                onEdit: () => setEditing(message.id),
+              },
+            }
+          : {})}
+        {...(recastInFlight?.messageId === message.id
+          ? {
+              recasting: { ordinal: recastInFlight.ordinal, text: recastInFlight.text },
+              ...(active?.reasoning ? { streamingReasoning: active.reasoning } : {}),
+            }
+          : {})}
+      />
+    );
+
+  // Everything after the messages: the turn being written, the error, the stop
+  // strip, the autopilot note. Rendered in normal flow, below the virtualized
+  // area when it is engaged, so a streamed turn can grow without a re-measure.
+  const tail = (
+    <>
+      {isGenerating && recastInFlight === null && !oocInFlight && active.speaker !== null ? (
+        <article>
+          <header className="mb-[10px]">
+            <div className="flex items-center gap-[10px]">
+              <span className="chrome shrink-0 text-[10px] font-semibold tracking-[0.18em] text-ink-label uppercase">
+                {active.speaker}
+              </span>
+              <span className="h-px flex-1 bg-rule" />
+            </div>
+            {active.director !== null && active.director.reason !== "" ? (
+              <p className="chrome mt-[5px] text-[9px] leading-[1.5] tracking-[0.06em] text-ink-dim uppercase">
+                {active.director.reason}
+              </p>
+            ) : null}
+          </header>
+          <Reasoning text={active.reasoning} />
+          <p className="text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)] whitespace-pre-wrap">
+            {active.text}
+          </p>
+        </article>
+      ) : null}
+
+      {active !== null && active.sceneId === sceneId && active.status === "error" ? (
+        <p
+          role="alert"
+          className="chrome border border-red-border bg-red-bg px-[11px] py-[9px] text-[10px] tracking-[0.06em] text-red-text uppercase"
+        >
+          {active.error ?? strings.errors.generationFailed}
+        </p>
+      ) : null}
+
+      {autopilotActive || isGenerating ? (
+        <div className="flex items-center gap-[10px]">
+          <span className="h-[6px] w-[6px] flex-none" style={{ background: "var(--onsen-color-red)" }} />
+          <span className="chrome flex-1 text-[9.5px] tracking-[0.14em] text-ink-muted uppercase">
+            {autopilotActive
+              ? apState !== null
+                ? `${strings.chat.autopilot} · ${strings.chat.autopilotCount(apState.turns, apState.maxTurns)}`
+                : strings.chat.autopilot
+              : active === null || active.speaker === null
+                ? strings.chat.choosing
+                : strings.chat.writing(active.speaker)}
+          </span>
+          <button
+            type="button"
+            onClick={() => (autopilotActive ? stopAutopilot.mutate() : void generation.cancel())}
+            className="chrome border border-red-border px-[10px] py-[6px] text-[9.5px] tracking-[0.14em] uppercase"
+            style={{ color: "var(--onsen-color-red)" }}
+          >
+            {autopilotActive ? strings.chat.autopilotTakeOver : strings.chat.stop}
+          </button>
+        </div>
+      ) : null}
+
+      {autopilotNote !== null && !autopilotActive ? (
+        <p className="chrome text-[9px] leading-[1.5] tracking-[0.06em] text-ink-dim uppercase">
+          {autopilotNote}
+        </p>
+      ) : null}
+    </>
+  );
+
   const body = (
     <>
 
@@ -581,148 +700,24 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
               : undefined
           }
         >
-          <div className="mx-auto flex min-h-full w-full max-w-[var(--onsen-prose-measure)] flex-col justify-end gap-[26px]">
-            {messages.length === 0 && !isGenerating ? (
-              <p className="chrome text-[10px] tracking-[0.14em] text-ink-dim uppercase">
-                {strings.scenes.emptyScene}
-              </p>
-            ) : null}
-
-            {messages.map((message) =>
-              // An off-script aside is not a turn in the scene and is not
-              // rendered as one: no swipe, no reroll, no versions (§7).
-              message.kind === "ooc" ? (
-                <OocBlock
-                  key={message.id}
-                  message={message}
-                  speakerName={message.authorType === "user" ? strings.chat.you : authorName}
-                  onOpenChannel={() => setOocOpen(true)}
-                />
-              ) : editing === message.id ? (
-                <MessageEditor
-                  key={message.id}
-                  initial={message.content}
-                  onCancel={() => setEditing(null)}
-                  onSave={(content) => {
-                    setEditing(null);
-                    edit.mutate({ messageId: message.id, content });
-                  }}
-                />
-              ) : (
-                <MessageBlock
-                  key={message.id}
-                  message={message}
-                  speakerName={speakerFor(message, authorName)}
-                  onReroll={() => void reroll(message)}
-                  onOpenVersions={() => setVersionsFor(message)}
-                  onLongPress={() => setActing(message)}
-                  onRevert={(note) => revert.mutate(note.id)}
-                  {...(isDesktop
-                    ? {
-                        hoverActions: {
-                          onBranch: () =>
-                            setLeaf.mutate({ messageId: message.id, descend: false }),
-                          onEdit: () => setEditing(message.id),
-                        },
-                      }
-                    : {})}
-                  {...(recastInFlight?.messageId === message.id
-                    ? {
-                        recasting: { ordinal: recastInFlight.ordinal, text: recastInFlight.text },
-                        // A recast streams inside the beat it belongs to, so its
-                        // reasoning belongs there too rather than at the bottom.
-                        ...(active?.reasoning ? { streamingReasoning: active.reasoning } : {}),
-                      }
-                    : {})}
-                />
-              ),
-            )}
-
-            {/* The message being written, in the same treatment as a finished one:
-                the attribution header appears first, then text streams under it. */}
-            {/* Nothing is drawn until there is a speaker to attribute it to: while
-                the director is still choosing, the status row below already says
-                so, and a header over an empty body says it twice. */}
-            {/* An out-of-character answer is not a turn in the scene, so it does
-                not stream into one: it is drawn in the channel sheet, in the
-                bubble it is going to land in (§7). */}
-            {isGenerating && recastInFlight === null && !oocInFlight && active.speaker !== null ? (
-              <article>
-                <header className="mb-[10px]">
-                  <div className="flex items-center gap-[10px]">
-                    <span className="chrome shrink-0 text-[10px] font-semibold tracking-[0.18em] text-ink-label uppercase">
-                      {active.speaker}
-                    </span>
-                    <span className="h-px flex-1 bg-rule" />
-                  </div>
-                  {/* The director's own sentence, where it had one to give. */}
-                  {active.director !== null && active.director.reason !== "" ? (
-                    <p className="chrome mt-[5px] text-[9px] leading-[1.5] tracking-[0.06em] text-ink-dim uppercase">
-                      {active.director.reason}
-                    </p>
-                  ) : null}
-                </header>
-                {/* Reasoning while it is happening (SPEC §13). Collapsed like
-                    any other, but present — a model that thinks for twenty
-                    seconds before its first word should not look stalled. */}
-                <Reasoning text={active.reasoning} />
-                <p className="text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)] whitespace-pre-wrap">
-                  {active.text}
+          {messages.length >= LOG_VIRTUALIZE_THRESHOLD ? (
+            <VirtualizedLog
+              scrollRef={log}
+              count={messages.length}
+              renderRow={(index) => renderMessage(messages[index]!)}
+              tail={tail}
+            />
+          ) : (
+            <div className="mx-auto flex min-h-full w-full max-w-[var(--onsen-prose-measure)] flex-col justify-end gap-[26px]">
+              {messages.length === 0 && !isGenerating ? (
+                <p className="chrome text-[10px] tracking-[0.14em] text-ink-dim uppercase">
+                  {strings.scenes.emptyScene}
                 </p>
-              </article>
-            ) : null}
-
-            {active !== null && active.sceneId === sceneId && active.status === "error" ? (
-              <p
-                role="alert"
-                className="chrome border border-red-border bg-red-bg px-[11px] py-[9px] text-[10px] tracking-[0.06em] text-red-text uppercase"
-              >
-                {active.error ?? strings.errors.generationFailed}
-              </p>
-            ) : null}
-
-            {/* Stop is reachable at all times while writing (design handoff) —
-                and under autopilot the control is the loop's stop, not the
-                turn's: cancelling one turn would leave the next already
-                queued, which is a stop that stops nothing (§6). */}
-            {autopilotActive || isGenerating ? (
-              <div className="flex items-center gap-[10px]">
-                <span
-                  className="h-[6px] w-[6px] flex-none"
-                  style={{ background: "var(--onsen-color-red)" }}
-                />
-                <span className="chrome flex-1 text-[9.5px] tracking-[0.14em] text-ink-muted uppercase">
-                  {autopilotActive
-                    ? apState !== null
-                      ? `${strings.chat.autopilot} · ${strings.chat.autopilotCount(apState.turns, apState.maxTurns)}`
-                      : strings.chat.autopilot
-                    : active === null || active.speaker === null
-                      ? strings.chat.choosing
-                      : strings.chat.writing(active.speaker)}
-                </span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    autopilotActive
-                      ? stopAutopilot.mutate()
-                      : void generation.cancel()
-                  }
-                  className="chrome border border-red-border px-[10px] py-[6px] text-[9.5px] tracking-[0.14em] uppercase"
-                  style={{ color: "var(--onsen-color-red)" }}
-                >
-                  {autopilotActive ? strings.chat.autopilotTakeOver : strings.chat.stop}
-                </button>
-              </div>
-            ) : null}
-
-            {/* Why a run ended, for the moment after it did. News, not furniture:
-              cleared the next time the loop runs or the reader acts. */}
-            {autopilotNote !== null && !autopilotActive ? (
-              <p className="chrome text-[9px] leading-[1.5] tracking-[0.06em] text-ink-dim uppercase">
-                {autopilotNote}
-              </p>
-            ) : null}
-          </div>
+              ) : null}
+              {messages.map(renderMessage)}
+              {tail}
+            </div>
+          )}
         </div>
 
         {/* The tracker panel (§8, phase 31): collapsible, above the composer. */}

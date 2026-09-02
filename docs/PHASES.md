@@ -2865,11 +2865,13 @@ this closes the loop on it.
 
 ### Still outstanding, deliberately
 
-- **The message log is not virtualized yet.** DESIGN §415 requires it — dynamic
-  row heights, bottom-anchored — and it is the single riskiest change in the
-  app: the log also hosts the streaming turn, reasoning, OOC blocks, and the
-  editor. It deserves its own careful pass with visual verification, not a
-  rushed one appended to a sweep. The character grid is done; the log is the
-  remaining half of §415.
+- **The message log's virtualization landed after this entry was first
+  written.** It is the same pattern as the grid: `@tanstack/react-virtual`
+  dynamic measurement, behind a 200-message threshold so short scenes keep the
+  exact plain render, the live tail (streaming turn, stop strip) in normal flow
+  below the virtualized area, and the virtualizer owning the follow-to-bottom on
+  new messages. It builds and the suite passes; it still wants the three visual
+  checks — a long scene scrolling smoothly, a streamed turn growing under the
+  fold, and swipes/rewind landing correctly — on a real device.
 - **The LORE tab** in the editor (§295) belongs to character-bound lore, which
   is phase 32's dossiers and their ilk, not this pass.
