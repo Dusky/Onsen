@@ -90,7 +90,30 @@ between client and server. Prefer discriminated unions for the message and
 segment kinds; the spec's enums are meant to be exhaustively switched on.
 
 **Database.** Plain numbered SQL migrations applied at boot. `bun:sqlite`, WAL
-mode, `busy_timeout` set. Integer PKs internally, ULIDs externally.
+mode, `busy_timeout` set. Integer PKs internally, ULIDs externally. Every
+`.sql` under `/db/migrations` must be imported and listed in
+`migrations/index.ts` — `test/migrations.test.ts` fails otherwise, because a
+migration that exists on disk but never runs is a silent, expensive divergence.
+
+**Schema discipline, settled while building phase 31.** Two rules that keep
+STRICT migrations cheap to evolve:
+
+- **New state is a new table, not a new value on an old CHECK.** SQLite cannot
+  alter a CHECK constraint, only rebuild the whole table. `providers.kind`,
+  `messages.kind`, `messages.author_type`, `scenes.turn_strategy`, `guides.kind`
+  and `trackers.kind` are all CHECK-constrained: a new value there means the
+  rebuild dance, so prefer a new table beside the old one — which is what the
+  embeddings config did instead of widening `providers.kind`.
+- **If a CHECK must change, this is the dance**: create the replacement table
+  with the widened CHECK, `INSERT INTO replacement SELECT * FROM old`, drop the
+  old table, `ALTER TABLE replacement RENAME TO old`. Run the whole thing with
+  `PRAGMA foreign_keys = OFF` around it and re-point nothing else — the name
+  stays the same, so the foreign keys survive. Write it, and a test that asserts
+  the new value round-trips, in one migration.
+- **`characters_fts` is external-content.** Any migration touching the
+  characters table's searchable columns (name, description, personality,
+  creator_notes) must end with
+  `INSERT INTO characters_fts(characters_fts) VALUES ('rebuild')`.
 
 **Tests.** §23 lists what must be covered. The prompt builder, the history tree,
 lorebook activation, beat parsing, and card import are the five areas where

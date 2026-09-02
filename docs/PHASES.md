@@ -2799,3 +2799,42 @@ a turn lands, so the turn that *produced* them never carries them — only the
 next turn does. The test read the inspector of the wrong turn and saw no
 `trackers` block, which is the inspector doing its job: the prompt really did
 not contain them yet.
+
+## Phase 31 — Schema reconciliation
+
+Not a feature phase; the repair phase 20 did, done again because six migrations
+have landed since. The schema review's lesson was that a CHECK you forgot is the
+expensive kind of mistake — phase 30 proved it by hitting `providers.kind` the
+hard way. This pass writes down what that hit taught, before the depth phases
+(dossiers, memory, packs) run into the same wall.
+
+### What was done
+
+**§2 reconciled to migrations 0001–0026.** The data model now names every table
+that exists — tasks, option groups, bans, guides, trackers, annotations,
+instruct templates, character versions, saved filters, the embeddings config —
+and marks every entity that is still only a target: memory, regex scripts,
+presence tracking, per-persona lore. The divergences where reality is simpler
+than the sketch are recorded rather than papered over: the document store is a
+flat index with JSON vectors, not an embedding blob; the expression link runs
+`expression_packs.character_id`, not a column on the character.
+
+**Schema discipline written into the handoff.** Three rules, in the Database
+section where the next reader starts: new state is a new table, never a new
+value on an old CHECK; the exact table-rebuild dance for when a CHECK must
+change; and the `characters_fts` rebuild obligation for any migration touching
+the searchable columns.
+
+**A migration lint test.** `test/migrations.test.ts` reads the directory and the
+registry and asserts they agree, gapless. A migration that exists on disk but
+never runs is a silent, expensive divergence, and it is now impossible to merge
+one without a failing test.
+
+### Surprises
+
+**The repair was mostly documentation.** Read end-to-end, the schema is actually
+healthy: twenty-six migrations, STRICT throughout, no orphaned tables, foreign
+keys intact, and the dangerous pattern — widening a CHECK — had only happened
+once, and that once taught the rule. The debt was in the *map*, not the
+territory, which is the best possible version of schema drift and also the one
+easiest to fix with a lint test and a paragraph instead of a rewrite.

@@ -148,10 +148,16 @@ depth_prompt_depth, depth_prompt_role
 system_prompt      -- optional per-character override
 post_history_instructions
 creator_notes, tags, creator, character_version
-expression_pack_id -- nullable
+folder            -- loose grouping label, not a tree (§9)
+parent_character_id -- set when this card is a derived variant (§9)
+source_filename, source_hash  -- parsed-card cache and duplicate detection
 raw_card           -- the complete original card JSON, preserved verbatim
+raw_card_format    -- how it arrived: png_v2 | png_v3 | json | charx | native
 extensions         -- JSON blob
 ```
+
+Expressions do not hang off the character row: `expression_packs.character_id`
+is the link, one pack per character (§12).
 
 `raw_card` is not optional. Lossy card parsing is the most common migration
 failure in this ecosystem — RisuAI and Agnai both silently drop advanced
@@ -166,11 +172,18 @@ author_id          -- nullable; null = single-character mode
 persona_id
 preset_id
 connection_profile_id
+director_profile_id -- where the classifier runs; null = scene's own profile
 director_note      -- persistent steer, nullable
 turn_strategy      -- enum: manual | round_robin | mention | classifier
+custom_guide_prompt -- the custom guide's own question (§8)
+auto_passes        -- run the post-generation pipeline unasked (§7.5)
+summarise, summarise_every_messages, summarise_every_words,
+summarise_threshold, summarise_evict, summarise_freeze   -- §11's knobs
+scenario_override
 autopilot_enabled, autopilot_max_turns
 ooc_enabled, ooc_interval
 vn_mode_enabled    -- visual novel staging
+background_path    -- the VN background, served from the data dir
 active_leaf_id     -- pointer into the message tree
 ```
 
@@ -197,6 +210,8 @@ created_at, edited_at
 is_hidden          -- excluded from prompt but visible in UI
 token_count        -- cached, invalidated on edit
 generation_meta    -- JSON: model, provider, samplers, TTFT, tokens/sec
+parse_degraded     -- a beat whose speaker labels could not be read (§3.5)
+passes_pending     -- the post-generation pipeline is still working (§7.5)
 ```
 
 ### MessageSegment
@@ -304,14 +319,13 @@ Branches inherit parent state. Editing an entry mid-effect clears its effect.
 ### Document / DocumentChunk
 
 The data bank: reference material distinct from lorebooks. Retrieved by
-similarity, not keywords.
+similarity, not keywords. Built as a flat index — vectors are JSON text on the
+chunk, cosine runs in the process (§11).
 
 ```
-Document: id, scope (global|scene|character), scope_id, name, slug, source, added_at
-DocumentChunk: id, document_id, ordinal, content, embedding (blob), token_count
+Document: id, scene_id (null = global), title, created_at, updated_at
+DocumentChunk: id, document_id, ordinal, text, vector (JSON, nullable), created_at
 ```
-
-Users can force a document into context with `#slug` in a message.
 
 ### Summary
 
@@ -369,8 +383,12 @@ Expression: id, pack_id, label, image_path, variant_index
 ### Generation
 
 ```
-id, scene_id, target_message_id, status, buffer, offset, started_at, finished_at, error
+id, scene_id, parent_id, target_message_id, status, buffer, offset,
+prompt_debug, started_at, finished_at, error
 ```
+
+`prompt_debug` is the built prompt's debug record, written at build time so a
+cancelled or failed generation is as inspectable as a finished one (§16).
 
 ### RegexScript
 
@@ -380,6 +398,46 @@ apply_to           -- user_input | ai_output | display_only | prompt
 scope              -- global | character | scene
 scope_id, run_order
 ```
+
+### Reconciled against migrations 0001–0026
+
+Settled while building phase 31, the way phase 20 settled the schema against
+§2. Two rules govern the sections above: they describe what *exists* where they
+are filled in, and they describe the *target* where they are not. This block
+records the gaps in both directions so a later reader is not misled either way.
+
+**Tables that exist and are not drawn above.** They are real and load-bearing,
+and §2 omits them only because their phases wrote the columns with the feature:
+
+- `tasks` / `task_runs` — §7's op config and the run log.
+- `option_groups` / `options` / `scene_options` — §13.5's prompt option system.
+- `ban_phrases` — §13.6.
+- `guides` — §8's persistent guides, versioned per message.
+- `trackers` — §8's structured trackers, versioned per message.
+- `message_annotations` — §7.5's pass findings.
+- `instruct_templates` — §4's text-completion markers.
+- `character_versions` — §9's snapshots; `saved_filters` — §9's filters.
+- `embeddings_config` — §11's single-row embeddings provider.
+- `app_settings` — the setup-wizard's single row.
+
+**Entities above that are not built yet**, and are here as the target: MemoryEntity
+/ MemoryRelation (§11 narrative memory, phase 38–39), RegexScript (§19/phase 33),
+SceneMember `overrides` and `first_seen_message_id` (presence tracking),
+Persona's `lorebook_id` (flagged `[gap]`), Provider's `capabilities` JSON (it is
+computed from the adapter, not stored), and ConnectionProfile's
+`context_template_id`.
+
+**Divergences where reality is simpler than the sketch, deliberately:**
+
+- **Document / DocumentChunk.** Built as `documents (id, ulid, scene_id null =
+  global, title, timestamps)` and `document_chunks (id, document_id, ordinal,
+  text, vector JSON, timestamps)` — no `scope/scope_id` (a global document
+  *is* `scene_id IS NULL`), no `slug`, no `source`, and no `embedding` blob
+  (the flat index stores vectors as JSON text, §11/phase 30).
+- **Character.expression_pack_id is not a column.** The link runs the other
+  way: `expression_packs.character_id` is unique, one pack per character.
+- **Preset.prompt_order / system_prompt / jailbreak exist** as columns (§18's
+  marker import writes them), even though the sketch lists them without comment.
 
 ---
 
