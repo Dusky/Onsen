@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import type { CharacterDto, SavedFilterDto } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { navigate } from "../lib/router.ts";
@@ -110,6 +111,17 @@ export function CharactersScreen() {
 
   const list = characters.data ?? [];
 
+  // The grid is virtualized (DESIGN §289): hundreds of cards, three to a row,
+  // only the visible rows mounted.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const rows = Math.ceil(list.length / 3);
+  const virtualizer = useVirtualizer({
+    count: rows,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 175,
+    overscan: 4,
+  });
+
   function onFile(file: File | undefined) {
     if (file === undefined) return;
     setNotice(null);
@@ -165,7 +177,7 @@ export function CharactersScreen() {
         </div>
       </header>
 
-      <main className="min-h-0 flex-1 overflow-y-auto px-[22px] py-[14px]">
+      <main ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-[22px] py-[14px]">
         <div className="mx-auto w-full max-w-[var(--onsen-prose-measure)]">
           {notice !== null ? <Notice>{notice}</Notice> : null}
 
@@ -260,17 +272,29 @@ export function CharactersScreen() {
             </p>
           ) : null}
 
-          <div className="grid grid-cols-3 gap-x-[10px] gap-y-[12px]">
-            {list.map((character) => (
-              <Tile
-                key={character.id}
-                character={character}
-                selecting={selecting}
-                selected={selected.has(character.id)}
-                onToggle={() => toggleOne(character.id)}
-                onMenu={() => setMenuFor(character)}
-              />
-            ))}
+          <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
+            {virtualizer.getVirtualItems().map((row) => {
+              const start = row.index * 3;
+              const tiles = list.slice(start, start + 3);
+              return (
+                <div
+                  key={row.key}
+                  className="absolute top-0 left-0 grid w-full grid-cols-3 gap-x-[10px] gap-y-[12px]"
+                  style={{ transform: `translateY(${row.start}px)` }}
+                >
+                  {tiles.map((character) => (
+                    <Tile
+                      key={character.id}
+                      character={character}
+                      selecting={selecting}
+                      selected={selected.has(character.id)}
+                      onToggle={() => toggleOne(character.id)}
+                      onMenu={() => setMenuFor(character)}
+                    />
+                  ))}
+                </div>
+              );
+            })}
           </div>
         </div>
       </main>

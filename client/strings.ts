@@ -573,6 +573,7 @@ export const strings = {
     documentTitle: "Title",
     documentText: "Text",
     noDocuments: "Nothing in the data bank yet.",
+    documentGlobal: "Visible in every scene",
     /** Cost is always a share of the context window (design handoff). */
     shareOfContext: (n: number, context: number) =>
       `${n} TOK · ${((n / context) * 100).toFixed(1)}% OF CTX`,

@@ -189,7 +189,26 @@ export function characterRoutes(ctx: AppContext, tasks: TaskRunner): Hono<AppEnv
       sourceHash: imported.sourceHash,
     });
 
+    // CharX bundles carry expression sprites under an `expressions/` tree;
+    // import them into the pack so the VN stage has something to draw (§12).
+    // The label is the filename stem; anything that is not named like a sprite
+    // is left for re-export, not guessed at.
+    let expressionCount = 0;
+    for (const [path, data] of imported.assets) {
+      const match = /(?:^|\/)expressions?\/([a-zA-Z0-9_-]+)\.(?:png|jpe?g|webp|gif)$/i.exec(path);
+      if (match === null) continue;
+      const label = match[1]!.toLowerCase();
+      const pack = ensurePack(ctx.db, row.id, `${row.name} sprites`);
+      const filePath = `${row.id}-${label}-${ulid()}.${path.split(".").at(-1) ?? "png"}`;
+      await Bun.write(join(ctx.config.spritesDir, filePath), data);
+      addExpression(ctx.db, pack.id, label, filePath, 0);
+      expressionCount += 1;
+    }
+
     const warnings = [...imported.warnings];
+    if (expressionCount > 0) {
+      warnings.push(`Imported ${expressionCount} expression sprite${expressionCount === 1 ? "" : "s"}.`);
+    }
     if (imported.unmodelledFields.length > 0) {
       // Silent partial imports are the worst outcome (SPEC §18); naming what
       // was not understood is the difference between preserved and lost.

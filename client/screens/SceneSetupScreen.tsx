@@ -126,6 +126,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
   const [documentsOpen, setDocumentsOpen] = useState(false);
   const [docTitle, setDocTitle] = useState("");
   const [docText, setDocText] = useState("");
+  const [docGlobal, setDocGlobal] = useState(false);
   const [loreProposals, setLoreProposals] = useState<
     { title: string; content: string; keys: string[] }[] | null
   >(null);
@@ -952,6 +953,13 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               value={docTitle}
               onChange={(event) => setDocTitle(event.target.value)}
             />
+            <button
+              type="button"
+              className={`btn mb-[8px] w-full ${docGlobal ? "btn-primary" : ""}`}
+              onClick={() => setDocGlobal(!docGlobal)}
+            >
+              {strings.characters.documentGlobal}
+            </button>
             <p className="section-label mb-[6px]">{strings.characters.documentText}</p>
             <textarea
               className="field min-h-[90px] resize-y"
@@ -964,11 +972,12 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               disabled={docTitle.trim() === "" || docText.trim() === "" || ingestDocument.isPending}
               onClick={() =>
                 ingestDocument.mutate(
-                  { title: docTitle.trim(), text: docText, sceneId },
+                  { title: docTitle.trim(), text: docText, sceneId: docGlobal ? null : sceneId },
                   {
                     onSuccess: () => {
                       setDocTitle("");
                       setDocText("");
+                      setDocGlobal(false);
                     },
                   },
                 )
