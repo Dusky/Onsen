@@ -24,6 +24,7 @@ import {
   type PresetPatch,
 } from "../db/queries/connections.ts";
 import { parseReasoningConfig } from "../generation/reasoning.ts";
+import { fetchProviderModels } from "../adapters/models.ts";
 import { parseStPreset, StPresetError } from "../presets/st.ts";
 import { importStPreset } from "../presets/import.ts";
 import {
@@ -366,6 +367,36 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
     }
 
     return c.json(toProviderDto(updateProvider(ctx.db, row.id, patch), ctx.keyring));
+  });
+
+  /**
+   * Pull a provider's model list from its own API, so the reader picks from
+   * what the endpoint actually serves rather than typing a model string
+   * (§16). The key comes from the form — this is the one case where it crosses
+   * to the server transiently, and it is never stored, only used for the call.
+   */
+  app.post("/providers/models", async (c) => {
+    const body = await readJson(c);
+    if (body === null) return c.json(badRequest("Expected a JSON body."), 400);
+    const baseUrl = text(body["baseUrl"], 500);
+    if (baseUrl === null) return c.json(badRequest("A provider address is required."), 400);
+
+    // The form's key wins; a stored one stands in for an existing provider.
+    let apiKey = text(body["apiKey"], 400);
+    if ((apiKey === null || apiKey === "") && typeof body["providerId"] === "string") {
+      const row = findProviderByUlid(ctx.db, body["providerId"]);
+      apiKey =
+        row?.api_key_encrypted == null ? null : decryptSecret(ctx.keyring, row.api_key_encrypted);
+    }
+
+    const models = await fetchProviderModels({ baseUrl, apiKey });
+    if (models === null) {
+      return c.json(
+        { error: { code: "unreachable", message: "No models endpoint answered. Check the address." } },
+        502,
+      );
+    }
+    return c.json({ models });
   });
 
   /**

@@ -363,6 +363,8 @@ export const strings = {
     providerTesting: "Testing…",
     providerTestOk: "Reached",
     providerTestFail: "Failed",
+    fetchModels: "Fetch",
+    fetchingModels: "Fetching…",
     providerDisabled: "Disabled",
     lastProvider: "The only provider. Add another before removing this one.",
 

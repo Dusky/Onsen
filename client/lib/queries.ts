@@ -1268,3 +1268,11 @@ export function useSeedDemo() {
     },
   });
 }
+
+/** Pull a provider's model list from its own API (SPEC §16). */
+export function useFetchModels() {
+  return useMutation({
+    mutationFn: (body: { kind?: string; baseUrl: string; apiKey?: string; providerId?: string }) =>
+      api.post<{ models: string[] }>("/connections/providers/models", body),
+  });
+}

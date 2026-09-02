@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ConnectionProfileDto, PresetDto, ProviderDto, TaskDto, UpdateStatusDto } from "@shared/types.ts";
 import { PROVIDER_KINDS, INJECTION_ROLES } from "@shared/types.ts";
 import { strings } from "../strings.ts";
@@ -17,6 +17,7 @@ import {
   useUpdateProvider,
   useUpdateTask,
   useTestProvider,
+  useFetchModels,
   useApplyUpdate,
   useCheckUpdate,
   useUpdateStatus,
@@ -71,8 +72,31 @@ function ProviderEditor({
   const update = useUpdateProvider();
   const remove = useDeleteProvider();
   const test = useTestProvider(provider?.id ?? "");
+  const fetchModels = useFetchModels();
   const [error, setError] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<string | null>(null);
+  const [modelOptions, setModelOptions] = useState<string[]>([]);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // The model list comes from the provider's own API (§16). The key crosses to
+  // our server transiently for the call — never stored, never to a third party.
+  function onFetchModels() {
+    const form = formRef.current;
+    if (form === null) return;
+    const data = new FormData(form);
+    fetchModels.mutate(
+      {
+        kind: provider?.kind ?? String(data.get("kind") ?? ""),
+        baseUrl: String(data.get("baseUrl") ?? ""),
+        apiKey: String(data.get("apiKey") ?? ""),
+        ...(provider === null ? {} : { providerId: provider.id }),
+      },
+      {
+        onSuccess: ({ models }) => setModelOptions(models),
+        onError: (e: Error) => setError(e.message),
+      },
+    );
+  }
 
   return (
     <Sheet
@@ -80,6 +104,7 @@ function ProviderEditor({
       onClose={onClose}
     >
       <form
+        ref={formRef}
         className="pt-[8px] pb-[14px]"
         onSubmit={(event) => {
           event.preventDefault();
@@ -143,7 +168,27 @@ function ProviderEditor({
         />
 
         <p className="section-label mb-[6px]">{strings.settings.providerModel}</p>
-        <input name="model" className="field mb-[14px]" defaultValue={provider?.model ?? ""} />
+        <div className="mb-[14px] flex gap-[6px]">
+          <input
+            name="model"
+            className="field flex-1"
+            list={`models-${provider?.id ?? "new"}`}
+            defaultValue={provider?.model ?? ""}
+          />
+          <button
+            type="button"
+            className="btn flex-none"
+            disabled={fetchModels.isPending}
+            onClick={onFetchModels}
+          >
+            {fetchModels.isPending ? strings.settings.fetchingModels : strings.settings.fetchModels}
+          </button>
+        </div>
+        <datalist id={`models-${provider?.id ?? "new"}`}>
+          {modelOptions.map((model) => (
+            <option key={model} value={model} />
+          ))}
+        </datalist>
 
         <p className="section-label mb-[6px]">{strings.settings.providerKey}</p>
         <input name="apiKey" type="password" className="field" autoComplete="off" />
