@@ -20,10 +20,11 @@ afterEach(() => {
 });
 
 function stubFetch(reply: unknown, status = 200): void {
-  globalThis.fetch = (async () => new Response(JSON.stringify(reply), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  })) as typeof fetch;
+  globalThis.fetch = (async (_url: unknown, _init?: RequestInit) =>
+    new Response(JSON.stringify(reply), {
+      status,
+      headers: { "Content-Type": "application/json" },
+    })) as typeof fetch;
 }
 
 describe("fetchProviderModels", () => {
@@ -41,7 +42,8 @@ describe("fetchProviderModels", () => {
   });
 
   test("returns null when no endpoint answers", async () => {
-    globalThis.fetch = (async () => new Response("nope", { status: 404 })) as typeof fetch;
+    globalThis.fetch = (async (_url: unknown, _init?: RequestInit) =>
+      new Response("nope", { status: 404 })) as typeof fetch;
     expect(await fetchProviderModels({ baseUrl: "http://x", apiKey: null })).toBeNull();
   });
 });
@@ -64,7 +66,8 @@ describe("the models route", () => {
   test("reports an unreachable provider", async () => {
     harness = createHarness();
     await completeSetup(harness);
-    globalThis.fetch = (async () => new Response("nope", { status: 404 })) as typeof fetch;
+    globalThis.fetch = (async (_url: unknown, _init?: RequestInit) =>
+      new Response("nope", { status: 404 })) as typeof fetch;
 
     const response = await harness.fetch("/api/connections/providers/models", {
       method: "POST",

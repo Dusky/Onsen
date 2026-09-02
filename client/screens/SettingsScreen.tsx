@@ -328,11 +328,37 @@ function ProfileEditor({
   const create = useCreateProfile();
   const update = useUpdateProfile();
   const remove = useDeleteProfile();
+  const fetchModels = useFetchModels();
   const [error, setError] = useState<string | null>(null);
+  const [modelOptions, setModelOptions] = useState<string[]>([]);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // A profile's model list comes from the provider it points at — the profile
+  // itself has no address, so the selected provider supplies both the URL and
+  // the stored key (§16).
+  function onFetchModels() {
+    const form = formRef.current;
+    if (form === null) return;
+    const data = new FormData(form);
+    const providerId = String(data.get("providerId") ?? "");
+    const provider = providers.find((candidate) => candidate.id === providerId);
+    if (provider === undefined || provider.baseUrl === null) {
+      setError("This provider has no address to fetch models from.");
+      return;
+    }
+    fetchModels.mutate(
+      { baseUrl: provider.baseUrl, providerId: provider.id },
+      {
+        onSuccess: ({ models }) => setModelOptions(models),
+        onError: (e: Error) => setError(e.message),
+      },
+    );
+  }
 
   return (
     <Sheet title={profile === null ? strings.settings.addProfile : profile.name} onClose={onClose}>
       <form
+        ref={formRef}
         className="pt-[8px] pb-[14px]"
         onSubmit={(event) => {
           event.preventDefault();
@@ -365,7 +391,27 @@ function ProfileEditor({
         </select>
 
         <p className="section-label mb-[6px]">{strings.settings.providerModel}</p>
-        <input name="model" className="field mb-[14px]" defaultValue={profile?.model ?? ""} />
+        <div className="mb-[14px] flex gap-[6px]">
+          <input
+            name="model"
+            className="field flex-1"
+            list={`profile-models-${profile?.id ?? "new"}`}
+            defaultValue={profile?.model ?? ""}
+          />
+          <button
+            type="button"
+            className="btn flex-none"
+            disabled={fetchModels.isPending}
+            onClick={onFetchModels}
+          >
+            {fetchModels.isPending ? strings.settings.fetchingModels : strings.settings.fetchModels}
+          </button>
+        </div>
+        <datalist id={`profile-models-${profile?.id ?? "new"}`}>
+          {modelOptions.map((model) => (
+            <option key={model} value={model} />
+          ))}
+        </datalist>
 
         {error === null ? null : (
           <p className="chrome mb-[10px] text-[9.5px] leading-[1.5] text-red-text">{error}</p>
