@@ -2891,3 +2891,46 @@ already knows how the app works.
   the author can be asked "how do I make a beat" or "what is a lorebook" and
   retrieval answers it from the same path that recalls any other reference
   material. This is the data bank dogfooding itself.
+
+## Field fixes and settings work, between the phases
+
+Not build-order phases; the small, load-bearing things a reader asked for
+while using the app, each landed as its own commit.
+
+### The migration that had been edited after it ran
+
+The data bank's `embeddings_config` table was briefly appended to migration
+0025 *after* a live database had already applied version 25 — so that install
+never got the table, and the demo seed's document ingest failed with
+`no such table: embeddings_config`. The fix: 0025 was restored to what actually
+ran, and 0027 carries the table, so fresh databases and the drifted one
+converge. This is the trap the registration lint *cannot* catch (the file stays
+registered), and the 0027 header records it for the next reader.
+
+### Generation-start failures are shown, not logged
+
+A refused POST — the scene has no connection profile, a bad request — used to
+land only in the browser console. It is now a red strip above the composer with
+the reason, a one-tap **Set a profile** for the no-connection case, and a
+dismiss. The store keeps `startError` apart from `active.error`: a turn that
+never began is a different thing from a stream that died. The demo scene is
+seeded with the default profile and preset, because a demo that cannot generate
+is a broken demo.
+
+### Pulling a provider's model list from its own API
+
+A **Fetch** button beside the model field — in the provider editor and again in
+the profile editor — queries the provider's own endpoints and fills a datalist,
+so the reader picks from what the endpoint serves instead of typing a model
+string. The endpoints are tried in order and normalised the way SillyTavern's
+backends do (OpenAI `/models`, Ollama `/api/tags`, Tabby `/v1/model/list`). The
+call is server-side: the key crosses transiently and is never stored.
+
+### A reply that appeared only on refresh
+
+The scene refetch was wired to run after the SSE reader loop closed, which a
+proxy or a dropped connection can leave hanging past the moment the reply had
+already landed in the database. The fix moves the invalidation onto the
+terminal event itself — the one place guaranteed to run — so the message shows
+the instant `done` arrives. The general lesson: a refetch wired to "the stream
+loop eventually exits" is a refetch that sometimes does not.
