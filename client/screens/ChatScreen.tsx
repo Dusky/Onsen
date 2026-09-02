@@ -174,6 +174,10 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   // else about this screen is the same components at a different width.
   const isDesktop = useIsDesktop();
   const messages = scene.data?.messages ?? [];
+  // An aside renders inline in the log by default; a reader who would rather
+  // the channel be its only home switches that off per scene (§7).
+  const showInlineOoc = scene.data?.scene.oocInline ?? true;
+  const logMessages = showInlineOoc ? messages : messages.filter((m) => m.kind !== "ooc");
   const title = scene.data?.scene.title ?? "";
   const authorName = scene.data?.scene.authorName ?? null;
   const cast = scene.data?.scene.cast ?? [];
@@ -276,7 +280,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     const element = log.current;
     if (element === null) return;
     element.scrollTop = element.scrollHeight;
-  }, [messages.length, active?.text]);
+  }, [logMessages.length, active?.text]);
 
   // Once a generation lands, its text belongs to the tree rather than the
   // store, so the streaming block is dropped and the refetched message shows.
@@ -703,18 +707,18 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           {messages.length >= LOG_VIRTUALIZE_THRESHOLD ? (
             <VirtualizedLog
               scrollRef={log}
-              count={messages.length}
-              renderRow={(index) => renderMessage(messages[index]!)}
+              count={logMessages.length}
+              renderRow={(index) => renderMessage(logMessages[index]!)}
               tail={tail}
             />
           ) : (
             <div className="mx-auto flex min-h-full w-full max-w-[var(--onsen-prose-measure)] flex-col justify-end gap-[26px]">
-              {messages.length === 0 && !isGenerating ? (
+              {logMessages.length === 0 && !isGenerating ? (
                 <p className="chrome text-[10px] tracking-[0.14em] text-ink-dim uppercase">
                   {strings.scenes.emptyScene}
                 </p>
               ) : null}
-              {messages.map(renderMessage)}
+              {logMessages.map(renderMessage)}
               {tail}
             </div>
           )}

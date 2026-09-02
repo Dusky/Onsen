@@ -25,6 +25,7 @@ import expressions from "./0024_expressions.sql" with { type: "text" };
 import documents from "./0025_documents.sql" with { type: "text" };
 import trackers from "./0026_trackers.sql" with { type: "text" };
 import embeddingsConfig from "./0027_embeddings_config.sql" with { type: "text" };
+import oocInline from "./0028_ooc_inline.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -67,4 +68,5 @@ export const migrations: readonly Migration[] = [
   { version: 25, name: "documents", sql: documents },
   { version: 26, name: "trackers", sql: trackers },
   { version: 27, name: "embeddings_config", sql: embeddingsConfig },
+  { version: 28, name: "ooc_inline", sql: oocInline },
 ];

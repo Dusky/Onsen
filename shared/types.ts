@@ -492,6 +492,8 @@ export interface SceneDto {
   vnModeEnabled: boolean;
   /** Whether a background image is set (served at /scenes/:id/background). */
   hasBackground: boolean;
+  /** Whether OOC asides render inline in the log, or only in the channel (§7). */
+  oocInline: boolean;
   /** Move the injection point only every N turns, for the prompt cache (§11). */
   summariseFreeze: number;
   /** The cast, in display order. One member until group scenes (phase 8). */
@@ -1539,6 +1541,7 @@ export interface SceneSetupRequest {
   summariseEvict?: boolean;
   oocEnabled?: boolean;
   oocInterval?: number;
+  oocInline?: boolean;
   autopilotEnabled?: boolean;
   autopilotMaxTurns?: number;
   vnModeEnabled?: boolean;

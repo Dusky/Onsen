@@ -643,8 +643,27 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                   onCommit={(value) => setup.mutate({ oocInterval: value })}
                 />
               </div>
-              <p className="chrome mb-[22px] text-[9.5px] leading-[1.5] text-ink-dim">
+              <p className="chrome mb-[14px] text-[9.5px] leading-[1.5] text-ink-dim">
                 {strings.sceneSetup.oocIntervalHint}
+              </p>
+
+              {/* Where the aside lives: inline in the log, or only in the
+                  channel (§7). Inline is the designed first appearance. */}
+              <p className="section-label mb-[8px]">{strings.sceneSetup.oocInline}</p>
+              <div className="mb-[8px] flex gap-[6px]">
+                {[true, false].map((on) => (
+                  <button
+                    key={String(on)}
+                    type="button"
+                    onClick={() => setup.mutate({ oocInline: on })}
+                    className={`btn flex-1 ${scene.oocInline === on ? "btn-primary" : ""}`}
+                  >
+                    {on ? strings.sceneSetup.oocInlineOn : strings.sceneSetup.oocInlineOff}
+                  </button>
+                ))}
+              </div>
+              <p className="chrome mb-[22px] text-[9.5px] leading-[1.5] text-ink-dim">
+                {strings.sceneSetup.oocInlineHint}
               </p>
             </>
           ) : (

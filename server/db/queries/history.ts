@@ -67,6 +67,8 @@ export interface SceneRow {
   vn_mode_enabled: number;
   /** A scene background, when one is set (SPEC §12). */
   background_path: string | null;
+  /** Whether an OOC aside renders inline in the log, or only in the channel (§7). */
+  ooc_inline: number;
   /** Move the injection point only every N turns, for the prompt cache (§11). */
   summarise_freeze: number;
   active_leaf_id: number | null;
@@ -220,6 +222,7 @@ export function toSceneDto(
     autopilotMaxTurns: row.autopilot_max_turns,
     vnModeEnabled: row.vn_mode_enabled === 1,
     hasBackground: row.background_path !== null,
+    oocInline: row.ooc_inline === 1,
     summariseFreeze: row.summarise_freeze,
     authorId: extras.authorUlid,
     authorName: extras.authorName,

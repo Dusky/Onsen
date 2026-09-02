@@ -290,6 +290,18 @@ export function sceneRoutes(ctx: AppContext, autopilot: AutopilotRunner | null =
         .query("UPDATE scenes SET ooc_enabled = $on WHERE id = $id")
         .run({ id: row.id, on: input.oocEnabled ? 1 : 0 });
     }
+    // Whether an aside renders inline in the log, or only in the channel
+    // (§7). Inline is the designed first appearance; a reader who finds it
+    // redundant switches it off here.
+    if ("oocInline" in input) {
+      if (typeof input.oocInline !== "boolean") {
+        return c.json(badRequest("oocInline must be a boolean."), 400);
+      }
+      ctx.db.query("UPDATE scenes SET ooc_inline = $on WHERE id = $id").run({
+        id: row.id,
+        on: input.oocInline ? 1 : 0,
+      });
+    }
     // Autopilot (SPEC §6). Throwing the switch off is itself a stop: the
     // reader has said what they want, and "one more turn" is one too many.
     if ("autopilotEnabled" in input) {

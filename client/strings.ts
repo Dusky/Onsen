@@ -718,6 +718,11 @@ export const strings = {
     oocIntervalUnit: "messages apart",
     oocIntervalHint:
       "The earliest it may speak up again, not a schedule it has to keep. It usually will not.",
+    oocInline: "Where asides live",
+    oocInlineOn: "In the log and the channel",
+    oocInlineOff: "Only in the channel",
+    oocInlineHint:
+      "Inline is the note in the margin of the story; the channel is where a note becomes a conversation. Hide the margin note if it feels like duplication.",
 
     /** Autopilot (SPEC §6). The switch is on the cast strip; the cap lives here. */
     autopilot: "Autopilot",
