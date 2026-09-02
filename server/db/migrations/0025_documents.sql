@@ -28,14 +28,3 @@ CREATE TABLE document_chunks (
 ) STRICT;
 CREATE INDEX document_chunks_by_document ON document_chunks (document_id, ordinal);
 CREATE INDEX documents_by_scene ON documents (scene_id);
-
--- The embeddings provider is its own single-row config, not a generation
--- provider: it serves /embeddings and nothing else, and the providers table's
--- kind CHECK rightly excludes it. Nulls mean the lexical fallback is in force.
-CREATE TABLE embeddings_config (
-  id                 INTEGER NOT NULL PRIMARY KEY CHECK (id = 1),
-  base_url           TEXT,
-  model              TEXT,
-  api_key_encrypted  TEXT,
-  updated_at         INTEGER NOT NULL
-) STRICT;
