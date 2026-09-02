@@ -723,6 +723,45 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         {/* The tracker panel (§8, phase 31): collapsible, above the composer. */}
         {opsPanel === null ? <TrackerPanel sceneId={sceneId} /> : null}
 
+        {/* Why a turn never started (SPEC §5): a refused POST, not a stream that
+            died. Shown where the reader is looking, with the fix for the one
+            case that has a one-tap fix — a scene with no profile yet. */}
+        {generation.startError !== null ? (
+          <div className="flex-none border-t border-red-border bg-red-bg px-[16px] py-[8px]">
+            <div className="mx-auto flex w-full max-w-[var(--onsen-prose-measure)] items-center gap-[10px]">
+              <p
+                role="alert"
+                className="chrome min-w-0 flex-1 truncate text-[9.5px] tracking-[0.06em] uppercase"
+                style={{ color: "var(--onsen-color-red)" }}
+              >
+                {generation.startError.message}
+              </p>
+              {generation.startError.code === "no_connection" ? (
+                <button
+                  type="button"
+                  className="btn flex-none"
+                  style={{ color: "var(--onsen-color-red)", borderColor: "var(--onsen-color-red)" }}
+                  onClick={() => {
+                    generation.clearStartError();
+                    navigate({ name: "setup", sceneId });
+                  }}
+                >
+                  {strings.chat.setProfile}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                aria-label="Close"
+                className="chrome flex-none text-[12px]"
+                style={{ color: "var(--onsen-color-red)" }}
+                onClick={() => generation.clearStartError()}
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         {/* Steer, when it is set: a hairline strip above the composer, so a note
             that changes every turn is visible while you write (design handoff). */}
         {steer !== null && opsPanel === null ? (

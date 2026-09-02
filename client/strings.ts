@@ -253,6 +253,9 @@ export const strings = {
     guidesNone: "None",
     guidesTotal: (n: number) => `${n} TOK`,
 
+    /** Why a turn never started (SPEC §5). */
+    setProfile: "Set a profile",
+
     /** Structured trackers (SPEC §8, phase 31). */
     trackers: "Trackers",
     trackerScene: "Scene",

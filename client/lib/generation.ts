@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { api } from "./api.ts";
+import { api, ApiRequestError } from "./api.ts";
 import { keys } from "./queries.ts";
 import { useGenerationStore } from "../state/generation.ts";
 import type { BeatBound, ReviseMode, TurnScope } from "@shared/types.ts";
@@ -178,35 +178,49 @@ export function useGeneration() {
   const start = useCallback(
     async (args: StartArgs) => {
       const { recast, revise, ooc } = args;
-      const started =
-        ooc !== undefined
-          ? (
-              await api.post<{ generation: { id: string } }>(`/scenes/${args.sceneId}/ooc`, {
-                question: ooc.question,
-              })
-            ).generation
-          : recast !== undefined
-          ? await api.post<{ id: string }>(
-              `/scenes/${args.sceneId}/messages/${recast.messageId}/recast`,
-              { ordinal: recast.ordinal },
-            )
-          : revise !== undefined
+      let started: { id: string };
+      try {
+        started =
+          ooc !== undefined
+            ? (
+                await api.post<{ generation: { id: string } }>(`/scenes/${args.sceneId}/ooc`, {
+                  question: ooc.question,
+                })
+              ).generation
+            : recast !== undefined
             ? await api.post<{ id: string }>(
-                `/scenes/${args.sceneId}/messages/${revise.messageId}/revise`,
-                {
-                  mode: revise.mode,
-                  ...(revise.instructions === undefined
-                    ? {}
-                    : { instructions: revise.instructions }),
-                },
+                `/scenes/${args.sceneId}/messages/${recast.messageId}/recast`,
+                { ordinal: recast.ordinal },
               )
-            : await api.post<{ id: string }>(`/scenes/${args.sceneId}/generate`, {
-                ...(args.parentId === undefined ? {} : { parentId: args.parentId }),
-                ...(args.characterId == null ? {} : { characterId: args.characterId }),
-                ...(args.scope === undefined ? {} : { scope: args.scope }),
-                ...(args.beatBound === undefined ? {} : { beatBound: args.beatBound }),
-                ...(args.nudge === undefined ? {} : { nudge: args.nudge }),
-              });
+            : revise !== undefined
+              ? await api.post<{ id: string }>(
+                  `/scenes/${args.sceneId}/messages/${revise.messageId}/revise`,
+                  {
+                    mode: revise.mode,
+                    ...(revise.instructions === undefined
+                      ? {}
+                      : { instructions: revise.instructions }),
+                  },
+                )
+              : await api.post<{ id: string }>(`/scenes/${args.sceneId}/generate`, {
+                  ...(args.parentId === undefined ? {} : { parentId: args.parentId }),
+                  ...(args.characterId == null ? {} : { characterId: args.characterId }),
+                  ...(args.scope === undefined ? {} : { scope: args.scope }),
+                  ...(args.beatBound === undefined ? {} : { beatBound: args.beatBound }),
+                  ...(args.nudge === undefined ? {} : { nudge: args.nudge }),
+                });
+      } catch (caught) {
+        // The turn never started — the POST was refused. Surface it in the
+        // chat rather than leaving it to the console (SPEC §5): the reader
+        // should see *why* nothing happened, and how to fix it, in place.
+        const error = caught as ApiRequestError;
+        useGenerationStore.getState().failStart({
+          message: error.message ?? "The scene could not start a reply.",
+          code: error.code ?? "unexpected",
+        });
+        return null;
+      }
+
       useGenerationStore.getState().begin({
         generationId: started.id,
         sceneId: args.sceneId,
@@ -250,5 +264,13 @@ export function useGeneration() {
   // that is the whole point of the server owning it.
   useEffect(() => () => abortRef.current?.abort(), []);
 
-  return { active: store.active, start, adopt, cancel, clear: store.clear };
+  return {
+    active: store.active,
+    startError: store.startError,
+    start,
+    adopt,
+    cancel,
+    clear: store.clear,
+    clearStartError: store.clearStartError,
+  };
 }

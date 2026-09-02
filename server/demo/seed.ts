@@ -176,14 +176,32 @@ export async function seedDemo(db: Database, keyring: Keyring): Promise<DemoSeed
     (db.query("SELECT * FROM personas ORDER BY id LIMIT 1").get() as { id: number } | null) ??
     insertPersona(db, "You");
 
-  // One demo scene, or the one that already exists.
+  // One demo scene, or the one that already exists. It carries the default
+  // profile and preset, because a demo that cannot generate is a broken demo.
+  const defaultProfile = db
+    .query("SELECT id FROM connection_profiles ORDER BY is_default DESC, id LIMIT 1")
+    .get() as { id: number } | null;
+  const defaultPreset = db.query("SELECT id FROM presets WHERE is_default = 1 LIMIT 1").get() as
+    | { id: number }
+    | null;
   const scene =
     (db.query("SELECT * FROM scenes WHERE title = 'The Last Inn' LIMIT 1").get() as
-      | { id: number; ulid: string }
+      | { id: number; ulid: string; connection_profile_id: number | null }
       | null) ??
-    insertScene(db, { title: "The Last Inn" });
+    insertScene(db, {
+      title: "The Last Inn",
+      connectionProfileId: defaultProfile?.id ?? null,
+      presetId: defaultPreset?.id ?? null,
+    });
 
-  updateScene(db, scene.id, { authorId: author.id, personaId: persona.id });
+  updateScene(db, scene.id, {
+    authorId: author.id,
+    personaId: persona.id,
+    ...(scene.connection_profile_id === null && defaultProfile !== null
+      ? { connectionProfileId: defaultProfile.id }
+      : {}),
+    ...(defaultPreset !== null ? { presetId: defaultPreset.id } : {}),
+  });
   for (const member of cast) {
     const already = db
       .query("SELECT 1 FROM scene_members WHERE scene_id = $scene AND character_id = $char")

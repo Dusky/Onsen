@@ -57,6 +57,10 @@ export interface ActiveGeneration {
 
 interface GenerationStore {
   active: ActiveGeneration | null;
+  /** Why the last attempt to *start* a generation failed, before anything
+   * streamed — a rejected POST, not a stream that died. The chat screen shows
+   * it as a strip rather than leaving it to the console. */
+  startError: { message: string; code: string } | null;
   begin(
     generation: Omit<
       ActiveGeneration,
@@ -74,14 +78,26 @@ interface GenerationStore {
    */
   appendReasoning(generationId: string, text: string): void;
   settle(generationId: string, status: ActiveGeneration["status"], error?: string | null): void;
+  failStart(error: { message: string; code: string }): void;
+  clearStartError(): void;
   clear(): void;
 }
 
 export const useGenerationStore = create<GenerationStore>((set) => ({
   active: null,
+  startError: null,
+
+  failStart(error: { message: string; code: string }) {
+    set({ startError: error });
+  },
+
+  clearStartError() {
+    set({ startError: null });
+  },
 
   begin(generation) {
     set({
+      startError: null,
       active: {
         ...generation,
         director: null,
@@ -136,6 +152,6 @@ export const useGenerationStore = create<GenerationStore>((set) => ({
   },
 
   clear() {
-    set({ active: null });
+    set({ active: null, startError: null });
   },
 }));
