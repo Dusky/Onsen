@@ -16,6 +16,7 @@ import {
   useUpdateProfile,
   useUpdateProvider,
   useUpdateTask,
+  useTestProvider,
   useApplyUpdate,
   useCheckUpdate,
   useUpdateStatus,
@@ -69,7 +70,9 @@ function ProviderEditor({
   const create = useCreateProvider();
   const update = useUpdateProvider();
   const remove = useDeleteProvider();
+  const test = useTestProvider(provider?.id ?? "");
   const [error, setError] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<string | null>(null);
 
   return (
     <Sheet
@@ -208,6 +211,36 @@ function ProviderEditor({
         {error === null ? null : (
           <p className="chrome mb-[10px] text-[9.5px] leading-[1.5] text-red-text">{error}</p>
         )}
+
+        {/* §16: one round trip, so a bad key reads here rather than on the first
+            generation. Shown only when the editor has an id to test. */}
+        {provider !== null ? (
+          <div className="mb-[10px] flex items-center gap-[8px]">
+            <button
+              type="button"
+              className="btn flex-1"
+              disabled={test.isPending}
+              onClick={() =>
+                test.mutate(undefined, {
+                  onSuccess: (result) =>
+                    setTestResult(
+                      result.ok
+                        ? `${strings.settings.providerTestOk} · ${result.latencyMs}ms`
+                        : `${strings.settings.providerTestFail} — ${result.detail ?? ""}`,
+                    ),
+                  onError: (e: Error) => setTestResult(e.message),
+                })
+              }
+            >
+              {test.isPending ? strings.settings.providerTesting : strings.settings.providerTest}
+            </button>
+            {testResult !== null ? (
+              <span className="chrome min-w-0 flex-1 truncate text-[8.5px] leading-[1.4] text-ink-dim">
+                {testResult}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="flex gap-[8px]">
           <button type="submit" className="btn btn-primary flex-1">

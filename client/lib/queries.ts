@@ -1238,3 +1238,20 @@ export function useRebuildTrackers(sceneId: string) {
     onSuccess: () => void client.invalidateQueries({ queryKey: ["scenes", sceneId, "trackers"] }),
   });
 }
+
+/** §16's provider test button: one round trip, reported with its latency. */
+export function useTestProvider(providerId: string) {
+  return useMutation({
+    mutationFn: () =>
+      api.post<{ ok: boolean; latencyMs: number; detail: string | null }>(
+        `/connections/providers/${providerId}/test`,
+      ),
+  });
+}
+
+/** Revise one lore entry against what has happened since (SPEC §9, phase 27). */
+export function useReviseLore(entryId: string) {
+  return useMutation({
+    mutationFn: (body?: { sceneId?: string }) => api.post<LoreEntryDto>(`/authoring/lore/${entryId}/revise`, body),
+  });
+}

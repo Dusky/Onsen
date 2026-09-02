@@ -107,7 +107,8 @@ export const strings = {
 
     /** Autopilot (SPEC §6) — the strip while it runs, the line when it stops. */
     autopilot: "Autopilot",
-    autopilotCount: (turns: number, max: number) => `${turns}/${max}`,
+    autopilotCount: (turns: number, max: number) => `${turns} OF ${max}`,
+    autopilotTakeOver: "Take over",
     autopilotStopped: (reason: string) => `Autopilot stopped — ${reason}`,
     autopilotReasons: {
       cap: "it wrote its turns",
@@ -355,6 +356,10 @@ export const strings = {
     providerKeyHeld: (mask: string) => `Key held · ${mask}`,
     providerKeyNone: "No key",
     providerKeyKeep: "Leave blank to keep the stored key",
+    providerTest: "Test",
+    providerTesting: "Testing…",
+    providerTestOk: "Reached",
+    providerTestFail: "Failed",
     providerDisabled: "Disabled",
     lastProvider: "The only provider. Add another before removing this one.",
 

@@ -368,6 +368,69 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
     return c.json(toProviderDto(updateProvider(ctx.db, row.id, patch), ctx.keyring));
   });
 
+  /**
+   * The §16 test button: one tiny round trip to the endpoint, so a bad key or
+   * a mistyped host reads as a timed call, not a failed first generation.
+   */
+  app.post("/providers/:id/test", async (c) => {
+    const row = findProviderByUlid(ctx.db, c.req.param("id"));
+    if (row === null) return c.json(notFound("provider"), 404);
+    if (row.base_url === null) {
+      return c.json(badRequest("This provider has no address to test."), 400);
+    }
+
+    const baseUrl = row.base_url.replace(/\/+$/, "");
+    const apiKey =
+      row.api_key_encrypted === null ? null : decryptSecret(ctx.keyring, row.api_key_encrypted);
+    const headers = {
+      "Content-Type": "application/json",
+      ...(apiKey === null ? {} : { Authorization: `Bearer ${apiKey}` }),
+    };
+
+    // One token is the whole test: the request shape is the provider's own.
+    let body: string;
+    let path = "/chat/completions";
+    switch (row.kind) {
+      case "openai_compatible":
+        body = JSON.stringify({
+          model: row.model ?? "",
+          messages: [{ role: "user", content: "ping" }],
+          max_tokens: 1,
+        });
+        break;
+      case "text_completion":
+        path = "/completions";
+        body = JSON.stringify({ prompt: "ping", max_tokens: 1 });
+        break;
+      case "anthropic":
+        path = "/messages";
+        body = JSON.stringify({
+          model: row.model ?? "",
+          max_tokens: 1,
+          messages: [{ role: "user", content: "ping" }],
+        });
+        break;
+    }
+
+    const started = Date.now();
+    try {
+      const response = await fetch(`${baseUrl}${path}`, {
+        method: "POST",
+        headers,
+        body,
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!response.ok) {
+        const detail = (await response.text()).slice(0, 200);
+        return c.json({ ok: false, latencyMs: Date.now() - started, detail: `HTTP ${response.status}: ${detail}` });
+      }
+      return c.json({ ok: true, latencyMs: Date.now() - started, detail: null });
+    } catch (caught) {
+      const detail = caught instanceof Error ? caught.message : "Unreachable.";
+      return c.json({ ok: false, latencyMs: Date.now() - started, detail });
+    }
+  });
+
   app.delete("/providers/:id", (c) => {
     const row = findProviderByUlid(ctx.db, c.req.param("id"));
     if (row === null) return c.json(notFound("provider"), 404);

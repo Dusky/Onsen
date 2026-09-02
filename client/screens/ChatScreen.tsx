@@ -710,7 +710,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                   className="chrome border border-red-border px-[10px] py-[6px] text-[9.5px] tracking-[0.14em] uppercase"
                   style={{ color: "var(--onsen-color-red)" }}
                 >
-                  {strings.chat.stop}
+                  {autopilotActive ? strings.chat.autopilotTakeOver : strings.chat.stop}
                 </button>
               </div>
             ) : null}

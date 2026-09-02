@@ -18,6 +18,7 @@ import {
   useDeleteLorebook,
   useLorebook,
   useUpdateLoreEntry,
+  useReviseLore,
   useUpdateLorebook,
 } from "../lib/queries.ts";
 
@@ -277,6 +278,7 @@ function EntryEditor({
   const [draft, setDraft] = useState<LoreEntryDto>(entry);
   const [advanced, setAdvanced] = useState(false);
   const characters = useCharacters();
+  const revise = useReviseLore(entry.id);
 
   function set<K extends keyof LoreEntryDto>(field: K, value: LoreEntryDto[K]) {
     setDraft((current) => ({ ...current, [field]: value }));
@@ -621,6 +623,20 @@ function EntryEditor({
       </div>
 
       <div className="flex items-center gap-[10px] border-t border-rule px-[14px] py-[8px]">
+        <button
+          type="button"
+          className="chrome flex-1 text-[9px] tracking-[0.12em] text-ink-muted uppercase"
+          disabled={revise.isPending}
+          onClick={() =>
+            revise.mutate(undefined, {
+              onSuccess: (updated) => {
+                setDraft((current) => ({ ...current, title: updated.title, content: updated.content, keys: updated.keys }));
+              },
+            })
+          }
+        >
+          {revise.isPending ? strings.characters.writingCard : strings.characters.reviseWithAi}
+        </button>
         <button
           type="button"
           onClick={onClose}
