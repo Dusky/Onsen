@@ -145,6 +145,14 @@ export function useGeneration() {
                   event.type === "done" ? "done" : event.type,
                   event.message ?? null,
                 );
+                // Invalidate here, on the terminal event itself, not after the
+                // stream loop exits: the message has landed in the tree, and
+                // the refetch must not wait on a reader that a proxy or a
+                // dropped connection can leave hanging. This is the one place
+                // guaranteed to run when a turn finishes.
+                void client.invalidateQueries({ queryKey: keys.scene(sceneId) });
+                void client.invalidateQueries({ queryKey: keys.scenes });
+                void client.invalidateQueries({ queryKey: keys.autopilot(sceneId) });
               }
             }
           }
