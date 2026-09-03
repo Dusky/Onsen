@@ -155,6 +155,8 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
   const [tagDraft, setTagDraft] = useState("");
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [spriteLabel, setSpriteLabel] = useState("");
+  const [reviseOpen, setReviseOpen] = useState(false);
+  const [reviseDraft, setReviseDraft] = useState("");
 
   const character: CharacterDto | undefined = query.data;
   if (character === undefined) {
@@ -341,19 +343,34 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                   </button>
                 ))}
               </div>
-              <button
-                type="button"
-                className="btn mb-[22px] w-full"
-                disabled={uploadSprite.isPending}
-                onClick={() => {
-                  const label = window.prompt(strings.characters.spriteLabelPrompt, "");
-                  if (label === null || label.trim() === "") return;
-                  setSpriteLabel(label.trim().toLowerCase());
-                  document.getElementById(`sprite-${characterId}`)?.click();
-                }}
-              >
-                {strings.characters.addSprite}
-              </button>
+              {/* The label is typed in the field, not a native prompt: a
+                  mobile-first app cannot lean on window.prompt. */}
+              <div className="mb-[8px] flex gap-[6px]">
+                <input
+                  className="field flex-1"
+                  placeholder={strings.characters.spriteLabelPrompt}
+                  value={spriteLabel}
+                  onChange={(event) => setSpriteLabel(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter") return;
+                    const label = spriteLabel.trim().toLowerCase();
+                    if (label === "") return;
+                    setSpriteLabel(label);
+                    document.getElementById(`sprite-${characterId}`)?.click();
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn flex-none"
+                  disabled={uploadSprite.isPending || spriteLabel.trim() === ""}
+                  onClick={() => {
+                    setSpriteLabel(spriteLabel.trim().toLowerCase());
+                    document.getElementById(`sprite-${characterId}`)?.click();
+                  }}
+                >
+                  {strings.characters.addSprite}
+                </button>
+              </div>
               <input
                 id={`sprite-${characterId}`}
                 type="file"
@@ -494,11 +511,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                   type="button"
                   className="btn flex-1"
                   disabled={authorRevise.isPending}
-                  onClick={() => {
-                    const instructions = window.prompt(strings.characters.revisePrompt, "");
-                    if (instructions === null || instructions.trim() === "") return;
-                    authorRevise.mutate(instructions.trim());
-                  }}
+                  onClick={() => setReviseOpen(true)}
                 >
                   {authorRevise.isPending ? strings.characters.writingCard : strings.characters.reviseWithAi}
                 </button>
@@ -595,9 +608,36 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
         </div>
       </footer>
 
+      {reviseOpen ? (
+        <Sheet title={strings.characters.reviseWithAi} onClose={() => setReviseOpen(false)}>
+          <div className="pt-[8px] pb-[14px]">
+            <textarea
+              className="field min-h-[90px] resize-y"
+              placeholder={strings.characters.revisePrompt}
+              value={reviseDraft}
+              onChange={(event) => setReviseDraft(event.target.value)}
+            />
+            <button
+              type="button"
+              className="btn btn-primary mt-[10px] w-full"
+              disabled={authorRevise.isPending || reviseDraft.trim() === ""}
+              onClick={() => {
+                authorRevise.mutate(reviseDraft.trim(), {
+                  onSuccess: () => {
+                    setReviseOpen(false);
+                    setReviseDraft("");
+                  },
+                });
+              }}
+            >
+              {authorRevise.isPending ? strings.characters.writingCard : strings.characters.reviseWithAi}
+            </button>
+          </div>
+        </Sheet>
+      ) : null}
+
       {versionsOpen ? (
-        <Sheet title={strings.characters.versions} onClose={() => setVersionsOpen(false)}>
-          {(versions.data ?? []).length === 0 ? (
+        <Sheet title={strings.characters.versions} onClose={() => setVersionsOpen(false)}>          {(versions.data ?? []).length === 0 ? (
             <p className="chrome py-[10px] text-[9px] tracking-[0.12em] text-ink-dim uppercase">
               {strings.characters.noVersions}
             </p>

@@ -107,6 +107,9 @@ export function CharactersScreen() {
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [menuFor, setMenuFor] = useState<CharacterDto | null>(null);
+  /** The in-app prompt: which field is being asked for, and its draft. */
+  const [promptOpen, setPromptOpen] = useState<null | "tag" | "folder" | "filter">(null);
+  const [promptValue, setPromptValue] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const derive = useDeriveCharacter(menuFor?.id ?? "");
@@ -151,10 +154,21 @@ export function CharactersScreen() {
     setFolder(filter.query.folder ?? "");
   }
 
-  function promptFor(question: string, fallback: string): string | null {
-    const value = window.prompt(question, fallback);
-    if (value === null) return null;
-    return value.trim();
+  function commitPrompt() {
+    if (promptOpen === null) return;
+    const value = promptValue.trim();
+    setPromptOpen(null);
+    setPromptValue("");
+    if (value === "") return;
+    if (promptOpen === "tag") {
+      bulk.mutate({ ids: [...selected], op: "tag", tag: value });
+      setSelected(new Set());
+    } else if (promptOpen === "folder") {
+      bulk.mutate({ ids: [...selected], op: "move", folder: value });
+      setSelected(new Set());
+    } else {
+      createFilter.mutate({ name: value, query: { q, tag, folder } });
+    }
   }
 
   return (
@@ -247,9 +261,8 @@ export function CharactersScreen() {
               type="button"
               className="btn flex-none"
               onClick={() => {
-                const name = promptFor(strings.characters.filterName, "");
-                if (name === null || name === "") return;
-                createFilter.mutate({ name, query: { q, tag, folder } });
+                setPromptValue("");
+                setPromptOpen("filter");
               }}
             >
               {strings.characters.saveFilter}
@@ -331,10 +344,8 @@ export function CharactersScreen() {
                 className="btn flex-1"
                 disabled={selected.size === 0}
                 onClick={() => {
-                  const value = promptFor(strings.characters.tagPrompt, "");
-                  if (value === null || value === "") return;
-                  bulk.mutate({ ids: [...selected], op: "tag", tag: value });
-                  setSelected(new Set());
+                  setPromptValue("");
+                  setPromptOpen("tag");
                 }}
               >
                 {strings.characters.bulkTag}
@@ -344,10 +355,8 @@ export function CharactersScreen() {
                 className="btn flex-1"
                 disabled={selected.size === 0}
                 onClick={() => {
-                  const value = promptFor(strings.characters.folderPrompt, "");
-                  if (value === null) return;
-                  bulk.mutate({ ids: [...selected], op: "move", folder: value });
-                  setSelected(new Set());
+                  setPromptValue("");
+                  setPromptOpen("folder");
                 }}
               >
                 {strings.characters.bulkMove}
@@ -442,6 +451,49 @@ export function CharactersScreen() {
               }
             >
               {authorCreate.isPending ? strings.characters.writingCard : strings.characters.writeGo}
+            </button>
+          </div>
+        </Sheet>
+      ) : null}
+
+      {promptOpen !== null ? (
+        <Sheet
+          title={
+            promptOpen === "tag"
+              ? strings.characters.bulkTag
+              : promptOpen === "folder"
+                ? strings.characters.bulkMove
+                : strings.characters.saveFilter
+          }
+          onClose={() => {
+            setPromptOpen(null);
+            setPromptValue("");
+          }}
+        >
+          <div className="pt-[8px] pb-[14px]">
+            <input
+              className="field"
+              placeholder={
+                promptOpen === "tag"
+                  ? strings.characters.tagPrompt
+                  : promptOpen === "folder"
+                    ? strings.characters.folderPrompt
+                    : strings.characters.filterName
+              }
+              value={promptValue}
+              onChange={(event) => setPromptValue(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") commitPrompt();
+              }}
+              autoFocus
+            />
+            <button
+              type="button"
+              className="btn btn-primary mt-[10px] w-full"
+              disabled={promptValue.trim() === ""}
+              onClick={commitPrompt}
+            >
+              {strings.characters.saveFilter}
             </button>
           </div>
         </Sheet>

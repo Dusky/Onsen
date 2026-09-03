@@ -255,6 +255,8 @@ export const strings = {
 
     /** Why a turn never started (SPEC §5). */
     setProfile: "Set a profile",
+    noProfiles: "No connection profiles yet. Make one in settings, then come back.",
+    goToSettings: "Open settings",
 
     /** Structured trackers (SPEC §8, phase 31). */
     trackers: "Trackers",

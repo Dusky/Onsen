@@ -130,6 +130,8 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
   const [loreProposals, setLoreProposals] = useState<
     { title: string; content: string; keys: string[] }[] | null
   >(null);
+  const [extractOpen, setExtractOpen] = useState(false);
+  const [extractName, setExtractName] = useState("");
   const [loreBookId, setLoreBookId] = useState<string>("");
   const createLoreEntry = useCreateLoreEntry(loreBookId);
   const updateLoreEntry = useUpdateLoreEntry(loreBookId);
@@ -788,12 +790,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               type="button"
               className="btn flex-1"
               disabled={authorExtract.isPending}
-              onClick={() => {
-                const name = window.prompt(strings.characters.extractNamePrompt, "");
-                authorExtract.mutate(name ?? undefined, {
-                  onSuccess: (character) => addToCast.mutate(character.id),
-                });
-              }}
+              onClick={() => setExtractOpen(true)}
             >
               {authorExtract.isPending ? strings.characters.extracting : strings.characters.extractFromScene}
             </button>
@@ -889,8 +886,36 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
         />
       ) : null}
 
-      {loreProposals !== null ? (
-        <Sheet title={strings.characters.loreFromScene} onClose={() => setLoreProposals(null)}>
+      {extractOpen ? (
+        <Sheet title={strings.characters.extractFromScene} onClose={() => setExtractOpen(false)}>
+          <div className="pt-[8px] pb-[14px]">
+            <input
+              className="field"
+              placeholder={strings.characters.extractNamePrompt}
+              value={extractName}
+              onChange={(event) => setExtractName(event.target.value)}
+            />
+            <button
+              type="button"
+              className="btn btn-primary mt-[10px] w-full"
+              disabled={authorExtract.isPending}
+              onClick={() =>
+                authorExtract.mutate(extractName.trim() || undefined, {
+                  onSuccess: (character) => {
+                    setExtractOpen(false);
+                    setExtractName("");
+                    addToCast.mutate(character.id);
+                  },
+                })
+              }
+            >
+              {authorExtract.isPending ? strings.characters.extracting : strings.characters.extractFromScene}
+            </button>
+          </div>
+        </Sheet>
+      ) : null}
+
+      {loreProposals !== null ? (        <Sheet title={strings.characters.loreFromScene} onClose={() => setLoreProposals(null)}>
           <div className="mt-[10px] mb-[6px] flex gap-[6px]">
             <select
               className="field flex-1"

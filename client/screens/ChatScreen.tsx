@@ -42,6 +42,7 @@ import {
   useTasks,
   useAutopilot,
   useUpdateScene,
+  useConnectionProfiles,
   useInspector,
 } from "../lib/queries.ts";
 import type {
@@ -107,6 +108,8 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const autopilot = useAutopilot(sceneId);
   const stopAutopilot = useStopAutopilot(sceneId);
   const updateScene = useUpdateScene(sceneId);
+  const profiles = useConnectionProfiles();
+  const [profilePickerOpen, setProfilePickerOpen] = useState(false);
   // Per-op configuration (SPEC §7): a hidden button is not a disabled op, so
   // this only decides what the grid shows.
   const tasks = useTasks();
@@ -745,10 +748,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                   type="button"
                   className="btn flex-none"
                   style={{ color: "var(--onsen-color-red)", borderColor: "var(--onsen-color-red)" }}
-                  onClick={() => {
-                    generation.clearStartError();
-                    navigate({ name: "setup", sceneId });
-                  }}
+                  onClick={() => setProfilePickerOpen(true)}
                 >
                   {strings.chat.setProfile}
                 </button>
@@ -907,6 +907,47 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       ) : (
         body
       )}
+
+      {profilePickerOpen ? (
+        <Sheet title={strings.chat.setProfile} onClose={() => setProfilePickerOpen(false)}>
+          {(profiles.data ?? []).length === 0 ? (
+            <>
+              <p className="chrome py-[10px] text-[9px] leading-[1.5] tracking-[0.06em] text-ink-dim uppercase">
+                {strings.chat.noProfiles}
+              </p>
+              <button
+                type="button"
+                className="btn btn-primary w-full"
+                onClick={() => {
+                  setProfilePickerOpen(false);
+                  generation.clearStartError();
+                  navigate({ name: "settings" });
+                }}
+              >
+                {strings.chat.goToSettings}
+              </button>
+            </>
+          ) : (
+            (profiles.data ?? []).map((profile) => (
+              <SheetAction
+                key={profile.id}
+                label={profile.name}
+                onClick={() => {
+                  updateScene.mutate(
+                    { connectionProfileId: profile.id },
+                    {
+                      onSuccess: () => {
+                        setProfilePickerOpen(false);
+                        generation.clearStartError();
+                      },
+                    },
+                  );
+                }}
+              />
+            ))
+          )}
+        </Sheet>
+      ) : null}
 
       {acting !== null ? (
         <Sheet title={strings.chat.actions} onClose={() => setActing(null)}>
