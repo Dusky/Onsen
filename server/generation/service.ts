@@ -20,6 +20,7 @@ import {
   findSceneById,
   reparseSegments,
   replaceSegment,
+  segmentDtosOf,
   segmentRowsOf,
   speakerLookup,
   type MessageRow,
@@ -49,6 +50,8 @@ import type { AutopilotRunner } from "./autopilot.ts";
 import { templateFor } from "../db/queries/instruct.ts";
 import { scriptText } from "../scripts/runtime.ts";
 import type { TriggerRunner } from "../triggers/runner.ts";
+import type { WebhookSender } from "../webhooks/sender.ts";
+import type { WebhookEvent } from "../webhooks/events.ts";
 import type { InstructTemplate } from "../prompt/index.ts";
 import type { TaskRunStatus } from "../../shared/types.ts";
 
@@ -549,8 +552,14 @@ export class GenerationService {
     this.triggers = runner;
   }
 
+  /** §15's outbound webhooks. Bound late, and nothing here waits on one. */
+  setWebhooks(sender: WebhookSender): void {
+    this.webhooks = sender;
+  }
+
   private autopilot: AutopilotRunner | null = null;
   private triggers: TriggerRunner | null = null;
+  private webhooks: WebhookSender | null = null;
 
   /**
    * Resolves when the generation is no longer running — the drain half of
@@ -650,6 +659,23 @@ export class GenerationService {
       // because this is the only moment it is known, and dispatched after the
       // turn - see `runTriggers`.
       generation.automationIds = this.automationIdsOf(context.loreTrace ?? []);
+
+      // §15's `lore.activated`: which entries reached this prompt and why. The
+      // trace is already computed for the inspector, so this costs nothing but
+      // the forwarding.
+      this.emitWebhook("lore.activated", generation.sceneId, {
+        generationId: generation.id,
+        entries: (context.loreTrace ?? [])
+          .filter((entry) => entry.skipped === null)
+          .map((entry) => ({
+            id: entry.entryId,
+            title: entry.title,
+            matchedKey: entry.matchedKey,
+            constant: entry.constant,
+            sticky: entry.sticky,
+            round: entry.round,
+          })),
+      });
       const reasoningConfig = parseReasoningConfig(this.reasoningJson(presetId));
       generation.meta.promptTokens = prompt.debug.totalTokens;
       generation.meta.tokensAreEstimated = prompt.debug.tokensAreEstimated;
@@ -762,6 +788,29 @@ export class GenerationService {
       )
       .all(values) as { automation_id: string }[];
     return rows.map((row) => row.automation_id);
+  }
+
+  /**
+   * Fire an outbound webhook (SPEC §15).
+   *
+   * Never awaited and never able to throw. §15's argument for out-of-process
+   * integration is that it is safer than a plugin, and that stops being true
+   * the moment a receiver that stopped answering can stall a generation.
+   */
+  private emitWebhook(
+    event: WebhookEvent,
+    sceneId: number,
+    data: Record<string, unknown>,
+  ): void {
+    const sender = this.webhooks;
+    if (sender === null || !sender.anyFor(event)) return;
+    try {
+      const scene = findSceneById(this.db, sceneId);
+      if (scene === null) return;
+      sender.emit(event, { sceneId: scene.ulid, sceneTitle: scene.title }, data);
+    } catch {
+      /* Never reaches the turn. */
+    }
   }
 
   /**
@@ -1193,6 +1242,38 @@ export class GenerationService {
       void this.runTriggers(generation.sceneId, generation.automationIds).catch(() => {});
     }
 
+    // §15's `generation.complete`. Fired for a cancelled and a failed turn too:
+    // a bridge that only heard about the ones that worked would sit waiting on
+    // the ones that did not, which is the state it most needs told about.
+    if (generation.messageUlid !== null || generation.error !== null || cancelled) {
+      const landed =
+        generation.landedMessageId === null
+          ? null
+          : findMessageById(this.db, generation.landedMessageId);
+      this.emitWebhook("generation.complete", generation.sceneId, {
+        generationId: generation.id,
+        status: generation.status,
+        messageId: landed?.ulid ?? null,
+        content: landed?.content ?? null,
+        speaker: generation.spotlightId === null ? null : this.speakerName(generation.spotlightId),
+        error: generation.error,
+        meta: generation.meta,
+      });
+
+      // And the message itself, for a receiver that wants every turn rather
+      // than the shape of the generation that produced it.
+      if (landed !== null) {
+        this.emitWebhook("message.created", generation.sceneId, {
+          messageId: landed.ulid,
+          kind: landed.kind,
+          authorType: landed.author_type,
+          content: landed.content,
+          speaker: landed.character_id === null ? null : this.speakerName(landed.character_id),
+          createdAt: landed.created_at,
+        });
+      }
+    }
+
     // Autopilot's moment (SPEC §6): a reply has completed. Spotlight and beat
     // turns only — a revise is an edit and a recast is a splice, and neither is
     // the "reply completes" the loop continues from. The runner decides
@@ -1296,7 +1377,15 @@ export class GenerationService {
       // attribute it to; who spoke *last* in it comes from its segments (§6).
       characterId: generation.spotlightId,
     });
-    if (isBeat) reparseSegments(this.db, message);
+    if (isBeat) {
+      reparseSegments(this.db, message);
+      // §15's `beat.parsed`: the one event that says *who said what*, which is
+      // the whole reason a bridge would want a beat rather than a message.
+      this.emitWebhook("beat.parsed", generation.sceneId, {
+        messageId: message.ulid,
+        segments: segmentDtosOf(this.db, message, speakerLookup(this.db)),
+      });
+    }
 
     // The author's declared expressions (§12), lifted out of the stream and
     // stored against the message. A spotlight carries one label; a beat's tags
@@ -1343,6 +1432,14 @@ export class GenerationService {
       content: aside,
       characterId: null,
     });
+  }
+
+  /** A cast member's name, for a payload a receiver has to read without a join. */
+  private speakerName(characterId: number): string | null {
+    const row = this.db
+      .query("SELECT name FROM characters WHERE id = $id")
+      .get({ id: characterId }) as { name: string } | null;
+    return row?.name ?? null;
   }
 
   /** The author's name, for announcing a turn nobody in the cast is speaking. */

@@ -27,6 +27,8 @@ import { loreRoutes } from "./routes/lore.ts";
 import { scriptRoutes } from "./routes/scripts.ts";
 import { triggerRoutes } from "./routes/triggers.ts";
 import { packRoutes } from "./routes/packs.ts";
+import { webhookRoutes } from "./routes/webhooks.ts";
+import { WebhookSender } from "./webhooks/sender.ts";
 import { TriggerRunner } from "./triggers/runner.ts";
 import type { createAdapter } from "./adapters/index.ts";
 import { spaStatic } from "./static.ts";
@@ -49,6 +51,8 @@ export interface CreateAppOptions {
   banAnalyser?: BanAnalyser;
   /** Injected in tests so no live provider is ever contacted (§23). */
   createAdapter?: typeof createAdapter;
+  /** Injected in tests, so no webhook request ever leaves the process (§23). */
+  webhookSender?: WebhookSender;
 }
 
 export interface CreatedApp {
@@ -70,6 +74,8 @@ export interface CreatedApp {
   autopilot: AutopilotRunner;
   /** §14's event triggers, for the same reason. */
   triggers: TriggerRunner;
+  /** §15's outbound webhooks, for the same reason. */
+  webhooks: WebhookSender;
 }
 
 /** Build the app and the services it owns. */
@@ -90,6 +96,11 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
     options.generationService ??
     new GenerationService({ db: ctx.db, keyring: ctx.keyring, tasks, passes, guides, trackers, summaries });  const triggers = new TriggerRunner({ db: ctx.db, guides, trackers });
   generation.setTriggers(triggers);
+  const webhooks =
+    options.webhookSender ??
+    new WebhookSender({ db: ctx.db, keyring: ctx.keyring });
+  generation.setWebhooks(webhooks);
+  trackers.setWebhooks(webhooks);
   const autopilot = new AutopilotRunner({ db: ctx.db, tasks });
   // Bound both ways, late, because each needs the other: the service reports
   // landings, the runner starts turns (SPEC §6).
@@ -104,7 +115,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   api.route("/", authRoutes(ctx));
   api.route("/", setupRoutes(ctx));
   api.route("/connections", connectionRoutes(ctx));
-  api.route("/scenes", sceneRoutes(ctx, autopilot, triggers));
+  api.route("/scenes", sceneRoutes(ctx, autopilot, triggers, webhooks));
   api.route(
     "/scenes",
     sceneGenerationRoutes(ctx, generation, tasks, passes, guides, trackers, summaries, bans, autopilot),
@@ -122,6 +133,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   api.route("/scripts", scriptRoutes(ctx));
   api.route("/triggers", triggerRoutes(ctx, triggers));
   api.route("/packs", packRoutes(ctx));
+  api.route("/webhooks", webhookRoutes(ctx, webhooks));
   api.route("/lorebooks", loreRoutes(ctx));
   api.route("/dossiers", dossierRoutes(ctx));
 
@@ -137,7 +149,19 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
     app.use("*", spaStatic(ctx.config.clientDir));
   }
 
-  return { app, generation, tasks, passes, guides, trackers, summaries, bans, autopilot, triggers };
+  return {
+    app,
+    generation,
+    tasks,
+    passes,
+    guides,
+    trackers,
+    summaries,
+    bans,
+    autopilot,
+    triggers,
+    webhooks,
+  };
 }
 
 /** The app alone, for callers that do not need the services. */

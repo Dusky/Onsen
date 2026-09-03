@@ -7,6 +7,7 @@ import { taskConfig, templateOf } from "../db/queries/tasks.ts";
 import { TRACKER_KINDS, trackerOpKey, taskKind } from "../tasks/registry.ts";
 import type { TrackerKind } from "../../shared/types.ts";
 import type { TaskRunner } from "../tasks/runner.ts";
+import type { WebhookSender } from "../webhooks/sender.ts";
 
 /**
  * Writing the structured trackers (SPEC §8, §20 phase 31).
@@ -132,10 +133,16 @@ export class TrackerRunner {
   private readonly db: Database;
   private readonly tasks: TaskRunner;
   private stopped = false;
+  /** §15's outbound webhooks. Bound late, and optional: nothing here waits. */
+  private webhooks: WebhookSender | null = null;
 
   constructor(options: TrackerRunnerOptions) {
     this.db = options.db;
     this.tasks = options.tasks;
+  }
+
+  setWebhooks(sender: WebhookSender): void {
+    this.webhooks = sender;
   }
 
   shutdown(): void {
@@ -207,13 +214,24 @@ export class TrackerRunner {
       return;
     }
 
+    const content = JSON.stringify(parsed, null, 2);
     writeTracker(this.db, {
       sceneId: scene.id,
       kind,
-      content: JSON.stringify(parsed, null, 2),
+      content,
       messageId: leaf,
       pinned: false,
     });
+
+    // §15's `tracker.updated`. Not awaited, like everything else a webhook
+    // touches: a receiver that stopped answering must not delay the next turn.
+    if (this.webhooks?.anyFor("tracker.updated") === true) {
+      this.webhooks.emit(
+        "tracker.updated",
+        { sceneId: scene.ulid, sceneTitle: scene.title },
+        { kind, content: parsed },
+      );
+    }
   }
 }
 

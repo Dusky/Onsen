@@ -45,6 +45,7 @@ import {
 import { findCharacter } from "../db/queries/characters.ts";
 import { scriptText } from "../scripts/runtime.ts";
 import type { TriggerRunner } from "../triggers/runner.ts";
+import type { WebhookSender } from "../webhooks/sender.ts";
 import { activeGuides, editGuide, findGuide, flushGuides, toGuideDto } from "../db/queries/guides.ts";
 import type { AutopilotRunner } from "../generation/autopilot.ts";
 import { resolveNextSpeaker } from "../generation/turn.ts";
@@ -134,6 +135,7 @@ export function sceneRoutes(
   ctx: AppContext,
   autopilot: AutopilotRunner | null = null,
   triggers: TriggerRunner | null = null,
+  webhooks: WebhookSender | null = null,
 ): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
   app.use("*", requireAuth());
@@ -573,6 +575,23 @@ export function sceneRoutes(
     // the composer should not wait on one to see the line it just sent. Never
     // able to break the write either - by the time this runs, the message is
     // already in the tree.
+    // §15's `message.created`, for what the reader wrote. The generated half is
+    // fired by the service, which is the only place that knows a turn landed.
+    if (webhooks?.anyFor("message.created") === true) {
+      webhooks.emit(
+        "message.created",
+        { sceneId: sceneRow.ulid, sceneTitle: sceneRow.title },
+        {
+          messageId: dto.id,
+          kind: dto.kind,
+          authorType: dto.authorType,
+          content: dto.content,
+          speaker: dto.speakerName,
+          createdAt: dto.createdAt,
+        },
+      );
+    }
+
     if (triggers !== null) {
       const after = findScene(ctx.db, sceneRow.ulid);
       if (after !== null) {

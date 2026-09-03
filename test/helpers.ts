@@ -15,6 +15,7 @@ import { TrackerRunner } from "../server/trackers/runner.ts";
 import { SummaryRunner } from "../server/summaries/runner.ts";
 import { BanAnalyser } from "../server/options/runner.ts";
 import type { TriggerRunner } from "../server/triggers/runner.ts";
+import { WebhookSender } from "../server/webhooks/sender.ts";
 import type { AppContext } from "../server/context.ts";
 import type { Hono } from "hono";
 import type { AppEnv } from "../server/context.ts";
@@ -32,6 +33,7 @@ export interface TestHarness {
   guides: GuideRunner;
   summaries: SummaryRunner;
   triggers: TriggerRunner;
+  webhooks: WebhookSender;
   bans: BanAnalyser;
   /** Sends a request through the app, carrying the session cookie if one is held. */
   fetch(path: string, init?: RequestInit): Promise<Response>;
@@ -42,6 +44,11 @@ export interface TestHarness {
 }
 
 export interface HarnessOptions {
+  /**
+   * The `fetch` webhook deliveries go through (SPEC §23). Supplied so no
+   * request ever leaves the process, and so a test can watch what was sent.
+   */
+  webhookFetch?: typeof globalThis.fetch;
   /**
    * Supplied so tests never contact a live provider (SPEC §23). The adapter
    * this returns is usually a ScriptedAdapter, which lets a test control
@@ -85,7 +92,13 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
     summaries,
     ...adapterOption,
   });
+  const webhookSender = new WebhookSender({
+    db,
+    keyring: ctx.keyring,
+    ...(options.webhookFetch === undefined ? {} : { fetch: options.webhookFetch }),
+  });
   const { app, triggers } = createServer(ctx, {
+    webhookSender,
     serveClient: false,
     generationService: generation,
     taskRunner: tasks,
@@ -106,6 +119,7 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
     guides,
     summaries,
     triggers,
+    webhooks: webhookSender,
     bans: banAnalyser,
     cookie: null,
     async fetch(path, init) {
@@ -127,6 +141,7 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
       guides.shutdown();
       summaries.shutdown();
       triggers.shutdown();
+      webhookSender.shutdown();
       banAnalyser.shutdown();
       db.close();
       rmSync(dataDir, { recursive: true, force: true });
