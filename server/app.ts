@@ -31,9 +31,11 @@ import { packRoutes } from "./routes/packs.ts";
 import { webhookRoutes } from "./routes/webhooks.ts";
 import { openAiRoutes } from "./routes/openai.ts";
 import { apiKeyRoutes, sceneApiRoutes } from "./routes/api-keys.ts";
+import { memoryRoutes } from "./routes/memory.ts";
 import { createRateLimiter } from "./middleware/rate-limit.ts";
 import { hashToken } from "./db/queries/api-keys.ts";
 import { WebhookSender } from "./webhooks/sender.ts";
+import { MemoryRunner } from "./memory/runner.ts";
 import { TriggerRunner } from "./triggers/runner.ts";
 import type { createAdapter } from "./adapters/index.ts";
 import { spaStatic } from "./static.ts";
@@ -58,6 +60,7 @@ export interface CreateAppOptions {
   createAdapter?: typeof createAdapter;
   /** Injected in tests, so no webhook request ever leaves the process (§23). */
   webhookSender?: WebhookSender;
+  memoryRunner?: MemoryRunner;
 }
 
 export interface CreatedApp {
@@ -81,6 +84,8 @@ export interface CreatedApp {
   triggers: TriggerRunner;
   /** §15's outbound webhooks, for the same reason. */
   webhooks: WebhookSender;
+  /** §11 layer 3's extractor, for the same reason. */
+  memory: MemoryRunner;
 }
 
 /** Build the app and the services it owns. */
@@ -106,6 +111,8 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
     new WebhookSender({ db: ctx.db, keyring: ctx.keyring });
   generation.setWebhooks(webhooks);
   trackers.setWebhooks(webhooks);
+  const memory = options.memoryRunner ?? new MemoryRunner({ db: ctx.db, keyring: ctx.keyring, tasks });
+  generation.setMemory(memory);
   const autopilot = new AutopilotRunner({ db: ctx.db, tasks });
   // Bound both ways, late, because each needs the other: the service reports
   // landings, the runner starts turns (SPEC §6).
@@ -181,6 +188,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   api.route("/webhooks", webhookRoutes(ctx, webhooks));
   api.route("/api-keys", apiKeyRoutes(ctx));
   api.route("/scene-api", sceneApiRoutes(ctx));
+  api.route("/memory", memoryRoutes(ctx, memory));
   api.route("/lorebooks", loreRoutes(ctx));
   api.route("/dossiers", dossierRoutes(ctx));
 
@@ -208,6 +216,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
     autopilot,
     triggers,
     webhooks,
+    memory,
   };
 }
 

@@ -112,6 +112,7 @@ export function buildAddressedPrompt(input: AddressedInput, tokenizer: Tokenizer
       loreTrace: [],
       // A side call's prompt recalls no documents.
       retrievedChunks: [],
+      memoryTrace: [],
     },
   };
 }

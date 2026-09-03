@@ -135,6 +135,7 @@ export function buildImpersonatePrompt(
       loreTrace: [],
       // A side call's prompt recalls no documents.
       retrievedChunks: [],
+      memoryTrace: [],
     },
   };
 }

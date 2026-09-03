@@ -16,6 +16,7 @@ import { SummaryRunner } from "../server/summaries/runner.ts";
 import { BanAnalyser } from "../server/options/runner.ts";
 import type { TriggerRunner } from "../server/triggers/runner.ts";
 import { WebhookSender } from "../server/webhooks/sender.ts";
+import type { MemoryRunner } from "../server/memory/runner.ts";
 import type { AppContext } from "../server/context.ts";
 import type { Hono } from "hono";
 import type { AppEnv } from "../server/context.ts";
@@ -34,6 +35,7 @@ export interface TestHarness {
   summaries: SummaryRunner;
   triggers: TriggerRunner;
   webhooks: WebhookSender;
+  memory: MemoryRunner;
   bans: BanAnalyser;
   /** Sends a request through the app, carrying the session cookie if one is held. */
   fetch(path: string, init?: RequestInit): Promise<Response>;
@@ -97,7 +99,7 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
     keyring: ctx.keyring,
     ...(options.webhookFetch === undefined ? {} : { fetch: options.webhookFetch }),
   });
-  const { app, triggers } = createServer(ctx, {
+  const { app, triggers, memory } = createServer(ctx, {
     webhookSender,
     serveClient: false,
     generationService: generation,
@@ -120,6 +122,7 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
     summaries,
     triggers,
     webhooks: webhookSender,
+    memory,
     bans: banAnalyser,
     cookie: null,
     async fetch(path, init) {
@@ -142,6 +145,7 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
       summaries.shutdown();
       triggers.shutdown();
       webhookSender.shutdown();
+      memory.shutdown();
       banAnalyser.shutdown();
       db.close();
       rmSync(dataDir, { recursive: true, force: true });

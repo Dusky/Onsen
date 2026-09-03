@@ -98,6 +98,7 @@ export function buildTrackerPrompt(question: string): BuiltPrompt {
       unknownMacros: [],
       loreTrace: [],
       retrievedChunks: [],
+      memoryTrace: [],
     },
   };
 }

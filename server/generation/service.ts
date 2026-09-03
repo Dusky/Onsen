@@ -53,6 +53,9 @@ import type { TriggerRunner } from "../triggers/runner.ts";
 import type { WebhookSender } from "../webhooks/sender.ts";
 import type { WebhookEvent } from "../webhooks/events.ts";
 import { sceneChannel } from "../sync/channel.ts";
+import { recall, type MemoryRunner } from "../memory/runner.ts";
+import type { PromptMemoryEntity } from "../prompt/types.ts";
+import type { MemoryRecallTrace } from "../../shared/types.ts";
 import type { InstructTemplate } from "../prompt/index.ts";
 import type { TaskRunStatus } from "../../shared/types.ts";
 
@@ -558,9 +561,15 @@ export class GenerationService {
     this.webhooks = sender;
   }
 
+  /** §11 layer 3's extractor. Bound late, and only runs where a scene asked. */
+  setMemory(runner: MemoryRunner): void {
+    this.memory = runner;
+  }
+
   private autopilot: AutopilotRunner | null = null;
   private triggers: TriggerRunner | null = null;
   private webhooks: WebhookSender | null = null;
+  private memory: MemoryRunner | null = null;
 
   /**
    * Resolves when the generation is no longer running — the drain half of
@@ -653,6 +662,10 @@ export class GenerationService {
         // layer, so the builder stays pure. A retrieval that fails or finds
         // nothing is an empty block, never a failed turn.
         documents: await this.retrieveDocuments(scene, generation.parentId),
+        // §11 layer 3, resolved here for the same reason: the ranking needs an
+        // embeddings provider and the builder is pure. A scene with memory
+        // switched off recalls nothing and costs nothing.
+        ...(await this.recallMemory(scene, generation.parentId)),
       });
 
       const prompt = buildPrompt(context);
@@ -778,6 +791,50 @@ export class GenerationService {
    * the turn it is about would not be worth having.
    */
   /**
+   * What this moment recalls from narrative memory (SPEC §11 layer 3).
+   *
+   * Never throws and never blocks: a recall that failed is an empty block, the
+   * same trade the data bank makes. The trace rides along for the inspector.
+   */
+  private async recallMemory(
+    scene: SceneRow,
+    parentId: number | null,
+  ): Promise<{ memory?: PromptMemoryEntity[]; memoryTrace?: MemoryRecallTrace[] }> {
+    if (scene.memory_enabled !== 1) return {};
+    try {
+      const last = parentId === null ? null : findMessageById(this.db, parentId);
+      const query = last?.content ?? scene.title;
+      const recalled = await recall(this.db, this.keyring, scene, query);
+      if (recalled.length === 0) return {};
+      return {
+        memory: recalled.map((item) => ({
+          id: item.id,
+          name: item.name,
+          // The links travel with the entity: "Hollis took the bribe" is worth
+          // less than "Hollis took the bribe from the man she is about to
+          // serve", and the relation is where the second half lives.
+          content:
+            item.links.length === 0 ? item.content : `${item.content} (${item.links.join("; ")})`,
+          salience: item.effectiveSalience,
+        })),
+        memoryTrace: recalled.map((item) => ({
+          id: item.id,
+          name: item.name,
+          kind: item.kind,
+          score: item.score,
+          similarity: Math.round(item.similarity * 1000) / 1000,
+          salience: item.salience,
+          effectiveSalience: item.effectiveSalience,
+          turnsSince: item.turnsSince,
+          userEdited: item.userEdited,
+        })),
+      };
+    } catch {
+      return {};
+    }
+  }
+
+  /**
    * The automation ids of the entries that actually fired (SPEC §10, §14).
    *
    * Skipped entries are excluded: the trace records everything considered, and
@@ -867,6 +924,14 @@ export class GenerationService {
       if (this.trackers.willRunAutomatically()) {
         const current = findSceneById(this.db, sceneId);
         if (current !== null) await this.trackers.refresh(current, { automatic: true });
+      }
+      // §11 layer 3, after the passes for the same reason the guides are: it
+      // reads the turn, so it wants the version the passes settled on. Last of
+      // the readers because it is the most expensive and the least urgent —
+      // nothing on the next turn breaks if this one has not finished.
+      const forMemory = findSceneById(this.db, sceneId);
+      if (forMemory !== null && this.memory?.willRunFor(forMemory) === true) {
+        await this.memory.extract(forMemory);
       }
       // Summarisation last, and for the same reason: it reads the turn, so it
       // wants the version the passes settled on. It also runs least often.

@@ -242,6 +242,10 @@ export function buildPrompt(ctx: PromptContext): BuiltPrompt {
       score: chunk.score ?? 0,
       excerpt: chunk.content.slice(0, 200),
     })),
+    // Carried, never computed here: the recall ran in the I/O layer, where the
+    // embeddings provider is, and the builder copies the trace for the same
+    // reason it copies the lore one.
+    memoryTrace: ctx.memoryTrace ?? [],
   };
 
   const prefill = blocks.find((block) => block.id === "prefill")?.content;

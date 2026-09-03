@@ -216,6 +216,9 @@ const TRACKER_OPS: readonly SideCallOp[] = TRACKER_KINDS.map((kind) => ({
   autoByDefault: true,
 }));
 
+/** §11 layer 3's extractor. Off by default: the whole feature is opt-in. */
+export const MEMORY_EXTRACT = "memory_extract";
+
 export const OP_KINDS: readonly OpKind[] = [
   {
     key: TURN_CLASSIFIER,
@@ -525,6 +528,25 @@ export const OP_KINDS: readonly OpKind[] = [
     replyLimit: 4_000,
     variables: ["transcript"],
     hideable: false,
+    autoByDefault: true,
+  },
+  {
+    key: MEMORY_EXTRACT,
+    runs: "side_call",
+    label: "Narrative memory",
+    description:
+      "Reads the last few turns for people, places, things and facts worth remembering, and how they relate.",
+    stage: "post_generation",
+    // §11: "a small model at low temperature". An extractor that invents is
+    // worse than one that misses, because what it invents is then carried on
+    // every prompt until somebody notices.
+    samplers: { temperature: 0.2, top_p: 0.9 },
+    timeoutMs: 45_000,
+    replyLimit: 4_000,
+    variables: ["transcript", "known"],
+    hideable: false,
+    // Auto-triggered where the scene has switched memory on, which is the
+    // switch that actually decides it. This flag only says it may run unasked.
     autoByDefault: true,
   },
 ];

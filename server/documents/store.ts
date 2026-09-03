@@ -126,6 +126,24 @@ function chunksFor(db: Database, sceneId: number | null): {
 }
 
 /** Recall the top-K chunks for a query, with their scores (§11). */
+/**
+ * Embed some texts, or null where there is no provider.
+ *
+ * Exposed because §11's narrative memory needs the same provider this store
+ * resolves — a second resolution path would let the two disagree about which
+ * model made a vector, and vectors from different models do not compare.
+ */
+export async function embedTexts(
+  db: Database,
+  keyring: Keyring,
+  texts: string[],
+): Promise<number[][] | null> {
+  if (texts.length === 0) return [];
+  const embedder = resolveEmbedder(db, keyring);
+  if (embedder.kind !== "embeddings") return null;
+  return embedder.embed(texts);
+}
+
 export async function retrieve(
   db: Database,
   keyring: Keyring,

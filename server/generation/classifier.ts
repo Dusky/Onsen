@@ -175,6 +175,7 @@ export function buildClassifierPrompt(input: ClassifierInput, tokenizer: Tokeniz
       loreTrace: [],
       // A side call's prompt recalls no documents.
       retrievedChunks: [],
+      memoryTrace: [],
     },
   };
 }

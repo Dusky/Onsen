@@ -67,6 +67,7 @@ function prompt(system: string, question: string, tokenizer: Tokenizer): BuiltPr
       loreTrace: [],
       // A side call's prompt recalls no documents.
       retrievedChunks: [],
+      memoryTrace: [],
     },
   };
 }

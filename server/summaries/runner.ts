@@ -142,6 +142,7 @@ export function buildSummaryPrompt(
       loreTrace: [],
       // A side call's prompt recalls no documents.
       retrievedChunks: [],
+      memoryTrace: [],
     },
   };
 }

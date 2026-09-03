@@ -118,6 +118,7 @@ export function buildGuidePrompt(question: string, tokenizer = createEstimatingT
       loreTrace: [],
       // A side call's prompt recalls no documents.
       retrievedChunks: [],
+      memoryTrace: [],
     },
   };
 }

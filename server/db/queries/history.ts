@@ -71,6 +71,8 @@ export interface SceneRow {
   background_path: string | null;
   /** Whether an OOC aside renders inline in the log, or only in the channel (§7). */
   ooc_inline: number;
+  /** §11 layer 3's narrative memory: off by default, enabled per scene. */
+  memory_enabled: number;
   /** §19's outbound API: off by default, enabled per scene. */
   api_enabled: number;
   api_history_mode: "last_message" | "sync" | "stateless";

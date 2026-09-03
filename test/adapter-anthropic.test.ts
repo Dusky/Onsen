@@ -105,6 +105,7 @@ const PROMPT: BuiltPrompt = {
     loreTrace: [],
     // A side call's prompt recalls no documents.
     retrievedChunks: [],
+    memoryTrace: [],
   },
 };
 

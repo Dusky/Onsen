@@ -714,6 +714,49 @@ export interface SceneApiDto {
   modelId: string | null;
 }
 
+/* ------------------------------------------------------------------ */
+/* Narrative memory (SPEC §11 layer 3)                                 */
+/* ------------------------------------------------------------------ */
+
+export const MEMORY_KINDS = ["person", "place", "object", "event", "fact"] as const;
+export type MemoryKind = (typeof MEMORY_KINDS)[number];
+
+export function isMemoryKind(value: unknown): value is MemoryKind {
+  return typeof value === "string" && (MEMORY_KINDS as readonly string[]).includes(value);
+}
+
+export interface MemoryEntityDto {
+  id: string;
+  kind: MemoryKind;
+  name: string;
+  content: string;
+  /** 0-1, as stored. What decay does to it is a function of how long ago. */
+  salience: number;
+  /** Turns since it was last mentioned. */
+  turnsSince: number;
+  /** §11: a reader's edit is never overwritten by extraction. */
+  userEdited: boolean;
+  /** The relations it is on either end of, as prose. */
+  links: string[];
+  updatedAt: number;
+}
+
+/** One recalled memory, with everything needed to say why it was recalled. */
+export interface MemoryRecallTrace {
+  id: string;
+  name: string;
+  kind: string;
+  /** What the ranking used. */
+  score: number;
+  /** How close it was to the moment. */
+  similarity: number;
+  /** As stored, and after decay. Kept apart so the trace can show both. */
+  salience: number;
+  effectiveSalience: number;
+  turnsSince: number;
+  userEdited: boolean;
+}
+
 export interface SceneDto {
   id: string;
   title: string;
@@ -1356,6 +1399,15 @@ export interface PromptDebugInfo {
   loreTrace: ActivationTrace[];
   /** Chunks the data bank recalled, with their scores (§11). */
   retrievedChunks: RetrievedDocumentTrace[];
+  /**
+   * What narrative memory recalled, and why (§11 layer 3).
+   *
+   * §11 asks for a "full retrieval trace in the inspector: what was recalled,
+   * its score, why". The two halves of the blend are kept apart here rather
+   * than merged into the score, because "it scored 0.7" answers nothing and
+   * "similar, but mostly it just matters a lot" answers the question.
+   */
+  memoryTrace: MemoryRecallTrace[];
 }
 
 /** One recalled chunk, for the inspector's retrieval trace (§11). */

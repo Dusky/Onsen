@@ -190,7 +190,37 @@ const TRACKER_CHARACTERS_TEMPLATE = `You keep one structured note about a story 
 Reply with JSON only, no commentary, in exactly this shape:
 {"characters": [{"name": "...", "mood": "...", "position": "...", "notable_state": "...", "private_knowledge": "..."}]}`;
 
+/**
+ * §11 layer 3's extractor.
+ *
+ * Asked for the three signals separately rather than one number, because a
+ * model handed "rate the importance 0-1" answers 0.7 to everything — and
+ * because the three are what §11 names, so a reader looking at a salience can
+ * be told what it was made of.
+ *
+ * "What is already known" is passed in so the model can say a *changed* thing
+ * rather than restate the cast list every turn.
+ */
+const MEMORY_EXTRACT_TEMPLATE = `Read the recent turns of a story and note what is worth remembering.
+
+Already known:
+{{known}}
+
+Recent turns:
+{{transcript}}
+
+Note only what the recent turns establish or change. Do not restate what is already known unless it changed. If nothing is worth noting, reply with empty lists.
+
+For each thing, give three scores from 0 to 1:
+- emotional: how much feeling is attached to it
+- narrative: how much of the story turns on it
+- density: how much it says that is not already obvious
+
+Reply with JSON only, no commentary, in exactly this shape:
+{"entities": [{"kind": "person|place|object|event|fact", "name": "...", "content": "one or two sentences", "salience": {"emotional": 0.0, "narrative": 0.0, "density": 0.0}}], "relations": [{"from": "name", "to": "name", "kind": "owes money to", "content": "...", "salience": {"emotional": 0.0, "narrative": 0.0, "density": 0.0}}]}`;
+
 const DEFAULTS: Record<string, string> = {
+  memory_extract: MEMORY_EXTRACT_TEMPLATE,
   [ANALYSE_SLOP]: ANALYSE_SLOP_TEMPLATE,
   [SUMMARISE]: SUMMARISE_TEMPLATE,
   [RESUMMARISE]: RESUMMARISE_TEMPLATE,

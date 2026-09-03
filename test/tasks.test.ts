@@ -147,6 +147,7 @@ function somePrompt(text = "Answer with one word."): BuiltPrompt {
       loreTrace: [],
       // A side call's prompt recalls no documents.
       retrievedChunks: [],
+      memoryTrace: [],
     },
   };
 }

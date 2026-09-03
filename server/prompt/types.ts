@@ -25,6 +25,7 @@ import type {
   SkipReason,
 } from "../../shared/types.ts";
 import type { InstructTemplate } from "./instruct.ts";
+import type { MemoryRecallTrace } from "../../shared/types.ts";
 
 // The inspector's shapes are the client/server contract, so they live in
 // /shared and are re-exported here, where the builder and its tests import
@@ -359,6 +360,12 @@ export interface PromptContext {
    * the context because a side call's context has no lore at all.
    */
   loreTrace?: ActivationTrace[];
+  /**
+   * What narrative memory recalled, and why (§11 layer 3). Carried like the
+   * lore trace, and for the same reason: the ranking ran where the embeddings
+   * provider is, and the inspector reads the built prompt's debug.
+   */
+  memoryTrace?: MemoryRecallTrace[];
   /** Already retrieved (§11). */
   documents: PromptDocumentChunk[];
   summaries: PromptSummary[];

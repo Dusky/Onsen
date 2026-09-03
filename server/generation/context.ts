@@ -8,6 +8,7 @@ import type {
   PromptCharacter,
   PromptContext,
   PromptDocumentChunk,
+  PromptMemoryEntity,
   PromptMessage,
   PromptPreset,
   PromptTurn,
@@ -34,6 +35,7 @@ import { fillTemplate } from "../prompt/index.ts";
 import { CONTINUE, CORRECT, EXPAND, NUDGE, opKind, STEER } from "../tasks/registry.ts";
 import type { PromptOpConfig } from "../prompt/index.ts";
 import { runStage, scriptContext, type ScriptContext } from "../scripts/runtime.ts";
+import type { MemoryRecallTrace } from "../../shared/types.ts";
 
 /**
  * Assembling a PromptContext from the database.
@@ -305,6 +307,14 @@ export interface BuildContextOptions {
   seed: number;
   /** Retrieved document chunks, resolved in the I/O layer before the build (§11). */
   documents?: PromptDocumentChunk[];
+  /**
+   * Recalled narrative memory (§11 layer 3), resolved in the I/O layer for the
+   * same reason as documents: retrieval needs an embeddings provider, and the
+   * builder is pure.
+   */
+  memory?: PromptMemoryEntity[];
+  /** The full recall trace, for the inspector. Carried, never read. */
+  memoryTrace?: MemoryRecallTrace[];
 }
 
 /**
@@ -486,6 +496,7 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
     // why" is this, and it is captured at build time because a later
     // recomputation could disagree — the RNG is seeded per generation (§10).
     loreTrace: lore.trace,
+    ...(options.memoryTrace === undefined ? {} : { memoryTrace: options.memoryTrace }),
     documents: options.documents ?? [],
     // Rolling summarisation (SPEC §11). Which of the scene's summaries reach
     // the prompt is decided by the threshold and the freeze, not by this call.
@@ -495,7 +506,7 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
       coversFromMessageId: messageUlids.get(row.covers_from_message_id) ?? null,
       coversToMessageId: messageUlids.get(row.covers_to_message_id) ?? null,
     })),
-    memory: [],
+    memory: options.memory ?? [],
     trackers: activeTrackers(options.db, options.scene.id).map((row) => ({
       name: row.kind === "scene" ? "Scene" : "Characters",
       content: row.content,
