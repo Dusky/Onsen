@@ -71,6 +71,11 @@ export interface SceneRow {
   background_path: string | null;
   /** Whether an OOC aside renders inline in the log, or only in the channel (§7). */
   ooc_inline: number;
+  /** §19's outbound API: off by default, enabled per scene. */
+  api_enabled: number;
+  api_history_mode: "last_message" | "sync" | "stateless";
+  /** What a model id addresses this scene by. Null until the API is switched on. */
+  api_slug: string | null;
   /** Move the injection point only every N turns, for the prompt cache (§11). */
   summarise_freeze: number;
   active_leaf_id: number | null;

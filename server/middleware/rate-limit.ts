@@ -13,6 +13,18 @@ export interface RateLimitOptions {
   /** Distinguishes buckets when several routes share a limiter module. */
   scope: string;
   now?: () => number;
+  /**
+   * What to count against, when the client address is the wrong answer.
+   *
+   * §19's outbound API is rate-limited *per key*: it is reached by machines
+   * holding bearer tokens, and behind a tunnel every one of them arrives from
+   * the same forwarded address — so per-address there would be one bucket for
+   * every caller, and one busy client would lock out the rest.
+   *
+   * Returning null falls back to the address, which is what a request with no
+   * identity of its own deserves.
+   */
+  identify?: (request: Request) => string | null;
 }
 
 interface Bucket {
@@ -68,7 +80,8 @@ export function createRateLimiter(options: RateLimitOptions): RateLimiter {
     // single-user app is tiny; sweeping on write keeps it that way.
     if (buckets.size > 1024) sweep(at);
 
-    const key = `${options.scope}:${clientKey(c.req.raw, peerAddress(c.env, c.req.raw))}`;
+    const identity = options.identify?.(c.req.raw) ?? null;
+    const key = `${options.scope}:${identity ?? clientKey(c.req.raw, peerAddress(c.env, c.req.raw))}`;
     const existing = buckets.get(key);
     const bucket =
       existing && existing.resetAt > at ? existing : { count: 0, resetAt: at + options.windowMs };

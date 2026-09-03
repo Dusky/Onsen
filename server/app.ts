@@ -29,6 +29,10 @@ import { scriptRoutes } from "./routes/scripts.ts";
 import { triggerRoutes } from "./routes/triggers.ts";
 import { packRoutes } from "./routes/packs.ts";
 import { webhookRoutes } from "./routes/webhooks.ts";
+import { openAiRoutes } from "./routes/openai.ts";
+import { apiKeyRoutes, sceneApiRoutes } from "./routes/api-keys.ts";
+import { createRateLimiter } from "./middleware/rate-limit.ts";
+import { hashToken } from "./db/queries/api-keys.ts";
 import { WebhookSender } from "./webhooks/sender.ts";
 import { TriggerRunner } from "./triggers/runner.ts";
 import type { createAdapter } from "./adapters/index.ts";
@@ -122,6 +126,33 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
     await withOrigin(origin === null ? null : origin.slice(0, 64), () => next());
   });
 
+  /**
+   * §19's outbound API, mounted before the session middleware and outside
+   * `/api`.
+   *
+   * Deliberately outside both. This surface is addressed by machines holding
+   * bearer tokens; a cookie has no business here, and a cookie that *worked*
+   * here would make every page on the internet able to drive a scene through
+   * the reader's own browser.
+   *
+   * Rate-limited per key, as §19 asks: it is machine-accessible, so the failure
+   * mode is a loop nobody is watching rather than a person clicking twice.
+   */
+  const apiLimiter = createRateLimiter({
+    limit: 120,
+    windowMs: 60_000,
+    scope: "outbound-api",
+    // The bearer token, hashed, so the bucket is the key rather than the
+    // address every tunnelled request shares.
+    identify: (request) => {
+      const header = request.headers.get("Authorization");
+      const match = header === null ? null : /^Bearer\s+(.+)$/i.exec(header.trim());
+      return match === null ? null : hashToken(match[1]!.trim());
+    },
+  });
+  app.use("/v1/*", apiLimiter.middleware);
+  app.route("/v1", openAiRoutes({ ctx, generation }));
+
   app.use("*", sessionMiddleware(ctx));
 
   const api = new Hono<AppEnv>();
@@ -148,6 +179,8 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   api.route("/triggers", triggerRoutes(ctx, triggers));
   api.route("/packs", packRoutes(ctx));
   api.route("/webhooks", webhookRoutes(ctx, webhooks));
+  api.route("/api-keys", apiKeyRoutes(ctx));
+  api.route("/scene-api", sceneApiRoutes(ctx));
   api.route("/lorebooks", loreRoutes(ctx));
   api.route("/dossiers", dossierRoutes(ctx));
 
