@@ -25,6 +25,9 @@ import type {
   PackInstallDto,
   PackUninstallPreviewDto,
   PackExportableDto,
+  WebhookDto,
+  NewWebhookDto,
+  WebhookEvent,
   SavedFilterDto,
   TrackerDto,
   CreateConnectionProfileRequest,
@@ -117,6 +120,7 @@ export const connectionKeys = {
   triggers: ["event-triggers"] as const,
   triggerActions: ["trigger-actions"] as const,
   packs: ["packs"] as const,
+  webhooks: ["webhooks"] as const,
 };
 
 /** Invalidate everything a connection change can touch. */
@@ -1581,4 +1585,58 @@ export function useExportPack() {
       URL.revokeObjectURL(url);
     },
   });
+}
+
+/* ------------------------------------------------------------------ */
+/* Outbound webhooks (SPEC §15)                                        */
+/* ------------------------------------------------------------------ */
+
+export function useWebhooks() {
+  return useQuery({
+    queryKey: connectionKeys.webhooks,
+    queryFn: () => api.get<WebhookDto[]>("/webhooks"),
+    // The delivery log is the point of this screen, and it changes without
+    // anything here doing anything, so it is refetched while the screen is open.
+    refetchInterval: 15_000,
+  });
+}
+
+function useWebhookMutation<TArgs, TResult>(fn: (args: TArgs) => Promise<TResult>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => void client.invalidateQueries({ queryKey: connectionKeys.webhooks }),
+  });
+}
+
+export function useCreateWebhook() {
+  return useWebhookMutation(
+    (body: { name: string; url: string; events: WebhookEvent[]; sceneId?: string }) =>
+      api.post<NewWebhookDto>("/webhooks", body),
+  );
+}
+
+export function useUpdateWebhook() {
+  return useWebhookMutation(({ id, ...body }: Record<string, unknown> & { id: string }) =>
+    api.patch<WebhookDto>(`/webhooks/${id}`, body),
+  );
+}
+
+export function useDeleteWebhook() {
+  return useWebhookMutation((id: string) => api.delete<void>(`/webhooks/${id}`));
+}
+
+export function useRotateWebhookSecret() {
+  return useWebhookMutation((id: string) =>
+    api.post<{ secret: string }>(`/webhooks/${id}/rotate`),
+  );
+}
+
+/** Send one now. The only delivery anybody waits for. */
+export function useTestWebhook() {
+  return useWebhookMutation((id: string) =>
+    api.post<{ ok: boolean; status: number | null; detail: string | null }>(
+      `/webhooks/${id}/test`,
+    ),
+  );
 }

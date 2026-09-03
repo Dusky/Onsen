@@ -3285,3 +3285,66 @@ listed it.** `addBan` bumps a count rather than duplicating, so the row the pack
 "added" was the reader's own — and uninstalling would have taken it. The install
 checks first now, which is the same class of bug as owning by name instead of by
 id, one layer down.
+
+---
+
+## Phase 35 — Outbound webhooks
+
+§15's out-of-process escape hatch, and the one it says to build early because
+it "may remove the need for tier 3 entirely".
+
+### What was built
+
+Five events, the five §15 names: `message.created`, `generation.complete`,
+`beat.parsed`, `tracker.updated`, `lore.activated`. Each is a moment that
+already existed in the app, so subscribing forwards something that happened
+rather than computing something new for a listener.
+
+A subscription is a name, a URL, a set of events, and optionally one roleplay.
+It carries its own delivery log — the last fifty attempts, with status, response
+code, duration and whatever the receiver said.
+
+The sender never blocks. Emitting starts the work and returns; three attempts
+with a short backoff; a five-second timeout; every failure caught.
+
+Signing is Stripe's scheme, and `verifySignature` ships beside the sender so a
+receiver has a reference implementation and the tests have something to check
+against.
+
+### Deliberately deferred
+
+- **A per-subscription event filter finer than the event name.** "Only messages
+  from Kestrel" is a thing someone will want; it is also a query language, and
+  a receiver can drop what it does not want.
+- **Delivery replay.** The log records what happened; it does not keep the body,
+  so a failed delivery cannot be re-sent. Keeping every payload for fifty
+  deliveries per subscription is a different feature with a different cost.
+- **Inbound webhooks.** §19's outbound OpenAI-compatible API is the other half of
+  the escape hatch and is phase 37.
+
+### Spec changes
+
+§15 gains a `Settled while building phase 35` block with seven decisions.
+
+### Surprises
+
+**Nothing surprising in the code, and that is worth saying.** Nineteen tests
+passed on the first run, which for a feature this size usually means the tests
+are not testing anything. So it was driven against a receiver written from
+scratch in twenty lines — its own HMAC check, no shared code with the app — and
+that receiver verified both a test delivery and a real one. Then the receiver
+was killed mid-session: the message still wrote, the reply still returned, three
+attempts were logged with the connection error, and the failure counter moved.
+The independent check is what made the green suite mean something.
+
+**A URL in the chrome typeface came out shouting.** The subtitle style
+uppercases everything, which is right for `BUILT-IN` and wrong for
+`HTTP://127.0.0.1:9788/HOOK` — a path is case-sensitive, and that is not what
+the reader typed. The URL keeps its own case now; the state beside it stays
+chrome.
+
+**A button labelled with a state.** The subscription sheet had `OFF` where the
+action belongs, next to a row that already shows whether it is off. It says
+"Switch it off" now — the same plain-language problem as `situational` and
+`OPENAI_COMPATIBLE` in the two phases before, which suggests looking for it
+deliberately rather than waiting to notice.

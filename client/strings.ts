@@ -520,6 +520,48 @@ export const strings = {
       script: "Run a regex script",
     } as Record<string, string>,
 
+    /** Outbound webhooks (SPEC §15, phase 35). */
+    webhooks: "Webhooks",
+    webhooksHint:
+      "Post what happens in a roleplay to a URL you run. Signed, so your receiver can tell it came from here.",
+    addWebhook: "Add a subscription",
+    webhookName: "Name",
+    webhookUrl: "Where to post",
+    webhookUrlHint: "http or https. A local address is fine — that is usually where the receiver is.",
+    webhookEvents: "What to send",
+    webhookScope: "Which roleplay",
+    webhookAllScenes: "All of them",
+    /** The buttons are actions; the row shows the state. */
+    webhookOff: "Switch it off",
+    webhookOn: "Switch it on",
+    webhookIsOff: "Off",
+    webhookTest: "Send a test",
+    webhookTesting: "Sending…",
+    webhookTestOk: (status: number | null) => `Delivered${status === null ? "" : ` · ${status}`}`,
+    webhookTestFail: "Not delivered",
+    webhookRotate: "New signing key",
+    webhookRotateHint: "The old one stops working immediately.",
+    webhookDelete: "Delete",
+    webhookDeleteConfirm: "This subscription is deleted and stops receiving anything.",
+    webhookSecret: "Signing key",
+    webhookSecretHint:
+      "Shown once. Your receiver checks it against the X-Onsen-Signature header; copy it now.",
+    webhookSecretDone: "Saved it",
+    webhookDeliveries: "Recent deliveries",
+    webhookNoDeliveries: "Nothing sent yet.",
+    webhookDisabled: (reason: string) => reason,
+    webhookFailures: (n: number) => `${n} failing`,
+    webhookNone: "Nothing subscribed.",
+    webhookDelivery: (status: string, code: number | null) =>
+      `${status === "ok" ? "Delivered" : "Failed"}${code === null ? "" : ` · ${code}`}`,
+    eventName: {
+      "message.created": "A message is written",
+      "generation.complete": "A reply finishes",
+      "beat.parsed": "A beat is split by speaker",
+      "tracker.updated": "A tracker changes",
+      "lore.activated": "Lore fires",
+    } as Record<string, string>,
+
     /** Packs (SPEC §15 tier 2, phase 34). */
     packs: "Packs",
     packsHint:

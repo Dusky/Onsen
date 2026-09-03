@@ -4,6 +4,7 @@ import type {
   EventTriggerDto,
   InstalledPackDto,
   PackPlanDto,
+  WebhookDto,
   PresetDto,
   ProviderDto,
   RegexScriptDto,
@@ -39,6 +40,8 @@ import {
   useTriggers,
   usePacks,
   usePreviewPack,
+  useWebhooks,
+  useScenes,
 } from "../lib/queries.ts";
 import { TabBar } from "../components/TabBar.tsx";
 import { Sheet } from "../components/Sheet.tsx";
@@ -46,6 +49,7 @@ import { PresetEditor } from "../components/PresetEditor.tsx";
 import { ScriptEditor } from "../components/ScriptEditor.tsx";
 import { TriggerEditor } from "../components/TriggerEditor.tsx";
 import { ExportPackSheet, InstallPackSheet, RemovePackSheet } from "../components/PackSheets.tsx";
+import { WebhookEditor } from "../components/WebhookEditor.tsx";
 
 /**
  * Settings (design handoff, screen 3i).
@@ -787,6 +791,93 @@ function UpdateGroup() {
 /** The data bank's embeddings provider — base URL, model, key — or nothing,
  * which is the keyword fallback, and the section says so rather than hiding. */
 /**
+ * Outbound webhooks (SPEC §15).
+ *
+ * The row carries the delivery state rather than hiding it behind the sheet: a
+ * subscription that has been failing for a week and one that is working look
+ * identical otherwise, and this is the one feature whose failures happen
+ * entirely off-screen.
+ */
+function WebhooksSection() {
+  const webhooks = useWebhooks();
+  const scenes = useScenes();
+  const [editing, setEditing] = useState<WebhookDto | null | undefined>(undefined);
+
+  const subscriptions = webhooks.data ?? [];
+
+  return (
+    <>
+      <p className="section-label mb-[4px]">{strings.settings.webhooks}</p>
+      <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+        {strings.settings.webhooksHint}
+      </p>
+
+      {subscriptions.length === 0 ? (
+        <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+          {strings.settings.webhookNone}
+        </p>
+      ) : null}
+      {subscriptions.map((webhook) => {
+        const failing = webhook.failures > 0;
+        return (
+          <Row key={webhook.id}>
+            <button
+              type="button"
+              onClick={() => setEditing(webhook)}
+              className="flex w-full items-baseline gap-[9px] text-left"
+            >
+              {statusDot(webhook.enabled && !failing)}
+              <span className="min-w-0 flex-1">
+                <span
+                  className="block truncate text-[15px] font-medium"
+                  style={{ opacity: webhook.enabled ? 1 : 0.55 }}
+                >
+                  {webhook.name}
+                </span>
+                <span className="chrome block truncate text-[9px] tracking-[0.06em] text-ink-dim">
+                  {/* The URL keeps its own case. Everything else in this
+                      subtitle is chrome and is uppercased; a URL is not chrome,
+                      and a path is case-sensitive. */}
+                  <span>{webhook.url}</span>
+                  <span className="uppercase">
+                    {[
+                      webhook.enabled
+                        ? null
+                        : (webhook.disabledReason ?? strings.settings.webhookIsOff),
+                      failing ? strings.settings.webhookFailures(webhook.failures) : null,
+                    ]
+                      .filter((part) => part !== null)
+                      .map((part) => ` \u00b7 ${part}`)
+                      .join("")}
+                  </span>
+                </span>
+              </span>
+              <span className="chrome flex-none self-center text-[12px] text-ink-dim">›</span>
+            </button>
+          </Row>
+        );
+      })}
+
+      <button
+        type="button"
+        className="btn mt-[12px] mb-[26px] w-full"
+        onClick={() => setEditing(null)}
+      >
+        {strings.settings.addWebhook}
+      </button>
+
+      {editing !== undefined ? (
+        <WebhookEditor
+          webhook={editing}
+          scenes={scenes.data ?? []}
+          onClose={() => setEditing(undefined)}
+        />
+      ) : null}
+    </>
+  );
+}
+
+/**
  * Packs (SPEC §15 tier 2).
  *
  * The preview is not optional here. A pack writes many rows at once and can
@@ -1302,6 +1393,8 @@ export function SettingsScreen() {
             );
           })}
           <div className="h-[20px]" />
+
+          <WebhooksSection />
 
           <PacksSection />
 

@@ -623,6 +623,53 @@ export interface PackUninstallPreviewDto {
   rows: { table: string; label: string }[];
 }
 
+/* ------------------------------------------------------------------ */
+/* Outbound webhooks (SPEC §15)                                        */
+/* ------------------------------------------------------------------ */
+
+export const WEBHOOK_EVENTS = [
+  "message.created",
+  "generation.complete",
+  "beat.parsed",
+  "tracker.updated",
+  "lore.activated",
+] as const;
+export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number];
+
+/** One attempt at one delivery, for the log the subscription carries. */
+export interface WebhookDeliveryDto {
+  event: string;
+  status: "ok" | "failed";
+  /** The HTTP status, where there was one. Null when nothing answered. */
+  responseCode: number | null;
+  detail: string | null;
+  durationMs: number;
+  attempt: number;
+  at: number;
+}
+
+export interface WebhookDto {
+  id: string;
+  name: string;
+  url: string;
+  events: WebhookEvent[];
+  /** Null when this listens to every roleplay. */
+  sceneId: string | null;
+  enabled: boolean;
+  /** Consecutive failures. Reset when the subscription is switched back on. */
+  failures: number;
+  /** Why it was switched off, when the app did that rather than the reader. */
+  disabledReason: string | null;
+  createdAt: number;
+  updatedAt: number;
+  deliveries: WebhookDeliveryDto[];
+}
+
+/** The signing key is returned once, on the response that created it. */
+export interface NewWebhookDto extends WebhookDto {
+  secret: string;
+}
+
 export interface SceneDto {
   id: string;
   title: string;

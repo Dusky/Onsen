@@ -2113,6 +2113,44 @@ Out-of-process integration is strictly safer than an in-process plugin and
 requires no sandbox. Build webhooks early; they may remove the need for tier 3
 entirely.
 
+### Settled while building phase 35
+
+- **A webhook can never affect a turn.** The safety argument above stops being
+  true the moment a receiver that stopped answering can stall a generation. So
+  emitting is never awaited, every failure is swallowed into the delivery log,
+  the request carries a five-second timeout, and three attempts with a short
+  fixed backoff is the end of it — a webhook is about something that just
+  happened, and a delivery four minutes late is worse than none, because the
+  receiver has already drawn the next turn.
+- **The failure is recorded even though it is swallowed.** A receiver that
+  started refusing requests otherwise looks exactly like a receiver nobody is
+  sending to, which is the failure §18 forbids. Every attempt is logged with its
+  status, its response code and what came back; twenty consecutive failures
+  switch a subscription off with a reason, and switching it back on clears the
+  count so one more failure does not disable it again.
+- **The signature is Stripe's shape**, `t=<seconds>,v1=<hmac>` over
+  `timestamp.body`, because that is the one every receiver already knows how to
+  verify. The timestamp is inside the signed material rather than beside it: a
+  signature over the body alone is replayable forever. `verifySignature` ships
+  alongside the sender — a scheme whose only implementation is the sender is one
+  nobody can be sure they have implemented correctly.
+- **The signing key is generated, not asked for**, returned exactly once on the
+  response that created it, and stored encrypted with the keyring that holds
+  provider credentials. A key the UI could re-read is one that leaks through
+  every screenshot of that screen. Rotation replaces rather than overlaps: one
+  sender, one receiver, and a grace period would be machinery for a problem a
+  single-user app does not have.
+- **Redirects are not followed.** A redirect is the classic way a signed request
+  ends up somewhere its sender did not choose.
+- **Loopback and private addresses are allowed.** This is single-user
+  self-hosted software and the most likely receiver is a bridge on the same
+  machine; refusing `127.0.0.1` would block the main use case to prevent a
+  request the operator asked for. Credentials in the URL are refused instead —
+  that would put a second secret somewhere this app does not encrypt.
+- **`generation.complete` fires for a cancelled or failed turn too.** A bridge
+  that only heard about the ones that worked would sit waiting on the ones that
+  did not, which is the state it most needs told about.
+
 ---
 
 ## 16. UI surfaces
