@@ -205,14 +205,16 @@ describe("the surface refuses a trigger that could never work", () => {
 
   test("the editor can ask what an action may point at", async () => {
     const t = await signedIn();
-    const options = await json<{ guide: string[]; tracker: string[]; events: string[] }>(
-      t,
-      "GET",
-      "/api/triggers/actions",
-    );
-    expect(options.guide).toContain("situational");
-    expect(options.tracker).toContain("scene");
+    const options = await json<{
+      guide: { value: string; label: string }[];
+      tracker: { value: string; label: string }[];
+      events: string[];
+    }>(t, "GET", "/api/triggers/actions");
+    expect(options.guide.map((ref) => ref.value)).toContain("situational");
+    expect(options.tracker.map((ref) => ref.value)).toContain("scene");
     expect(options.events).toContain("lore_activation");
+    // Named as the rest of the app names them, not as the enum.
+    expect(options.guide.every((ref) => ref.label !== ref.value)).toBe(true);
   });
 
   test("deleting a scene takes its scene-scoped triggers", async () => {

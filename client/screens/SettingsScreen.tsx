@@ -1,5 +1,13 @@
 import { useRef, useState } from "react";
-import type { ConnectionProfileDto, PresetDto, ProviderDto, TaskDto, UpdateStatusDto } from "@shared/types.ts";
+import type {
+  ConnectionProfileDto,
+  EventTriggerDto,
+  PresetDto,
+  ProviderDto,
+  RegexScriptDto,
+  TaskDto,
+  UpdateStatusDto,
+} from "@shared/types.ts";
 import { PROVIDER_KINDS, INJECTION_ROLES, type ProviderKind } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
@@ -24,10 +32,15 @@ import {
   useUpdateStatus,
   useEmbeddingsConfig,
   useSaveEmbeddingsConfig,
+  useScripts,
+  useTriggerActions,
+  useTriggers,
 } from "../lib/queries.ts";
 import { TabBar } from "../components/TabBar.tsx";
 import { Sheet } from "../components/Sheet.tsx";
 import { PresetEditor } from "../components/PresetEditor.tsx";
+import { ScriptEditor } from "../components/ScriptEditor.tsx";
+import { TriggerEditor } from "../components/TriggerEditor.tsx";
 
 /**
  * Settings (design handoff, screen 3i).
@@ -768,6 +781,134 @@ function UpdateGroup() {
 
 /** The data bank's embeddings provider — base URL, model, key — or nothing,
  * which is the keyword fallback, and the section says so rather than hiding. */
+/**
+ * Regex scripts and event triggers (SPEC §14).
+ *
+ * One section rather than two, because they are one feature used together: a
+ * trigger's most useful action is firing a script, and a script written to be
+ * fired by a trigger is switched off on the automatic paths. Splitting them
+ * would put the two halves of one setup in different parts of the screen.
+ */
+function AutomationSection() {
+  const scripts = useScripts();
+  const triggers = useTriggers();
+  const actions = useTriggerActions();
+  const [editingScript, setEditingScript] = useState<RegexScriptDto | null | undefined>(undefined);
+  const [editingTrigger, setEditingTrigger] = useState<EventTriggerDto | null | undefined>(
+    undefined,
+  );
+
+  const scriptList = scripts.data ?? [];
+
+  /**
+   * What a trigger points at, as a person would say it rather than as an id or
+   * a bare enum. The same list the editor offers, so a row and its sheet cannot
+   * disagree about what a trigger runs.
+   */
+  const named = new Map(
+    (["guide", "tracker", "script"] as const).flatMap((action) =>
+      (actions.data?.[action] ?? []).map((ref) => [`${action}:${ref.value}`, ref.label] as const),
+    ),
+  );
+  function refLabel(trigger: EventTriggerDto): string {
+    return named.get(`${trigger.action}:${trigger.actionRef}`) ?? trigger.actionRef;
+  }
+
+  return (
+    <>
+      <p className="section-label mb-[4px]">{strings.settings.automation}</p>
+      <p className="chrome mb-[16px] text-[10px] leading-[1.6] text-ink-dim">
+        {strings.settings.automationHint}
+      </p>
+
+      <p className="section-label mb-[4px]">{strings.settings.scripts}</p>
+      <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+        {strings.settings.scriptsHint}
+      </p>
+      {scriptList.map((script) => (
+        <Row key={script.id}>
+          <button
+            type="button"
+            onClick={() => setEditingScript(script)}
+            className="flex w-full items-baseline gap-[9px] text-left"
+          >
+            <span className="min-w-0 flex-1">
+              <span
+                className="block truncate text-[15px] font-medium"
+                style={{ opacity: script.enabled ? 1 : 0.55 }}
+              >
+                {script.name}
+              </span>
+              <span className="chrome block truncate text-[9px] tracking-[0.06em] text-ink-dim uppercase">
+                {[
+                  strings.settings.stageLabel[script.applyTo],
+                  strings.settings.scopeLabel[script.scope],
+                  script.enabled ? null : strings.settings.scriptOff,
+                ]
+                  .filter((part) => part !== null && part !== undefined)
+                  .join(" \u00b7 ")}
+              </span>
+            </span>
+            <span className="chrome flex-none self-center text-[12px] text-ink-dim">›</span>
+          </button>
+        </Row>
+      ))}
+      <button
+        type="button"
+        className="btn mt-[12px] mb-[26px] w-full"
+        onClick={() => setEditingScript(null)}
+      >
+        {strings.settings.addScript}
+      </button>
+
+      <p className="section-label mb-[4px]">{strings.settings.triggers}</p>
+      <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+        {strings.settings.triggersHint}
+      </p>
+      {(triggers.data ?? []).map((trigger) => (
+        <Row key={trigger.id}>
+          <button
+            type="button"
+            onClick={() => setEditingTrigger(trigger)}
+            className="flex w-full items-baseline gap-[9px] text-left"
+          >
+            <span className="min-w-0 flex-1">
+              <span
+                className="block truncate text-[15px] font-medium"
+                style={{ opacity: trigger.enabled ? 1 : 0.55 }}
+              >
+                {trigger.name}
+              </span>
+              <span className="chrome block truncate text-[9px] tracking-[0.06em] text-ink-dim uppercase">
+                {[strings.settings.eventLabel[trigger.event], refLabel(trigger)]
+                  .filter((part) => part !== undefined)
+                  .join(" \u00b7 ")}
+              </span>
+            </span>
+            <span className="chrome flex-none self-center text-[12px] text-ink-dim">›</span>
+          </button>
+        </Row>
+      ))}
+      <button
+        type="button"
+        className="btn mt-[12px] w-full"
+        disabled={scriptList.length === 0 && (triggers.data ?? []).length === 0}
+        onClick={() => setEditingTrigger(null)}
+      >
+        {strings.settings.addTrigger}
+      </button>
+      <div className="mb-[26px]" />
+
+      {editingScript !== undefined ? (
+        <ScriptEditor script={editingScript} onClose={() => setEditingScript(undefined)} />
+      ) : null}
+      {editingTrigger !== undefined ? (
+        <TriggerEditor trigger={editingTrigger} onClose={() => setEditingTrigger(undefined)} />
+      ) : null}
+    </>
+  );
+}
+
 function EmbeddingsSection() {
   const config = useEmbeddingsConfig();
   const save = useSaveEmbeddingsConfig();
@@ -1054,6 +1195,8 @@ export function SettingsScreen() {
             );
           })}
           <div className="h-[20px]" />
+
+          <AutomationSection />
 
           <EmbeddingsSection />
 

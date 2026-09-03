@@ -171,6 +171,41 @@ describe("the test panel", () => {
     expect(stored.content).toBe("a quiet room");
   });
 
+  test("a draft runs unsaved, which is what a panel is for", async () => {
+    const t = await signedIn();
+    const result = await json<ScriptTestDto>(t, "POST", "/api/scripts/test", {
+      applyTo: "ai_output",
+      text: "she paused -- then went on",
+      draft: { name: "Em dashes", pattern: "--", replacement: "\u2014", flags: "g" },
+    });
+    expect(result.after).toBe("she paused \u2014 then went on");
+    expect(result.runs.map((run) => run.name)).toEqual(["Em dashes"]);
+    // And nothing was written by trying it.
+    expect(await json<RegexScriptDto[]>(t, "GET", "/api/scripts")).toEqual([]);
+  });
+
+  test("a draft that will not compile is refused rather than run", async () => {
+    const t = await signedIn();
+    expect(
+      await statusOf(t, "POST", "/api/scripts/test", {
+        applyTo: "ai_output",
+        text: "x",
+        draft: { name: "broken", pattern: "(", replacement: "", flags: "g" },
+      }),
+    ).toBe(400);
+  });
+
+  test("a draft runs alone - the saved chain is not also applied", async () => {
+    const t = await signedIn();
+    await add(t, { name: "saved", pattern: "paused", replacement: "STOPPED" });
+    const result = await json<ScriptTestDto>(t, "POST", "/api/scripts/test", {
+      applyTo: "ai_output",
+      text: "she paused -- then went on",
+      draft: { name: "draft", pattern: "--", replacement: "\u2014", flags: "g" },
+    });
+    expect(result.after).toBe("she paused \u2014 then went on");
+  });
+
   test("a scene-scoped script only fires in its own scene", async () => {
     const t = await signedIn();
     const { sceneId } = await scene(t);

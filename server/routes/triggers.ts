@@ -13,8 +13,8 @@ import {
 import { listScripts } from "../db/queries/scripts.ts";
 import { TRIGGER_ACTIONS, TRIGGER_EVENTS } from "../triggers/select.ts";
 import type { TriggerRunner } from "../triggers/runner.ts";
-import { isGuideKind } from "../../shared/types.ts";
-import { TRACKER_KINDS } from "../tasks/registry.ts";
+import { GUIDE_KINDS, isGuideKind } from "../../shared/types.ts";
+import { TRACKER_KINDS, guideOpKey, taskKind, trackerOpKey } from "../tasks/registry.ts";
 
 /**
  * The HTTP surface for §14's event triggers.
@@ -52,13 +52,27 @@ export function triggerRoutes(ctx: AppContext, runner: TriggerRunner): Hono<AppE
   const app = new Hono<AppEnv>();
   app.use("*", requireAuth());
 
-  /** What an action can point at, so the editor does not have to guess. */
+  /**
+   * What an action can point at, so the editor does not have to guess.
+   *
+   * Labelled here rather than in the client, because the guides and trackers
+   * already have names the rest of the app shows - they are ops in §7's
+   * registry, and the settings screen has been printing `Clothes` and `Scene
+   * tracker` since phase 13. Sending the bare kinds would put `situational` on
+   * screen next to `Clothes` for the same thing.
+   */
   app.get("/actions", (c) =>
     c.json({
       events: TRIGGER_EVENTS,
-      guide: ["situational", "thinking", "clothes", "state", "rules", "custom"],
-      tracker: TRACKER_KINDS,
-      script: listScripts(ctx.db).map((script) => ({ id: script.id, name: script.name })),
+      guide: GUIDE_KINDS.map((kind) => ({
+        value: kind,
+        label: taskKind(guideOpKey(kind))?.label ?? kind,
+      })),
+      tracker: TRACKER_KINDS.map((kind) => ({
+        value: kind,
+        label: taskKind(trackerOpKey(kind))?.label ?? kind,
+      })),
+      script: listScripts(ctx.db).map((script) => ({ value: script.id, label: script.name })),
     }),
   );
 

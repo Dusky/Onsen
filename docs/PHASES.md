@@ -77,6 +77,10 @@ executable and was verified to serve it.
   `instruct_template_id` / `context_template_id` yet; they arrive with
   text-completion support in phase 20.
 
+**The client** — an Automation section in Settings: the scripts, the triggers,
+a sheet for each, and the test panel inside the script editor rather than
+beside it.
+
 ### Spec changes
 
 §1 and §24 now record the vector-store finding: `sqlite-vec` installs with no
@@ -3155,8 +3159,9 @@ answer.
   where the author of the pattern is the only person it can hurt. What is
   guarded is the compile: an invalid pattern is a reported failure rather than a
   thrown one, and the other scripts in the chain still run.
-- **The client half.** Both halves are API-complete and tested; the editors and
-  the test panel's UI are the next commit.
+- **Editing a script's scope, or a trigger's event and action.** Each decides
+  which columns are legal, and the schema refuses a row where they disagree.
+  Changing one is writing a different script.
 
 ### Spec changes
 
@@ -3179,6 +3184,24 @@ expands `$1` and `$<name>` for a string replacement and not for a function — a
 a function is the only way to count matches. So the count meant re-implementing
 `$&`, `$$`, `$1`…`$99` and `$<name>` by hand, against the arguments the callback
 receives, whose shape depends on whether the pattern has named groups at all.
+
+**The test panel could not test anything.** The first version ran the *saved*
+scripts for a stage, so the "Try it" button in the editor returned the input
+unchanged — while the comment above it said, in as many words, that putting the
+panel anywhere else "would mean saving a script to find out what it does". The
+tests passed because they only ever tested saved scripts. The browser found it
+in one click. `POST /scripts/test` now takes an optional draft and runs that
+instead.
+
+**A bottom sheet is a phone shape.** Stretched across 1440px it stops reading as
+a sheet and starts reading as the page having been replaced. Every sheet in the
+app had this; it took building a new one to notice.
+
+**Guide kinds were reaching the screen as `situational`** — the same raw-enum
+leak the UI pass had just fixed for provider kinds, one section further down. The
+labels already existed, on the ops in §7's registry, which is where the settings
+screen has been getting `Clothes` and `Scene tracker` since phase 13. The action
+list is named server-side now, so a trigger's row and its sheet cannot disagree.
 
 **A test that proved nothing.** The first version of "an entry's automation id
 fires its trigger, and only its own" pointed both triggers at the same script.

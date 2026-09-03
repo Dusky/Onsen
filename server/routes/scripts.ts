@@ -11,7 +11,7 @@ import {
   updateScript,
   type ScriptPatch,
 } from "../db/queries/scripts.ts";
-import { patternProblem } from "../scripts/apply.ts";
+import { applyScripts, patternProblem } from "../scripts/apply.ts";
 import { runStage, scriptContext, speakerOf } from "../scripts/runtime.ts";
 import {
   isApplyStage,
@@ -142,10 +142,15 @@ export function scriptRoutes(ctx: AppContext): Hono<AppEnv> {
   /**
    * §14's test panel, server-side.
    *
-   * Runs the stage against text the user supplies, in a named roleplay so that
-   * scene-scoped scripts and `{{cast}}` mean what they will mean live. Writes
-   * nothing: this is the one place a script can be watched without the result
-   * landing in a scene.
+   * Two modes, and the draft is the important one. Without it this runs the
+   * saved scripts for a stage, which answers "what does my setup do to this
+   * text". With it, it runs one unsaved pattern instead — which is what a
+   * panel is actually for: a pattern is not something anyone gets right first
+   * time, and a panel that could only run saved scripts would mean saving one
+   * to find out what it does. A saved script is one that has already run over
+   * a scene.
+   *
+   * Writes nothing either way.
    */
   app.post("/test", async (c) => {
     const input = await body(c);
@@ -169,12 +174,44 @@ export function scriptRoutes(ctx: AppContext): Hono<AppEnv> {
       characterId = character.id;
     }
 
-    const result = runStage(
-      scriptContext(ctx.db, sceneId),
-      applyTo,
-      sample,
-      speakerOf(ctx.db, characterId),
-    );
+    const context = scriptContext(ctx.db, sceneId);
+    const speaker = speakerOf(ctx.db, characterId);
+
+    const draft = input["draft"];
+    if (typeof draft === "object" && draft !== null) {
+      const fields = draft as Record<string, unknown>;
+      const pattern = text(fields["pattern"], 2_000) ?? "";
+      const flags = text(fields["flags"], 16) ?? "g";
+      const problem = patternProblem(pattern, flags);
+      if (problem !== null) return c.json(badRequest(problem), 400);
+
+      const result = applyScripts(
+        sample,
+        [
+          {
+            id: "draft",
+            name: text(fields["name"], 120)?.trim() ?? "This script",
+            pattern,
+            replacement: text(fields["replacement"], 2_000) ?? "",
+            flags,
+            enabled: true,
+            applyTo,
+            scope: "global",
+            characterId: null,
+            sceneId: null,
+            runOrder: 0,
+          },
+        ],
+        { ...context.env, char: speaker.name },
+      );
+      return c.json({
+        before: sample,
+        after: result.text,
+        runs: result.runs,
+      } satisfies ScriptTestDto);
+    }
+
+    const result = runStage(context, applyTo, sample, speaker);
     return c.json({
       before: sample,
       after: result.text,

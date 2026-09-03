@@ -15,6 +15,11 @@ import type {
   EmbeddingsConfigDto,
   ExpressionPackDto,
   PromptInspectorDto,
+  ApplyStage,
+  RegexScriptDto,
+  ScriptTestDto,
+  EventTriggerDto,
+  TriggerOutcomeDto,
   SavedFilterDto,
   TrackerDto,
   CreateConnectionProfileRequest,
@@ -103,6 +108,9 @@ export const connectionKeys = {
   presets: ["connection-presets"] as const,
   tasks: ["tasks"] as const,
   instruct: ["instruct-templates"] as const,
+  scripts: ["regex-scripts"] as const,
+  triggers: ["event-triggers"] as const,
+  triggerActions: ["trigger-actions"] as const,
 };
 
 /** Invalidate everything a connection change can touch. */
@@ -1362,5 +1370,123 @@ export function useFetchModels() {
   return useMutation({
     mutationFn: (body: { kind?: string; baseUrl: string; apiKey?: string; providerId?: string }) =>
       api.post<{ models: string[] }>("/connections/providers/models", body),
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Regex scripts and event triggers (SPEC §14)                         */
+/* ------------------------------------------------------------------ */
+
+export function useScripts() {
+  return useQuery({
+    queryKey: connectionKeys.scripts,
+    queryFn: () => api.get<RegexScriptDto[]>("/scripts"),
+  });
+}
+
+/**
+ * Every script mutation invalidates the triggers too: a trigger names a script
+ * by id, and deleting one leaves the other pointing at nothing.
+ */
+function useScriptMutation<TArgs, TResult>(fn: (args: TArgs) => Promise<TResult>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: connectionKeys.scripts });
+      void client.invalidateQueries({ queryKey: connectionKeys.triggers });
+      void client.invalidateQueries({ queryKey: connectionKeys.triggerActions });
+      // A stored script can rewrite what the log shows, so the open scene is
+      // stale the moment one changes.
+      void client.invalidateQueries({ queryKey: keys.scenes });
+    },
+  });
+}
+
+export function useCreateScript() {
+  return useScriptMutation((body: Partial<RegexScriptDto>) =>
+    api.post<RegexScriptDto>("/scripts", body),
+  );
+}
+
+export function useUpdateScript() {
+  return useScriptMutation(({ id, ...body }: Partial<RegexScriptDto> & { id: string }) =>
+    api.patch<RegexScriptDto>(`/scripts/${id}`, body),
+  );
+}
+
+export function useDeleteScript() {
+  return useScriptMutation((id: string) => api.delete<void>(`/scripts/${id}`));
+}
+
+/** The test panel (§14). A dry run: it writes nothing, so it invalidates nothing. */
+export function useTestScripts() {
+  return useMutation({
+    mutationFn: (body: {
+      applyTo: ApplyStage;
+      text: string;
+      sceneId?: string;
+      /** The unsaved script. Without it, the saved chain for the stage runs. */
+      draft?: { name: string; pattern: string; replacement: string; flags: string };
+    }) => api.post<ScriptTestDto>("/scripts/test", body),
+  });
+}
+
+export function useTriggers() {
+  return useQuery({
+    queryKey: connectionKeys.triggers,
+    queryFn: () => api.get<EventTriggerDto[]>("/triggers"),
+  });
+}
+
+/** What an action may point at, so the editor never offers a dead reference. */
+export function useTriggerActions() {
+  return useQuery({
+    queryKey: connectionKeys.triggerActions,
+    queryFn: () =>
+      api.get<{
+        events: string[];
+        guide: { value: string; label: string }[];
+        tracker: { value: string; label: string }[];
+        script: { value: string; label: string }[];
+      }>("/triggers/actions"),
+  });
+}
+
+function useTriggerMutation<TArgs, TResult>(fn: (args: TArgs) => Promise<TResult>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => void client.invalidateQueries({ queryKey: connectionKeys.triggers }),
+  });
+}
+
+export function useCreateTrigger() {
+  return useTriggerMutation((body: Record<string, unknown>) =>
+    api.post<EventTriggerDto>("/triggers", body),
+  );
+}
+
+export function useUpdateTrigger() {
+  return useTriggerMutation(({ id, ...body }: Record<string, unknown> & { id: string }) =>
+    api.patch<EventTriggerDto>(`/triggers/${id}`, body),
+  );
+}
+
+export function useDeleteTrigger() {
+  return useTriggerMutation((id: string) => api.delete<void>(`/triggers/${id}`));
+}
+
+/**
+ * Fire one by hand against a named roleplay. Not a dry run — a guide refresh
+ * has nowhere to happen but the scene — so everything a trigger can touch is
+ * stale afterwards.
+ */
+export function useRunTrigger() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, sceneId }: { id: string; sceneId: string }) =>
+      api.post<TriggerOutcomeDto>(`/triggers/${id}/run`, { sceneId }),
+    onSuccess: () => void client.invalidateQueries({ queryKey: keys.scenes }),
   });
 }

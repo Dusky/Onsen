@@ -500,6 +500,44 @@ export interface ScriptTestDto {
   runs: ScriptRunDto[];
 }
 
+export const TRIGGER_EVENTS = [
+  "scene_start",
+  "user_message",
+  "before_generation",
+  "after_generation",
+  "lore_activation",
+] as const;
+export type TriggerEvent = (typeof TRIGGER_EVENTS)[number];
+
+export const TRIGGER_ACTIONS = ["guide", "tracker", "script"] as const;
+export type TriggerAction = (typeof TRIGGER_ACTIONS)[number];
+
+export interface EventTriggerDto {
+  id: string;
+  name: string;
+  event: TriggerEvent;
+  action: TriggerAction;
+  /** A guide kind, a tracker kind, or a regex script's id. */
+  actionRef: string;
+  /** `lore_activation` only: which entry's automation id fires this (§10). */
+  automationId: string | null;
+  scope: "global" | "scene";
+  sceneId: string | null;
+  enabled: boolean;
+  runOrder: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** What one trigger did, for the run-by-hand button. */
+export interface TriggerOutcomeDto {
+  triggerId: string;
+  name: string;
+  action: TriggerAction;
+  ran: boolean;
+  detail: string;
+}
+
 export interface SceneDto {
   id: string;
   title: string;

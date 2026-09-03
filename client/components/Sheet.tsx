@@ -50,7 +50,10 @@ export function Sheet({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="relative"
+        // Capped and centred on a wide screen. A bottom sheet is a phone shape;
+        // stretched across 1440px it stops reading as a sheet and starts
+        // reading as the page having been replaced.
+        className="relative mx-auto w-full max-w-[var(--onsen-prose-measure)]"
         style={{
           borderRadius: "16px 16px 0 0",
           borderTop: blue

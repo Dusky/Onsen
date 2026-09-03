@@ -442,6 +442,84 @@ export const strings = {
     budgetHint:
       "The window is what the prompt is built to fit. What is reserved for the reply comes off it before anything is placed.",
 
+    /** Regex scripts and event triggers (SPEC §14, phase 33). */
+    automation: "Automation",
+    automationHint:
+      "Find-and-replace over what you write and what the model writes, and named actions that run at set moments.",
+
+    scripts: "Regex scripts",
+    scriptsHint: "Ordered. Each one sees the last one's output.",
+    addScript: "Add a script",
+    scriptName: "Name",
+    scriptPattern: "Find",
+    scriptPatternHint: "A regular expression. Groups are $1, or $<name> if you name them.",
+    scriptReplacement: "Replace with",
+    scriptReplacementHint:
+      "{{char}}, {{user}}, {{cast}}, {{time}}, {{date}} and {{newline}} resolve here.",
+    scriptFlags: "Flags",
+    scriptFlagsHint: "g runs it everywhere, i ignores case, m and s change what . and ^ mean.",
+    scriptStage: "When it runs",
+    scriptScope: "Where it applies",
+    scriptEnabled: "On",
+    scriptDisabled: "Off",
+    scriptOff: "Off",
+    scriptDelete: "Delete",
+    scriptDeleteConfirm: "This script is deleted, and any trigger that fires it stops working.",
+    /** Plain language for each stage — the whole design is in these four lines. */
+    stageLabel: {
+      user_input: "What you write",
+      ai_output: "What the model writes",
+      display_only: "What you see",
+      prompt: "What the model reads",
+    } as Record<string, string>,
+    stageHint: {
+      user_input: "Rewritten before it is stored. Permanent, and the model sees it.",
+      ai_output: "Rewritten before it is stored. Permanent. Asides are left alone.",
+      display_only: "Only the log changes. The stored text and the prompt keep the original.",
+      prompt: "Only the prompt changes. Nothing on disk is touched.",
+    } as Record<string, string>,
+    scopeLabel: {
+      global: "Everywhere",
+      character: "One character",
+      scene: "One roleplay",
+    } as Record<string, string>,
+
+    scriptTest: "Try it",
+    scriptTestHint: "Runs the real thing. Nothing is saved.",
+    scriptTestInput: "Some text",
+    scriptTestRun: "Run",
+    scriptTestBefore: "Before",
+    scriptTestAfter: "After",
+    scriptTestNoChange: "Nothing matched.",
+    scriptTestCount: (n: number) => `${n} ${n === 1 ? "match" : "matches"}`,
+    scriptTestUnknown: (names: string) => `Left alone: ${names}`,
+
+    triggers: "Triggers",
+    triggersHint: "Run something at a set moment. Lore entries can fire one by name.",
+    addTrigger: "Add a trigger",
+    triggerName: "Name",
+    triggerEvent: "When",
+    triggerAction: "What runs",
+    triggerActionRef: "Which one",
+    triggerAutomationId: "Automation id",
+    triggerAutomationIdHint: "The id on the lore entry that should fire this.",
+    triggerRun: "Run it now",
+    triggerRunHint: "Pick a roleplay to run it against.",
+    triggerDelete: "Delete",
+    triggerDeleteConfirm: "This trigger is deleted. The script or guide it ran is untouched.",
+    eventLabel: {
+      scene_start: "A roleplay starts",
+      user_message: "You send a message",
+      before_generation: "Before a reply is written",
+      after_generation: "After a reply is written",
+      lore_activation: "A lore entry fires",
+    } as Record<string, string>,
+    actionLabel: {
+      guide: "Refresh a guide",
+      tracker: "Refresh a tracker",
+      script: "Run a regex script",
+    } as Record<string, string>,
+
     /** The data bank's embeddings provider (SPEC §11, phase 30). */
     embeddings: "Embeddings",
     embeddingsHint:
