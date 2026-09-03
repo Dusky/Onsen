@@ -116,6 +116,12 @@ export function findEntry(db: Database, value: string): LoreEntryRow | null {
     null) as LoreEntryRow | null;
 }
 
+/** By row id, for callers that hold a foreign key rather than a ULID. */
+export function findEntryById(db: Database, id: number): LoreEntryRow | null {
+  return (db.query("SELECT * FROM lore_entries WHERE id = $id").get({ id }) ??
+    null) as LoreEntryRow | null;
+}
+
 export function bindingsOf(db: Database, lorebookId: number): LoreBindingRow[] {
   return db
     .query("SELECT * FROM lorebook_bindings WHERE lorebook_id = $book ORDER BY id")
