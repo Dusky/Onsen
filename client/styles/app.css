@@ -219,6 +219,21 @@
   }
 
   /*
+   * A checkbox, tinted rather than drawn.
+   *
+   * The browser's own box is close enough to this system - a square with a 1px
+   * edge - that redrawing it would be work for nothing. What it gets wrong is
+   * the fill, which is the platform blue and is the loudest thing on a dark
+   * page; `accent-color` fixes exactly that and leaves the rest alone.
+   */
+  input[type="checkbox"] {
+    accent-color: var(--onsen-color-red);
+    width: 16px;
+    height: 16px;
+    flex: none;
+  }
+
+  /*
    * A slider, drawn rather than inherited. The browser's own track is a bright
    * bar that ignores the palette entirely, which in the dark theme is the
    * loudest thing on the screen.

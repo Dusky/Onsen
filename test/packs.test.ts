@@ -423,6 +423,36 @@ describe("exporting", () => {
     }
   });
 
+  test("a book the app writes for itself is not offered", async () => {
+    const t = await signedIn();
+    await json(t, "POST", "/api/lorebooks", { name: "Mine" });
+    // A dossier book is created by §11's dossiers and bound to one scene;
+    // packing it would ship a book that reaches nothing on the other side.
+    const book = t.ctx.db
+      .query("INSERT INTO lorebooks (ulid, name, created_at, updated_at) VALUES ('01D','Dossiers',0,0) RETURNING id")
+      .get() as { id: number };
+    const entry = t.ctx.db
+      .query(
+        "INSERT INTO lore_entries (ulid, lorebook_id, content, created_at, updated_at) VALUES ('01E', $b, '', 0, 0) RETURNING id",
+      )
+      .get({ b: book.id }) as { id: number };
+    const profiles = await json<{ id: string }[]>(t, "GET", "/api/connections/profiles");
+    await json(t, "POST", "/api/scenes", {
+      title: "The pass",
+      connectionProfileId: profiles[0]!.id,
+    });
+    const scene = t.ctx.db.query("SELECT id FROM scenes LIMIT 1").get() as { id: number };
+    t.ctx.db
+      .query(
+        `INSERT INTO dossiers (ulid, scene_id, name, lore_entry_id, created_at, updated_at)
+         VALUES ('01F', $s, 'Hollis', $e, 0, 0)`,
+      )
+      .run({ s: scene.id, e: entry.id });
+
+    const here = await json<{ lorebooks: { name: string }[] }>(t, "GET", "/api/packs/exportable");
+    expect(here.lorebooks.map((row) => row.name)).toEqual(["Mine"]);
+  });
+
   test("a pack needs a name", async () => {
     const t = await signedIn();
     const response = await t.fetch("/api/packs/export", {

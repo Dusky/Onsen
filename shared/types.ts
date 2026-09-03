@@ -538,6 +538,91 @@ export interface TriggerOutcomeDto {
   detail: string;
 }
 
+/* ------------------------------------------------------------------ */
+/* Packs (SPEC §15 tier 2)                                             */
+/* ------------------------------------------------------------------ */
+
+export const PACK_KINDS = [
+  "characters",
+  "lorebooks",
+  "presets",
+  "authors",
+  "options",
+  "regex",
+  "triggers",
+  "banlists",
+] as const;
+export type PackKind = (typeof PACK_KINDS)[number];
+
+export interface InstalledPackDto {
+  id: string;
+  name: string;
+  version: string;
+  author: string;
+  description: string;
+  hostApiRange: string | null;
+  installedAt: number;
+  /** How many rows this install owns, and would take with it. */
+  rowCount: number;
+}
+
+export interface PackListDto {
+  hostApiVersion: string;
+  packs: InstalledPackDto[];
+}
+
+/** One thing an install would do. `skip` never writes. */
+export interface PackPlanItemDto {
+  kind: PackKind;
+  name: string;
+  action: "add" | "skip";
+  detail: string;
+}
+
+export interface PackPlanDto {
+  manifest: {
+    name: string;
+    version: string;
+    author: string;
+    description: string;
+    hostApiRange: string | null;
+  };
+  /** Set when the pack cannot be installed at all. Null when it can. */
+  problem: string | null;
+  items: PackPlanItemDto[];
+  strayAssets: number;
+}
+
+export interface PackInstallDto {
+  packId: string;
+  manifest: PackPlanDto["manifest"];
+  added: number;
+  skipped: number;
+  items: PackPlanItemDto[];
+  warnings: string[];
+}
+
+/** What is installed that a pack could carry, as the export sheet needs it. */
+export interface PackExportableDto {
+  characters: { ulid: string; name: string }[];
+  lorebooks: { ulid: string; name: string }[];
+  presets: { ulid: string; name: string }[];
+  authors: { ulid: string; name: string }[];
+  options: { ulid: string; name: string }[];
+  regex: { ulid: string; name: string }[];
+  triggers: { ulid: string; name: string }[];
+  /** How many phrases the global list holds. It travels whole or not at all. */
+  banlist: number;
+}
+
+/** What an uninstall would remove, from the record of what install added. */
+export interface PackUninstallPreviewDto {
+  packId: string;
+  name: string;
+  version: string;
+  rows: { table: string; label: string }[];
+}
+
 export interface SceneDto {
   id: string;
   title: string;

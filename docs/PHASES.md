@@ -3208,3 +3208,80 @@ fires its trigger, and only its own" pointed both triggers at the same script.
 The wrong-id trigger firing would have been a second no-op over already-rewritten
 text, so the test passed whether or not the scoping worked. It now points at a
 different rewrite, and asserts the text that would have changed did not.
+
+---
+
+## Phase 34 — Packs
+
+§15's tier 2: a shareable archive of everything tier 1 calls data.
+`pack.json` plus one directory per kind, installed whole or not at all.
+
+### What was built
+
+**The format.** A zip — `fflate` again, as CharX uses — carrying a manifest and
+`characters/`, `lorebooks/`, `presets/`, `authors/`, `options/`, `regex/`,
+`triggers/`, `banlists/`, `assets/`. Characters travel as real cards, written by
+the same exporter the library's own download button uses: a PNG where there is
+an avatar, JSON where there is not. The PNG *is* the avatar, which is the whole
+convention behind the format, so carrying the picture separately would mean
+inventing a link between two files where one already exists.
+
+**Preview.** `planInstall` reads the archive and the database and writes
+nothing, so what it says is what the install acts on. The sheet shows what would
+be added, what is already here, and refuses to enable the button when there is
+nothing to do.
+
+**Transactional install.** Every row inside one `bun:sqlite` transaction. A
+document that cannot be installed takes the whole pack with it; a *card* that
+cannot be parsed is one skipped item with its reason, because the rest of the
+archive is still coherent.
+
+**Exact uninstall.** `pack_rows` records `(pack, table, row id)` as the install
+goes. Uninstall deletes by that, not by name.
+
+**Export.** Pick what goes in — a pack is something to share, not a backup — and
+the archive that comes out installs into a fresh install.
+
+### Deliberately deferred
+
+- **`/tasks/`.** §15's tree lists it. An op's configuration is not a row a pack
+  can own: the registry is fixed and its rows are created at boot, so "install"
+  would mean overwriting settings the reader chose and "uninstall" would have
+  nothing to remove. `/triggers/` took its place in the tree.
+- **Overwriting.** See the spec block: overwrite and exact uninstall cannot both
+  hold, and exactness is what §23 asks for.
+- **Installing from a URL.** §15 says "a file or URL". The file half is here;
+  the URL half is a fetch, a size cap and a redirect policy, and it can wait
+  until there is somewhere to fetch from.
+- **Dependency declarations.** §24's open question, now answered: flat.
+
+### Spec changes
+
+§15 gains a `Settled while building phase 34` block with nine decisions; §24's
+pack-dependency question is struck through and answered.
+
+### Surprises
+
+**Plan and install were reading different things.** The planner walked the
+archive's JSON documents; the installer re-derived cards from the asset tree. So
+a card arriving as a PNG was checked for collisions by its *filename* — and a
+pack carrying `Hollis.png` would install a second Hollis beside the one already
+in the library. They walk one candidate list now, which also moved card parsing
+into the preview: a malformed card is named before anything is written rather
+than discovered halfway through.
+
+**`changes` is not a count of what you deleted.** `uninstallPack` summed the
+driver's reported changes and got two for one lorebook, because the number
+depends on what cascaded. It counts by looking now — the row was there, and now
+it is not — which is what "removed" should mean anyway.
+
+**A pack could ship a book the app writes for itself.** The dossiers lorebook
+from phase 32 turned up in the export picker. It is bound to one scene and
+filled by the app, so packing it would ship a book that reaches nothing on the
+other side. Found by exporting a pack in the browser and reading the list.
+
+**A ban phrase the reader already had was being claimed by a pack that also
+listed it.** `addBan` bumps a count rather than duplicating, so the row the pack
+"added" was the reader's own — and uninstalling would have taken it. The install
+checks first now, which is the same class of bug as owning by name instead of by
+id, one layer down.

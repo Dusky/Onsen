@@ -2009,6 +2009,47 @@ Installing a pack imports records; nothing executes. Installation is
 transactional, previewable (show what will be added or overwritten), and
 reversible — record which pack owns which rows so uninstall is exact.
 
+### Settled while building phase 34
+
+- **A collision is skipped, never overwritten.** Overwriting and exact
+  uninstall are in tension: a row a pack replaced cannot be put back by a table
+  that only records what it owns, and §23's test list asks for exactness. So a
+  name already in use is reported in the preview and left alone. Updating a
+  pack is uninstall then install, which is what the ownership record is for.
+- **Ownership is by internal row id, not by name or ULID.** A character the
+  reader renamed is still the one the pack brought, and one they wrote
+  themselves that happens to share a name is not. An id also means the one thing
+  `pack_rows` must be able to do — delete a row whose table it knows only as a
+  string — needs no join.
+- **Plan and install walk one list.** They did not at first, and the bug that
+  found was a card arriving as a PNG being checked for collisions by its
+  *filename*, so a pack carrying `Hollis.png` installed a second Hollis. Reading
+  cards at plan time also means a malformed one is named before anything is
+  written.
+- **`/tasks/` is not built.** §15's tree lists it, and an op's configuration is
+  not a row a pack can own: the registry is fixed and its rows are created at
+  boot, so "install" would mean overwriting settings the reader chose and
+  "uninstall" would have nothing to remove. `/triggers/` was added instead —
+  §15's tree predates event triggers, and a regex script fired by a trigger and
+  shipped without it is half a feature.
+- **A packed regex script is global, and a packed trigger rebinds by name.**
+  Character and scene scopes name rows that exist in the pack author's install
+  and not in the reader's. A trigger carries its script's name beside the id and
+  is rebound to the script the same pack brought; one that cannot be rebound
+  fails the install rather than installing broken.
+- **Children are not owned individually.** Lore entries and options cascade with
+  their book and their group; recording each would delete twice.
+- **A directory this host has never heard of is ignored, not refused.** A pack
+  written for a later version would otherwise be a compatibility cliff.
+- **Assets are written after the transaction commits.** A failed write leaves a
+  character with no avatar, which falls back to the placeholder; rolling the
+  database back over a missing picture would be the worse trade. Uninstall
+  leaves avatar files: they are content-addressed, so another character may
+  share one.
+- **A dossier book is not offered for export.** It is written by the app and
+  bound to one scene (§11), so packing it would ship a book that reaches
+  nothing on the other side.
+
 This is how a full "engine" suite should ship here. The comparable suites in
 other ecosystems need an extension mainly because there is no declarative way to
 express their configuration. There is one here.
@@ -2565,8 +2606,11 @@ Things existing frontends do that this project should not.
 - ~~Should dossiers be a distinct entity, or just characters with a
   `provisional` flag?~~ Resolved in phase 32, and as neither: a row for the
   fields plus a §10 lore entry for the injection. See §11.
-- Do packs need dependency declarations (this pack expects that lorebook), or is
-  a flat bundle enough? Flat is enough until it isn't.
+- ~~Do packs need dependency declarations (this pack expects that lorebook), or
+  is a flat bundle enough?~~ Flat, decided in phase 34 — with one exception that
+  is not a dependency system: a trigger names its script by name as well as by
+  id and is rebound within the same pack, because a trigger pointing at nothing
+  is automation that silently never works.
 
 Resolved: cross-scene author memory is optional, off by default, implemented as
 an author-scoped lorebook (§11). Not part of the initial build.

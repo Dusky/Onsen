@@ -520,6 +520,52 @@ export const strings = {
       script: "Run a regex script",
     } as Record<string, string>,
 
+    /** Packs (SPEC §15 tier 2, phase 34). */
+    packs: "Packs",
+    packsHint:
+      "A bundle of characters, lore, presets and settings in one file. Nothing in one runs; it is all data.",
+    packInstall: "Install a pack",
+    packInstalling: "Reading…",
+    packExport: "Make a pack",
+    packNone: "Nothing installed.",
+    packVersion: (version: string) => `Version ${version}`,
+    packBy: (author: string) => `by ${author}`,
+    packOwns: (n: number) => `${n} ${n === 1 ? "thing" : "things"}`,
+    packAdd: "Adds",
+    packSkip: "Skips",
+    packSkipHint: "Already here. Nothing of yours is touched.",
+    packInstallConfirm: "Install",
+    packCancel: "Cancel",
+    packStrays: (n: number) => `${n} extra ${n === 1 ? "file" : "files"} carried along.`,
+    packDone: "Done",
+    packInstalled: (added: number, skipped: number) =>
+      `Added ${added}. Skipped ${skipped}.`,
+    packRemove: "Remove",
+    packRemoveTitle: "Remove this pack",
+    packRemoveHint: "Everything below goes. Nothing you made yourself is touched.",
+    packRemoveConfirm: "Remove",
+    packRemoved: (n: number) => `Removed ${n}.`,
+
+    packName: "Name",
+    packVersionField: "Version",
+    packAuthor: "Author",
+    packDescription: "What it is",
+    packContents: "What goes in",
+    packContentsHint: "Only what you tick. A pack is something to share, not a backup.",
+    packBanlist: "The ban list",
+    packEmpty: "Tick something to put in it.",
+    packMake: "Make it",
+    packKind: {
+      characters: "Cast",
+      lorebooks: "Lore",
+      presets: "Presets",
+      authors: "Writing partners",
+      options: "Prompt options",
+      regex: "Regex scripts",
+      triggers: "Triggers",
+      banlists: "Ban list",
+    } as Record<string, string>,
+
     /** The data bank's embeddings provider (SPEC §11, phase 30). */
     embeddings: "Embeddings",
     embeddingsHint:

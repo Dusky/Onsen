@@ -4,7 +4,7 @@ A self-hosted, mobile-first AI roleplay frontend. Group scenes are the primary
 case: one AI **author** with its own personality plays the whole cast, like a GM
 running a table, while you direct.
 
-> **Status: phase 33 of 43 — usable.** Set it up, import character cards, give
+> **Status: phase 34 of 43 — usable.** Set it up, import character cards, give
 > the AI an author persona of its own, and run a group scene: one writing
 > partner voicing a whole cast, **beats** — a whole exchange between several
 > characters written in one go, which you can then correct one character at a
@@ -41,7 +41,11 @@ running a table, while you direct.
 > **fix it yourself**: find-and-replace with a test panel, applied to what you
 > write, what the model writes, what you see, or what the model reads — four
 > stages that differ in what survives — plus **named actions bound to moments**,
-> so a lore entry firing can refresh a guide or run a rewrite. Built
+> so a lore entry firing can refresh a guide or run a rewrite. All of that
+> travels: a **pack** is one file holding characters, lore, presets, writing
+> partners, prompt options, scripts and triggers, which shows you what it will
+> add before it adds it, installs whole or not at all, and remembers exactly
+> what it brought so removing it takes that and nothing of yours. Built
 > for a phone first, and on a
 > wide screen the same pieces unroll into a sidebar, a capped prose column and a
 > cast rail. See

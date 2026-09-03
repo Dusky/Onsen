@@ -83,6 +83,49 @@ export function packRoutes(ctx: AppContext): Hono<AppEnv> {
     });
   });
 
+  /**
+   * What is here that a pack could carry.
+   *
+   * One endpoint rather than the export sheet fetching seven lists, because
+   * this is the only place that wants all seven — and one of them, the prompt
+   * option groups, has no global listing anywhere else in the API.
+   */
+  app.get("/exportable", (c) => {
+    const rows = (sql: string) =>
+      ctx.db.query(sql).all() as { ulid: string; name: string }[];
+    return c.json({
+      characters: rows("SELECT ulid, name FROM characters ORDER BY name COLLATE NOCASE"),
+      // A dossier book is written by the app, not the reader, and is bound to
+      // one scene (§11, phase 32). Packing one would ship a book that reaches
+      // nothing on the other side, so it is not offered.
+      lorebooks: rows(
+        `SELECT b.ulid, b.name FROM lorebooks b
+          WHERE NOT EXISTS (
+            SELECT 1 FROM dossiers d
+              JOIN lore_entries e ON e.id = d.lore_entry_id
+             WHERE e.lorebook_id = b.id
+          )
+          ORDER BY b.name COLLATE NOCASE`,
+      ),
+      presets: rows("SELECT ulid, name FROM presets ORDER BY name COLLATE NOCASE"),
+      authors: rows("SELECT ulid, name FROM authors ORDER BY name COLLATE NOCASE"),
+      // Built-ins are excluded: every install already has them, so packing one
+      // would install a duplicate under a fresh key on the other side.
+      options: rows(
+        "SELECT ulid, name FROM option_groups WHERE is_builtin = 0 ORDER BY sort_order, name",
+      ),
+      regex: rows("SELECT ulid, name FROM regex_scripts ORDER BY run_order, name"),
+      triggers: rows("SELECT ulid, name FROM event_triggers ORDER BY run_order, name"),
+      banlist: (
+        ctx.db
+          .query(
+            "SELECT count(*) AS n FROM ban_phrases WHERE scene_id IS NULL AND origin <> 'proposed'",
+          )
+          .get() as { n: number }
+      ).n,
+    });
+  });
+
   /** What installing this archive would do. Writes nothing. */
   app.post("/preview", async (c) => {
     const bytes = await archiveOf(c);

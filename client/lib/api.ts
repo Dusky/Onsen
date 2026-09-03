@@ -25,7 +25,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     response = await fetch(`/api${path}`, {
       ...init,
       headers: {
-        ...(init?.body === undefined ? {} : { "Content-Type": "application/json" }),
+        // FormData carries its own content type, with a boundary the browser
+        // generates. Declaring JSON over it makes the body unparseable at the
+        // other end, with nothing on the wire to say why.
+        ...(init?.body === undefined || init.body instanceof FormData
+          ? {}
+          : { "Content-Type": "application/json" }),
         ...init?.headers,
       },
     });
@@ -62,10 +67,38 @@ function withBody(method: string, body: unknown): RequestInit {
   return { method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) };
 }
 
+/**
+ * A POST that returns a file rather than JSON.
+ *
+ * Separate from `request` because the whole of that function is about reading a
+ * JSON body, and a download has none — the bytes are the answer.
+ */
+async function download(path: string, body: unknown): Promise<Blob> {
+  const response = await fetch(`/api${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    let message = "Something went wrong.";
+    try {
+      const parsed = (await response.json()) as ApiError;
+      message = parsed.error?.message ?? message;
+    } catch {
+      /* A non-JSON failure keeps the default. */
+    }
+    throw new ApiRequestError(response.status, "unexpected", message);
+  }
+  return response.blob();
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) => request<T>(path, withBody("POST", body)),
   put: <T>(path: string, body?: unknown) => request<T>(path, withBody("PUT", body)),
   patch: <T>(path: string, body?: unknown) => request<T>(path, withBody("PATCH", body)),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+  /** Multipart. The browser sets the boundary, so no Content-Type is given. */
+  upload: <T>(path: string, form: FormData) => request<T>(path, { method: "POST", body: form }),
+  download,
 };

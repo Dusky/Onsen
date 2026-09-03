@@ -20,6 +20,11 @@ import type {
   ScriptTestDto,
   EventTriggerDto,
   TriggerOutcomeDto,
+  PackListDto,
+  PackPlanDto,
+  PackInstallDto,
+  PackUninstallPreviewDto,
+  PackExportableDto,
   SavedFilterDto,
   TrackerDto,
   CreateConnectionProfileRequest,
@@ -111,6 +116,7 @@ export const connectionKeys = {
   scripts: ["regex-scripts"] as const,
   triggers: ["event-triggers"] as const,
   triggerActions: ["trigger-actions"] as const,
+  packs: ["packs"] as const,
 };
 
 /** Invalidate everything a connection change can touch. */
@@ -1488,5 +1494,91 @@ export function useRunTrigger() {
     mutationFn: ({ id, sceneId }: { id: string; sceneId: string }) =>
       api.post<TriggerOutcomeDto>(`/triggers/${id}/run`, { sceneId }),
     onSuccess: () => void client.invalidateQueries({ queryKey: keys.scenes }),
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Packs (SPEC §15 tier 2)                                             */
+/* ------------------------------------------------------------------ */
+
+export function usePacks() {
+  return useQuery({
+    queryKey: connectionKeys.packs,
+    queryFn: () => api.get<PackListDto>("/packs"),
+  });
+}
+
+function packForm(file: File): FormData {
+  const form = new FormData();
+  form.append("file", file);
+  return form;
+}
+
+/** What installing would do. A dry run, so it invalidates nothing. */
+export function usePreviewPack() {
+  return useMutation({
+    mutationFn: (file: File) => api.upload<PackPlanDto>("/packs/preview", packForm(file)),
+  });
+}
+
+/**
+ * A pack can bring anything, so an install invalidates everything. This is the
+ * one mutation in the app where a narrow list of keys would be a bug waiting
+ * for the next kind a pack learns to carry.
+ */
+function useEverythingMutation<TArgs, TResult>(fn: (args: TArgs) => Promise<TResult>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => void client.invalidateQueries(),
+  });
+}
+
+export function useInstallPack() {
+  return useEverythingMutation((file: File) =>
+    api.upload<PackInstallDto>("/packs/install", packForm(file)),
+  );
+}
+
+/** What is here that a pack could carry. One request, seven lists. */
+export function useExportable() {
+  return useQuery({
+    queryKey: [...connectionKeys.packs, "exportable"],
+    queryFn: () => api.get<PackExportableDto>("/packs/exportable"),
+  });
+}
+
+export function useUninstallPreview(packId: string | null) {
+  return useQuery({
+    queryKey: [...connectionKeys.packs, "uninstall", packId],
+    queryFn: () => api.get<PackUninstallPreviewDto>(`/packs/${packId}/preview`),
+    enabled: packId !== null,
+  });
+}
+
+export function useUninstallPack() {
+  return useEverythingMutation((id: string) =>
+    api.delete<{ removed: number; of: number }>(`/packs/${id}`),
+  );
+}
+
+/**
+ * Build a pack and hand it to the browser.
+ *
+ * The download is started here rather than by navigating to the endpoint,
+ * because the endpoint is a POST carrying a selection — there is no URL that
+ * means "these fourteen characters".
+ */
+export function useExportPack() {
+  return useMutation({
+    mutationFn: async (body: Record<string, unknown>) => {
+      const blob = await api.download("/packs/export", body);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${String(body["name"] ?? "pack")}.onsenpack`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    },
   });
 }

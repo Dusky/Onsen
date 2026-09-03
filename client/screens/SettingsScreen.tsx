@@ -2,6 +2,8 @@ import { useRef, useState } from "react";
 import type {
   ConnectionProfileDto,
   EventTriggerDto,
+  InstalledPackDto,
+  PackPlanDto,
   PresetDto,
   ProviderDto,
   RegexScriptDto,
@@ -35,12 +37,15 @@ import {
   useScripts,
   useTriggerActions,
   useTriggers,
+  usePacks,
+  usePreviewPack,
 } from "../lib/queries.ts";
 import { TabBar } from "../components/TabBar.tsx";
 import { Sheet } from "../components/Sheet.tsx";
 import { PresetEditor } from "../components/PresetEditor.tsx";
 import { ScriptEditor } from "../components/ScriptEditor.tsx";
 import { TriggerEditor } from "../components/TriggerEditor.tsx";
+import { ExportPackSheet, InstallPackSheet, RemovePackSheet } from "../components/PackSheets.tsx";
 
 /**
  * Settings (design handoff, screen 3i).
@@ -782,6 +787,108 @@ function UpdateGroup() {
 /** The data bank's embeddings provider — base URL, model, key — or nothing,
  * which is the keyword fallback, and the section says so rather than hiding. */
 /**
+ * Packs (SPEC §15 tier 2).
+ *
+ * The preview is not optional here. A pack writes many rows at once and can
+ * take them all away again, and a person is owed the answer to "what is this
+ * about to add" before the button that adds it — so choosing a file opens the
+ * plan rather than installing it.
+ */
+function PacksSection() {
+  const packs = usePacks();
+  const preview = usePreviewPack();
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [pending, setPending] = useState<{ file: File; plan: PackPlanDto } | null>(null);
+  const [removing, setRemoving] = useState<InstalledPackDto | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const installed = packs.data?.packs ?? [];
+
+  return (
+    <>
+      <p className="section-label mb-[4px]">{strings.settings.packs}</p>
+      <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+        {strings.settings.packsHint}
+      </p>
+
+      {installed.length === 0 ? (
+        <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+          {strings.settings.packNone}
+        </p>
+      ) : null}
+      {installed.map((pack) => (
+        <Row key={pack.id}>
+          <button
+            type="button"
+            onClick={() => setRemoving(pack)}
+            className="flex w-full items-baseline gap-[9px] text-left"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[15px] font-medium">{pack.name}</span>
+              <span className="chrome block truncate text-[9px] tracking-[0.06em] text-ink-dim uppercase">
+                {[
+                  strings.settings.packVersion(pack.version),
+                  pack.author === "" ? null : strings.settings.packBy(pack.author),
+                  strings.settings.packOwns(pack.rowCount),
+                ]
+                  .filter((part) => part !== null)
+                  .join(" \u00b7 ")}
+              </span>
+            </span>
+            <span className="chrome flex-none self-center text-[12px] text-ink-dim">›</span>
+          </button>
+        </Row>
+      ))}
+
+      <input
+        ref={fileInput}
+        type="file"
+        hidden
+        accept=".onsenpack,.zip,application/zip"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file === undefined) return;
+          setError(null);
+          preview.mutate(file, {
+            onSuccess: (plan) => setPending({ file, plan }),
+            onError: (caught: Error) => setError(caught.message),
+          });
+        }}
+      />
+      <button
+        type="button"
+        className="btn mt-[12px] w-full"
+        disabled={preview.isPending}
+        onClick={() => fileInput.current?.click()}
+      >
+        {preview.isPending ? strings.settings.packInstalling : strings.settings.packInstall}
+      </button>
+      <button type="button" className="btn mt-[8px] w-full" onClick={() => setExporting(true)}>
+        {strings.settings.packExport}
+      </button>
+      {error !== null ? (
+        <p className="chrome mt-[10px] text-[10px] leading-[1.6] text-red-text">{error}</p>
+      ) : null}
+      <div className="mb-[26px]" />
+
+      {pending !== null ? (
+        <InstallPackSheet
+          file={pending.file}
+          plan={pending.plan}
+          onClose={() => setPending(null)}
+        />
+      ) : null}
+      {removing !== null ? (
+        <RemovePackSheet pack={removing} onClose={() => setRemoving(null)} />
+      ) : null}
+      {exporting ? <ExportPackSheet onClose={() => setExporting(false)} /> : null}
+    </>
+  );
+}
+
+/**
  * Regex scripts and event triggers (SPEC §14).
  *
  * One section rather than two, because they are one feature used together: a
@@ -1195,6 +1302,8 @@ export function SettingsScreen() {
             );
           })}
           <div className="h-[20px]" />
+
+          <PacksSection />
 
           <AutomationSection />
 
