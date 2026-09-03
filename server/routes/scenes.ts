@@ -46,6 +46,7 @@ import { findCharacter } from "../db/queries/characters.ts";
 import { scriptText } from "../scripts/runtime.ts";
 import type { TriggerRunner } from "../triggers/runner.ts";
 import type { WebhookSender } from "../webhooks/sender.ts";
+import { sceneChannel, type SceneEvent } from "../sync/channel.ts";
 import { activeGuides, editGuide, findGuide, flushGuides, toGuideDto } from "../db/queries/guides.ts";
 import type { AutopilotRunner } from "../generation/autopilot.ts";
 import { resolveNextSpeaker } from "../generation/turn.ts";
@@ -608,6 +609,78 @@ export function sceneRoutes(
       }
     }
     return c.json(dto, 201);
+  });
+
+  /**
+   * The per-scene channel (SPEC §5).
+   *
+   * One SSE stream per open scene, carrying what changed rather than what it
+   * changed to: a leaf move, a generation starting or ending, an edit. The
+   * client refetches on each. That means a device that missed an event and one
+   * that got it end up making the same request, and there is no path where this
+   * stream and the database can disagree about what the scene says.
+   *
+   * Separate from the generation stream, which is about one turn and ends with
+   * it. This one is about the scene and lasts as long as it is open.
+   */
+  app.get("/:sceneId/events", (c) => {
+    const sceneRow = scene(c.req.param("sceneId"));
+    if (sceneRow === null) return c.json(notFound("scene"), 404);
+
+    const encoder = new TextEncoder();
+    let unsubscribe: (() => void) | null = null;
+    let heartbeat: ReturnType<typeof setInterval> | null = null;
+
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        let closed = false;
+        const send = (text: string) => {
+          if (closed) return;
+          try {
+            controller.enqueue(encoder.encode(text));
+          } catch {
+            closed = true;
+          }
+        };
+
+        unsubscribe = sceneChannel.subscribe(sceneRow.ulid, (event: SceneEvent) => {
+          send(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+        });
+
+        // The current head, first. A device that connects after a change would
+        // otherwise sit on a stale view until the next thing happened.
+        send(
+          `event: leaf\ndata: ${JSON.stringify({
+            type: "leaf",
+            messageId: sceneRow.active_leaf_id === null
+              ? null
+              : (ctx.db
+                  .query("SELECT ulid FROM messages WHERE id = $id")
+                  .get({ id: sceneRow.active_leaf_id }) as { ulid: string } | null)?.ulid ?? null,
+            // The opening frame is a statement of where things stand, not a
+            // move, so it names no parent and no author.
+            parentId: null,
+            origin: null,
+          })}\n\n`,
+        );
+
+        heartbeat = setInterval(() => send(": heartbeat\n\n"), 15_000);
+      },
+
+      cancel() {
+        if (heartbeat !== null) clearInterval(heartbeat);
+        unsubscribe?.();
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no",
+      },
+    });
   });
 
   app.patch("/:sceneId/messages/:messageId", async (c) => {

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { AppContext, AppEnv } from "./context.ts";
 import { sessionMiddleware } from "./middleware/session.ts";
+import { withOrigin } from "./sync/channel.ts";
 import { authRoutes } from "./routes/auth.ts";
 import { setupRoutes } from "./routes/setup.ts";
 import { connectionRoutes } from "./routes/connections.ts";
@@ -107,6 +108,19 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   generation.setAutopilot(autopilot);
   autopilot.attach(generation);
   const app = new Hono<AppEnv>();
+
+  /**
+   * Which device is making this request (SPEC §5).
+   *
+   * A header the client sets per tab, carried through the handler so that when
+   * the storage layer announces a leaf move it can say who moved it. Without
+   * it, last-write-wins has no loser: every client would prompt itself about
+   * its own write.
+   */
+  app.use("*", async (c, next) => {
+    const origin = c.req.header("X-Onsen-Client") ?? null;
+    await withOrigin(origin === null ? null : origin.slice(0, 64), () => next());
+  });
 
   app.use("*", sessionMiddleware(ctx));
 

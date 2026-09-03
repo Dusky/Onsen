@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { api, ApiRequestError } from "./api.ts";
 import { keys } from "./queries.ts";
 import { useGenerationStore } from "../state/generation.ts";
+import { chimeIfWanted } from "./chime.ts";
 import type { BeatBound, ReviseMode, TurnScope } from "@shared/types.ts";
 
 /**
@@ -145,6 +146,11 @@ export function useGeneration() {
                   event.type === "done" ? "done" : event.type,
                   event.message ?? null,
                 );
+                // §5's completion chime, for a turn that finished while the
+                // reader was somewhere else. On the scene they are watching the
+                // prose arriving is the notification, and a sound over it would
+                // be the app talking during the story.
+                if (event.type === "done" && document.hidden) chimeIfWanted();
                 // Invalidate here, on the terminal event itself, not after the
                 // stream loop exits: the message has landed in the tree, and
                 // the refetch must not wait on a reader that a proxy or a

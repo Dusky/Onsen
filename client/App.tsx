@@ -16,6 +16,9 @@ import { strings } from "./strings.ts";
 import { useRoute } from "./lib/router.ts";
 import { useIsDesktop } from "./lib/breakpoint.ts";
 import { Sidebar } from "./components/Sidebar.tsx";
+import { WritingElsewhere } from "./components/WritingElsewhere.tsx";
+import { setChimeWanted, unlockAudio } from "./lib/chime.ts";
+import { usePreferences } from "./lib/queries.ts";
 import { useViewportHeight } from "./lib/viewport.ts";
 import type { BootstrapDto } from "@shared/types.ts";
 
@@ -97,12 +100,47 @@ export function App() {
  */
 function Shell() {
   const isDesktop = useIsDesktop();
-  if (!isDesktop) return <Routed />;
+  const preferences = usePreferences();
+
+  // §5's chime, and the autoplay policy that shapes it. A browser will not let
+  // a page make a sound before the person has interacted with it, so the audio
+  // context is built on the first gesture the app sees and nothing before then
+  // can ring.
+  useEffect(() => {
+    const unlock = () => unlockAudio();
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
+
+  useEffect(() => {
+    setChimeWanted(preferences.data?.completionChime === true);
+  }, [preferences.data?.completionChime]);
+
+  // The cross-screen generation indicator sits above whatever screen is
+  // showing, on both layouts: a reader who wandered off gets one way back
+  // wherever they wandered to (SPEC §5, design §403).
+  if (!isDesktop) {
+    return (
+      <div className="flex screen-height flex-col bg-bg">
+        <WritingElsewhere />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <Routed />
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="flex screen-height bg-bg">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Routed />
+        <WritingElsewhere />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <Routed />
+        </div>
       </div>
     </div>
   );

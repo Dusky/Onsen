@@ -879,6 +879,45 @@ away from a generating scene; optional completion chime (unlock audio on first
 user gesture for autoplay policy); per-message TTFT and tokens/sec in the
 generation metadata panel.
 
+### Settled while building phase 36
+
+- **The channel carries what changed, never what it changed to.** Every event is
+  a notification and the client refetches, so a device that missed one and a
+  device that got it make the same request — and there is no path where the
+  channel and the database can disagree about what a scene says.
+- **The signal for "this is a continuation" is the new head's parent, not the
+  old head.** They are the same thing for an append and different for a rewind:
+  rewinding also *starts* where the reader is. Treating that as a continuation
+  was the first version, and it swallowed exactly the case the prompt exists
+  for. A device showing the new head's parent is looking at the turn the new one
+  continues, so it takes it silently; anything else has been moved off its
+  branch and is told.
+- **The losing client holds its view.** A prompt over a log that had already
+  converged behind it is a worse lie than no prompt, and letting a background
+  refetch change the scene under the reader is the silent divergence this rule
+  exists to prevent. So the log keeps rendering what it was rendering until the
+  reader takes the move.
+- **The origin lives in `AsyncLocalStorage`.** A handler is async, so a
+  module-level variable restored on return is restored at the first `await`, and
+  every publish after that reads whichever request set it last. An origin that
+  leaks between requests makes a client ignore an echo that was not its own —
+  which is the one thing last-write-wins depends on.
+- **Leaf moves are announced from the storage layer.** Three places move the
+  head and only two of them have a route that knows it happened: a delete that
+  takes the head with it moves the leaf as a consequence, not as a request.
+- **A failed generation announces its end.** `fail` does not return through
+  `finish`, so an indicator that only cleared on success would leave the other
+  device showing "still writing" for a turn that stopped.
+- **The chime is server-side, and only when the tab is hidden.** Server-side
+  because there is no browser storage here, and because a preference held in one
+  browser is the wrong shape for a feature whose premise is that the phone and
+  the desktop are two views of one install. Hidden-only because on the scene the
+  reader is watching, the prose arriving *is* the notification, and a sound over
+  it would be the app talking during the story.
+- **The chime is synthesised, not a file.** Two sine tones through WebAudio is a
+  dozen lines and no asset to commit, serve and cache for a third of a second of
+  sound.
+
 ---
 
 ## 6. Turn director

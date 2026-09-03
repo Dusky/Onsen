@@ -3,7 +3,6 @@ import { strings } from "../strings.ts";
 import { navigate } from "../lib/router.ts";
 import { useIsDesktop } from "../lib/breakpoint.ts";
 import { useCreateScene, useScenes } from "../lib/queries.ts";
-import { useGenerationStore } from "../state/generation.ts";
 import { api } from "../lib/api.ts";
 import { useEffect, useState } from "react";
 import { TabBar } from "../components/TabBar.tsx";
@@ -11,9 +10,12 @@ import type { ConnectionProfileDto } from "@shared/types.ts";
 
 /**
  * The entry screen: recent roleplays first, each showing enough to remember what
- * it was. The "still writing" strip under the header is the cross-screen
- * generation indicator — generation continues when the user navigates away, and
- * this is how they get back to it.
+ * it was.
+ *
+ * The "still writing" strip used to live here. It is in the shell now, because
+ * the design asks for it on every screen that is not the generating roleplay's
+ * chat — and this list is the one screen a reader who wandered off is least
+ * likely to be looking at.
  */
 
 function relativeTime(at: number): string {
@@ -80,7 +82,6 @@ function SceneRow({ scene }: { scene: SceneDto }) {
 export function ScenesScreen() {
   const scenes = useScenes();
   const create = useCreateScene();
-  const active = useGenerationStore((state) => state.active);
   const [profileId, setProfileId] = useState<string | null>(null);
   const isDesktop = useIsDesktop();
 
@@ -93,9 +94,6 @@ export function ScenesScreen() {
       .catch(() => setProfileId(null));
   }, []);
 
-  const writingElsewhere =
-    active !== null && (active.status === "connecting" || active.status === "streaming");
-
   return (
     <div className="flex screen-height flex-col bg-bg">
       <header
@@ -105,25 +103,6 @@ export function ScenesScreen() {
         <p className="screen-kicker">{strings.scenes.kicker}</p>
         <h1 className="screen-title mt-[6px]">{strings.scenes.title}</h1>
       </header>
-
-      {/* Generation continues when the user navigates away; this is the way back. */}
-      {writingElsewhere ? (
-        <button
-          type="button"
-          onClick={() => navigate({ name: "chat", sceneId: active.sceneId })}
-          className="mx-[18px] mt-[10px] flex flex-none items-center justify-between gap-[10px] border border-red-border bg-red-bg px-[11px] py-[8px]"
-        >
-          <span className="chrome truncate text-[9.5px] tracking-[0.12em] text-red-text uppercase">
-            {strings.scenes.stillWriting(active.sceneTitle)}
-          </span>
-          <span
-            className="chrome flex-none text-[9.5px] tracking-[0.12em] uppercase"
-            style={{ color: "var(--onsen-color-red)" }}
-          >
-            {strings.scenes.open}
-          </span>
-        </button>
-      ) : null}
 
       <main className="min-h-0 flex-1 overflow-y-auto px-[22px]">
         <div className="mx-auto w-full max-w-[var(--onsen-list-measure)]">

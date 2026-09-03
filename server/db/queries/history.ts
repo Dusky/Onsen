@@ -1,6 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { ulid } from "../../lib/ulid.ts";
 import { runStage, scriptContext, type ScriptContext } from "../../scripts/runtime.ts";
+import { originOfRequest, sceneChannel } from "../../sync/channel.ts";
 import type {
   CheckpointDto,
   MessageAuthorType,
@@ -384,6 +385,53 @@ export interface NewMessage {
  * current leaf is not an error — it forks the timeline there, which is exactly
  * what branching is.
  */
+/**
+ * Say that the scene's head moved (SPEC §5).
+ *
+ * Published from the storage layer rather than the routes because the leaf
+ * moves in three places here and only two of them have a route that knows it
+ * happened — a delete that takes the head with it moves the leaf as a
+ * consequence, not as a request. Missing that one is exactly the silent
+ * divergence §5 is about.
+ *
+ * The identifiers are resolved to ULIDs here, because the channel is a boundary
+ * and an internal id means nothing on the other side of it.
+ */
+function announceLeaf(db: Database, sceneId: number, leafId: number | null): void {
+  try {
+    const scene = db.query("SELECT ulid FROM scenes WHERE id = $id").get({ id: sceneId }) as
+      | { ulid: string }
+      | null;
+    if (scene === null) return;
+    const parentId =
+      leafId === null
+        ? null
+        : ((
+            db.query("SELECT parent_id FROM messages WHERE id = $id").get({ id: leafId }) as
+              | { parent_id: number | null }
+              | null
+          )?.parent_id ?? null);
+    sceneChannel.publish(scene.ulid, {
+      type: "leaf",
+      messageId: leafId === null ? null : ulidOf(db, "messages", leafId),
+      // What the new head hangs off. A device showing *this* is looking at the
+      // turn the new one continues, so it can simply take it — that is what a
+      // scene open on two devices should look like, and prompting on every turn
+      // the other device wrote would make the feature unusable.
+      //
+      // Deliberately the new head's parent rather than the old head. They are
+      // the same thing for an append and different for a rewind: rewinding also
+      // *starts* where the reader is, and treating that as a continuation was
+      // the first version of this and it swallowed exactly the case the prompt
+      // exists for.
+      parentId: parentId === null ? null : ulidOf(db, "messages", parentId),
+      origin: originOfRequest(),
+    });
+  } catch {
+    /* A notification that failed must not fail the write it is about. */
+  }
+}
+
 export function appendMessage(db: Database, input: NewMessage): MessageRow {
   const now = Date.now();
   const row = db
@@ -410,6 +458,7 @@ export function appendMessage(db: Database, input: NewMessage): MessageRow {
     now,
   });
 
+  announceLeaf(db, input.sceneId, row.id);
   return row;
 }
 
@@ -418,6 +467,20 @@ export function appendMessage(db: Database, input: NewMessage): MessageRow {
  * whole point of caching it on the row is that it must never go stale
  * (SPEC §2, §3).
  */
+/** The tree changed without the head moving: an edit, or a delete off-path. */
+function announceHistory(db: Database, sceneId: number): void {
+  try {
+    const scene = db.query("SELECT ulid FROM scenes WHERE id = $id").get({ id: sceneId }) as
+      | { ulid: string }
+      | null;
+    if (scene !== null) {
+      sceneChannel.publish(scene.ulid, { type: "history", origin: originOfRequest() });
+    }
+  } catch {
+    /* As above: never fail the write. */
+  }
+}
+
 export function updateMessage(
   db: Database,
   id: number,
@@ -450,6 +513,9 @@ export function updateMessage(
   if (contentChanged && row.kind === "beat") reparseSegments(db, row);
 
   touchScene(db, current.scene_id);
+  // An edit does not move the head, so the other device would otherwise keep
+  // showing the text as it was until something else happened to it (§5).
+  announceHistory(db, current.scene_id);
   return row;
 }
 
@@ -565,6 +631,7 @@ export function setActiveLeaf(
     leaf,
     now: Date.now(),
   });
+  announceLeaf(db, sceneId, leaf);
   return leaf;
 }
 
@@ -616,8 +683,10 @@ export function deleteMessage(db: Database, row: MessageRow): void {
       leaf: replacement,
       now: Date.now(),
     });
+    announceLeaf(db, row.scene_id, replacement);
   } else {
     touchScene(db, row.scene_id);
+    announceHistory(db, row.scene_id);
   }
 }
 

@@ -52,6 +52,7 @@ import { scriptText } from "../scripts/runtime.ts";
 import type { TriggerRunner } from "../triggers/runner.ts";
 import type { WebhookSender } from "../webhooks/sender.ts";
 import type { WebhookEvent } from "../webhooks/events.ts";
+import { sceneChannel } from "../sync/channel.ts";
 import type { InstructTemplate } from "../prompt/index.ts";
 import type { TaskRunStatus } from "../../shared/types.ts";
 
@@ -690,6 +691,13 @@ export class GenerationService {
       }
 
       this.setStatus(generation, "streaming");
+      // §5's other device: a turn started here, so a phone showing this scene
+      // gets an indicator without having asked for one.
+      sceneChannel.publish(generation.sceneUlid, {
+        type: "generation",
+        state: "started",
+        generationId: generation.id,
+      });
       dispatchedAt = this.now();
 
       const parseInline = reasoningConfig.parseInline;
@@ -1175,6 +1183,15 @@ export class GenerationService {
     const finishedAt = this.now();
     generation.finishedAt = finishedAt;
 
+    // Announced on every path out of here, including the failing ones. An
+    // indicator that only cleared on success would leave the other device
+    // showing "still writing" for a turn that stopped.
+    sceneChannel.publish(generation.sceneUlid, {
+      type: "generation",
+      state: "finished",
+      generationId: generation.id,
+    });
+
     // Shutting down is not a completed turn: there is no database left to write
     // the message into, and the generation was aborted rather than finished.
     if (this.stopped) {
@@ -1457,6 +1474,15 @@ export class GenerationService {
     generation.error = message;
     generation.detail = detail;
     generation.finishedAt = this.now();
+    // The other device is told before the early return below: a shutdown is
+    // exactly when a listener still connected most needs to stop showing
+    // "still writing" (§5). `finish` is not on this path - a failure returns
+    // through here instead - so this is the only place that can say so.
+    sceneChannel.publish(generation.sceneUlid, {
+      type: "generation",
+      state: "finished",
+      generationId: generation.id,
+    });
     // Nothing left to write to, and nobody left to tell.
     if (this.stopped) return;
     this.persist(generation);

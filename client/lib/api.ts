@@ -5,6 +5,17 @@ import type { ApiError } from "@shared/types.ts";
  * goes to this app's own API on the same origin, so there is no CORS and no
  * base URL to configure.
  */
+/**
+ * Which device — which *tab*, really — this is (SPEC §5).
+ *
+ * Sent on every request so the server can say who moved a scene's head, and the
+ * client that moved it can ignore its own echo. Generated per load and held in
+ * memory: there is no browser storage in this app, and an identity that
+ * survived a reload would be wrong anyway — two tabs are two views that can
+ * diverge from each other exactly as a phone and a desktop can.
+ */
+export const CLIENT_ID = `c_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+
 export class ApiRequestError extends Error {
   readonly status: number;
   readonly code: string;
@@ -31,6 +42,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         ...(init?.body === undefined || init.body instanceof FormData
           ? {}
           : { "Content-Type": "application/json" }),
+        "X-Onsen-Client": CLIENT_ID,
         ...init?.headers,
       },
     });
@@ -76,7 +88,7 @@ function withBody(method: string, body: unknown): RequestInit {
 async function download(path: string, body: unknown): Promise<Blob> {
   const response = await fetch(`/api${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-Onsen-Client": CLIENT_ID },
     body: JSON.stringify(body),
   });
   if (!response.ok) {

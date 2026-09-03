@@ -42,6 +42,8 @@ import {
   usePreviewPack,
   useWebhooks,
   useScenes,
+  usePreferences,
+  useSetPreferences,
 } from "../lib/queries.ts";
 import { TabBar } from "../components/TabBar.tsx";
 import { Sheet } from "../components/Sheet.tsx";
@@ -791,6 +793,47 @@ function UpdateGroup() {
 /** The data bank's embeddings provider — base URL, model, key — or nothing,
  * which is the keyword fallback, and the section says so rather than hiding. */
 /**
+ * Reading preferences (SPEC §5, §16).
+ *
+ * The design's third settings group is "Reading" — theme, prose size, VN stage.
+ * Two of those three still belong to features that do not exist, so this is the
+ * group with one thing in it rather than the group drawn with nothing behind it.
+ */
+function ReadingSection() {
+  const preferences = usePreferences();
+  const save = useSetPreferences();
+  const chime = preferences.data?.completionChime === true;
+
+  return (
+    <>
+      <p className="section-label mb-[4px]">{strings.settings.reading}</p>
+      <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+        {strings.settings.readingHint}
+      </p>
+      <p className="section-label mb-[6px]">{strings.settings.chime}</p>
+      <div className="flex gap-[6px]">
+        {[
+          [false, strings.settings.chimeOff],
+          [true, strings.settings.chimeOn],
+        ].map(([value, label]) => (
+          <button
+            key={String(value)}
+            type="button"
+            className={`btn flex-1 ${chime === value ? "btn-primary" : ""}`}
+            onClick={() => save.mutate({ completionChime: value as boolean })}
+          >
+            {label as string}
+          </button>
+        ))}
+      </div>
+      <p className="chrome mt-[7px] mb-[26px] text-[10px] leading-[1.6] text-ink-dim">
+        {strings.settings.chimeHint}
+      </p>
+    </>
+  );
+}
+
+/**
  * Outbound webhooks (SPEC §15).
  *
  * The row carries the delivery state rather than hiding it behind the sheet: a
@@ -1393,6 +1436,8 @@ export function SettingsScreen() {
             );
           })}
           <div className="h-[20px]" />
+
+          <ReadingSection />
 
           <WebhooksSection />
 

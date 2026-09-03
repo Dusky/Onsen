@@ -3348,3 +3348,75 @@ action belongs, next to a row that already shows whether it is off. It says
 "Switch it off" now — the same plain-language problem as `situational` and
 `OPENAI_COMPATIBLE` in the two phases before, which suggests looking for it
 deliberately rather than waiting to notice.
+
+---
+
+## Phase 36 — Multi-device head sync, background indicators
+
+§5's last two paragraphs. The same scene may be open on a phone and a desktop;
+they should converge, and where they cannot converge silently the device that
+did not write should find out rather than have the story change under it.
+
+### What was built
+
+**A per-scene channel** — one SSE stream per open scene, carrying leaf moves,
+generation start and finish, and history changes. In process and in memory: this
+is one server serving one person's devices, and an event nobody was connected
+for is about state the reconnecting client reads from the database anyway.
+
+**An origin per tab.** A header the client sets, carried through the handler in
+`AsyncLocalStorage`, so the storage layer can say who moved the head and the
+device that moved it can ignore its own echo.
+
+**The "chat moved" prompt**, in the blue pencil — the app talking about its own
+machinery, not something happening in the story — and the held view behind it.
+
+**The cross-screen generation indicator**, moved out of the roleplays list and
+into the shell. The design asks for it on every screen that is not the
+generating roleplay's chat; it was on the one screen a reader who wandered off
+is least likely to be looking at.
+
+**The completion chime**, synthesised, optional, server-side, and only when the
+tab is in the background.
+
+### Deliberately deferred
+
+- **Presence.** Knowing *that* the other device is looking is a different
+  feature from knowing what it did, and nothing in §5 asks for it.
+- **Conflict on a message edit.** Two devices editing the same turn is
+  last-write-wins with no prompt: the loser sees the text change, which is what
+  an edit looks like from the outside anyway.
+- **Sync outside a scene.** The library and the settings screens do not listen.
+  Nothing there changes under a reader mid-sentence.
+
+### Spec changes
+
+§5 gains a `Settled while building phase 36` block with eight decisions.
+
+### Surprises
+
+**The first working version was wrong in the interesting direction.** Two
+browser contexts, a phone and a desktop, same scene: the phone wrote a line and
+the desktop's banner appeared. It also already showed the line — a background
+refetch had converged it behind the prompt. So the banner was announcing a
+divergence that no longer existed, and the fix was not to clear the banner but
+to stop the log converging behind it.
+
+**Then the signal itself was wrong.** Carrying "where the head was" makes an
+append and a rewind look identical, because a rewind also starts where the
+reader is. The right signal is the *new head's parent*: a device showing that is
+looking at the turn the new one continues. With "previous", a rewind converged
+silently — swallowing exactly the case the prompt exists for. Both versions
+passed their tests; two browsers found both.
+
+**A test premise, not a bug.** The first rewind drive did nothing, because
+`setActiveLeaf` descends to the leaf of the subtree by default — so pointing it
+at the first message put it straight back on the last one. Twenty minutes went
+into the client before reading the function being called.
+
+**A one-render lag that read as a dead feature.** The chat screen computed the
+displayed head, passed it into the channel hook, and got the move state back —
+a cycle, resolved with a ref, which meant the hook always saw the *previous*
+render's value. With no re-render after the scene loaded, that value stayed
+`null` forever, and `null` was the "nothing to diverge from" branch. The hook
+owns that state now; nothing feeds back into it.

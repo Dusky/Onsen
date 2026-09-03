@@ -3,6 +3,7 @@ import type { MessageDto } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { navigate } from "../lib/router.ts";
+import { useSceneChannel } from "../lib/scene-channel.ts";
 import {
   useDeleteMessage,
   useEditMessage,
@@ -107,6 +108,10 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   // Autopilot (SPEC §6): the row that says whether the scene is writing
   // itself, and the one control that has to stop it from anywhere.
   const autopilot = useAutopilot(sceneId);
+  // §5's multi-device head sync: this scene may also be open on a phone. The
+  // channel says when the other one moved the head, and this one says so rather
+  // than jumping the reader to a branch they did not choose.
+  const channel = useSceneChannel(sceneId, scene.data?.scene.activeLeafId ?? null);
   const stopAutopilot = useStopAutopilot(sceneId);
   const updateScene = useUpdateScene(sceneId);
   const [profilePickerOpen, setProfilePickerOpen] = useState(false);
@@ -180,7 +185,16 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   // The cast becomes a rail and the ops flatten (design `4a`). Everything
   // else about this screen is the same components at a different width.
   const isDesktop = useIsDesktop();
-  const messages = scene.data?.messages ?? [];
+  // §5's held view. While another device has moved the head somewhere this one
+  // is not, the log keeps showing what the reader was reading — the whole point
+  // of the prompt is that the scene does not change under them, and a client
+  // that let its own background refetch converge behind the banner would be
+  // doing exactly that with an explanation floating over it.
+  const fetched = scene.data?.messages ?? [];
+  const held = useRef(fetched);
+  const moved = channel.movedTo !== null;
+  if (!moved) held.current = fetched;
+  const messages = moved ? held.current : fetched;
   // An aside renders inline in the log by default; a reader who would rather
   // the channel be its only home switches that off per scene (§7).
   const showInlineOoc = scene.data?.scene.oocInline ?? true;
@@ -886,6 +900,25 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           prose column, with the cast rail beside them (design `4a`). The
           pieces are identical either way — only their parent differs, which
           is the one thing a media query cannot do. */}
+      {/* §5: "the losing client showing a 'chat moved' prompt rather than
+          silently diverging". Jumping the reader onto someone else's branch
+          mid-sentence is the failure that rule exists to prevent, so this is a
+          button rather than a redraw. */}
+      {channel.movedTo !== null ? (
+        <button
+          type="button"
+          onClick={channel.accept}
+          className="mx-[18px] mt-[10px] flex flex-none items-center justify-between gap-[10px] border border-blue-border bg-blue-bg px-[11px] py-[8px]"
+        >
+          <span className="chrome truncate text-[9.5px] tracking-[0.12em] text-blue-text uppercase">
+            {strings.chat.movedElsewhere}
+          </span>
+          <span className="chrome flex-none text-[9.5px] tracking-[0.12em] text-blue-text uppercase">
+            {strings.chat.movedShow}
+          </span>
+        </button>
+      ) : null}
+
       {isDesktop ? (
         <div className="flex min-h-0 flex-1">
           <div className="flex min-w-0 flex-1 flex-col">{body}</div>

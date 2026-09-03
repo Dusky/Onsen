@@ -100,6 +100,13 @@ export const strings = {
      * thing twice.
      */
     oocLabel: (name: string | null) => (name === null ? "OOC" : `${name} \u00b7 OOC`),
+    /**
+     * §5's multi-device head sync. The blue pencil, not the red: this is the
+     * app talking about its own machinery, not something happening in the story.
+     */
+    movedElsewhere: "This roleplay moved on another device",
+    movedShow: "Show me",
+
     oocOpenChannel: "Open channel \u25be",
     opOoc: "Off script",
     opOocKey: "OOC",
@@ -519,6 +526,15 @@ export const strings = {
       tracker: "Refresh a tracker",
       script: "Run a regex script",
     } as Record<string, string>,
+
+    /** Reading preferences (SPEC §5, phase 36). */
+    reading: "Reading",
+    readingHint: "How the app behaves while you are looking at something else.",
+    chime: "Chime when a reply lands",
+    chimeHint:
+      "Only when this tab is in the background. Your browser will not let it make a sound until you have clicked something.",
+    chimeOn: "On",
+    chimeOff: "Off",
 
     /** Outbound webhooks (SPEC §15, phase 35). */
     webhooks: "Webhooks",

@@ -1640,3 +1640,28 @@ export function useTestWebhook() {
     ),
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* Reading preferences (SPEC §5, §16)                                  */
+/* ------------------------------------------------------------------ */
+
+export interface PreferencesDto {
+  completionChime: boolean;
+}
+
+export function usePreferences() {
+  return useQuery({
+    queryKey: ["preferences"] as const,
+    queryFn: () => api.get<PreferencesDto>("/system/preferences"),
+    staleTime: 60_000,
+  });
+}
+
+export function useSetPreferences() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Partial<PreferencesDto>) =>
+      api.patch<PreferencesDto>("/system/preferences", body),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["preferences"] }),
+  });
+}
