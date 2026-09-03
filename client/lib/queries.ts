@@ -45,7 +45,10 @@ import type {
   SceneDto,
   SceneWithHistoryDto,
   SetActiveLeafRequest,
+  DossierDto,
+  DossierProposalDto,
   InstructTemplateDto,
+  RecurringNameDto,
   LorebookDto,
   LorebookWithEntriesDto,
   LoreEntryDto,
@@ -1107,6 +1110,82 @@ export function useAuthorSuggestLore(sceneId: string) {
         `/authoring/scenes/${sceneId}/suggest-lore`,
       ),
   });
+}
+
+/* ---------------- character dossiers (SPEC §11, phase 32) ---------------- */
+
+export const dossierKeys = {
+  scene: (sceneId: string) => ["dossiers", sceneId] as const,
+  recurring: (sceneId: string) => ["dossiers", sceneId, "recurring"] as const,
+};
+
+export function useDossiers(sceneId: string) {
+  return useQuery({
+    queryKey: dossierKeys.scene(sceneId),
+    queryFn: () => api.get<DossierDto[]>(`/dossiers/scenes/${sceneId}`),
+  });
+}
+
+/**
+ * Names the scene keeps returning to that have no sheet yet.
+ *
+ * Never stale: every turn changes the answer, and an offer to write a dossier
+ * for someone who was named three messages ago is the whole feature.
+ */
+export function useRecurringNames(sceneId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: dossierKeys.recurring(sceneId),
+    queryFn: () => api.get<{ names: RecurringNameDto[] }>(`/authoring/scenes/${sceneId}/recurring`),
+    staleTime: 0,
+    enabled,
+  });
+}
+
+/** Ask the model to write one. A proposal, not a row — the reader accepts it. */
+export function useWriteDossier(sceneId: string) {
+  return useMutation({
+    mutationFn: (name: string) =>
+      api.post<{ dossier: DossierProposalDto }>(`/authoring/scenes/${sceneId}/dossier`, { name }),
+  });
+}
+
+function useDossierMutation<TArgs, TResult>(sceneId: string, fn: (args: TArgs) => Promise<TResult>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: dossierKeys.scene(sceneId) });
+      // Accepting one removes it from the offers, and promoting one adds a card.
+      void client.invalidateQueries({ queryKey: dossierKeys.recurring(sceneId) });
+      void client.invalidateQueries({ queryKey: characterKeys.all });
+      // The dossier renders into a lore entry, so the books changed too.
+      void client.invalidateQueries({ queryKey: loreKeys.all });
+    },
+  });
+}
+
+export function useSaveDossier(sceneId: string) {
+  return useDossierMutation(sceneId, (body: DossierProposalDto & { mentions?: number }) =>
+    api.post<DossierDto>(`/dossiers/scenes/${sceneId}`, body),
+  );
+}
+
+export function useUpdateDossier(sceneId: string) {
+  return useDossierMutation(
+    sceneId,
+    ({ id, ...patch }: Partial<DossierProposalDto> & { id: string }) =>
+      api.patch<DossierDto>(`/dossiers/${id}`, patch),
+  );
+}
+
+export function useDeleteDossier(sceneId: string) {
+  return useDossierMutation(sceneId, (id: string) => api.delete<void>(`/dossiers/${id}`));
+}
+
+export function usePromoteDossier(sceneId: string) {
+  return useDossierMutation(sceneId, (id: string) =>
+    api.post<{ character: CharacterDto; dossier: DossierDto }>(`/dossiers/${id}/promote`),
+  );
 }
 
 /* ---------------- expressions and VN staging (SPEC §12, phase 29) ---------------- */

@@ -763,6 +763,56 @@ export interface RebuildGuidesRequest {
 }
 
 /* ------------------------------------------------------------------ */
+/* Character dossiers (SPEC §11, §20 phase 32)                         */
+/* ------------------------------------------------------------------ */
+
+/** The three tiers §11 asks for. `buried` never reaches a prompt. */
+export interface DossierKnowledgeDto {
+  public: string;
+  private: string;
+  buried: string;
+}
+
+export interface DossierDto {
+  id: string;
+  name: string;
+  role: string;
+  voice: string;
+  canonLock: string;
+  knowledge: DossierKnowledgeDto;
+  standing: string;
+  /** How many turns mentioned the name when this was proposed. */
+  mentions: number;
+  /** True once it has earned a character card; its entry is then off. */
+  promoted: boolean;
+  /**
+   * Exactly what the prompt gets. Shown to the reader so the absence of the
+   * buried tier is visible rather than a claim in a hint.
+   */
+  injected: string;
+  /** The lore entry it renders into, for the token cost and the trace. */
+  entry: LoreEntryDto | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** A dossier the model proposed, before the reader has accepted it. */
+export interface DossierProposalDto {
+  name: string;
+  role: string;
+  voice: string;
+  canonLock: string;
+  knowledge: DossierKnowledgeDto;
+  standing: string;
+}
+
+/** A name the scene keeps returning to that has no sheet yet. */
+export interface RecurringNameDto {
+  name: string;
+  mentions: number;
+}
+
+/* ------------------------------------------------------------------ */
 /* Lorebooks (SPEC §10)                                                */
 /* ------------------------------------------------------------------ */
 
@@ -793,6 +843,13 @@ export interface LorebookDto {
   id: string;
   name: string;
   description: string | null;
+  /**
+   * True when the app writes this book rather than the reader — a dossier book
+   * (§11). Shown, so where those tokens go is visible, but not detachable:
+   * unhooking it would leave dossiers rendering into a book that reaches
+   * nothing, and nothing would say so.
+   */
+  managed: boolean;
   /** Lowest-priority entries drop when this is exceeded. 0 is no budget (§10). */
   tokenBudget: number;
   scanDepth: number;

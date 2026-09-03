@@ -89,10 +89,14 @@ export function LoreSheet({
               <span className="block truncate text-[14px]">{book.name}</span>
               <span className="chrome mt-[3px] block truncate text-[9px] tracking-[0.08em] text-ink-dim uppercase">
                 {strings.lore.entries(book.entryCount)}
-                {own === undefined ? ` · ${strings.lore.globalNote}` : ""}
+                {book.managed
+                  ? ` · ${strings.lore.managedNote}`
+                  : own === undefined
+                    ? ` · ${strings.lore.globalNote}`
+                    : ""}
               </span>
             </button>
-            {own === undefined ? null : (
+            {own === undefined || book.managed ? null : (
               <button
                 type="button"
                 onClick={() => onDetach(book.id, own.id)}

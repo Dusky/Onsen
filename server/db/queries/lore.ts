@@ -496,10 +496,24 @@ export function toBookDto(db: Database, row: LorebookRow): LorebookDto {
     };
   });
 
+  // Whether the app writes this book rather than the reader. A dossier book is
+  // created and filled by §11's dossiers; detaching it from its scene would
+  // leave them rendering into a book that reaches nothing, which is silent
+  // breakage — so the UI shows it and refuses to unhook it.
+  const managed =
+    (db
+      .query(
+        `SELECT 1 AS found FROM dossiers d
+           JOIN lore_entries e ON e.id = d.lore_entry_id
+          WHERE e.lorebook_id = $book LIMIT 1`,
+      )
+      .get({ book: row.id }) as { found: number } | null) !== null;
+
   return {
     id: row.ulid,
     name: row.name,
     description: row.description,
+    managed,
     tokenBudget: row.token_budget,
     scanDepth: row.scan_depth,
     recursionDepth: row.recursion_depth,

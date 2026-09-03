@@ -2934,3 +2934,92 @@ already landed in the database. The fix moves the invalidation onto the
 terminal event itself — the one place guaranteed to run — so the message shows
 the instant `done` arrives. The general lesson: a refetch wired to "the stream
 loop eventually exits" is a refetch that sometimes does not.
+
+## Phase 32 — Character dossiers
+
+For the characters who arrive during play rather than being authored up front:
+the innkeeper who turned out to matter.
+
+### What was built
+
+**The architecture, which the SPEC had guessed wrong.** §22 asked whether a
+dossier should be its own entity or a character with a `provisional` flag, and
+leaned to the latter. It is neither, and the reason is in §11's own sentence:
+dossiers are "injected by relevance rather than always". A cast member is
+injected *always* — that is what being in the cast means — so a provisional
+character would either cost tokens every turn or need a second injection rule
+bolted onto the cast.
+
+Relevance injection already exists. It is §10, built in phase 21. So a dossier
+is two things at once: a row with the five fields §11 names, which is what the
+reader edits, and a lore entry keyed on the name, which is how it reaches a
+prompt. Keys, scan depth, the token budget, sticky, the character filter and
+§16's activation test tool all come free.
+
+This was the reader's call, not mine to guess — they asked how SillyTavern
+handles it, and the research settled it. **SillyTavern has no dossier feature at
+all**; what its users do for an NPC who emerged is write a World Info entry in a
+chat-scoped lorebook, which is this schema's scene binding. The prior art
+endorses routing through the lore engine and against inventing a second
+injection path. Worth recording that the question came from them: my own
+instinct had been to ask, and the answer was better than either option I had
+drafted.
+
+**The entry is derived, never edited.** Every write goes through `renderDossier`,
+so it cannot drift from the fields it came from — the same rule §8's guides
+follow, and the reason a dossier can be edited without anyone reconciling two
+copies.
+
+**The buried tier never reaches a prompt.** §11 tiers knowledge into public,
+private and buried. Buried means the author knows it and has not revealed it,
+and injecting it every time the name is mentioned is exactly how a secret gets
+spoken aloud two turns later. It is kept, shown to the reader *beside a preview
+of what the prompt actually gets*, and travels only on promotion — a card is the
+author's own reference, so withholding it there would lose the only copy. The
+prompt was also told the field would be withheld, because a model that knows a
+field is not going to the model writes a secret in it rather than a hint.
+
+**Recurrence is counted, not classified.** Who recurs is a question about string
+frequency; a model call per turn would cost a request to get a worse answer
+nobody could debug. Counted in *separate messages* — a name said three times in
+one line is one moment, a name said once in three turns is a character who keeps
+coming back. The model is asked one question, once a name has earned it.
+
+### Deliberately deferred
+
+- **Three options SillyTavern's engine has and §10 does not**, all noticed while
+  comparing and all §10 refinements rather than dossier work: matching against
+  character and persona *definitions* as well as the transcript (directly
+  relevant here — a dossier should fire when another card's description names
+  them), an *exclude* mode on the character filter, and per-entry gating on
+  generation type (Normal/Continue/Impersonate/Swipe/Regenerate/Quiet).
+  Bundling them would have made this two phases.
+- **Automatic dossier writing.** The detector offers; nothing is written until
+  the reader taps a name. A background task that wrote dossiers unprompted would
+  fill the book with the app's guesses about who mattered.
+
+### Spec changes
+
+§11 gains a `Settled while building phase 32` block with seven decisions, and
+§22's open question is struck through and pointed at it — the first of that
+list's questions to be answered by building the thing.
+
+### Surprises
+
+**The browser found a design problem the tests could not.** The per-scene
+Dossiers book is a real lorebook bound to the scene, so it turned up in the
+scene-setup Lorebooks row as though the reader had made it — and offered
+*Detach*, which would have left dossiers rendering into a book reaching nothing,
+silently. Lorebooks now carry a `managed` flag: shown, so the tokens are
+accounted for, with no Detach. Nothing in the test suite would ever have
+noticed, because every test addressed dossiers through their own routes.
+
+**Three false failures in a row, all mine.** `innerText()` returns
+CSS-*transformed* text, and this design uppercases nearly all its chrome, so
+`/Hollis/` never matched a button rendering as `HOLLIS · 3 TURNS` — while
+`getByRole(name:)` matched fine, because accessible names are computed from the
+DOM before `text-transform`. A textarea's contents are not in `innerText` at
+all. I burned two rounds re-running against a wiped database on the theory that
+it was state leakage, when the screenshot I eventually opened showed the feature
+working perfectly the whole time. **Read the screenshot before theorising about
+the data.**

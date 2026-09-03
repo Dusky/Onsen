@@ -3,9 +3,17 @@ import { strings } from "../strings.ts";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { BanListSheet, OptionGroupSheet } from "../components/OptionSheets.tsx";
 import { LoreSheet, booksReaching } from "../components/LoreSheet.tsx";
+import { DossierSheet } from "../components/DossierSheet.tsx";
 import { navigate } from "../lib/router.ts";
 import {
   useAddBan,
+  useDeleteDossier,
+  useDossiers,
+  usePromoteDossier,
+  useRecurringNames,
+  useSaveDossier,
+  useUpdateDossier,
+  useWriteDossier,
   useAddToCast,
   useAnalyseBans,
   useAuthors,
@@ -133,6 +141,18 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
     { title: string; content: string; keys: string[] }[] | null
   >(null);
   const [extractOpen, setExtractOpen] = useState(false);
+  // Dossiers (SPEC §11, phase 32). The recurring-name scan is only asked for
+  // with the sheet open: every turn changes the answer, and most scenes never
+  // open it.
+  const [dossiersOpen, setDossiersOpen] = useState(false);
+  const dossiers = useDossiers(sceneId);
+  const recurring = useRecurringNames(sceneId, dossiersOpen);
+  const writeDossier = useWriteDossier(sceneId);
+  const saveDossier = useSaveDossier(sceneId);
+  const updateDossier = useUpdateDossier(sceneId);
+  const deleteDossier = useDeleteDossier(sceneId);
+  const promoteDossier = usePromoteDossier(sceneId);
+  const [dossierError, setDossierError] = useState<string | null>(null);
   const [extractName, setExtractName] = useState("");
   const [loreBookId, setLoreBookId] = useState<string>("");
   const createLoreEntry = useCreateLoreEntry(loreBookId);
@@ -821,6 +841,30 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
             </p>
           ) : null}
 
+          {/* Dossiers (SPEC §11, phase 32): the characters the story invented.
+              A row, because the sheet holds the offers, the list and the form —
+              and because most scenes never need it. */}
+          <button
+            type="button"
+            onClick={() => setDossiersOpen(true)}
+            className="flex w-full items-baseline gap-[9px] border-b border-rule py-[12px] text-left"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="chrome block text-[9.5px] tracking-[0.1em] text-ink-muted uppercase">
+                {strings.dossiers.open}
+              </span>
+              <span className="mt-[4px] block truncate text-[13.5px]">
+                {(dossiers.data ?? []).length === 0
+                  ? strings.dossiers.openHint
+                  : (dossiers.data ?? []).map((row) => row.name).join(" · ")}
+              </span>
+            </span>
+            <span className="chrome flex-none text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+              ›
+            </span>
+          </button>
+          <div className="mb-[22px]" />
+
           {/* The data bank (SPEC §11, phase 30): documents recalled into the
               prompt by meaning. A row, because the list itself is a sheet. */}
           <p className="section-label mb-[8px]">{strings.characters.documents}</p>
@@ -888,6 +932,47 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
           onUpdate={(banId, patch) => updateBan.mutate({ banId, ...patch })}
           onDelete={(banId) => deleteBan.mutate(banId)}
           onClose={() => setBansOpen(false)}
+        />
+      ) : null}
+
+      {dossiersOpen ? (
+        <DossierSheet
+          dossiers={dossiers.data ?? []}
+          recurring={recurring.data?.names ?? []}
+          working={writeDossier.isPending ? (writeDossier.variables ?? null) : null}
+          error={dossierError}
+          onWrite={(name) => {
+            setDossierError(null);
+            writeDossier.mutate(name, {
+              // Accepted immediately rather than shown as a draft: the sheet
+              // already opens the saved dossier for editing, and a second
+              // review step before the first edit is a step nobody wants.
+              onSuccess: ({ dossier }) =>
+                saveDossier.mutate({
+                  ...dossier,
+                  mentions:
+                    (recurring.data?.names ?? []).find((row) => row.name === dossier.name)
+                      ?.mentions ?? 0,
+                }),
+              onError: (error: Error) => setDossierError(error.message),
+            });
+          }}
+          onSave={(dossier) =>
+            saveDossier.mutate(dossier, { onError: (e: Error) => setDossierError(e.message) })
+          }
+          onUpdate={(id, patch) =>
+            updateDossier.mutate({ id, ...patch }, { onError: (e: Error) => setDossierError(e.message) })
+          }
+          onDelete={(id) =>
+            deleteDossier.mutate(id, { onError: (e: Error) => setDossierError(e.message) })
+          }
+          onPromote={(id) =>
+            promoteDossier.mutate(id, { onError: (e: Error) => setDossierError(e.message) })
+          }
+          onClose={() => {
+            setDossiersOpen(false);
+            setDossierError(null);
+          }}
         />
       ) : null}
 

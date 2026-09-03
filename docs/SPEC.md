@@ -1400,6 +1400,46 @@ a background task when a character recurs, structured as:
 Dossiers are injected by relevance (recent mention, or keyword) rather than
 always, and can be promoted to full characters when they earn it.
 
+### Settled while building phase 32
+
+- **A dossier is not an entity of its own, and not a provisional character.**
+  §22 asked which and guessed the latter; the answer is in the sentence above.
+  Injection *by relevance* is the whole point, and a cast member is injected
+  *always* — that is what being in the cast means. A provisional character would
+  either cost tokens on every turn or need a second injection rule bolted onto
+  the cast.
+- **Relevance injection already exists: it is §10.** So a dossier is two things
+  at once. A row holding the five fields above, which is what the reader edits,
+  and a lore entry keyed on the name, which is how it reaches a prompt. Keyword
+  matching, scan depth, the token budget, sticky, the character filter and
+  §16's activation test tool are all free, and none of them is written twice.
+  SillyTavern arrives at the same place from the other direction: it has no
+  dossier feature, and what its users do for an NPC who emerged is write a
+  World Info entry in a chat-scoped lorebook.
+- **The entry is derived, never edited.** Every write goes through one render
+  step, so the entry cannot drift from the fields it came from. Same rule §8's
+  guides follow.
+- **The buried tier is never rendered into the prompt.** Buried means the author
+  knows it and has not revealed it; injecting it every time the name is
+  mentioned is exactly how a secret gets spoken aloud two turns later. It is
+  kept, shown to the reader beside a preview of what the prompt *does* get, and
+  travels only on promotion — a card is the author's own reference, and
+  withholding it there would lose the only copy.
+- **Recurrence is counted, not classified.** Who recurs in a transcript is a
+  question about string frequency; a model call per turn would cost a request
+  to get a worse answer nobody can debug. Names are counted in *separate
+  messages*, because a name said three times in one line is one moment and a
+  name said once in three turns is a character who keeps coming back. The model
+  is asked one question — what this character is like — once a name has earned
+  it.
+- **A promoted dossier is disabled, not deleted.** The card now carries the same
+  material and two copies in one prompt is the failure that avoids; the row
+  stays as the record of where the character came from.
+- **A book the app writes is shown but not detachable.** The per-scene Dossiers
+  book appears in the lorebook list, so where those tokens go is visible, and
+  offers no Detach: unhooking it would leave dossiers rendering into a book that
+  reaches nothing, with nothing to say so.
+
 ---
 
 ## 10. Lorebooks / world info
@@ -2435,8 +2475,9 @@ Things existing frontends do that this project should not.
 - Whose example dialogue goes in a beat? Currently the character who opens it,
   which is arbitrary; everyone's would be large, and nobody's loses the one
   block that most directly demonstrates a voice.
-- Should dossiers be a distinct entity, or just characters with a `provisional`
-  flag? The latter is simpler and probably right.
+- ~~Should dossiers be a distinct entity, or just characters with a
+  `provisional` flag?~~ Resolved in phase 32, and as neither: a row for the
+  fields plus a §10 lore entry for the injection. See §11.
 - Do packs need dependency declarations (this pack expects that lorebook), or is
   a flat bundle enough? Flat is enough until it isn't.
 
