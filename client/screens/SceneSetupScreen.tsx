@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { strings } from "../strings.ts";
+import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { BanListSheet, OptionGroupSheet } from "../components/OptionSheets.tsx";
 import { LoreSheet, booksReaching } from "../components/LoreSheet.tsx";
 import { navigate } from "../lib/router.ts";
@@ -124,6 +125,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
   const ingestDocument = useIngestDocument();
   const removeDocument = useDeleteDocument();
   const [documentsOpen, setDocumentsOpen] = useState(false);
+  const [confirmNode, confirm] = useConfirm();
   const [docTitle, setDocTitle] = useState("");
   const [docText, setDocText] = useState("");
   const [docGlobal, setDocGlobal] = useState(false);
@@ -512,10 +514,13 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
             <button
               type="button"
               className="btn mt-[12px] w-full"
-              onClick={() => {
-                if (!window.confirm(strings.sceneSetup.optionsResetConfirm)) return;
-                resetOptions.mutate(undefined);
-              }}
+              onClick={() =>
+                confirm(
+                  strings.sceneSetup.optionsResetConfirm,
+                  () => resetOptions.mutate(undefined),
+                  { confirmLabel: strings.sceneSetup.optionsReset },
+                )
+              }
             >
               {strings.sceneSetup.optionsReset}
             </button>
@@ -915,7 +920,8 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
         </Sheet>
       ) : null}
 
-      {loreProposals !== null ? (        <Sheet title={strings.characters.loreFromScene} onClose={() => setLoreProposals(null)}>
+      {loreProposals !== null ? (
+        <Sheet title={strings.characters.loreFromScene} onClose={() => setLoreProposals(null)}>
           <div className="mt-[10px] mb-[6px] flex gap-[6px]">
             <select
               className="field flex-1"
@@ -1068,6 +1074,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
           ))}
         </Sheet>
       ) : null}
+      {confirmNode}
     </div>
   );
 }

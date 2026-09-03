@@ -10,6 +10,7 @@ import type {
 } from "@shared/types.ts";
 import { LORE_POSITIONS } from "@shared/types.ts";
 import { strings } from "../strings.ts";
+import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { navigate } from "../lib/router.ts";
 import {
   useCharacters,
@@ -277,6 +278,7 @@ function EntryEditor({
 }) {
   const [draft, setDraft] = useState<LoreEntryDto>(entry);
   const [advanced, setAdvanced] = useState(false);
+  const [confirmNode, confirm] = useConfirm();
   const characters = useCharacters();
   const revise = useReviseLore(entry.id);
 
@@ -647,15 +649,18 @@ function EntryEditor({
         <span className="flex-1" />
         <button
           type="button"
-          onClick={() => {
-            if (window.confirm(strings.lore.deleteEntryConfirm)) onDelete();
-          }}
+          onClick={() =>
+            confirm(strings.lore.deleteEntryConfirm, onDelete, {
+              confirmLabel: strings.lore.deleteEntry,
+            })
+          }
           className="chrome text-[9px] tracking-[0.12em] uppercase"
           style={{ color: "var(--onsen-color-red)" }}
         >
           {strings.lore.deleteEntry}
         </button>
       </div>
+      {confirmNode}
     </section>
   );
 }
@@ -702,6 +707,7 @@ export function LorebookEditorScreen({ bookId }: { bookId: string }) {
   const updateEntry = useUpdateLoreEntry(bookId);
   const deleteEntry = useDeleteLoreEntry(bookId);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [bookConfirmNode, confirmBook] = useConfirm();
 
   const book = query.data?.lorebook;
   if (book === undefined) {
@@ -825,12 +831,16 @@ export function LorebookEditorScreen({ bookId }: { bookId: string }) {
             type="button"
             className="chrome mt-[18px] mb-[8px] block text-[9px] tracking-[0.12em] uppercase"
             style={{ color: "var(--onsen-color-red)" }}
-            onClick={() => {
-              if (!window.confirm(strings.lore.deleteBookConfirm(book.name))) return;
-              deleteBook.mutate(book.id, {
-                onSuccess: () => navigate({ name: "lorebooks" }),
-              });
-            }}
+            onClick={() =>
+              confirmBook(
+                strings.lore.deleteBookConfirm(book.name),
+                () =>
+                  deleteBook.mutate(book.id, {
+                    onSuccess: () => navigate({ name: "lorebooks" }),
+                  }),
+                { confirmLabel: strings.lore.deleteBook },
+              )
+            }
           >
             {strings.lore.deleteBook}
           </button>
@@ -845,6 +855,7 @@ export function LorebookEditorScreen({ bookId }: { bookId: string }) {
           {strings.lore.bookTotal(total, entries.length)}
         </p>
       </footer>
+      {bookConfirmNode}
     </div>
   );
 }

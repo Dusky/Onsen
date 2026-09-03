@@ -74,10 +74,19 @@ export const keys = {
 };
 
 /** The connection profiles, for anything that routes an operation (§6, §13). */
-export function useConnectionProfiles() {
+/**
+ * The connection profiles, for anything that routes an operation (§6, §13).
+ *
+ * `enabled` is for the callers that only need the list once a sheet is open —
+ * the chat screen's profile picker asks for it on a failure that most sessions
+ * never hit, and fetching it on every scene open would be a request per
+ * roleplay for a list nobody looked at.
+ */
+export function useConnectionProfiles(enabled = true) {
   return useQuery({
     queryKey: ["connection-profiles"] as const,
     queryFn: () => api.get<ConnectionProfileDto[]>("/connections/profiles"),
+    enabled,
   });
 }
 

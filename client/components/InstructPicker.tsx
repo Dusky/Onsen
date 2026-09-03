@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { InstructTemplateDto, ProviderDto } from "@shared/types.ts";
 import { strings } from "../strings.ts";
+import { useConfirm } from "./ConfirmSheet.tsx";
 import {
   useCreateInstructTemplate,
   useDeleteInstructTemplate,
@@ -90,6 +91,7 @@ export function InstructPicker({
   const update = useUpdateInstructTemplate();
   const remove = useDeleteInstructTemplate();
   const [open, setOpen] = useState(false);
+  const [confirmNode, confirm] = useConfirm();
 
   const list = templates.data ?? [];
   // Null means the shipped default, which is ChatML — shown as chosen rather
@@ -148,13 +150,17 @@ export function InstructPicker({
                 type="button"
                 className="btn"
                 style={{ color: "var(--onsen-color-red)" }}
-                onClick={() => {
-                  if (!window.confirm(strings.instruct.removeConfirm(selected.name))) return;
-                  remove.mutate(selected.id, {
-                    onSuccess: () => onSelect(null),
-                    onError: (error: Error) => onError(error.message),
-                  });
-                }}
+                onClick={() =>
+                  confirm(
+                    strings.instruct.removeConfirm(selected.name),
+                    () =>
+                      remove.mutate(selected.id, {
+                        onSuccess: () => onSelect(null),
+                        onError: (error: Error) => onError(error.message),
+                      }),
+                    { confirmLabel: strings.instruct.remove },
+                  )
+                }
               >
                 {strings.instruct.remove}
               </button>
@@ -189,6 +195,7 @@ export function InstructPicker({
           )}
         </>
       )}
+      {confirmNode}
     </div>
   );
 }

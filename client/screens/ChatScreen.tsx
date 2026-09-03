@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { MessageDto } from "@shared/types.ts";
 import { strings } from "../strings.ts";
+import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { navigate } from "../lib/router.ts";
 import {
   useDeleteMessage,
@@ -108,8 +109,11 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const autopilot = useAutopilot(sceneId);
   const stopAutopilot = useStopAutopilot(sceneId);
   const updateScene = useUpdateScene(sceneId);
-  const profiles = useConnectionProfiles();
   const [profilePickerOpen, setProfilePickerOpen] = useState(false);
+  const [confirmNode, confirm] = useConfirm();
+  // Only once the picker is open: this list exists for a failure most sessions
+  // never see, and a request per scene open for it would be waste.
+  const profiles = useConnectionProfiles(profilePickerOpen);
   // Per-op configuration (SPEC §7): a hidden button is not a disabled op, so
   // this only decides what the grid shows.
   const tasks = useTasks();
@@ -1019,11 +1023,16 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
               />
               <SheetAction
                 label={strings.chat.splitBeat}
-                onClick={() => {
-                  if (!window.confirm(strings.chat.splitBeatConfirm)) return;
-                  split.mutate(acting.id);
-                  setActing(null);
-                }}
+                onClick={() =>
+                  confirm(
+                    strings.chat.splitBeatConfirm,
+                    () => {
+                      split.mutate(acting.id);
+                      setActing(null);
+                    },
+                    { confirmLabel: strings.chat.splitBeat },
+                  )
+                }
               />
             </>
           ) : null}
@@ -1037,11 +1046,16 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           <SheetAction
             label={strings.chat.delete}
             destructive
-            onClick={() => {
-              if (!window.confirm(strings.chat.deleteConfirm)) return;
-              remove.mutate(acting.id);
-              setActing(null);
-            }}
+            onClick={() =>
+              confirm(
+                strings.chat.deleteConfirm,
+                () => {
+                  remove.mutate(acting.id);
+                  setActing(null);
+                },
+                { confirmLabel: strings.chat.delete },
+              )
+            }
           />
         </Sheet>
       ) : null}
@@ -1195,6 +1209,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           ))}
         </Sheet>
       ) : null}
+      {confirmNode}
     </div>
   );
 }

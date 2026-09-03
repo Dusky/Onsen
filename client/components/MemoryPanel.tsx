@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { SummaryDto, SummaryStateDto } from "@shared/types.ts";
 import { strings } from "../strings.ts";
+import { useConfirm } from "./ConfirmSheet.tsx";
 import { blueMuted, blueOutline, blueProse, blueRule, blueSolid, blueText, red } from "./blue.ts";
 
 /**
@@ -36,6 +37,7 @@ export function MemoryPanel({
   onForget(summaryId: string | "all"): void;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [confirmNode, confirm] = useConfirm();
   const [editing, setEditing] = useState<string | null>(null);
 
   const summaries = state?.summaries ?? [];
@@ -77,11 +79,16 @@ export function MemoryPanel({
             setEditing(null);
           }}
           onRewrite={() => onRewrite(summary.id)}
-          onForget={() => {
-            if (!window.confirm(strings.chat.memoryForgetConfirm)) return;
-            setExpanded(null);
-            onForget(summary.id);
-          }}
+          onForget={() =>
+            confirm(
+              strings.chat.memoryForgetConfirm,
+              () => {
+                setExpanded(null);
+                onForget(summary.id);
+              },
+              { confirmLabel: strings.chat.memoryForget, tone: "blue" },
+            )
+          }
         />
       ))}
 
@@ -101,15 +108,21 @@ export function MemoryPanel({
           type="button"
           className="btn mt-[6px] w-full"
           style={red}
-          onClick={() => {
-            if (!window.confirm(strings.chat.memoryForgetAllConfirm)) return;
-            setExpanded(null);
-            onForget("all");
-          }}
+          onClick={() =>
+            confirm(
+              strings.chat.memoryForgetAllConfirm,
+              () => {
+                setExpanded(null);
+                onForget("all");
+              },
+              { confirmLabel: strings.chat.memoryForgetAll, tone: "blue" },
+            )
+          }
         >
           {strings.chat.memoryForgetAll}
         </button>
       )}
+      {confirmNode}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { AuthorDto, UpdateAuthorRequest } from "@shared/types.ts";
 import { strings } from "../strings.ts";
+import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { navigate } from "../lib/router.ts";
 import { useAuthor, useAuthors, useCreateAuthor, useDeleteAuthor, useUpdateAuthor } from "../lib/queries.ts";
 import { TabBar } from "../components/TabBar.tsx";
@@ -159,6 +160,7 @@ export function AuthorsScreen() {
 
 export function AuthorEditorScreen({ authorId }: { authorId: string }) {
   const query = useAuthor(authorId);
+  const [confirmNode, confirm] = useConfirm();
   const update = useUpdateAuthor(authorId);
   const remove = useDeleteAuthor();
 
@@ -361,10 +363,13 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
               color: "var(--onsen-color-red)",
               borderColor: "var(--onsen-color-red-border)",
             }}
-            onClick={() => {
-              if (!window.confirm(strings.authors.deleteConfirm(author.name))) return;
-              remove.mutate(author.id, { onSuccess: () => navigate({ name: "authors" }) });
-            }}
+            onClick={() =>
+              confirm(
+                strings.authors.deleteConfirm(author.name),
+                () => remove.mutate(author.id, { onSuccess: () => navigate({ name: "authors" }) }),
+                { confirmLabel: strings.authors.deleteAuthor },
+              )
+            }
           >
             {strings.authors.deleteAuthor}
           </button>
@@ -393,6 +398,7 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
           </div>
         </div>
       </footer>
+      {confirmNode}
     </div>
   );
 }

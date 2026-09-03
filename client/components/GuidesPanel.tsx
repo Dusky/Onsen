@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { GUIDE_KINDS, type GuideDto, type GuideKind, type TaskDto } from "@shared/types.ts";
 import { strings } from "../strings.ts";
+import { useConfirm } from "./ConfirmSheet.tsx";
 import { Sheet } from "./Sheet.tsx";
 import { blueOutline, blueSolid } from "./blue.ts";
 
@@ -46,6 +47,7 @@ export function GuidesBody({
 }) {
   const [expanded, setExpanded] = useState<GuideKind | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
+  const [confirmNode, confirm] = useConfirm();
 
   const total = guides.reduce((sum, guide) => sum + guide.tokenCount, 0);
   const rows = GUIDE_KINDS.map((kind) => ({
@@ -191,12 +193,16 @@ export function GuidesBody({
                             borderColor: "var(--onsen-color-red)",
                             color: "var(--onsen-color-red)",
                           }}
-                          onClick={() => {
-                            if (window.confirm(strings.chat.guidesFlushConfirm(label))) {
-                              setExpanded(null);
-                              onFlush(kind);
-                            }
-                          }}
+                          onClick={() =>
+                            confirm(
+                              strings.chat.guidesFlushConfirm(label),
+                              () => {
+                                setExpanded(null);
+                                onFlush(kind);
+                              },
+                              { confirmLabel: strings.chat.guidesFlush, tone: "blue" },
+                            )
+                          }
                         >
                           {strings.chat.guidesFlush}
                         </button>
@@ -257,17 +263,22 @@ export function GuidesBody({
               borderColor: "var(--onsen-color-red)",
               color: "var(--onsen-color-red)",
             }}
-            onClick={() => {
-              if (window.confirm(strings.chat.guidesFlushAllConfirm)) {
-                setExpanded(null);
-                onFlush("all");
-              }
-            }}
+            onClick={() =>
+              confirm(
+                strings.chat.guidesFlushAllConfirm,
+                () => {
+                  setExpanded(null);
+                  onFlush("all");
+                },
+                { confirmLabel: strings.chat.guidesFlushAll, tone: "blue" },
+              )
+            }
           >
             {strings.chat.guidesFlushAll}
           </button>
         )}
       </div>
+      {confirmNode}
     </>
   );
 }

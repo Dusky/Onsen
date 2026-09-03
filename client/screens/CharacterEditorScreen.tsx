@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { CharacterDto, UpdateCharacterRequest } from "@shared/types.ts";
 import { strings } from "../strings.ts";
+import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { navigate } from "../lib/router.ts";
 import {
   useCharacter,
@@ -157,6 +158,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
   const [spriteLabel, setSpriteLabel] = useState("");
   const [reviseOpen, setReviseOpen] = useState(false);
   const [reviseDraft, setReviseDraft] = useState("");
+  const [confirmNode, confirm] = useConfirm();
 
   const character: CharacterDto | undefined = query.data;
   if (character === undefined) {
@@ -569,12 +571,16 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                 type="button"
                 className="btn w-full"
                 style={{ color: "var(--onsen-color-red)", borderColor: "var(--onsen-color-red-border)" }}
-                onClick={() => {
-                  if (!window.confirm(strings.characters.deleteConfirm(character.name))) return;
-                  remove.mutate(character.id, {
-                    onSuccess: () => navigate({ name: "characters" }),
-                  });
-                }}
+                onClick={() =>
+                  confirm(
+                    strings.characters.deleteConfirm(character.name),
+                    () =>
+                      remove.mutate(character.id, {
+                        onSuccess: () => navigate({ name: "characters" }),
+                      }),
+                    { confirmLabel: strings.characters.deleteCharacter },
+                  )
+                }
               >
                 {strings.characters.deleteCharacter}
               </button>
@@ -646,17 +652,22 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
               <SheetAction
                 key={version.id}
                 label={`${version.name} · ${new Date(version.createdAt).toLocaleString()}`}
-                onClick={() => {
-                  if (!window.confirm(strings.characters.restoreConfirm)) return;
-                  restore.mutate(version.id, {
-                    onSuccess: () => setVersionsOpen(false),
-                  });
-                }}
+                onClick={() =>
+                  confirm(
+                    strings.characters.restoreConfirm,
+                    () =>
+                      restore.mutate(version.id, {
+                        onSuccess: () => setVersionsOpen(false),
+                      }),
+                    { confirmLabel: strings.characters.restore },
+                  )
+                }
               />
             ))
           )}
         </Sheet>
       ) : null}
+      {confirmNode}
     </div>
   );
 }

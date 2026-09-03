@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { CharacterDto, SavedFilterDto } from "@shared/types.ts";
 import { strings } from "../strings.ts";
+import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { navigate } from "../lib/router.ts";
 import {
   useBulkCharacters,
@@ -110,6 +111,7 @@ export function CharactersScreen() {
   /** The in-app prompt: which field is being asked for, and its draft. */
   const [promptOpen, setPromptOpen] = useState<null | "tag" | "folder" | "filter">(null);
   const [promptValue, setPromptValue] = useState("");
+  const [confirmNode, confirm] = useConfirm();
   const [notice, setNotice] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const derive = useDeriveCharacter(menuFor?.id ?? "");
@@ -159,14 +161,21 @@ export function CharactersScreen() {
     const value = promptValue.trim();
     setPromptOpen(null);
     setPromptValue("");
-    if (value === "") return;
     if (promptOpen === "tag") {
+      // An empty tag is not a tag.
+      if (value === "") return;
       bulk.mutate({ ids: [...selected], op: "tag", tag: value });
       setSelected(new Set());
     } else if (promptOpen === "folder") {
+      // Empty is a real answer here, and the only way to say it: the server
+      // reads a blank folder as "no folder", which is how a character is moved
+      // back out of one. Refusing it would leave nothing in the app able to
+      // unfile anything.
       bulk.mutate({ ids: [...selected], op: "move", folder: value });
       setSelected(new Set());
     } else {
+      // A filter with no name could not be told from the others in the list.
+      if (value === "") return;
       createFilter.mutate({ name: value, query: { q, tag, folder } });
     }
   }
@@ -366,11 +375,16 @@ export function CharactersScreen() {
                 className="btn flex-1"
                 style={{ color: "var(--onsen-color-red)" }}
                 disabled={selected.size === 0}
-                onClick={() => {
-                  if (!window.confirm(strings.characters.bulkDeleteConfirm(selected.size))) return;
-                  bulk.mutate({ ids: [...selected], op: "delete" });
-                  setSelected(new Set());
-                }}
+                onClick={() =>
+                  confirm(
+                    strings.characters.bulkDeleteConfirm(selected.size),
+                    () => {
+                      bulk.mutate({ ids: [...selected], op: "delete" });
+                      setSelected(new Set());
+                    },
+                    { confirmLabel: strings.characters.bulkDelete },
+                  )
+                }
               >
                 {strings.characters.bulkDelete}
               </button>
@@ -517,15 +531,21 @@ export function CharactersScreen() {
           />
           <SheetAction
             label={strings.characters.deleteCharacter}
-            onClick={() => {
-              if (!window.confirm(strings.characters.deleteConfirm(menuFor.name))) return;
-              remove.mutate(menuFor.id);
-              setMenuFor(null);
-            }}
+            onClick={() =>
+              confirm(
+                strings.characters.deleteConfirm(menuFor.name),
+                () => {
+                  remove.mutate(menuFor.id);
+                  setMenuFor(null);
+                },
+                { confirmLabel: strings.characters.deleteCharacter },
+              )
+            }
           />
         </Sheet>
       ) : null}
 
+      {confirmNode}
       <TabBar active="characters" />
     </div>
   );

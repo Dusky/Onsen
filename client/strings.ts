@@ -21,6 +21,10 @@ export const strings = {
     back: "Back",
     cancel: "Cancel",
     optional: "Optional",
+    /** The confirm sheet's own title. The question itself is the body. */
+    areYouSure: "Are you sure",
+    /** The default answer, where a caller has no better verb to name. */
+    confirm: "Yes, do it",
     working: "Working…",
   },
 

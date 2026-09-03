@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import type { ConnectionProfileDto, PresetDto, ProviderDto, TaskDto, UpdateStatusDto } from "@shared/types.ts";
 import { PROVIDER_KINDS, INJECTION_ROLES } from "@shared/types.ts";
 import { strings } from "../strings.ts";
+import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { InstructPicker } from "../components/InstructPicker.tsx";
 import {
   useConnectionProfiles,
@@ -76,6 +77,7 @@ function ProviderEditor({
   const [error, setError] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<string | null>(null);
   const [modelOptions, setModelOptions] = useState<string[]>([]);
+  const [confirmNode, confirm] = useConfirm();
   const formRef = useRef<HTMLFormElement>(null);
 
   // The model list comes from the provider's own API (§16). The key crosses to
@@ -295,19 +297,24 @@ function ProviderEditor({
             <button
               type="button"
               className="btn"
-              onClick={() => {
-                if (!window.confirm(strings.settings.removeConfirm)) return;
-                remove.mutate(provider.id, {
-                  onSuccess: () => onClose(),
-                  onError: (e) => setError(e.message),
-                });
-              }}
+              onClick={() =>
+                confirm(
+                  strings.settings.removeConfirm,
+                  () =>
+                    remove.mutate(provider.id, {
+                      onSuccess: () => onClose(),
+                      onError: (e) => setError(e.message),
+                    }),
+                  { confirmLabel: strings.settings.remove },
+                )
+              }
             >
               {strings.settings.remove}
             </button>
           )}
         </div>
       </form>
+      {confirmNode}
     </Sheet>
   );
 }
@@ -330,6 +337,7 @@ function ProfileEditor({
   const remove = useDeleteProfile();
   const fetchModels = useFetchModels();
   const [error, setError] = useState<string | null>(null);
+  const [confirmNode, confirm] = useConfirm();
   const [modelOptions, setModelOptions] = useState<string[]>([]);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -439,19 +447,24 @@ function ProfileEditor({
             <button
               type="button"
               className="btn"
-              onClick={() => {
-                if (!window.confirm(strings.settings.removeConfirm)) return;
-                remove.mutate(profile.id, {
-                  onSuccess: () => onClose(),
-                  onError: (e) => setError(e.message),
-                });
-              }}
+              onClick={() =>
+                confirm(
+                  strings.settings.removeConfirm,
+                  () =>
+                    remove.mutate(profile.id, {
+                      onSuccess: () => onClose(),
+                      onError: (e) => setError(e.message),
+                    }),
+                  { confirmLabel: strings.settings.remove },
+                )
+              }
             >
               {strings.settings.remove}
             </button>
           )}
         </div>
       </form>
+      {confirmNode}
     </Sheet>
   );
 }
