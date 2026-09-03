@@ -25,6 +25,8 @@ import { documentRoutes } from "./routes/documents.ts";
 import { demoRoutes } from "./routes/demo.ts";
 import { loreRoutes } from "./routes/lore.ts";
 import { scriptRoutes } from "./routes/scripts.ts";
+import { triggerRoutes } from "./routes/triggers.ts";
+import { TriggerRunner } from "./triggers/runner.ts";
 import type { createAdapter } from "./adapters/index.ts";
 import { spaStatic } from "./static.ts";
 
@@ -65,6 +67,8 @@ export interface CreatedApp {
   bans: BanAnalyser;
   /** The scene-writing loop (SPEC §6). Owned so shutdown can stop it. */
   autopilot: AutopilotRunner;
+  /** §14's event triggers, for the same reason. */
+  triggers: TriggerRunner;
 }
 
 /** Build the app and the services it owns. */
@@ -83,7 +87,9 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   const bans = options.banAnalyser ?? new BanAnalyser({ db: ctx.db, tasks });
   const generation =
     options.generationService ??
-    new GenerationService({ db: ctx.db, keyring: ctx.keyring, tasks, passes, guides, trackers, summaries });  const autopilot = new AutopilotRunner({ db: ctx.db, tasks });
+    new GenerationService({ db: ctx.db, keyring: ctx.keyring, tasks, passes, guides, trackers, summaries });  const triggers = new TriggerRunner({ db: ctx.db, guides, trackers });
+  generation.setTriggers(triggers);
+  const autopilot = new AutopilotRunner({ db: ctx.db, tasks });
   // Bound both ways, late, because each needs the other: the service reports
   // landings, the runner starts turns (SPEC §6).
   generation.setAutopilot(autopilot);
@@ -97,7 +103,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   api.route("/", authRoutes(ctx));
   api.route("/", setupRoutes(ctx));
   api.route("/connections", connectionRoutes(ctx));
-  api.route("/scenes", sceneRoutes(ctx, autopilot));
+  api.route("/scenes", sceneRoutes(ctx, autopilot, triggers));
   api.route(
     "/scenes",
     sceneGenerationRoutes(ctx, generation, tasks, passes, guides, trackers, summaries, bans, autopilot),
@@ -113,6 +119,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   api.route("/documents", documentRoutes(ctx));
   api.route("/demo", demoRoutes(ctx));
   api.route("/scripts", scriptRoutes(ctx));
+  api.route("/triggers", triggerRoutes(ctx, triggers));
   api.route("/lorebooks", loreRoutes(ctx));
   api.route("/dossiers", dossierRoutes(ctx));
 
@@ -128,7 +135,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
     app.use("*", spaStatic(ctx.config.clientDir));
   }
 
-  return { app, generation, tasks, passes, guides, trackers, summaries, bans, autopilot };
+  return { app, generation, tasks, passes, guides, trackers, summaries, bans, autopilot, triggers };
 }
 
 /** The app alone, for callers that do not need the services. */

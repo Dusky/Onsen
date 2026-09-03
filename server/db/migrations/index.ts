@@ -28,6 +28,7 @@ import embeddingsConfig from "./0027_embeddings_config.sql" with { type: "text" 
 import oocInline from "./0028_ooc_inline.sql" with { type: "text" };
 import dossiers from "./0029_dossiers.sql" with { type: "text" };
 import regexScripts from "./0030_regex_scripts.sql" with { type: "text" };
+import eventTriggers from "./0031_event_triggers.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -73,4 +74,5 @@ export const migrations: readonly Migration[] = [
   { version: 28, name: "ooc_inline", sql: oocInline },
   { version: 29, name: "dossiers", sql: dossiers },
   { version: 30, name: "regex_scripts", sql: regexScripts },
+  { version: 31, name: "event_triggers", sql: eventTriggers },
 ];

@@ -396,7 +396,25 @@ cancelled or failed generation is as inspectable as a finished one (§16).
 id, name, pattern, replacement, flags, enabled
 apply_to           -- user_input | ai_output | display_only | prompt
 scope              -- global | character | scene
-scope_id, run_order
+character_id, scene_id, run_order
+```
+
+Built in phase 33. `scope_id` above was one polymorphic column; it is two typed,
+foreign-keyed ones, because a `scope_id` naming a character in one row and a
+scene in the next cannot carry a foreign key — and a deleted character would
+leave a script scoped to nothing and still running.
+
+### EventTrigger
+
+```
+id, name, enabled, run_order
+event              -- scene_start | user_message | before_generation
+                   -- | after_generation | lore_activation
+action             -- guide | tracker | script
+action_ref         -- a guide kind, a tracker kind, or a script id
+automation_id      -- lore_activation only; §10's other end
+scope              -- global | scene
+scene_id
 ```
 
 ### Reconciled against migrations 0001–0026
@@ -421,7 +439,7 @@ and §2 omits them only because their phases wrote the columns with the feature:
 - `app_settings` — the setup-wizard's single row.
 
 **Entities above that are not built yet**, and are here as the target: MemoryEntity
-/ MemoryRelation (§11 narrative memory, phase 38–39), RegexScript (§19/phase 33),
+/ MemoryRelation (§11 narrative memory, phase 38–39),
 SceneMember `overrides` and `first_seen_message_id` (presence tracking),
 Persona's `lorebook_id` (flagged `[gap]`), Provider's `capabilities` JSON (it is
 computed from the adapter, not stored), and ConnectionProfile's
@@ -1875,6 +1893,75 @@ run a background task, refresh a guide or tracker, or fire a regex pass.
 
 A full scripting language is explicitly out of scope for v1. Regex plus event
 triggers covers most of what SillyTavern users write STscript for.
+
+### Settled while building phase 33
+
+- **The engine is pure, and the test panel is the same engine.** §14 asks for a
+  test panel. A panel running a different code path from the one that edits the
+  reader's scene would be worse than no panel, because it would say a script is
+  safe and then something else would run. So `/scripts/apply.ts` takes text,
+  scripts and an environment and returns text and a trace, with no database and
+  no clock, and `POST /api/scripts/test` runs exactly what a turn runs.
+
+- **A replacement's macros are resolved before the replace, not after.** After
+  would resolve a macro that landed inside matched text, which turns a script
+  that quotes the model's own words into one that rewrites them. Resolving first
+  also keeps `$1` and `$<name>` intact for the engine — and means a resolved
+  value has its dollar signs escaped, or a character named `$1` would splice a
+  capture group into the prose.
+
+- **The macro set a replacement can reach is a subset of §3's.** Three of the
+  four stages run where no prompt exists: a script rewriting the reader's
+  message as they send it has no spotlight, no seed and no history. `{{char}}`,
+  `{{user}}`, `{{cast}}`, `{{time}}`, `{{date}}` and `{{newline}}` mean something
+  at every stage; everything else is left in the text verbatim and reported,
+  which is §3's own rule for an unknown macro.
+
+- **A character-scoped script follows the speaker, not the room.** It runs when
+  that character is the one speaking. Scoping by presence would mean a script
+  styling one character's dialogue reformatting everyone else's turns because
+  she happens to be in the scene.
+
+- **Display and prompt scripts load once per transcript.** Per message that is a
+  query per turn on every open of a scene. This is why the display stage runs in
+  `activePathDtos` and `messageDto` rather than in the DTO mapper.
+
+- **Streaming is not scripted.** Deltas reach the client as they arrive, so a
+  `display_only` script lands when the finished message is read back rather than
+  mid-stream.
+
+- **A trigger can refresh a guide or a tracker, or fire a regex script — not an
+  arbitrary background task.** §14 names three action families. The third is not
+  built, and the reason is in the task primitive's own signature: a task request
+  carries a prompt "built by the caller, because only the caller knows what to
+  ask". There is no generic way to ask an arbitrary op a question. The ops a
+  trigger can run are the ones something already knows how to ask — which is the
+  guides and the trackers, both of which *are* background tasks.
+
+- **`lore_activation` fires after the turn its activation was part of.** An
+  action is a side call, and stalling a turn on one before a token has streamed —
+  to pay for an entry having matched — is the wrong trade. The effect lands on
+  the next turn. `before_generation` is the opposite and is awaited, because a
+  trigger bound there exists to change what the prompt says.
+
+- **`scene_start` is the first thing written into a scene, not its creation.** A
+  scene with no messages has nothing for a guide or a script to read, so firing
+  at creation would fire at the one moment every action is guaranteed to do
+  nothing.
+
+- **A trigger fires its guide with `automatic: false`.** The trigger *is* the
+  ask. Requiring the guide's own auto-trigger as well would mean switching a
+  guide off the automatic path and then wondering why the trigger written to run
+  it by hand did nothing.
+
+- **A trigger's action is validated against the thing it names, at save time.**
+  A trigger pointing at a guide kind that does not exist, or a script that has
+  been deleted, is automation that silently never works — the same argument as
+  validating a regex when it is written rather than on the turn that needed it.
+
+- **Nothing a trigger does can break a turn.** Every action is wrapped, every
+  outcome says what happened, and the message-side events are not awaited: by
+  the time they run, the message is already in the tree.
 
 ---
 

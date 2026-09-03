@@ -44,6 +44,7 @@ import {
 } from "../db/queries/authors.ts";
 import { findCharacter } from "../db/queries/characters.ts";
 import { scriptText } from "../scripts/runtime.ts";
+import type { TriggerRunner } from "../triggers/runner.ts";
 import { activeGuides, editGuide, findGuide, flushGuides, toGuideDto } from "../db/queries/guides.ts";
 import type { AutopilotRunner } from "../generation/autopilot.ts";
 import { resolveNextSpeaker } from "../generation/turn.ts";
@@ -129,7 +130,11 @@ const SUMMARY_NUMBERS: readonly [string, string, number, number][] = [
   ["oocInterval", "ooc_interval", 1, 500],
 ];
 
-export function sceneRoutes(ctx: AppContext, autopilot: AutopilotRunner | null = null): Hono<AppEnv> {
+export function sceneRoutes(
+  ctx: AppContext,
+  autopilot: AutopilotRunner | null = null,
+  triggers: TriggerRunner | null = null,
+): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
   app.use("*", requireAuth());
 
@@ -551,6 +556,9 @@ export function sceneRoutes(ctx: AppContext, autopilot: AutopilotRunner | null =
         ? scriptText(ctx.db, "user_input", request.content, { sceneId: sceneRow.id })
         : request.content;
 
+    // Whether the scene was empty has to be read before the write, not after.
+    const wasEmpty = sceneRow.active_leaf_id === null;
+
     const row = appendMessage(ctx.db, {
       sceneId: sceneRow.id,
       parentId,
@@ -559,7 +567,28 @@ export function sceneRoutes(ctx: AppContext, autopilot: AutopilotRunner | null =
       content,
       ...(request.isHidden === undefined ? {} : { isHidden: request.isHidden }),
     });
-    return c.json(messageDto(ctx.db, row, sceneRow.ulid), 201);
+    const dto = messageDto(ctx.db, row, sceneRow.ulid);
+
+    // §14's two message-side events. Not awaited: an action is a side call, and
+    // the composer should not wait on one to see the line it just sent. Never
+    // able to break the write either - by the time this runs, the message is
+    // already in the tree.
+    if (triggers !== null) {
+      const after = findScene(ctx.db, sceneRow.ulid);
+      if (after !== null) {
+        // "Scene start" is the first thing being written into it, rather than
+        // the scene being created: a scene with no messages has nothing for a
+        // guide or a script to read, so firing at creation would fire at the
+        // one moment every action is guaranteed to do nothing.
+        if (wasEmpty && triggers.anyFor("scene_start")) {
+          void triggers.fire("scene_start", { scene: after }).catch(() => {});
+        }
+        if (request.authorType === "user" && triggers.anyFor("user_message")) {
+          void triggers.fire("user_message", { scene: after }).catch(() => {});
+        }
+      }
+    }
+    return c.json(dto, 201);
   });
 
   app.patch("/:sceneId/messages/:messageId", async (c) => {

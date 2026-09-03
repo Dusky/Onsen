@@ -48,6 +48,7 @@ import { retrieve } from "../documents/store.ts";
 import type { AutopilotRunner } from "./autopilot.ts";
 import { templateFor } from "../db/queries/instruct.ts";
 import { scriptText } from "../scripts/runtime.ts";
+import type { TriggerRunner } from "../triggers/runner.ts";
 import type { InstructTemplate } from "../prompt/index.ts";
 import type { TaskRunStatus } from "../../shared/types.ts";
 
@@ -169,6 +170,11 @@ interface ActiveGeneration {
   listeners: Set<(event: GenerationEvent) => void>;
   startedAt: number;
   finishedAt: number | null;
+  /**
+   * The automation ids of the lore entries that fired for this turn (§10, §14).
+   * Collected at build time and dispatched after the turn - see `runTriggers`.
+   */
+  automationIds: string[];
   /** Characters already written to the database. */
   persistedOffset: number;
   lastPersistAt: number;
@@ -444,6 +450,7 @@ export class GenerationService {
       listeners: new Set(),
       startedAt,
       finishedAt: null,
+      automationIds: [],
       persistedOffset: 0,
       lastPersistAt: startedAt,
     };
@@ -534,7 +541,16 @@ export class GenerationService {
     this.autopilot = runner;
   }
 
+  /**
+   * §14's event triggers. Bound late, like autopilot, because the runner needs
+   * the guide and tracker runners this service was already given.
+   */
+  setTriggers(runner: TriggerRunner): void {
+    this.triggers = runner;
+  }
+
   private autopilot: AutopilotRunner | null = null;
+  private triggers: TriggerRunner | null = null;
 
   /**
    * Resolves when the generation is no longer running — the drain half of
@@ -600,6 +616,13 @@ export class GenerationService {
         return;
       }
 
+      // §14's `before_generation`. Awaited on purpose: a trigger bound here
+      // exists to change what the prompt says, and one that ran alongside the
+      // build would change the turn after this one instead.
+      if (this.triggers?.anyFor("before_generation") === true) {
+        await this.triggers.fire("before_generation", { scene });
+      }
+
       const context = buildPromptContext({
         db: this.db,
         scene,
@@ -623,6 +646,10 @@ export class GenerationService {
       });
 
       const prompt = buildPrompt(context);
+      // Which entries fired, for §14's `lore_activation`. Collected here
+      // because this is the only moment it is known, and dispatched after the
+      // turn - see `runTriggers`.
+      generation.automationIds = this.automationIdsOf(context.loreTrace ?? []);
       const reasoningConfig = parseReasoningConfig(this.reasoningJson(presetId));
       generation.meta.promptTokens = prompt.debug.totalTokens;
       generation.meta.tokensAreEstimated = prompt.debug.tokensAreEstimated;
@@ -716,6 +743,53 @@ export class GenerationService {
    * everything: a pass is a second reader's note, and a note that could break
    * the turn it is about would not be worth having.
    */
+  /**
+   * The automation ids of the entries that actually fired (SPEC §10, §14).
+   *
+   * Skipped entries are excluded: the trace records everything considered, and
+   * an action bound to an entry that lost to the budget or a cooldown should
+   * not run as though the entry had reached the prompt.
+   */
+  private automationIdsOf(trace: readonly { entryId: string; skipped: unknown }[]): string[] {
+    const fired = trace.filter((entry) => entry.skipped === null).map((entry) => entry.entryId);
+    if (fired.length === 0) return [];
+    const placeholders = fired.map((_, index) => `$k${index}`).join(", ");
+    const values = Object.fromEntries(fired.map((id, index) => [`k${index}`, id]));
+    const rows = this.db
+      .query(
+        `SELECT automation_id FROM lore_entries
+          WHERE ulid IN (${placeholders}) AND automation_id IS NOT NULL`,
+      )
+      .all(values) as { automation_id: string }[];
+    return rows.map((row) => row.automation_id);
+  }
+
+  /**
+   * §14's after-the-turn events, run inside the same swallow-everything block
+   * as the passes and for the same reason.
+   *
+   * `lore_activation` fires here rather than at the moment of activation, and
+   * the reason is what an action costs: a guide refresh is a side call, and
+   * stalling a turn on one before a token has streamed to pay for an entry
+   * having matched is the wrong trade. So an entry's action runs after the turn
+   * its activation was part of, and lands on the next one.
+   */
+  private async runTriggers(sceneId: number, automationIds: readonly string[]): Promise<void> {
+    const runner = this.triggers;
+    if (runner === null) return;
+    const wantsAfter = runner.anyFor("after_generation");
+    const wantsLore = automationIds.length > 0 && runner.anyFor("lore_activation");
+    if (!wantsAfter && !wantsLore) return;
+
+    const scene = findSceneById(this.db, sceneId);
+    if (scene === null) return;
+    if (wantsAfter) await runner.fire("after_generation", { scene });
+    if (wantsLore) {
+      const current = findSceneById(this.db, sceneId);
+      if (current !== null) await runner.fire("lore_activation", { scene: current, automationIds });
+    }
+  }
+
   private async runPasses(sceneId: number, messageId: number): Promise<void> {
     if (this.stopped) return;
     try {
@@ -1114,6 +1188,9 @@ export class GenerationService {
     // to the reader is none of those things (§7).
     if (!cancelled && generation.landedMessageId !== null && generation.turn.kind !== "ooc") {
       void this.runPasses(generation.sceneId, generation.landedMessageId);
+      // §14's after-the-turn events, alongside the pipeline and under the same
+      // rule: never in front of a reply, and never able to break one.
+      void this.runTriggers(generation.sceneId, generation.automationIds).catch(() => {});
     }
 
     // Autopilot's moment (SPEC §6): a reply has completed. Spotlight and beat

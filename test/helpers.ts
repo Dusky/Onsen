@@ -14,6 +14,7 @@ import { GuideRunner } from "../server/guides/runner.ts";
 import { TrackerRunner } from "../server/trackers/runner.ts";
 import { SummaryRunner } from "../server/summaries/runner.ts";
 import { BanAnalyser } from "../server/options/runner.ts";
+import type { TriggerRunner } from "../server/triggers/runner.ts";
 import type { AppContext } from "../server/context.ts";
 import type { Hono } from "hono";
 import type { AppEnv } from "../server/context.ts";
@@ -30,6 +31,7 @@ export interface TestHarness {
   passes: PassPipeline;
   guides: GuideRunner;
   summaries: SummaryRunner;
+  triggers: TriggerRunner;
   bans: BanAnalyser;
   /** Sends a request through the app, carrying the session cookie if one is held. */
   fetch(path: string, init?: RequestInit): Promise<Response>;
@@ -83,7 +85,7 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
     summaries,
     ...adapterOption,
   });
-  const { app } = createServer(ctx, {
+  const { app, triggers } = createServer(ctx, {
     serveClient: false,
     generationService: generation,
     taskRunner: tasks,
@@ -103,6 +105,7 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
     passes,
     guides,
     summaries,
+    triggers,
     bans: banAnalyser,
     cookie: null,
     async fetch(path, init) {
@@ -123,6 +126,7 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
       passes.shutdown();
       guides.shutdown();
       summaries.shutdown();
+      triggers.shutdown();
       banAnalyser.shutdown();
       db.close();
       rmSync(dataDir, { recursive: true, force: true });

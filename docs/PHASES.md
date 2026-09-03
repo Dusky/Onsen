@@ -3096,3 +3096,92 @@ takes five on desktop and three on a phone.
 was that a wide screen needed more furniture — a denser rail, another panel. It
 needed the column it already had to be the right width, and the row it already
 had to say what the design had always said it should say.
+
+---
+
+## Phase 33 — Regex scripts and event triggers
+
+§14's substrate for the long tail: "if you give them nothing, they will hit
+walls you never anticipated." Two halves. Scripts say *how* text is changed;
+triggers say *when* something runs.
+
+### What was built
+
+**The script engine** (`server/scripts/apply.ts`) — pure, the way `/prompt` is
+pure. Find and replace with numbered and named capture groups, `$&` and `$$`,
+macros in the replacement, ordered execution, individual toggles, and a trace
+saying what each script did. Patterns and flags are validated as a pair when
+written, not on the turn that needed them.
+
+**The four apply stages**, which differ in what survives:
+
+| Stage | Changes | Leaves alone |
+| --- | --- | --- |
+| `user_input` | The reader's message, before it is stored | — |
+| `ai_output` | The model's prose, before it is stored | The out-of-character aside |
+| `display_only` | What the log shows | The stored text and the prompt |
+| `prompt` | The transcript on its way into a generation | Everything on disk |
+
+**Three scopes** — global, one character, one scene. A character-scoped script
+follows the speaker rather than the room.
+
+**A test panel that runs the live engine.** `POST /api/scripts/test` takes
+text, a stage and optionally a roleplay, and returns the before, the after, and
+what each script did — writing nothing.
+
+**Event triggers** — five events (`scene_start`, `user_message`,
+`before_generation`, `after_generation`, `lore_activation`) bound to three
+actions (refresh a guide, refresh a tracker, fire a regex script over the
+newest turn). `lore_activation` is the consumer §10's `automation_id` never
+had: the column has been stored and round-tripped since phase 21 with nothing
+reading it.
+
+**Running a trigger by hand.** `POST /api/triggers/:id/run` against a named
+roleplay, because a trigger bound to `lore_activation` may not fire for days
+and "did I wire this up correctly" should not be a question only the scene can
+answer.
+
+### Deliberately deferred
+
+- **A trigger that runs an arbitrary background task.** §14 names it; the task
+  primitive refuses it. A task request carries a prompt "built by the caller,
+  because only the caller knows what to ask", so there is no generic way to ask
+  an arbitrary op a question. The ops a trigger can run are the ones something
+  already knows how to ask, which is the guides and the trackers.
+- **Scripting the stream.** A `display_only` script lands when the finished
+  message is read back, not mid-stream.
+- **A regex timeout.** A catastrophic pattern will hang the request that runs
+  it. JavaScript cannot interrupt a regex, and this is single-user software
+  where the author of the pattern is the only person it can hurt. What is
+  guarded is the compile: an invalid pattern is a reported failure rather than a
+  thrown one, and the other scripts in the chain still run.
+- **The client half.** Both halves are API-complete and tested; the editors and
+  the test panel's UI are the next commit.
+
+### Spec changes
+
+§2's `RegexScript` sketch gains real column names and an `EventTrigger` entity
+beside it; the reconciliation block stops listing `RegexScript` as unbuilt. §14
+gains a `Settled while building phase 33` block with eleven decisions.
+
+### Surprises
+
+**The spec asked for something its own primitive forbids.** §14 says an action
+can "run a background task". The task runner's own comment says a request's
+prompt is "built by the caller, because only the caller knows what to ask" —
+which makes a generic task action impossible to write. The resolution is that
+the guides and the trackers *are* background tasks, and they are exactly the two
+that already know what to ask. Reading one section against another settled it;
+guessing at an action shape would not have.
+
+**Counting the replacements cost the reference expansion.** `String.replace`
+expands `$1` and `$<name>` for a string replacement and not for a function — and
+a function is the only way to count matches. So the count meant re-implementing
+`$&`, `$$`, `$1`…`$99` and `$<name>` by hand, against the arguments the callback
+receives, whose shape depends on whether the pattern has named groups at all.
+
+**A test that proved nothing.** The first version of "an entry's automation id
+fires its trigger, and only its own" pointed both triggers at the same script.
+The wrong-id trigger firing would have been a second no-op over already-rewritten
+text, so the test passed whether or not the scoping worked. It now points at a
+different rewrite, and asserts the text that would have changed did not.
