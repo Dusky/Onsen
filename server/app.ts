@@ -24,6 +24,7 @@ import { dossierRoutes } from "./routes/dossiers.ts";
 import { documentRoutes } from "./routes/documents.ts";
 import { demoRoutes } from "./routes/demo.ts";
 import { loreRoutes } from "./routes/lore.ts";
+import { scriptRoutes } from "./routes/scripts.ts";
 import type { createAdapter } from "./adapters/index.ts";
 import { spaStatic } from "./static.ts";
 
@@ -111,6 +112,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   api.route("/authoring", authoringRoutes(ctx, tasks));
   api.route("/documents", documentRoutes(ctx));
   api.route("/demo", demoRoutes(ctx));
+  api.route("/scripts", scriptRoutes(ctx));
   api.route("/lorebooks", loreRoutes(ctx));
   api.route("/dossiers", dossierRoutes(ctx));
 

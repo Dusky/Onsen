@@ -1,5 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { ulid } from "../../lib/ulid.ts";
+import { runStage, scriptContext, type ScriptContext } from "../../scripts/runtime.ts";
 import type {
   CheckpointDto,
   MessageAuthorType,
@@ -754,30 +755,76 @@ function lastLine(db: Database, leafId: number | null): string | null {
 export function activePathDtos(db: Database, scene: SceneRow): MessageDto[] {
   const rows = activePath(db, scene.id);
   const speakers = speakerLookup(db);
+  // Loaded once for the whole path. Per message this would be a query per turn
+  // on every open of a scene, which is the cost that decides where §14's
+  // display stage runs.
+  const scripts = scriptContext(db, scene.id);
   return rows.map((row, index) =>
-    toMessageDto(
-      row,
-      scene.ulid,
-      index === 0 ? null : (rows[index - 1]?.ulid ?? null),
-      speakers,
-      // Only a beat carries a parsed view; every other kind of message is its
-      // own single segment and does not need it sent twice.
-      row.kind === "beat" ? segmentDtosOf(db, row, speakers) : null,
-      annotationDtosOf(db, row.id),
+    displayScripted(
+      scripts,
+      toMessageDto(
+        row,
+        scene.ulid,
+        index === 0 ? null : (rows[index - 1]?.ulid ?? null),
+        speakers,
+        // Only a beat carries a parsed view; every other kind of message is its
+        // own single segment and does not need it sent twice.
+        row.kind === "beat" ? segmentDtosOf(db, row, speakers) : null,
+        annotationDtosOf(db, row.id),
+      ),
     ),
   );
 }
 
 export function messageDto(db: Database, row: MessageRow, sceneUlid: string): MessageDto {
   const speakers = speakerLookup(db);
-  return toMessageDto(
-    withSiblings(db, row),
-    sceneUlid,
-    ulidOf(db, "messages", row.parent_id),
-    speakers,
-    row.kind === "beat" ? segmentDtosOf(db, row, speakers) : null,
-    annotationDtosOf(db, row.id),
+  return displayScripted(
+    scriptContext(db, row.scene_id),
+    toMessageDto(
+      withSiblings(db, row),
+      sceneUlid,
+      ulidOf(db, "messages", row.parent_id),
+      speakers,
+      row.kind === "beat" ? segmentDtosOf(db, row, speakers) : null,
+      annotationDtosOf(db, row.id),
+    ),
   );
+}
+
+/**
+ * §14's `display_only` stage: what the reader is shown, and nothing else.
+ *
+ * The stored text and the prompt keep the original, which is what makes this
+ * the stage to experiment in - a pattern that eats half the scene costs
+ * nothing but a toggle. It runs here rather than in the client because there is
+ * one engine, with the tests on it, and a second implementation in TypeScript
+ * on the other side of the boundary would be free to disagree with the test
+ * panel about what a script does.
+ *
+ * A beat's segments carry the same text split by speaker, so they are scripted
+ * too, each under the character it is attributed to - otherwise a script that
+ * styles a name would fire in the log and not in the parsed view of the same
+ * turn.
+ *
+ * Streaming is the one gap, and deliberately: deltas reach the client as they
+ * arrive, so a script lands when the finished message is read back rather than
+ * mid-stream.
+ */
+function displayScripted(context: ScriptContext, dto: MessageDto): MessageDto {
+  if (context.scripts.length === 0) return dto;
+  const speaker = { id: dto.characterId, name: dto.speakerName };
+  const content = runStage(context, "display_only", dto.content, speaker).text;
+  const segments =
+    dto.segments === null
+      ? null
+      : dto.segments.map((segment) => ({
+          ...segment,
+          content: runStage(context, "display_only", segment.content, {
+            id: segment.characterId,
+            name: segment.speakerName,
+          }).text,
+        }));
+  return { ...dto, content, segments };
 }
 
 /* ------------------------------------------------------------------ */

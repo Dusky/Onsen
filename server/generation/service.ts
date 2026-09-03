@@ -47,6 +47,7 @@ import { ExprSplitter } from "./expression.ts";
 import { retrieve } from "../documents/store.ts";
 import type { AutopilotRunner } from "./autopilot.ts";
 import { templateFor } from "../db/queries/instruct.ts";
+import { scriptText } from "../scripts/runtime.ts";
 import type { InstructTemplate } from "../prompt/index.ts";
 import type { TaskRunStatus } from "../../shared/types.ts";
 
@@ -1147,13 +1148,38 @@ export class GenerationService {
    * correcting one character's part is an edit to that beat, not a new version
    * of it, which is what distinguishes recast from a swipe (SPEC §3.5, §7).
    */
+  /**
+   * §14's `ai_output` stage: the model's prose is rewritten before it is
+   * stored, so the log, the prompt and any later edit all see one text.
+   *
+   * Applied to the prose only. The out-of-character aside that came out of the
+   * same stream is a different channel - §7 is explicit that it never touches
+   * the prose - and a script written to trim a model's trailing half-sentence
+   * has no business rewriting a question the author asked the reader.
+   *
+   * A `continue` is scripted as the joined whole rather than as the new half:
+   * the message that lands is one turn, and a script that trims its ending
+   * cannot find the ending if it is only shown the middle.
+   */
+  private scripted(generation: ActiveGeneration, text: string): string {
+    return scriptText(this.db, "ai_output", text, {
+      sceneId: generation.sceneId,
+      characterId: generation.spotlightId,
+    });
+  }
+
   private land(generation: ActiveGeneration): MessageRow | null {
     if (generation.turn.kind === "recast") {
       const beat = findMessageById(this.db, generation.turn.messageId);
       // The beat was deleted while this was generating. The text is kept on the
       // generation row either way; there is nothing left to splice it into.
       if (beat === null) return null;
-      return replaceSegment(this.db, beat, generation.turn.ordinal, generation.buffer);
+      return replaceSegment(
+        this.db,
+        beat,
+        generation.turn.ordinal,
+        this.scripted(generation, generation.buffer),
+      );
     }
 
     // An out-of-character answer is the author speaking as itself, so it is
@@ -1183,10 +1209,12 @@ export class GenerationService {
       // Trimmed, which matters once an aside can be lifted off the end of a
       // turn (§7): the prose before it keeps the space that separated them,
       // and a turn should not end in whitespace the reader cannot see.
-      content:
+      content: this.scripted(
+        generation,
         revise?.mode === "continue"
           ? `${revise.original.trimEnd()} ${generation.buffer.trimStart()}`
           : generation.buffer.trim(),
+      ),
       // A beat is filed under whoever opened it, so the log has something to
       // attribute it to; who spoke *last* in it comes from its segments (§6).
       characterId: generation.spotlightId,

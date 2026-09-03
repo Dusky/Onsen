@@ -33,6 +33,7 @@ import { taskConfig, templateOf } from "../db/queries/tasks.ts";
 import { fillTemplate } from "../prompt/index.ts";
 import { CONTINUE, CORRECT, EXPAND, NUDGE, opKind, STEER } from "../tasks/registry.ts";
 import type { PromptOpConfig } from "../prompt/index.ts";
+import { runStage, scriptContext, type ScriptContext } from "../scripts/runtime.ts";
 
 /**
  * Assembling a PromptContext from the database.
@@ -143,16 +144,45 @@ export function resolvePreset(db: Database, presetId: number | null): ResolvedPr
   };
 }
 
+/**
+ * §14's `prompt` stage: the transcript is rewritten on its way into a
+ * generation, and nothing on disk changes.
+ *
+ * The counterpart to `display_only` - that one changes what the reader sees
+ * and not what the model reads; this one changes what the model reads and not
+ * what the reader sees. Between them a scene can be shown one way and prompted
+ * another, which is what a script stripping the model's own formatting out of
+ * its history is for.
+ *
+ * Scoped per message by whoever spoke it, so a character-scoped script rewrites
+ * that character's turns in the transcript rather than the whole history.
+ */
+function promptScripted(
+  scripts: ScriptContext,
+  row: MessageRowWithSiblings,
+  content: string,
+  names: Map<number, string>,
+  characterUlids: Map<number, string>,
+): string {
+  if (scripts.scripts.length === 0) return content;
+  return runStage(scripts, "prompt", content, {
+    id: row.character_id === null ? null : (characterUlids.get(row.character_id) ?? null),
+    name: row.character_id === null ? null : (names.get(row.character_id) ?? null),
+  }).text;
+}
+
 function toPromptMessage(
   row: MessageRowWithSiblings,
   characterUlids: Map<number, string>,
   summarized: Set<number>,
+  scripts: ScriptContext,
+  names: Map<number, string>,
 ): PromptMessage {
   return {
     id: row.ulid,
     kind: row.kind,
     authorType: row.author_type,
-    content: row.content,
+    content: promptScripted(scripts, row, row.content, names, characterUlids),
     isHidden: row.is_hidden === 1,
     characterId:
       row.character_id === null ? null : (characterUlids.get(row.character_id) ?? null),
@@ -340,6 +370,10 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
 
   const castRows = castRowsOf(options.db, options.scene.id);
   const characterUlids = new Map(castRows.map((row) => [row.id, row.ulid]));
+  const characterNames = new Map(castRows.map((row) => [row.id, row.name]));
+
+  // §14's prompt-stage scripts, loaded once for the whole transcript.
+  const promptScripts = scriptContext(options.db, options.scene.id);
 
   // Presence is expressed in message identifiers, so the internal ids stored on
   // membership have to be resolved against the history being rendered.
@@ -434,7 +468,9 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
     // prompt rendering rather than the co-author framing (SPEC §3).
     author: authorRow === null ? null : toPromptAuthor(authorRow),
     persona: toPromptPersona(personaRow),
-    history: history.map((row) => toPromptMessage(row, characterUlids, injected.coveredMessageIds)),
+    history: history.map((row) =>
+      toPromptMessage(row, characterUlids, injected.coveredMessageIds, promptScripts, characterNames),
+    ),
     // Already matched and resolved by the activation model (§10).
     lore: lore.activated.map((entry) => ({
       id: entry.id,

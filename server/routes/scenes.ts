@@ -43,6 +43,7 @@ import {
   setTurnStrategy,
 } from "../db/queries/authors.ts";
 import { findCharacter } from "../db/queries/characters.ts";
+import { scriptText } from "../scripts/runtime.ts";
 import { activeGuides, editGuide, findGuide, flushGuides, toGuideDto } from "../db/queries/guides.ts";
 import type { AutopilotRunner } from "../generation/autopilot.ts";
 import { resolveNextSpeaker } from "../generation/turn.ts";
@@ -540,12 +541,22 @@ export function sceneRoutes(ctx: AppContext, autopilot: AutopilotRunner | null =
       parentId = parent.id;
     }
 
+    // §14's `user_input` stage: what the reader typed is rewritten before it is
+    // stored, so the model and the log see the same thing. Only what the reader
+    // wrote - a system note or an imported greeting arriving through this route
+    // is not input, and a script written to fix the reader's habits should not
+    // reach it.
+    const content =
+      request.authorType === "user"
+        ? scriptText(ctx.db, "user_input", request.content, { sceneId: sceneRow.id })
+        : request.content;
+
     const row = appendMessage(ctx.db, {
       sceneId: sceneRow.id,
       parentId,
       kind: request.kind,
       authorType: request.authorType,
-      content: request.content,
+      content,
       ...(request.isHidden === undefined ? {} : { isHidden: request.isHidden }),
     });
     return c.json(messageDto(ctx.db, row, sceneRow.ulid), 201);

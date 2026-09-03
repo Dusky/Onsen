@@ -440,6 +440,66 @@ export interface MessageDto {
   parseDegraded: boolean;
 }
 
+/* ------------------------------------------------------------------ */
+/* Regex scripts (SPEC §14)                                            */
+/* ------------------------------------------------------------------ */
+
+export const APPLY_STAGES = ["user_input", "ai_output", "display_only", "prompt"] as const;
+export type ApplyStage = (typeof APPLY_STAGES)[number];
+
+export const SCRIPT_SCOPES = ["global", "character", "scene"] as const;
+export type ScriptScope = (typeof SCRIPT_SCOPES)[number];
+
+export function isApplyStage(value: unknown): value is ApplyStage {
+  return typeof value === "string" && (APPLY_STAGES as readonly string[]).includes(value);
+}
+
+export function isScriptScope(value: unknown): value is ScriptScope {
+  return typeof value === "string" && (SCRIPT_SCOPES as readonly string[]).includes(value);
+}
+
+export interface RegexScriptDto {
+  id: string;
+  name: string;
+  pattern: string;
+  replacement: string;
+  /** A subset of JavaScript's: g, i, m, s, u, y. */
+  flags: string;
+  enabled: boolean;
+  applyTo: ApplyStage;
+  scope: ScriptScope;
+  /** Set when `scope` is `character`, null otherwise. */
+  characterId: string | null;
+  /** Set when `scope` is `scene`, null otherwise. */
+  sceneId: string | null;
+  /** Lower runs first, within a stage. */
+  runOrder: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** What one script did to one piece of text, for the test panel (§14). */
+export interface ScriptRunDto {
+  scriptId: string;
+  name: string;
+  replacements: number;
+  /** Why it did nothing, where that was a misconfiguration rather than no match. */
+  error: string | null;
+  unknownMacros: string[];
+}
+
+/**
+ * A dry run against text the user typed into the test panel.
+ *
+ * `before` comes back alongside `after` so the panel can show the pair without
+ * having to trust that it still holds the input it sent.
+ */
+export interface ScriptTestDto {
+  before: string;
+  after: string;
+  runs: ScriptRunDto[];
+}
+
 export interface SceneDto {
   id: string;
   title: string;
