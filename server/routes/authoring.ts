@@ -19,17 +19,20 @@ import {
   REVISE_CHARACTER,
   REVISE_LORE,
   SUGGEST_LORE,
+  WRITE_DOSSIER,
   SUGGEST_VOICE,
   taskKind,
 } from "../tasks/registry.ts";
 import {
   buildCreateCharacterPrompt,
+  buildDossierPrompt,
   buildExtractCharacterPrompt,
   buildReviseCharacterPrompt,
   buildReviseLorePrompt,
   buildSuggestLorePrompt,
   buildVoiceNotesPrompt,
   parseCreateCharacter,
+  parseDossier,
   parseExtractCharacter,
   parseLoreProposals,
   parseReviseCharacter,
@@ -37,6 +40,7 @@ import {
   parseVoiceNotes,
   type AuthoringCard,
 } from "../generation/authoring.ts";
+import { recurringNames } from "../generation/recurring.ts";
 import { createEstimatingTokenizer } from "../prompt/index.ts";
 import type { BuiltPrompt } from "../prompt/index.ts";
 
@@ -299,6 +303,82 @@ export function authoringRoutes(ctx: AppContext, tasks: TaskRunner): Hono<AppEnv
     const parsed = parseLoreProposals(ran.text);
     if (!parsed.ok) return c.json(unreadable(parsed.problem), 422);
     return c.json({ entries: parsed.entries });
+  });
+
+  /* ---------------- dossiers (SPEC §11, phase 32) ---------------- */
+
+  /**
+   * Who this scene keeps returning to that has no sheet yet.
+   *
+   * No model call: this is a question about string frequency, and asking a
+   * model would cost a request per turn to get a worse answer nobody could
+   * debug. The model is asked one question — what this character is like — and
+   * only once a name has earned it.
+   */
+  app.get("/scenes/:sceneId/recurring", (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    const threshold = Number.parseInt(c.req.query("threshold") ?? "3", 10);
+    const path = activePath(ctx.db, scene.id).filter(
+      // Prose only. An aside to the reader is not the story, and a name the
+      // author mentioned out of character has not "come up in the scene".
+      (row) => row.is_hidden === 0 && row.kind !== "ooc",
+    );
+    const known = [
+      ...(ctx.db.query("SELECT name FROM characters").all() as { name: string }[]),
+      ...(ctx.db
+        .query("SELECT name FROM dossiers WHERE scene_id = $scene")
+        .all({ scene: scene.id }) as { name: string }[]),
+    ].map((row) => row.name);
+
+    return c.json({
+      names: recurringNames({
+        messages: path.map((row) => row.content),
+        known,
+        threshold: Number.isInteger(threshold) && threshold > 0 ? Math.min(threshold, 20) : 3,
+      }),
+    });
+  });
+
+  /** Write a dossier for one name, from what the scene establishes. */
+  app.post("/scenes/:sceneId/dossier", async (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    let name = "";
+    try {
+      const body = (await c.req.json()) as { name?: unknown };
+      if (typeof body.name === "string") name = body.name.trim();
+    } catch {
+      /* Handled by the emptiness check. */
+    }
+    if (name === "") return c.json(badRequest("Name the character first."), 400);
+
+    const transcript = transcriptOf(ctx.db, scene.id);
+    if (transcript === null) return c.json(badRequest("The scene has no history to read."), 400);
+
+    const persona =
+      scene.persona_id === null
+        ? null
+        : (ctx.db
+            .query("SELECT name FROM personas WHERE id = $id")
+            .get({ id: scene.persona_id }) as { name: string } | null);
+
+    const ran = await run(
+      WRITE_DOSSIER,
+      buildDossierPrompt({ name, transcript, personaName: persona?.name ?? null }, tokenizer),
+      scene,
+    );
+    if (!ran.ok) return c.json({ error: { code: "unavailable", message: ran.detail } }, 502);
+    const parsed = parseDossier(ran.text, name);
+    if (!parsed.ok) return c.json(unreadable(parsed.problem), 422);
+
+    // A proposal, not a row. §9's pattern throughout: nothing the app inferred
+    // is written until the reader has seen it.
+    return c.json({ dossier: parsed.dossier });
   });
 
   /* ---------------- revise lore ---------------- */

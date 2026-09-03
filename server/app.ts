@@ -20,6 +20,7 @@ import { taskRoutes } from "./routes/tasks.ts";
 import { systemRoutes } from "./routes/system.ts";
 import { filterRoutes } from "./routes/filters.ts";
 import { authoringRoutes } from "./routes/authoring.ts";
+import { dossierRoutes } from "./routes/dossiers.ts";
 import { documentRoutes } from "./routes/documents.ts";
 import { demoRoutes } from "./routes/demo.ts";
 import { loreRoutes } from "./routes/lore.ts";
@@ -111,6 +112,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   api.route("/documents", documentRoutes(ctx));
   api.route("/demo", demoRoutes(ctx));
   api.route("/lorebooks", loreRoutes(ctx));
+  api.route("/dossiers", dossierRoutes(ctx));
 
   // An unknown API path is an API error, not the SPA shell — returning HTML
   // from a fetch is the kind of thing that costs an hour to diagnose.
