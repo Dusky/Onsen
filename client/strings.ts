@@ -527,6 +527,38 @@ export const strings = {
       script: "Run a regex script",
     } as Record<string, string>,
 
+    /** The outbound OpenAI-compatible API (SPEC §19, phase 37). */
+    apiKeys: "Use a roleplay as a model",
+    apiKeysHint:
+      "Point any OpenAI-compatible client at this app and a roleplay answers like a model. Turn it on per roleplay in that roleplay's setup, then make a key here.",
+    addApiKey: "Make a key",
+    apiKeyName: "What is it for",
+    apiKeyScope: "Which roleplay",
+    apiKeyAllScenes: "Any that are switched on",
+    apiKeyNone: "No keys.",
+    apiKeyRevoked: "Revoked",
+    apiKeyUses: (n: number) => `${n} ${n === 1 ? "request" : "requests"}`,
+    apiKeyUnused: "Never used",
+    apiKeyRevoke: "Revoke",
+    apiKeyRevokeConfirm: "Anything using this key stops working immediately.",
+    apiKeyDelete: "Delete",
+    apiKeyDeleteConfirm: "The key and its request log are deleted.",
+    apiKeyToken: "The key",
+    apiKeyTokenHint:
+      "Shown once. Put it in your client as the API key; the base URL is this app's address.",
+    apiKeyTokenDone: "Saved it",
+    apiKeyRequests: "Recent requests",
+    apiKeyNoRequests: "Nothing yet.",
+    apiKeyWarned: "Client sent its own character card",
+
+    sceneApi: "Answer as a model",
+    sceneApiHint:
+      "Lets an outside client drive this roleplay. Off unless you say otherwise. You still need a key, made in Settings.",
+    sceneApiOn: "On",
+    sceneApiOff: "Off",
+    sceneApiModel: "Model id",
+    sceneApiModelHint: "What your client puts in its model field.",
+
     /** Reading preferences (SPEC §5, phase 36). */
     reading: "Reading",
     readingHint: "How the app behaves while you are looking at something else.",

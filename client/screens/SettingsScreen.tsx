@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import type {
   ConnectionProfileDto,
   EventTriggerDto,
+  ApiKeyDto,
   InstalledPackDto,
   PackPlanDto,
   WebhookDto,
@@ -44,6 +45,7 @@ import {
   useScenes,
   usePreferences,
   useSetPreferences,
+  useApiKeys,
 } from "../lib/queries.ts";
 import { TabBar } from "../components/TabBar.tsx";
 import { Sheet } from "../components/Sheet.tsx";
@@ -52,6 +54,7 @@ import { ScriptEditor } from "../components/ScriptEditor.tsx";
 import { TriggerEditor } from "../components/TriggerEditor.tsx";
 import { ExportPackSheet, InstallPackSheet, RemovePackSheet } from "../components/PackSheets.tsx";
 import { WebhookEditor } from "../components/WebhookEditor.tsx";
+import { ApiKeyEditor } from "../components/ApiKeyEditor.tsx";
 
 /**
  * Settings (design handoff, screen 3i).
@@ -834,6 +837,89 @@ function ReadingSection() {
 }
 
 /**
+ * Bearer keys for §19's outbound API.
+ *
+ * The keys live here and the per-roleplay switch lives in that roleplay's
+ * setup, because they are different questions: "who may reach this install" is
+ * about the install, and "may this story be driven from outside" is about the
+ * story. The hint on this section says where the other half is, since neither
+ * one alone opens anything.
+ */
+function ApiKeysSection() {
+  const apiKeys = useApiKeys();
+  const scenes = useScenes();
+  const [editing, setEditing] = useState<ApiKeyDto | null | undefined>(undefined);
+
+  const keys = apiKeys.data ?? [];
+
+  return (
+    <>
+      <p className="section-label mb-[4px]">{strings.settings.apiKeys}</p>
+      <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+        {strings.settings.apiKeysHint}
+      </p>
+
+      {keys.length === 0 ? (
+        <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+          {strings.settings.apiKeyNone}
+        </p>
+      ) : null}
+      {keys.map((key) => (
+        <Row key={key.id}>
+          <button
+            type="button"
+            onClick={() => setEditing(key)}
+            className="flex w-full items-baseline gap-[9px] text-left"
+          >
+            {statusDot(!key.revoked)}
+            <span className="min-w-0 flex-1">
+              <span
+                className="block truncate text-[15px] font-medium"
+                style={{ opacity: key.revoked ? 0.55 : 1 }}
+              >
+                {key.name}
+              </span>
+              <span className="chrome block truncate text-[9px] tracking-[0.06em] text-ink-dim">
+                <span className="font-mono">{key.hint}…</span>
+                <span className="uppercase">
+                  {[
+                    key.sceneTitle,
+                    key.revoked ? strings.settings.apiKeyRevoked : null,
+                    key.uses === 0
+                      ? strings.settings.apiKeyUnused
+                      : strings.settings.apiKeyUses(key.uses),
+                  ]
+                    .filter((part) => part !== null && part !== undefined)
+                    .map((part) => ` \u00b7 ${part}`)
+                    .join("")}
+                </span>
+              </span>
+            </span>
+            <span className="chrome flex-none self-center text-[12px] text-ink-dim">›</span>
+          </button>
+        </Row>
+      ))}
+
+      <button
+        type="button"
+        className="btn mt-[12px] mb-[26px] w-full"
+        onClick={() => setEditing(null)}
+      >
+        {strings.settings.addApiKey}
+      </button>
+
+      {editing !== undefined ? (
+        <ApiKeyEditor
+          apiKey={editing}
+          scenes={scenes.data ?? []}
+          onClose={() => setEditing(undefined)}
+        />
+      ) : null}
+    </>
+  );
+}
+
+/**
  * Outbound webhooks (SPEC §15).
  *
  * The row carries the delivery state rather than hiding it behind the sheet: a
@@ -1438,6 +1524,8 @@ export function SettingsScreen() {
           <div className="h-[20px]" />
 
           <ReadingSection />
+
+          <ApiKeysSection />
 
           <WebhooksSection />
 

@@ -28,6 +28,9 @@ import type {
   WebhookDto,
   NewWebhookDto,
   WebhookEvent,
+  ApiKeyDto,
+  NewApiKeyDto,
+  SceneApiDto,
   SavedFilterDto,
   TrackerDto,
   CreateConnectionProfileRequest,
@@ -121,6 +124,7 @@ export const connectionKeys = {
   triggerActions: ["trigger-actions"] as const,
   packs: ["packs"] as const,
   webhooks: ["webhooks"] as const,
+  apiKeys: ["api-keys"] as const,
 };
 
 /** Invalidate everything a connection change can touch. */
@@ -1663,5 +1667,57 @@ export function useSetPreferences() {
     mutationFn: (body: Partial<PreferencesDto>) =>
       api.patch<PreferencesDto>("/system/preferences", body),
     onSuccess: () => void client.invalidateQueries({ queryKey: ["preferences"] }),
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* The outbound OpenAI-compatible API (SPEC §19)                       */
+/* ------------------------------------------------------------------ */
+
+export function useApiKeys() {
+  return useQuery({
+    queryKey: connectionKeys.apiKeys,
+    queryFn: () => api.get<ApiKeyDto[]>("/api-keys"),
+  });
+}
+
+function useApiKeyMutation<TArgs, TResult>(fn: (args: TArgs) => Promise<TResult>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => void client.invalidateQueries({ queryKey: connectionKeys.apiKeys }),
+  });
+}
+
+export function useCreateApiKey() {
+  return useApiKeyMutation((body: { name: string; sceneId?: string }) =>
+    api.post<NewApiKeyDto>("/api-keys", body),
+  );
+}
+
+export function useRevokeApiKey() {
+  return useApiKeyMutation((id: string) => api.post<ApiKeyDto>(`/api-keys/${id}/revoke`));
+}
+
+export function useDeleteApiKey() {
+  return useApiKeyMutation((id: string) => api.delete<void>(`/api-keys/${id}`));
+}
+
+/**
+ * Switching the API on for one roleplay.
+ *
+ * Invalidates the keys too: what a key can reach depends on which roleplays
+ * have opted in, so a list showing otherwise would be stale the moment this
+ * succeeds.
+ */
+export function useSetSceneApi(sceneId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { enabled?: boolean; historyMode?: string }) =>
+      api.patch<SceneApiDto>(`/scene-api/${sceneId}`, body),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: connectionKeys.apiKeys });
+      void client.invalidateQueries({ queryKey: keys.scene(sceneId) });
+    },
   });
 }

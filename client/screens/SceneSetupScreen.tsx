@@ -40,6 +40,7 @@ import {
   useScene,
   useSceneOptions,
   useSceneSetup,
+  useSetSceneApi,
   useSetOption,
   useTaskRuns,
   useUpdateBan,
@@ -124,6 +125,9 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
   const personas = usePersonas();
   const characters = useCharacters();
   const setup = useSceneSetup(sceneId);
+  // §19's per-scene switch. The slug is assigned on the way on, so the model id
+  // only exists once the roleplay has opted in.
+  const sceneApi = useSetSceneApi(sceneId);
   const addToCast = useAddToCast(sceneId);
   const removeFromCast = useRemoveFromCast(sceneId);
   const authorExtract = useAuthorExtract(sceneId);
@@ -186,6 +190,12 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
   const deleteBan = useDeleteBan(sceneId);
 
   const scene = query.data?.scene;
+  // §19's per-scene switch. The mutation's own answer wins where it has one:
+  // the slug is assigned on the way on, so the model id does not exist until
+  // the roleplay has opted in and the row has been read back.
+  const apiEnabled = sceneApi.data?.enabled ?? scene?.apiEnabled ?? false;
+  const apiModelId =
+    sceneApi.data?.modelId ?? (scene?.apiSlug == null ? null : `scene/${scene.apiSlug}`);
   if (scene === undefined) {
     return (
       <div className="flex screen-height items-center justify-center">
@@ -637,6 +647,38 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               </p>
             </>
           ) : null}
+
+          {/* §19: whether an outside client may drive this roleplay. Off by
+              default and enabled per scene, which the spec is explicit about —
+              and here rather than in Settings because "may this story be driven
+              from outside" is a question about the story. */}
+          <p className="section-label mb-[8px]">{strings.settings.sceneApi}</p>
+          <div className="mb-[8px] flex gap-[6px]">
+            {[true, false].map((on) => (
+              <button
+                key={String(on)}
+                type="button"
+                onClick={() => sceneApi.mutate({ enabled: on })}
+                className={`btn flex-1 ${apiEnabled === on ? "btn-primary" : ""}`}
+              >
+                {on ? strings.settings.sceneApiOn : strings.settings.sceneApiOff}
+              </button>
+            ))}
+          </div>
+          <p className="chrome mb-[8px] text-[9.5px] leading-[1.5] text-ink-dim">
+            {strings.settings.sceneApiHint}
+          </p>
+          {apiEnabled && apiModelId !== null ? (
+            <>
+              <p className="section-label mb-[6px]">{strings.settings.sceneApiModel}</p>
+              <p className="mb-[4px] font-mono text-[12px] select-all">{apiModelId}</p>
+              <p className="chrome mb-[18px] text-[9.5px] leading-[1.5] text-ink-dim">
+                {strings.settings.sceneApiModelHint}
+              </p>
+            </>
+          ) : (
+            <div className="mb-[10px]" />
+          )}
 
           {/* Whether the author may step out of the scene (SPEC §7). Off by
               default, and the hint says why rather than what: the reader is

@@ -3420,3 +3420,71 @@ a cycle, resolved with a ref, which meant the hook always saw the *previous*
 render's value. With no re-render after the scene loaded, that value stayed
 `null` forever, and `null` was the "nothing to diverge from" branch. The hook
 owns that state now; nothing feeds back into it.
+
+---
+
+## Phase 37 — The outbound OpenAI-compatible API
+
+§19. Another client points at `scene/the-pass` and this app answers like a
+model, running the whole pipeline behind it.
+
+### What was built
+
+**`GET /v1/models`** — every roleplay that has opted in, plus one forced-speaker
+id per active cast member, filtered to what the presented key can reach.
+
+**`POST /v1/chat/completions`** — streaming and not, in OpenAI's shapes, with
+`last_message` history reconciliation: the final user message, the stored
+history, and the incoming array otherwise ignored.
+
+**Bearer keys** — minted, hashed, shown once, revocable, optionally scoped to
+one roleplay, rate-limited per key, with a request log that records the
+failures too.
+
+**Inline ops** — §19's `((nudge:))`, `((steer:))`, `((clear steer))`, `((as:))`,
+`((ooc:))`, `((continue))`, `((swipe))`, parsed out and stripped before the
+message enters history.
+
+**Double-assembly protection** — a warning header and a line in the request log,
+never a refusal.
+
+**Two switches**, on two screens: the keys in Settings, the per-roleplay switch
+in that roleplay's setup, each with a hint pointing at the other.
+
+### Deliberately deferred
+
+- **`author/<slug>` and the `stateless` history mode.** They need a prompt path
+  with no scene behind it, and every path in the builder has one. They are not
+  listed in `/v1/models` either: advertising an id that answers with a 400 is
+  worse than not advertising it.
+- **`passthrough/<profile>`.** Small, but it needs adapter plumbing outside the
+  generation service, and §19's own warning — "never expose upstream provider
+  keys through passthrough responses" — deserves its own attention rather than
+  being tacked onto the end of a large phase.
+- **The `sync` history mode.** §19 calls it "more failure modes" itself. It is a
+  diff against a tree, and the default already works with any client.
+- **`POST /v1/completions`.** §19 marks it optional.
+
+### Spec changes
+
+§19 gains a `Settled while building phase 37` block with nine decisions.
+
+### Surprises
+
+**The length floor suppressed the strongest evidence.** Double-assembly
+detection required two signals and 200 characters, which a short assembled card
+slipped straight under — `{{char}}`, `Personality:` and `<START>` all present,
+and the check said no. Macro residue stands alone now, at any length: a person
+writing an instruction does not type `{{char}}`, so a threshold that could
+overrule it was deciding a question the evidence had already answered.
+
+**Asides and commands share a syntax.** §19's `((nudge: ...))` and §7's
+`((she has no idea))` are the same shape, and the first parser treated a bare
+aside as a command with a very long name. It was left in the text either way,
+but reported as an unknown command — a lie about what the reader wrote, in a
+field the request log shows back to them.
+
+**Two of the four model kinds are not built, and the list says so by omission.**
+The first version listed `passthrough/<profile>` because it was cheap to
+enumerate, and the completions endpoint answered it with a 400. A client reading
+that list would have had every reason to expect it to work.

@@ -670,6 +670,50 @@ export interface NewWebhookDto extends WebhookDto {
   secret: string;
 }
 
+/* ------------------------------------------------------------------ */
+/* The outbound OpenAI-compatible API (SPEC §19)                       */
+/* ------------------------------------------------------------------ */
+
+export type ApiHistoryMode = "last_message" | "sync" | "stateless";
+
+/** One request a key made, for the log the key carries. */
+export interface ApiRequestDto {
+  model: string;
+  status: number;
+  /** Set when the client's system prompt looked like an assembled card (§19). */
+  warning: string | null;
+  durationMs: number;
+  at: number;
+}
+
+export interface ApiKeyDto {
+  id: string;
+  name: string;
+  /** The first few characters. Enough to recognise, far too little to use. */
+  hint: string;
+  /** Null when the key reaches every roleplay that has opted in. */
+  sceneId: string | null;
+  sceneTitle: string | null;
+  revoked: boolean;
+  lastUsedAt: number | null;
+  uses: number;
+  createdAt: number;
+  requests: ApiRequestDto[];
+}
+
+/** The token is returned once, on the response that created the key. */
+export interface NewApiKeyDto extends ApiKeyDto {
+  token: string;
+}
+
+export interface SceneApiDto {
+  enabled: boolean;
+  historyMode: ApiHistoryMode;
+  slug: string | null;
+  /** What a client puts in its `model` field. Null until switched on. */
+  modelId: string | null;
+}
+
 export interface SceneDto {
   id: string;
   title: string;
@@ -714,6 +758,10 @@ export interface SceneDto {
   oocEnabled: boolean;
   /** The earliest it may speak up again, in messages. A nudge, not a schedule. */
   oocInterval: number;
+  /** Whether an outside client may drive this roleplay (SPEC §19). */
+  apiEnabled: boolean;
+  /** What a model id addresses it by. Null until the API is switched on. */
+  apiSlug: string | null;
   /** Whether the scene keeps writing itself after a reply (SPEC §6). */
   autopilotEnabled: boolean;
   /** How many turns the loop may write before it stops (SPEC §6). */

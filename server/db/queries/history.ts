@@ -231,6 +231,8 @@ export function toSceneDto(
     vnModeEnabled: row.vn_mode_enabled === 1,
     hasBackground: row.background_path !== null,
     oocInline: row.ooc_inline === 1,
+    apiEnabled: row.api_enabled === 1,
+    apiSlug: row.api_slug,
     summariseFreeze: row.summarise_freeze,
     authorId: extras.authorUlid,
     authorName: extras.authorName,

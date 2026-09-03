@@ -2445,6 +2445,44 @@ the same generation service, so a scene open in the web UI updates live via the
 multi-device head sync (§5). This is the payoff: start a scene on your phone,
 continue it from a terminal, and both stay in sync.
 
+### Settled while building phase 37
+
+- **Mounted outside `/api` and before the session middleware.** This surface is
+  addressed by machines holding bearer tokens. A cookie has no business here,
+  and a cookie that *worked* here would make every page on the internet able to
+  drive a scene through the reader's own browser.
+- **Two switches have to agree.** A valid key does not open a scene that has not
+  opted in, and an opted-in scene is not reachable without a key. Neither alone
+  opens anything, which is what "off by default, enabled per scene" has to mean
+  to be worth saying.
+- **The token is a SHA-256 hash, unsalted.** A salted hash cannot be looked up
+  by index, which would mean hashing the presented token once per stored key on
+  every request — and a salt protects against a rainbow table over low-entropy
+  secrets, which 32 random bytes are not. Returned once, on the response that
+  minted it.
+- **Revocation is a flag, not a delete**, so the usage log a revoked key left
+  behind still says whose it was.
+- **Rate-limited per key rather than per address.** Behind a tunnel every caller
+  arrives from the same forwarded IP, so per-address would be one bucket for
+  everyone and one busy client would lock out the rest.
+- **`/v1/models` lists only what the presented key can reach**, and only what is
+  actually built. A scoped key told about roleplays it cannot open is both a
+  leak and a lie; a model id a client can read out of the list and then be
+  refused by is worse than one that was never advertised.
+- **Macro residue alone proves a client-assembled prompt.** Nobody types
+  `{{char}}` into an instruction by hand. Every other signal needs a second one
+  beside it and enough length that a minimal system prompt is never suspected —
+  but a length floor that suppressed macro residue would be a threshold deciding
+  a question the evidence had already answered.
+- **A bare `((...))` is prose, not a command.** §7's out-of-character asides use
+  the same double-paren syntax, so only a colon or one of the three
+  argument-less commands (`continue`, `swipe`, `clear steer`) makes one a
+  command. Otherwise reporting an aside as an unknown command would be a lie
+  about what the reader wrote.
+- **A steer applies before the turn rather than travelling with it**, because it
+  is scene state (§7): it outlives the request that set it, which is the whole
+  difference between a steer and a nudge.
+
 ---
 
 ## 20. Build order
