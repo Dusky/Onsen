@@ -345,6 +345,90 @@ export function parseLoreProposals(text: string): { ok: true; entries: LorePropo
 }
 
 /* ------------------------------------------------------------------ */
+/* Character dossiers (SPEC §11, phase 32)                             */
+/* ------------------------------------------------------------------ */
+
+export interface DossierProposal {
+  name: string;
+  role: string;
+  voice: string;
+  canonLock: string;
+  knowledge: { public: string; private: string; buried: string };
+  standing: string;
+}
+
+/**
+ * Write a dossier for one name the scene keeps returning to.
+ *
+ * The prompt names the fields §11 names and says what each is for, because the
+ * distinction between them is the point: a canon lock is a constraint on future
+ * turns, standing is a relationship, and a model given "describe this character"
+ * returns one paragraph that is none of them.
+ *
+ * The buried tier is asked for explicitly and told it will be withheld. A model
+ * that knows a field is not going into the prompt writes a different, better
+ * thing in it — a secret rather than a hint.
+ */
+export function buildDossierPrompt(
+  input: { name: string; transcript: string; personaName: string | null },
+  tokenizer: Tokenizer,
+): BuiltPrompt {
+  const reader = input.personaName ?? "the reader";
+  const system =
+    `You write reference notes on minor characters for a roleplay app. ` +
+    `You answer only as a JSON object, no commentary.`;
+  const question = [
+    `${input.name} has come up several times in this scene without having a character ` +
+      `sheet. Write one from what the transcript actually establishes. Invent nothing ` +
+      `it does not support — an empty field is better than a guess.`,
+    ``,
+    input.transcript,
+    ``,
+    `Answer as a JSON object:`,
+    `{`,
+    `  "role": "what they do and where they are usually found",`,
+    `  "voice": "how they speak — rhythm, vocabulary, what they never say",`,
+    `  "canonLock": "facts the scene has established that later turns must not contradict",`,
+    `  "knowledge": {`,
+    `    "public": "what anyone in the story would know about them",`,
+    `    "private": "what they know but do not volunteer",`,
+    `    "buried": "what they are hiding. This is withheld from the prompt and shown only to the reader, so write the real thing"`,
+    `  },`,
+    `  "standing": "where they stand with ${reader} right now"`,
+    `}`,
+  ].join("\n");
+  return buildPrompt(system, question, tokenizer, "Dossier", "authoring");
+}
+
+export function parseDossier(
+  text: string,
+  name: string,
+): { ok: true; dossier: DossierProposal } | { ok: false; problem: string } {
+  const object = record(extractJson(text));
+  if (object === null) return { ok: false, problem: "The reply was not a JSON object." };
+  const knowledge = record(object["knowledge"]) ?? {};
+  const dossier: DossierProposal = {
+    name,
+    role: string(object["role"]) ?? "",
+    voice: string(object["voice"]) ?? "",
+    canonLock: string(object["canonLock"]) ?? "",
+    knowledge: {
+      public: string(knowledge["public"]) ?? "",
+      private: string(knowledge["private"]) ?? "",
+      buried: string(knowledge["buried"]) ?? "",
+    },
+    standing: string(object["standing"]) ?? "",
+  };
+  // A dossier of nothing but a name is not worth a row: it would render an
+  // empty entry, and the reader would have to delete something the app made up.
+  const filled = [dossier.role, dossier.voice, dossier.canonLock, dossier.standing].some(
+    (value) => value.trim() !== "",
+  );
+  if (!filled) return { ok: false, problem: "The reply filled none of the fields." };
+  return { ok: true, dossier };
+}
+
+/* ------------------------------------------------------------------ */
 /* Revise lore entry                                                   */
 /* ------------------------------------------------------------------ */
 

@@ -95,6 +95,7 @@ export const REVISE_CHARACTER = "revise_character";
 export const EXTRACT_CHARACTER = "extract_character";
 export const SUGGEST_VOICE = "suggest_voice_notes";
 export const SUGGEST_LORE = "suggest_lore";
+export const WRITE_DOSSIER = "write_dossier";
 export const REVISE_LORE = "revise_lore";
 export const TRACKER_SCENE = "tracker_scene";
 export const TRACKER_CHARACTERS = "tracker_characters";
@@ -319,6 +320,21 @@ export const OP_KINDS: readonly OpKind[] = [
     timeoutMs: 60_000,
     replyLimit: 8_000,
     variables: ["transcript"],
+    hideable: false,
+  },
+  {
+    key: WRITE_DOSSIER,
+    runs: "side_call",
+    label: "Write a dossier",
+    description:
+      "A reference sheet for a character who turned up in play, from what the scene establishes.",
+    stage: "sidecar",
+    // Low, like the other authoring tasks: a dossier records what the scene
+    // established, and a creative one invents a character who was never there.
+    samplers: { temperature: 0.3, top_p: 0.9 },
+    timeoutMs: 60_000,
+    replyLimit: 4_000,
+    variables: ["name", "transcript"],
     hideable: false,
   },
   {
