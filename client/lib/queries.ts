@@ -31,6 +31,7 @@ import type {
   ApiKeyDto,
   NewApiKeyDto,
   SceneApiDto,
+  MemoryEntityDto,
   SavedFilterDto,
   TrackerDto,
   CreateConnectionProfileRequest,
@@ -1720,4 +1721,67 @@ export function useSetSceneApi(sceneId: string) {
       void client.invalidateQueries({ queryKey: keys.scene(sceneId) });
     },
   });
+}
+
+/* ------------------------------------------------------------------ */
+/* Narrative memory (SPEC §11 layer 3)                                 */
+/* ------------------------------------------------------------------ */
+
+const memoryKeys = {
+  scene: (sceneId: string) => ["memory", sceneId] as const,
+};
+
+export function useMemory(sceneId: string, enabled = true) {
+  return useQuery({
+    queryKey: memoryKeys.scene(sceneId),
+    queryFn: () =>
+      api.get<{ enabled: boolean; entities: MemoryEntityDto[] }>(`/memory/scenes/${sceneId}`),
+    enabled,
+  });
+}
+
+function useMemoryMutation<TArgs, TResult>(
+  sceneId: string,
+  fn: (args: TArgs) => Promise<TResult>,
+) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: memoryKeys.scene(sceneId) });
+      // What memory holds changes what the next prompt carries, so the scene
+      // is stale too.
+      void client.invalidateQueries({ queryKey: keys.scene(sceneId) });
+    },
+  });
+}
+
+export function useSetMemoryEnabled(sceneId: string) {
+  return useMemoryMutation(sceneId, (enabled: boolean) =>
+    api.patch<{ enabled: boolean }>(`/memory/scenes/${sceneId}`, { enabled }),
+  );
+}
+
+/**
+ * Read the recent turns now.
+ *
+ * A scene that has just switched memory on has nothing in it, and waiting a
+ * turn to find out whether the feature works is a poor first impression.
+ */
+export function useExtractMemory(sceneId: string) {
+  return useMemoryMutation(sceneId, () =>
+    api.post<{ entities: number }>(`/memory/scenes/${sceneId}/extract`),
+  );
+}
+
+export function useEditMemoryEntity(sceneId: string) {
+  return useMemoryMutation(
+    sceneId,
+    ({ id, ...body }: Record<string, unknown> & { id: string }) =>
+      api.patch<{ ok: true }>(`/memory/entities/${id}`, body),
+  );
+}
+
+export function useDeleteMemoryEntity(sceneId: string) {
+  return useMemoryMutation(sceneId, (id: string) => api.delete<void>(`/memory/entities/${id}`));
 }

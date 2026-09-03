@@ -932,6 +932,41 @@ export const strings = {
     ooc: "Off-script asides",
     oocOn: "Allowed",
     oocOff: "Never",
+    /** Narrative memory (SPEC §11 layer 3, phase 38). */
+    /**
+     * §11 layer 3. Not "Remember what happened" — that is `summarise`, layer 1,
+     * on the same screen. Two sections with one label is a worse problem than
+     * either label being imperfect.
+     */
+    memory: "Keep track of who and what",
+    memoryHint:
+      "Notes people, places and what they did, and brings back the ones this moment needs. Costs a small model call after each reply.",
+    memoryOn: "On",
+    memoryOff: "Off",
+    memoryEmpty: "Nothing noted yet.",
+    memoryExtract: "Read the recent turns",
+    memoryExtracting: "Reading…",
+    memoryCount: (n: number) => `${n} ${n === 1 ? "note" : "notes"}`,
+    memoryEdit: "Edit",
+    memoryName: "What it is",
+    memoryKind: "Kind",
+    memoryContent: "What to remember",
+    memorySalience: "How much it matters",
+    memorySalienceHint: "0 to 1. Higher survives longer without being mentioned.",
+    memoryYours: "Yours",
+    memoryYoursHint: "You wrote this, so the extractor leaves it alone.",
+    memoryQuiet: (n: number) => (n === 0 ? "Just now" : `${n} ${n === 1 ? "turn" : "turns"} ago`),
+    memoryDelete: "Forget it",
+    memoryDeleteConfirm: "This note is deleted. The extractor may write it again later.",
+    memoryLinks: "Connected",
+    memoryKindLabel: {
+      person: "Person",
+      place: "Place",
+      object: "Thing",
+      event: "Event",
+      fact: "Fact",
+    } as Record<string, string>,
+
     oocHint:
       "Lets the author break off to ask you something \u2014 a check, a flag, a question about where this is going. A collaborator rather than a narrator. You can always ask it something yourself.",
     oocInterval: "Not more often than",

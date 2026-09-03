@@ -1707,6 +1707,39 @@ Only build this after 1 and 2 are solid.
 - Full retrieval trace in the inspector: what was recalled, its score, why.
 - Runs entirely off the main generation thread.
 
+#### Settled while building phase 38
+
+- **Salience is asked for as three signals, not one number.** A model handed
+  "rate the importance 0 to 1" answers 0.7 to everything. Narrative significance
+  leads the weighting because it is the one that predicts whether a thing will
+  matter *again*, which is the only thing retrieval is for — a frightening night
+  that changes nothing is vivid and irrelevant.
+- **Decay has a floor that is a fraction of the original, not a constant.** That
+  is "high salience resists decay" written as arithmetic: a 0.8 memory settles
+  at 0.64 and a 0.2 one falls to 0.04. Nothing decays to zero, because a memory
+  at zero is indistinguishable from one that was never extracted.
+- **The blend is a weighted sum, not a product.** Multiplying would let either
+  half veto the other, and a fact with everything to do with this moment must
+  not be dropped for having been quiet. Similarity alone retrieves whatever the
+  last message rhymed with; salience alone retrieves the same three things
+  forever.
+- **Extraction merges; it never replaces.** The window is a dozen turns and the
+  memory is the whole story. Salience takes the higher of the two, because a
+  thing that mattered once does not stop having mattered when a later turn
+  mentions it in passing — decay is what lowers a score.
+- **Editing is what sets `user_edited`.** There is no separate flag a route
+  could forget to set. A protected entity still records that it was mentioned:
+  being talked about is not being redescribed, and refusing to note it would
+  make a corrected entity decay as though it had never come up.
+- **A relation naming something the same extraction did not produce is
+  dropped.** The extractor named something it did not extract, and storing half
+  a relation would put a dangling reference into the one structure that is
+  supposed to be the reliable part.
+- **The recall trace keeps the two halves apart**, and stored salience apart
+  from what decay left of it. "It scored 0.7" answers nothing; "close to the
+  moment, and it matters a great deal" answers the question §11 asks the trace
+  to answer.
+
 ### Author memory (optional)
 
 Off by default, enabled per author via `memory_enabled`. Implemented as a

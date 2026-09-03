@@ -47,6 +47,7 @@ import {
 } from "../lib/queries.ts";
 import { Sheet } from "../components/Sheet.tsx";
 import { TURN_STRATEGIES, type TurnStrategy } from "@shared/types.ts";
+import { MemorySection } from "../components/NarrativeMemory.tsx";
 
 /**
  * Scene setup: who is writing, who you are, and who is in it.
@@ -647,6 +648,12 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               </p>
             </>
           ) : null}
+
+          {/* §11 layer 3: what the scene remembers about itself. Here rather
+              than in Settings because the graph is about this story, and the
+              rule that a reader's edit is never overwritten needs somewhere to
+              edit for it to mean anything. */}
+          <MemorySection sceneId={sceneId} />
 
           {/* §19: whether an outside client may drive this roleplay. Off by
               default and enabled per scene, which the spec is explicit about —

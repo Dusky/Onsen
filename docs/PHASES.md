@@ -3488,3 +3488,68 @@ field the request log shows back to them.
 The first version listed `passthrough/<profile>` because it was cheap to
 enumerate, and the completions endpoint answered it with a 400. A client reading
 that list would have had every reason to expect it to work.
+
+---
+
+## Phase 38 — Narrative memory
+
+§11's third memory layer, and the first phase in the **Later** block. Entities,
+relations and salience, off by default.
+
+### What was built
+
+**The ranking, as pure arithmetic** — `combineSalience`, `decayed`, `scoreMemory`
+and `rank`. The whole feature is a ranking, and one that could only be inspected
+by running a model against a live scene is one nobody can reason about.
+
+**Extraction as a background task** — a registry op at temperature 0.2, asked
+for three salience signals rather than one number, shown what it already knows
+so it says what *changed* rather than restating the cast list every turn.
+
+**A merge that accumulates**, protects a reader's edits, and takes the higher
+salience of the two.
+
+**Recall on the prompt path** — the blend, the relations travelling with the
+entity they belong to, and a trace the inspector can read.
+
+**A panel in scene setup** — the graph, editable, with the reader's own entries
+marked in the blue pencil, because a promise nobody can see is not one.
+
+### Deliberately deferred
+
+- **Author-scoped memory.** §2 sketches `MemoryEntity.author_id` beside
+  `scene_id`; only the scene binding is built. §11's *author memory* is a
+  lorebook with an owner rather than an entity graph, and it is phase 39.
+- **Relation editing.** Relations are shown on the entity they belong to and
+  deleted with it; there is no editor for one on its own. The entity is the
+  thing a reader thinks about, and an editor for the edges would be a graph tool
+  in the middle of a story app.
+- **Decay as a background sweep.** Salience is stored as extracted and decayed
+  at read time, so nothing has to run on a timer and no scene's memory quietly
+  changes while nobody is looking at it.
+
+### Spec changes
+
+§11's layer 3 gains a `Settled while building phase 38` block with seven
+decisions.
+
+### Surprises
+
+**The form refused a value it had just been handed.** The salience input carried
+`step="0.05"` while `combineSalience` rounds to three decimals, so a stored
+0.833 failed HTML5 validation and the sheet could not be saved without the
+reader changing a number they never touched. It is `step="any"` now — salience
+is a continuous score, and a grid would be the UI dictating the model's
+precision.
+
+**Two sections on one screen both said "Remember what happened."** §11 layer 1
+— the rolling summaries — already owned that phrase in scene setup, and layer 3
+arrived with the same one. Playwright's strict mode found it before a reader
+would have. Layer 3 is "Keep track of who and what" now.
+
+**A file called `MemoryPanel.tsx` already existed**, and it is layer 1's
+summaries panel. Writing the new component straight over it destroyed a working
+one; git had it back in a second, but the near-miss is the point — two features
+called memory, one layer apart, and the second one walked into the first one's
+name without looking. The new one is `NarrativeMemory.tsx`, and it says in its
+header comment which layer it is not.
