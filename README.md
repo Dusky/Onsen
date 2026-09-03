@@ -4,7 +4,7 @@ A self-hosted, mobile-first AI roleplay frontend. Group scenes are the primary
 case: one AI **author** with its own personality plays the whole cast, like a GM
 running a table, while you direct.
 
-> **Status: phase 37 of 43 — usable.** Set it up, import character cards, give
+> **Status: phase 38 of 43 — usable.** Set it up, import character cards, give
 > the AI an author persona of its own, and run a group scene: one writing
 > partner voicing a whole cast, **beats** — a whole exchange between several
 > characters written in one go, which you can then correct one character at a
@@ -57,7 +57,11 @@ running a table, while you direct.
 > point any OpenAI-compatible client at this app, and `scene/the-pass` runs the
 > whole pipeline behind it — author, cast, lore, guides — with the director's
 > ops available as `((nudge: ...))` inline. Turns land in the tree like any
-> other, so the terminal and the phone are the same story. Built
+> other, so the terminal and the phone are the same story. Optionally it also
+> **keeps track of who and what** — people, places, things and facts pulled out
+> of the story as it goes, scored by how much they matter, brought back when the
+> moment needs them and fading when it does not; edit one and the extractor
+> never touches it again. Built
 > for a phone first, and on a
 > wide screen the same pieces unroll into a sidebar, a capped prose column and a
 > cast rail. See
