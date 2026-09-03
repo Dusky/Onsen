@@ -90,6 +90,7 @@ export const strings = {
     stillWriting: (title: string) => `Still writing in ${title}`,
     open: "Open",
     counts: (messages: number) => `${messages} ${messages === 1 ? "reply" : "replies"}`,
+    noCast: "No cast",
   },
 
   chat: {
@@ -351,7 +352,6 @@ export const strings = {
 
   settings: {
     kicker: "Settings",
-    title: "Connections",
 
     /** Connections group (design handoff, screen 3i). */
     providers: "Providers",
@@ -556,7 +556,7 @@ export const strings = {
     noTagSuggestions: "No suggestions came back.",
 
     /** AI-assisted authoring (SPEC §9, phase 27). */
-    writeWithAi: "Write",
+    writeWithAi: "Write with AI",
     writeTitle: "Write a character",
     writePlaceholder: "Describe the character in a sentence or two…",
     writeGo: "Write the card",
@@ -1036,6 +1036,8 @@ export const strings = {
   },
 
   nav: {
+    /** The app, above a page title. Provisional, like every other noun here. */
+    appName: "Onsen",
     /** The desktop sidebar's roleplay list (design 4a). */
     recent: "Recent",
     settings: "Settings",

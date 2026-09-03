@@ -501,6 +501,11 @@ export interface SceneDto {
   /** Null while the scene is empty. */
   activeLeafId: string | null;
   messageCount: number;
+  /**
+   * A few words of the newest turn, for the roleplays list - the one thing that
+   * tells two scenes with the same title apart. Null while the scene is empty.
+   */
+  lastLine: string | null;
   createdAt: number;
   updatedAt: number;
 }

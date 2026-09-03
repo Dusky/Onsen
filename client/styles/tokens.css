@@ -94,6 +94,8 @@
   --onsen-screen-padding-desktop: 28px;
   --onsen-tap-target: 44px;
   --onsen-prose-measure: 620px;
+  /* Screens that are a list of rows rather than something to read. */
+  --onsen-list-measure: 860px;
 }
 
 /*

@@ -198,11 +198,12 @@ Base scale: **4 / 6 / 8 / 10 / 12 / 14 / 16 / 18 / 20 / 22 / 26 px**
 | Cast card (composer) | 70 × 50 + label; cued: 82 × 58 + label, lifted 6px |
 | Cast card (desktop rail) | full-width, 54 × 68 portrait |
 | Ops grid cell | 52px tall, 3 columns, 6px gap |
-| Character grid tile | 3 columns, 128px tall, 12px/10px gap |
+| Character grid tile | 3 columns (5 on desktop), 128px tall, 12px/10px gap |
 | VN stage | 196px tall (mobile) |
 | Desktop sidebar | 232px |
 | Desktop cast rail | 292px |
 | Desktop prose measure | **620px max-width** |
+| Desktop list measure | **860px max-width** — the list screens only |
 | Icon button | 34–36 square |
 | Tap target minimum | **44px** — never smaller, anywhere |
 
@@ -264,7 +265,7 @@ Rows, in order:
 
 Entry screen. Large Spectral title, search + new buttons. **A red-bordered "still writing" strip** floats under the header when generation is running in a roleplay the user isn't currently viewing, with an `OPEN` affordance — this is the cross-screen generation indicator.
 
-Each row: title + relative time, one line of Spectral excerpt (the last line of prose, muted), then a mono footer with cast initials left and counts right. Hairline rules between. Empty roleplays show `No messages yet.` and drop to 75% opacity.
+Each row: title + relative time, one line of Spectral excerpt (the last line of prose, muted), then a mono footer with the cast left and counts right - names while they fit, initials past three, since a row reading `A` says less than one reading `ALDAN`. Hairline rules between. Empty roleplays show `No messages yet.` and drop to 75% opacity.
 
 Bottom tab bar: 5 mono items, active in red.
 
@@ -347,6 +348,8 @@ Three columns:
 | Cast rail | 292px, `bg-sunken` | `WHO SPEAKS NEXT`, cast cards, guides footer |
 
 **The prose column is capped at 620px** inside the fluid main column. Widening it past a reading measure would break the one thing the app is for.
+
+**The list screens are capped at 860px instead.** Settings, roleplays, the library, authors and lorebooks are rows and grids, not something anyone reads left to right, so the reading measure buys them nothing and at 620px on a wide window it leaves the page looking unfinished. Forms keep the reading measure — scene setup, the character editor, the lorebook entry editor — because a textarea 860px wide is a worse place to write than one 620px wide.
 
 **The cast leaves the composer and becomes the rail.** With the space, each card can finally carry what a phone can't: portrait, name, status (`CUED` / `JUST SPOKE` / `WRITING` / `BENCHED`), the director's reason in mono, and their last line in Spectral italic. The cued card takes the red-tinted fill + 2px red top border. Benched characters drop to 72%.
 

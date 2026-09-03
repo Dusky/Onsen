@@ -198,6 +198,7 @@ export function toSceneDto(
     cast: SceneMemberDto[];
     activeLeafUlid: string | null;
     messageCount: number;
+    lastLine: string | null;
   },
 ): SceneDto {
   return {
@@ -231,6 +232,7 @@ export function toSceneDto(
     cast: extras.cast,
     activeLeafId: extras.activeLeafUlid,
     messageCount: extras.messageCount,
+    lastLine: extras.lastLine,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -720,7 +722,29 @@ export function sceneDto(db: Database, row: SceneRow): SceneDto {
     cast: castOf(db, row.id),
     activeLeafUlid: ulidOf(db, "messages", row.active_leaf_id),
     messageCount: countMessages(db, row.id),
+    lastLine: lastLine(db, row.active_leaf_id),
   });
+}
+
+/**
+ * The opening of the newest turn, for the roleplays list.
+ *
+ * Reasoning lives in its own column and so is already absent. Whitespace is
+ * collapsed because a turn that opens with a line break would otherwise render
+ * as an empty excerpt, and the cut is generous - the row truncates it to
+ * whatever the column can hold, and a hard cut here would only make that
+ * ellipsis arrive twice.
+ */
+const EXCERPT_LENGTH = 240;
+
+function lastLine(db: Database, leafId: number | null): string | null {
+  if (leafId === null) return null;
+  const row = db.query("SELECT content FROM messages WHERE id = $id").get({ id: leafId }) as
+    | { content: string }
+    | null;
+  if (row === null) return null;
+  const text = row.content.replace(/\s+/g, " ").trim();
+  return text === "" ? null : text.slice(0, EXCERPT_LENGTH);
 }
 
 /**

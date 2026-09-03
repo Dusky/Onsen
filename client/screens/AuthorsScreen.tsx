@@ -88,7 +88,7 @@ export function AuthorsScreen() {
   return (
     <div className="flex screen-height flex-col bg-bg">
       <header
-        className="screen-header hairline flex-none px-[22px] pb-[14px]"
+        className="screen-header screen-header-wide hairline flex-none px-[22px] pb-[14px]"
         style={{ paddingTop: "calc(22px + env(safe-area-inset-top))" }}
       >
         <p className="screen-kicker">{strings.authors.kicker}</p>
@@ -96,7 +96,7 @@ export function AuthorsScreen() {
       </header>
 
       <main className="min-h-0 flex-1 overflow-y-auto px-[22px] py-[14px]">
-        <div className="mx-auto w-full max-w-[var(--onsen-prose-measure)]">
+        <div className="mx-auto w-full max-w-[var(--onsen-list-measure)]">
           <p className="mb-[22px] text-[length:var(--onsen-text-prose-excerpt)] leading-[1.55] text-ink-prose-muted">
             {strings.authors.explainer}
           </p>
@@ -136,7 +136,7 @@ export function AuthorsScreen() {
       <footer className="flex-none border-t border-rule bg-bg-raised px-[22px] py-[12px]">
         <button
           type="button"
-          className="btn btn-primary mx-auto block w-full max-w-[var(--onsen-prose-measure)]"
+          className="btn btn-primary mx-auto block w-full max-w-[var(--onsen-list-measure)]"
           disabled={create.isPending}
           onClick={() =>
             create.mutate(
@@ -199,7 +199,7 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
       </header>
 
       <main className="min-h-0 flex-1 overflow-y-auto px-[22px] py-[16px]">
-        <div className="mx-auto w-full max-w-[var(--onsen-prose-measure)]">
+        <div className="mx-auto w-full max-w-[var(--onsen-list-measure)]">
           <Field label={strings.authors.name}>
             <TextField value={author.name} onCommit={(name) => save({ name })} />
           </Field>
@@ -380,7 +380,7 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
         className="flex-none border-t border-rule bg-bg-raised px-[22px] pt-[11px]"
         style={{ paddingBottom: "calc(12px + env(safe-area-inset-bottom))" }}
       >
-        <div className="mx-auto w-full max-w-[var(--onsen-prose-measure)]">
+        <div className="mx-auto w-full max-w-[var(--onsen-list-measure)]">
           <div className="flex items-baseline justify-between">
             <span className="section-label">{strings.authors.cardTotal}</span>
             <span className="chrome text-[9px] tracking-[0.06em] text-ink-label uppercase">

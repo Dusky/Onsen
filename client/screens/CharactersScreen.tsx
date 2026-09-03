@@ -4,6 +4,7 @@ import type { CharacterDto, SavedFilterDto } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { navigate } from "../lib/router.ts";
+import { useIsDesktop } from "../lib/breakpoint.ts";
 import {
   useBulkCharacters,
   useCharacterFolders,
@@ -118,10 +119,13 @@ export function CharactersScreen() {
 
   const list = characters.data ?? [];
 
-  // The grid is virtualized (DESIGN §289): hundreds of cards, three to a row,
-  // only the visible rows mounted.
+  // The grid is virtualized (DESIGN §289): hundreds of cards, only the visible
+  // rows mounted. Three to a row on a phone; a desktop row is wide enough that
+  // three tiles stretch into letterboxes, so it takes five.
+  const isDesktop = useIsDesktop();
+  const columns = isDesktop ? 5 : 3;
   const scrollRef = useRef<HTMLDivElement>(null);
-  const rows = Math.ceil(list.length / 3);
+  const rows = Math.ceil(list.length / columns);
   const virtualizer = useVirtualizer({
     count: rows,
     getScrollElement: () => scrollRef.current,
@@ -183,7 +187,7 @@ export function CharactersScreen() {
   return (
     <div className="flex screen-height flex-col bg-bg">
       <header
-        className="screen-header hairline flex-none px-[22px] pb-[14px]"
+        className="screen-header screen-header-wide hairline flex-none px-[22px] pb-[14px]"
         style={{ paddingTop: "calc(22px + env(safe-area-inset-top))" }}
       >
         <p className="screen-kicker">{strings.characters.kicker}</p>
@@ -203,7 +207,7 @@ export function CharactersScreen() {
       </header>
 
       <main ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-[22px] py-[14px]">
-        <div className="mx-auto w-full max-w-[var(--onsen-prose-measure)]">
+        <div className="mx-auto w-full max-w-[var(--onsen-list-measure)]">
           {notice !== null ? <Notice>{notice}</Notice> : null}
 
           <input
@@ -314,13 +318,16 @@ export function CharactersScreen() {
 
           <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
             {virtualizer.getVirtualItems().map((row) => {
-              const start = row.index * 3;
-              const tiles = list.slice(start, start + 3);
+              const start = row.index * columns;
+              const tiles = list.slice(start, start + columns);
               return (
                 <div
                   key={row.key}
-                  className="absolute top-0 left-0 grid w-full grid-cols-3 gap-x-[10px] gap-y-[12px]"
-                  style={{ transform: `translateY(${row.start}px)` }}
+                  className="absolute top-0 left-0 grid w-full gap-x-[10px] gap-y-[12px]"
+                  style={{
+                    transform: `translateY(${row.start}px)`,
+                    gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+                  }}
                 >
                   {tiles.map((character) => (
                     <Tile
@@ -343,7 +350,7 @@ export function CharactersScreen() {
           open: what you selected is the subject now, not the import button. */}
       <footer className="flex-none border-t border-rule bg-bg-raised px-[22px] py-[12px]">
         {selecting ? (
-          <div className="mx-auto w-full max-w-[var(--onsen-prose-measure)]">
+          <div className="mx-auto w-full max-w-[var(--onsen-list-measure)]">
             <p className="chrome mb-[8px] text-[9px] tracking-[0.12em] text-ink-dim uppercase">
               {strings.characters.selected(selected.size)}
             </p>
@@ -391,7 +398,7 @@ export function CharactersScreen() {
             </div>
           </div>
         ) : (
-          <div className="mx-auto flex w-full max-w-[var(--onsen-prose-measure)] gap-[8px]">
+          <div className="mx-auto flex w-full max-w-[var(--onsen-list-measure)] gap-[8px]">
             <input
               ref={fileInput}
               type="file"

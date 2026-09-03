@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type { ConnectionProfileDto, PresetDto, ProviderDto, TaskDto, UpdateStatusDto } from "@shared/types.ts";
-import { PROVIDER_KINDS, INJECTION_ROLES } from "@shared/types.ts";
+import { PROVIDER_KINDS, INJECTION_ROLES, type ProviderKind } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { InstructPicker } from "../components/InstructPicker.tsx";
@@ -45,6 +45,21 @@ import { PresetEditor } from "../components/PresetEditor.tsx";
 
 function Row({ children }: { children: React.ReactNode }) {
   return <div className="border-b border-rule py-[12px]">{children}</div>;
+}
+
+/**
+ * A provider kind as a person would say it. The column stores an enum and it
+ * was reaching the screen as `OPENAI_COMPATIBLE`.
+ */
+function kindLabel(kind: ProviderKind): string {
+  switch (kind) {
+    case "openai_compatible":
+      return "OpenAI-compatible";
+    case "anthropic":
+      return "Anthropic";
+    case "text_completion":
+      return "Text completion";
+  }
 }
 
 function statusDot(ok: boolean) {
@@ -154,7 +169,7 @@ function ProviderEditor({
             <select name="kind" className="field mb-[14px]">
               {PROVIDER_KINDS.map((kind) => (
                 <option key={kind} value={kind}>
-                  {kind}
+                  {kindLabel(kind)}
                 </option>
               ))}
             </select>
@@ -194,7 +209,7 @@ function ProviderEditor({
 
         <p className="section-label mb-[6px]">{strings.settings.providerKey}</p>
         <input name="apiKey" type="password" className="field" autoComplete="off" />
-        <p className="chrome mt-[6px] mb-[14px] text-[9px] leading-[1.5] text-ink-dim">
+        <p className="chrome mt-[6px] mb-[14px] text-[10px] leading-[1.6] text-ink-dim">
           {provider === null
             ? strings.settings.providerKeyNone
             : provider.hasApiKey
@@ -233,7 +248,7 @@ function ProviderEditor({
                 </button>
               ))}
             </div>
-            <p className="chrome mb-[14px] text-[9px] leading-[1.5] text-ink-dim">
+            <p className="chrome mb-[14px] text-[10px] leading-[1.6] text-ink-dim">
               {strings.settings.providerPrefillHint}
             </p>
           </>
@@ -524,7 +539,7 @@ function OpEditor({
             >
               {strings.settings.opAutoTrigger}
             </button>
-            <p className="chrome mb-[16px] text-[9px] leading-[1.5] text-ink-dim">
+            <p className="chrome mb-[16px] text-[10px] leading-[1.6] text-ink-dim">
               {task.effect === "replace"
                 ? strings.settings.opEffectReplace
                 : task.effect === "flag"
@@ -559,7 +574,7 @@ function OpEditor({
             </div>
           </>
         ) : (
-          <p className="chrome mb-[16px] text-[9px] leading-[1.5] text-ink-dim">
+          <p className="chrome mb-[16px] text-[10px] leading-[1.6] text-ink-dim">
             {strings.settings.opTurnOnly}
           </p>
         )}
@@ -576,7 +591,7 @@ function OpEditor({
               value={template}
               onChange={(event) => setTemplate(event.target.value)}
             />
-            <p className="chrome mt-[6px] text-[9px] leading-[1.5] text-ink-dim">
+            <p className="chrome mt-[6px] text-[10px] leading-[1.6] text-ink-dim">
               {strings.settings.opWordsHint(
                 task.variables.map((name) => `{{${name}}}`).join(" · "),
               )}
@@ -647,7 +662,7 @@ function UpdateGroup() {
     return (
       <>
         <p className="section-label mb-[4px]">{strings.settings.update}</p>
-        <p className="chrome mb-[10px] text-[9px] leading-[1.5] text-ink-dim">
+        <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
           {strings.settings.updateNotGit}
         </p>
         <div className="mb-[26px]" />
@@ -670,7 +685,7 @@ function UpdateGroup() {
   return (
     <>
       <p className="section-label mb-[4px]">{strings.settings.update}</p>
-      <p className="chrome mb-[10px] text-[9px] leading-[1.5] text-ink-dim">
+      <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
         {strings.settings.updateHint}
       </p>
       <Row>
@@ -727,7 +742,7 @@ function UpdateGroup() {
       </div>
       {/* Chrome, not rows: these are conditions, not things to tap. */}
       {s.dirty ? (
-        <p className="chrome mt-[10px] text-[9px] leading-[1.5] text-ink-dim">
+        <p className="chrome mt-[10px] text-[10px] leading-[1.6] text-ink-dim">
           {strings.settings.updateDirty}
         </p>
       ) : null}
@@ -738,7 +753,7 @@ function UpdateGroup() {
         <p className="chrome mt-[10px] text-[9.5px] leading-[1.5] text-red-text">{refusal}</p>
       )}
       {s.restartRequired ? (
-        <p className="chrome mt-[10px] text-[9px] leading-[1.5] text-ink-dim">
+        <p className="chrome mt-[10px] text-[10px] leading-[1.6] text-ink-dim">
           {strings.settings.updateRestart}
         </p>
       ) : null}
@@ -761,11 +776,11 @@ function EmbeddingsSection() {
   return (
     <>
       <p className="section-label mb-[4px]">{strings.settings.embeddings}</p>
-      <p className="chrome mb-[10px] text-[9px] leading-[1.5] text-ink-dim">
+      <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
         {strings.settings.embeddingsHint}
       </p>
       {config.data !== undefined && config.data.baseUrl === null ? (
-        <p className="chrome mb-[10px] text-[9px] leading-[1.5] text-ink-dim">
+        <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
           {strings.settings.embeddingsLexical}
         </p>
       ) : null}
@@ -848,18 +863,18 @@ export function SettingsScreen() {
   return (
     <div className="flex screen-height flex-col bg-bg">
       <header
-        className="screen-header hairline flex-none px-[22px] pb-[14px]"
+        className="screen-header screen-header-wide hairline flex-none px-[22px] pb-[14px]"
         style={{ paddingTop: "calc(22px + env(safe-area-inset-top))" }}
       >
-        <p className="screen-kicker">{strings.settings.kicker}</p>
-        <h1 className="screen-title mt-[6px]">{strings.settings.title}</h1>
+        <p className="screen-kicker">{strings.nav.appName}</p>
+        <h1 className="screen-title mt-[6px]">{strings.settings.kicker}</h1>
       </header>
 
       <main className="min-h-0 flex-1 overflow-y-auto px-[22px] py-[16px]">
-        <div className="mx-auto w-full max-w-[var(--onsen-prose-measure)]">
+        <div className="mx-auto w-full max-w-[var(--onsen-list-measure)]">
           {/* Providers */}
           <p className="section-label mb-[4px]">{strings.settings.providers}</p>
-          <p className="chrome mb-[10px] text-[9px] leading-[1.5] text-ink-dim">
+          <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
             {strings.settings.providersHint}
           </p>
           {providerList.map((provider) => (
@@ -873,11 +888,12 @@ export function SettingsScreen() {
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[15px] font-medium">{provider.name}</span>
                   <span className="chrome block truncate text-[9px] tracking-[0.06em] text-ink-dim uppercase">
-                    {[provider.model, provider.kind, provider.hasApiKey ? "keyed" : null]
+                    {[provider.model, kindLabel(provider.kind), provider.hasApiKey ? "keyed" : null]
                       .filter((part) => part !== null && part !== "")
                       .join(" · ")}
                   </span>
                 </span>
+                <span className="chrome flex-none self-center text-[12px] text-ink-dim">›</span>
               </button>
             </Row>
           ))}
@@ -891,7 +907,7 @@ export function SettingsScreen() {
 
           {/* Profiles */}
           <p className="section-label mb-[4px]">{strings.settings.profiles}</p>
-          <p className="chrome mb-[10px] text-[9px] leading-[1.5] text-ink-dim">
+          <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
             {strings.settings.profilesHint}
           </p>
           {profileList.map((profile) => (
@@ -917,6 +933,7 @@ export function SettingsScreen() {
                     {strings.settings.profileDefault}
                   </span>
                 ) : null}
+                <span className="chrome flex-none self-center text-[12px] text-ink-dim">›</span>
               </button>
             </Row>
           ))}
@@ -930,7 +947,7 @@ export function SettingsScreen() {
 
           {/* How the model is asked to write (SPEC §13). */}
           <p className="section-label mb-[4px]">{strings.settings.generation}</p>
-          <p className="chrome mb-[10px] text-[9px] leading-[1.5] text-ink-dim">
+          <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
             {strings.settings.generationHint}
           </p>
           {(presets.data ?? []).map((preset) => (
@@ -953,6 +970,7 @@ export function SettingsScreen() {
                       .join(" · ")}
                   </span>
                 </span>
+                <span className="chrome flex-none self-center text-[12px] text-ink-dim">›</span>
               </button>
             </Row>
           ))}
@@ -985,13 +1003,13 @@ export function SettingsScreen() {
               : strings.settings.importPreset}
           </button>
           {presetReport !== null ? (
-            <p className="chrome mt-[10px] text-[9px] leading-[1.5] text-ink-dim">{presetReport}</p>
+            <p className="chrome mt-[10px] text-[10px] leading-[1.6] text-ink-dim">{presetReport}</p>
           ) : null}
           <div className="mb-[26px]" />
 
           {/* Routing by operation — the interesting one. */}
           <p className="section-label mb-[4px]">{strings.settings.routing}</p>
-          <p className="chrome mb-[10px] text-[9px] leading-[1.5] text-ink-dim">
+          <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
             {strings.settings.routingHint}
           </p>
           {(tasks.data ?? []).map((task) => {
@@ -1030,6 +1048,7 @@ export function SettingsScreen() {
                   <span className="chrome flex-none text-[9px] tracking-[0.06em] text-ink-muted uppercase">
                     {routed}
                   </span>
+                  <span className="chrome flex-none self-center text-[12px] text-ink-dim">›</span>
                 </button>
               </Row>
             );

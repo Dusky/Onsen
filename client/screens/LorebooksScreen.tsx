@@ -79,7 +79,7 @@ export function LorebooksScreen() {
   return (
     <div className="flex screen-height flex-col bg-bg">
       <header
-        className="screen-header hairline flex-none px-[22px] pb-[14px]"
+        className="screen-header screen-header-wide hairline flex-none px-[22px] pb-[14px]"
         style={{ paddingTop: "calc(22px + env(safe-area-inset-top))" }}
       >
         <p className="screen-kicker">{strings.lore.kicker}</p>
@@ -87,7 +87,7 @@ export function LorebooksScreen() {
       </header>
 
       <main className="min-h-0 flex-1 overflow-y-auto px-[22px] py-[14px]">
-        <div className="mx-auto w-full max-w-[var(--onsen-prose-measure)]">
+        <div className="mx-auto w-full max-w-[var(--onsen-list-measure)]">
           {notice !== null ? <Notice>{notice}</Notice> : null}
 
           {books.data !== undefined && books.data.length === 0 ? (
@@ -103,7 +103,7 @@ export function LorebooksScreen() {
       </main>
 
       <footer className="flex-none border-t border-rule bg-bg-raised px-[22px] py-[12px]">
-        <div className="mx-auto flex w-full max-w-[var(--onsen-prose-measure)] gap-[8px]">
+        <div className="mx-auto flex w-full max-w-[var(--onsen-list-measure)] gap-[8px]">
           <input
             ref={fileInput}
             type="file"

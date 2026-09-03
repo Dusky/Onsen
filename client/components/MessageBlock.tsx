@@ -303,26 +303,31 @@ export function MessageBlock({
         >
           {speakerName}
         </span>
-        {/* The rule runs to the right edge; the swipe counter sits at its end. */}
-        <span className="h-px flex-1 bg-rule" />
-        {hoverActions === undefined ? null : (
-          <span className="flex flex-none items-center gap-[7px] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-            {[
-              { label: strings.chat.reroll, run: onReroll },
-              { label: strings.chat.hoverBranch, run: hoverActions.onBranch },
-              { label: strings.chat.edit, run: hoverActions.onEdit },
-            ].map((action) => (
-              <button
-                key={action.label}
-                type="button"
-                onClick={action.run}
-                className="chrome text-[8px] tracking-[0.12em] text-ink-dim uppercase hover:text-ink-label"
-              >
-                {action.label}
-              </button>
-            ))}
-          </span>
-        )}
+        {/* The rule runs to the right edge; the swipe counter sits at its end.
+            The hover actions are painted over the rule's end rather than laid
+            out beside it: in flow they reserve their width whether or not
+            anyone is hovering, and on a wide screen that leaves every rule
+            stopping short of the column for buttons nobody can see. */}
+        <span className="relative h-px flex-1 bg-rule">
+          {hoverActions === undefined ? null : (
+            <span className="absolute top-1/2 right-0 flex -translate-y-1/2 items-center gap-[7px] bg-bg pl-[10px] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+              {[
+                { label: strings.chat.reroll, run: onReroll },
+                { label: strings.chat.hoverBranch, run: hoverActions.onBranch },
+                { label: strings.chat.edit, run: hoverActions.onEdit },
+              ].map((action) => (
+                <button
+                  key={action.label}
+                  type="button"
+                  onClick={action.run}
+                  className="chrome text-[8px] tracking-[0.12em] text-ink-dim uppercase hover:text-ink-label"
+                >
+                  {action.label}
+                </button>
+              ))}
+            </span>
+          )}
+        </span>
         {message.siblingCount > 1 ? (
           <button
             type="button"

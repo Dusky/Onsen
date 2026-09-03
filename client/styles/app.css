@@ -195,16 +195,26 @@
    * A screen header, aligned to the column it sits above.
    *
    * On a phone the header and the body are both the width of the window and
-   * there is nothing to align. With room, the body is capped at the prose
-   * measure and centred, and a header left at the window's edge reads as a
-   * mistake rather than as a choice. The same cap, applied to the header's
-   * contents, keeps the two halves of a screen looking like one screen.
+   * there is nothing to align. With room, the body is capped and centred, and a
+   * header left at the window's edge reads as a mistake rather than as a
+   * choice. The same cap, applied to the header's contents, keeps the two
+   * halves of a screen looking like one screen.
+   *
+   * Which cap depends on what is underneath. A screen of prose or of one long
+   * form keeps the reading measure. A screen that is a list of rows does not
+   * gain anything from a reading measure - nobody reads a settings screen
+   * left to right - and at 620px on a wide window it leaves the page looking
+   * unfinished, so those screens mark their header wide to match their body.
    */
   @media (min-width: 1144px) {
     .screen-header > * {
       max-width: var(--onsen-prose-measure);
       margin-left: auto;
       margin-right: auto;
+    }
+
+    .screen-header-wide > * {
+      max-width: var(--onsen-list-measure);
     }
   }
 

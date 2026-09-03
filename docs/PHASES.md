@@ -3023,3 +3023,76 @@ all. I burned two rounds re-running against a wiped database on the theory that
 it was state leakage, when the screenshot I eventually opened showed the feature
 working perfectly the whole time. **Read the screenshot before theorising about
 the data.**
+
+---
+
+## A UI/UX pass, desktop and phone
+
+Not a phase. The desktop layout had never been looked at with intent — it was
+built to the design's three columns and then only ever checked for "the pieces
+are where the doc says". Asked to look at it as a user rather than as a
+checklist, the verdict was *bare and confusing*, and the phone had not been
+looked at at all.
+
+### What was wrong, and what changed
+
+**The reading measure was applied to screens nobody reads.** The design caps the
+prose column at 620px and says why: widening it past a reading measure breaks
+the one thing the app is for. That reasoning is about story text, and it had
+been over-applied to every screen — so Settings, the roleplays list, the
+library, authors and lorebooks all sat in a 620px ribbon down the middle of a
+1440px window. Those screens are rows and grids; the measure bought them
+nothing. They now take a `--onsen-list-measure` of 860px, with the forms
+(scene setup, the character editor, the lorebook entry editor) keeping 620,
+because a textarea 860px wide is a worse place to write than one 620px wide.
+
+**A roleplay row said nothing about the roleplay.** The design specifies title,
+time, a line of prose excerpt, and a mono footer with the cast and the counts.
+Only the first two existed; the excerpt slot was occupied by the reply count,
+which the footer was also going to carry. Two scenes from the same card were
+therefore indistinguishable. `SceneDto` gains `lastLine` — the opening of the
+newest turn, whitespace collapsed — and the row now carries the cast as well.
+The design asks for initials there; initials are right for a crowd and wrong for
+a duet, since a row reading `A` says less than one reading `ALDAN`, so it is
+names up to three and initials past that.
+
+**Every message rule stopped 118px short of the column.** The hover actions
+(reroll, branch, edit) sat in the header's flex row at `opacity-0`, which hides
+them without giving back their width — so on a wide screen every rule visibly
+ran out early, for buttons nobody could see. They are painted over the rule's
+right end now instead of laid out beside it.
+
+**The settings screen explained itself in ink nobody could read.** The copy was
+already right — "Where the models are. One box or twenty." — at 9px in the
+dimmest ink on the palette, which is a hint written and then hidden. Sixteen of
+them go to 10px with looser leading. Alongside: `OPENAI_COMPATIBLE` was leaking
+to the screen as a raw enum, rows had no chevron so nothing looked openable, and
+the page titled itself `Connections` while carrying seven sections.
+
+**Two identical red buttons asked which one was real.** The scenes footer's NEW
+ROLEPLAY duplicated the sidebar's on desktop; the footer is now phone-only.
+
+**`Write` did not say what it did.** The library's AI-authoring button is now
+`Write with AI`, next to `New card`, which is the distinction it was making.
+
+**Three columns of cards on a 1440px screen are letterboxes.** The library grid
+takes five on desktop and three on a phone.
+
+### Deliberately deferred
+
+- **Search on the roleplays list** (design §266). A search field earns its place
+  at a scale this install has not reached, and adding it now would be scaffolding.
+- **The library's filter selects vs the design's chips.** Left as selects. Chips
+  win when the value set is small and fixed; tags and folders are user-generated
+  and unbounded, and a chip row that wraps to four lines is worse than a select.
+- **Red as both "live" and "selected".** A segmented control showing `OFF`
+  selected paints `OFF` red, and red elsewhere means *now*. It reads oddly, but
+  the fix is a second selection colour across every segmented control in the
+  app, which is a design-system decision rather than a pass.
+
+### Surprises
+
+**The bareness was mostly one CSS variable and one missing field.** The instinct
+was that a wide screen needed more furniture — a denser rail, another panel. It
+needed the column it already had to be the right width, and the row it already
+had to say what the design had always said it should say.
