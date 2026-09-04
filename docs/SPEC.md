@@ -1578,6 +1578,16 @@ just text.
 
 Import/export SillyTavern world-info JSON. Round-trip unknown fields.
 
+Export rebuilds each entry **on top of the object it was imported from**
+(`raw_entry`), then writes this app's fields over it. Starting from our own
+columns and adding unknown fields back would drop anything SillyTavern gained
+since the import — the same lossy-parsing failure §9 names about cards.
+
+`disable` is the inverse of `enabled`, and writing the wrong one turns every
+entry back on when the file is read. `before_history` and `outlet` are not
+SillyTavern positions, so both write position 0 and keep their real value under
+a namespaced `onsen` key rather than as a position that means something else.
+
 ### Settled while building phase 21
 
 - **The activation model is a pure function, and everything else asks it.**

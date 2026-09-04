@@ -20,6 +20,7 @@ import {
   updateLorebook,
   type LoreEntryRow,
 } from "../db/queries/lore.ts";
+import { toWorldInfo } from "../lore/export.ts";
 import { parseWorldInfo } from "../lore/import.ts";
 
 /**
@@ -57,6 +58,19 @@ export function loreRoutes(ctx: AppContext): Hono<AppEnv> {
       description: typeof input["description"] === "string" ? input["description"] : null,
     });
     return c.json(toBookDto(ctx.db, row), 201);
+  });
+
+  /**
+   * Export SillyTavern world info (§10 interop).
+   *
+   * The other half of the promise the import comment below makes. Each entry is
+   * rebuilt on top of the object it was imported from, so fields this app has
+   * never heard of survive the round trip rather than being quietly dropped.
+   */
+  app.get("/:lorebookId/export", (c) => {
+    const book = findLorebook(ctx.db, c.req.param("lorebookId"));
+    if (book === null) return c.json(notFound("lorebook"), 404);
+    return c.json(toWorldInfo(book, listEntries(ctx.db, book.id)));
   });
 
   /**

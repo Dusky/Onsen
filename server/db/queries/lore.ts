@@ -388,6 +388,11 @@ export function updateEntry(
          -- statement because the patch type already accepts these, and a patch
          -- field the statement ignores is a trap for the next caller.
          written_by = $written_by, written_in_scene_id = $written_in_scene_id,
+         -- §10's "round-trip unknown fields". The column has existed since
+         -- phase 21 and nothing ever wrote it: the import built the JSON, this
+         -- statement dropped it, and it typechecked - the same shape of bug the
+         -- provenance columns above had.
+         raw_entry = $raw_entry,
          updated_at = $now
        WHERE id = $id RETURNING *`,
     )
@@ -395,6 +400,7 @@ export function updateEntry(
       id,
       title: next.title,
       content: next.content,
+      raw_entry: next.raw_entry,
       enabled: next.enabled,
       keys: next.keys,
       secondary_keys: next.secondary_keys,

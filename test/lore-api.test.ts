@@ -400,6 +400,58 @@ describe("SillyTavern interop", () => {
     expect(port.insertionOrder).toBe(42);
   });
 
+  test("a book imported and exported comes back the same, unknown fields included", async () => {
+    const t = await signedIn();
+    const form = new FormData();
+    form.append("file", new File([WORLD], "coldharbour.json", { type: "application/json" }));
+    const { lorebook } = (await (
+      await t.fetch("/api/lorebooks/import", { method: "POST", body: form })
+    ).json()) as { lorebook: LorebookDto };
+
+    const exported = await json<{ name: string; entries: Record<string, Record<string, unknown>> }>(
+      t,
+      "GET",
+      `/api/lorebooks/${lorebook.id}/export`,
+    );
+    expect(exported.name).toBe("Coldharbour");
+    const port = Object.values(exported.entries).find((e) => e["comment"] === "The port")!;
+
+    // §10: "Round-trip unknown fields." This is that sentence as a test.
+    expect(port["someFutureField"]).toEqual({ nested: true });
+
+    // Back into SillyTavern's own enums rather than our names.
+    expect(port["selectiveLogic"]).toBe(3);
+    expect(port["position"]).toBe(0);
+    expect(port["role"]).toBe(0);
+    // Its flag is the inverse of ours; writing `enabled` would turn every
+    // entry back on when the file was read.
+    expect(port["disable"]).toBe(false);
+    const oil = Object.values(exported.entries).find((e) => e["content"] !== port["content"])!;
+    expect(oil["disable"]).toBe(true);
+
+    expect(port["probability"]).toBe(75);
+    expect(port["useProbability"]).toBe(true);
+    expect(port["sticky"]).toBe(3);
+    expect(port["group"]).toBe("places");
+    expect(port["groupWeight"]).toBe(60);
+    expect(port["order"]).toBe(42);
+    expect(port["automationId"]).toBe("refresh-map");
+    expect(port["caseSensitive"]).toBe(true);
+    expect(port["matchWholeWords"]).toBe(false);
+
+    // Re-reading our own file lands on the same rows, which is the only claim
+    // worth making about a round trip.
+    const again = parseWorldInfo(JSON.stringify(exported), "again")!;
+    const back = again.entries.find((e) => e.columns.title === "The port")!.columns;
+    expect(JSON.parse(back.keys as string)).toEqual(["Coldharbour", "the coast"]);
+    expect(back.secondary_logic).toBe("and_all");
+    expect(back.position).toBe("before_character");
+    expect(back.probability).toBe(75);
+    expect(back.sticky).toBe(3);
+    expect(back.enabled).toBe(1);
+    expect(back.automation_id).toBe("refresh-map");
+  });
+
   test("something that is not world info is refused, not thrown", async () => {
     const t = await signedIn();
     const form = new FormData();

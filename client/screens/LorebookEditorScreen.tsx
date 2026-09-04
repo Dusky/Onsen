@@ -827,6 +827,19 @@ export function LorebookEditorScreen({ bookId }: { bookId: string }) {
             {strings.lore.addEntry}
           </button>
 
+          {/* §10 asks for import and export both, and the import has existed
+              since phase 21 with no way back out. */}
+          <button
+            type="button"
+            className="btn mt-[10px] w-full"
+            onClick={() => void exportBook(book.id, book.name)}
+          >
+            {strings.lore.exportBook}
+          </button>
+          <p className="chrome mt-[7px] text-[9.5px] leading-[1.5] text-ink-dim">
+            {strings.lore.exportBookHint}
+          </p>
+
           <button
             type="button"
             className="chrome mt-[18px] mb-[8px] block text-[9px] tracking-[0.12em] uppercase"
@@ -858,4 +871,22 @@ export function LorebookEditorScreen({ bookId }: { bookId: string }) {
       {bookConfirmNode}
     </div>
   );
+}
+
+/**
+ * Save a book as a world info file.
+ *
+ * Through fetch rather than a link because the endpoint is behind the session
+ * cookie and returns JSON — a link would open it in a tab instead.
+ */
+async function exportBook(bookId: string, name: string): Promise<void> {
+  const response = await fetch(`/api/lorebooks/${bookId}/export`);
+  if (!response.ok) return;
+  const text = JSON.stringify(await response.json(), null, 2);
+  const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${name.replace(/[^\w -]+/g, "").trim() || "world-info"}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
 }

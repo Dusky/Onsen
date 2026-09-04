@@ -1249,6 +1249,10 @@ export const strings = {
       `Imported ${name} \u2014 ${entries} ${entries === 1 ? "entry" : "entries"}.`,
     entries: (n: number) => `${n} ${n === 1 ? "ENTRY" : "ENTRIES"}`,
     unbound: "Not attached to anything",
+    /* §10: import and export both, and unknown fields survive either way. */
+    exportBook: "Save as world info",
+    exportBookHint:
+      "A SillyTavern world info file. Anything it arrived with that this app does not use is written back out with it.",
     /**
      * §11: the one book whose author is what attaches it, in the slot the
      * other bindings use, and parallel to managedNote's "Written by the app":
