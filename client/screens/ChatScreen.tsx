@@ -25,6 +25,7 @@ import { Sheet, SheetAction } from "../components/Sheet.tsx";
 import { CheckpointsSheet, MarkSheet } from "../components/Checkpoints.tsx";
 import { CommandPalette } from "../components/CommandPalette.tsx";
 import { StatusBar } from "../components/StatusBar.tsx";
+import { Inspector, type InspectorTab } from "../components/Inspector.tsx";
 import { COMMANDS } from "../lib/commands.ts";
 import { InspectorSheet } from "../components/InspectorSheet.tsx";
 import { CastStrip } from "../components/CastStrip.tsx";
@@ -139,6 +140,8 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   /** Whether the blue sheet is up, which half of it, and what is working. */
   const [guidesOpen, setGuidesOpen] = useState(false);
   const [contextTab, setContextTab] = useState<ContextTab>("guides");
+  /** Which pane the desktop inspector shows (§20 phase 43). */
+  const [inspectorTab, setInspectorTab] = useState<InspectorTab>("cast");
   const [guideWorking, setGuideWorking] = useState<GuideKind | "all" | null>(null);
   // Only fetched while the sheet is open: the pending count moves on every turn,
   // and polling it behind a closed panel would be a request per message.
@@ -433,6 +436,42 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       "sign-out": () => signOut.mutate(undefined),
     };
     handlers[id]?.();
+  }
+
+  /**
+   * The context panel's body, built once.
+   *
+   * The desktop pane and the phone's sheet render the same node, so the two
+   * cannot drift into being different views of the same thing.
+   */
+  function contextBody() {
+    return (
+      <ContextSheet
+        tab={contextTab}
+        onTab={setContextTab}
+        guides={guides}
+        tasks={tasks.data ?? []}
+        customPrompt={scene.data?.scene.customGuidePrompt ?? null}
+        guideWorking={guideWorking}
+        onRebuild={(kind) => {
+          setGuideWorking(kind);
+          rebuildGuides.mutate(kind === "all" ? {} : { kind }, {
+            onSettled: () => setGuideWorking(null),
+          });
+        }}
+        onEditGuide={(guideId, content) => editGuide.mutate({ guideId, content })}
+        onFlush={(kind) => flushGuides.mutate(kind)}
+        summaries={summaries.data}
+        evicting={scene.data?.scene.summariseEvict ?? false}
+        summaryWorking={
+          summariseNow.isPending || rewriteSummary.isPending || forgetSummary.isPending
+        }
+        onSummarise={() => summariseNow.mutate(undefined)}
+        onRewriteSummary={(summaryId) => rewriteSummary.mutate(summaryId)}
+        onEditSummary={(summaryId, content) => editSummary.mutate({ summaryId, content })}
+        onForgetSummary={(summaryId) => forgetSummary.mutate(summaryId)}
+      />
+    );
   }
 
   const [marksOpen, setMarksOpen] = useState(false);
@@ -1139,7 +1178,16 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       {isDesktop ? (
         <div className="flex min-h-0 flex-1">
           <div className="flex min-w-0 flex-1 flex-col">{body}</div>
+          {/* §20 phase 43: the third pane. Context is on screen while you read
+              rather than a sheet you go and fetch, which is the argument for
+              spending the width on it at all. */}
+          <Inspector
+            tab={inspectorTab}
+            onTab={setInspectorTab}
+            context={contextBody()}
+            cast={
           <CastRail
+            embedded
             cast={cast}
             nextSpeaker={nextSpeaker}
             messages={messages}
@@ -1154,8 +1202,10 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             onToggleAutopilot={(on) => updateScene.mutate({ autopilotEnabled: on })}
             onGuides={() => {
               setContextTab("guides");
-              setGuidesOpen(true);
+              setInspectorTab("context");
             }}
+          />
+            }
           />
         </div>
       ) : (
@@ -1227,7 +1277,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         <CheckpointsSheet sceneId={sceneId} onClose={() => setMarksOpen(false)} />
       ) : null}
 
-      {guidesOpen ? (
+      {guidesOpen && !isDesktop ? (
         <ContextSheet
           tab={contextTab}
           onTab={setContextTab}

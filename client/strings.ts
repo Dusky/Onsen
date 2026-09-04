@@ -214,6 +214,11 @@ export const strings = {
     barContext: "Context",
     barNoModel: "No model",
     barTokens: (n: number) => `${n.toLocaleString()} tok`,
+
+    /* The inspector pane (§20 phase 43). */
+    inspectorPane: "Inspector",
+    inspectorTabContext: "Context",
+    inspectorTabCast: "Cast",
     checkpointName: "Call it",
     checkpointNamePlaceholder: "before she opens the ledger",
     checkpointSave: "Mark it",

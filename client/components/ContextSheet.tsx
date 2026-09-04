@@ -54,20 +54,16 @@ export function ContextSheet({
   onRewriteSummary(summaryId: string): void;
   onEditSummary(summaryId: string, content: string): void;
   onForgetSummary(summaryId: string | "all"): void;
-  onClose(): void;
+  /** Absent when this renders as a pane rather than a sheet (§43). */
+  onClose?(): void;
 }) {
   const guideTotal = guides.reduce((sum, guide) => sum + guide.tokenCount, 0);
   const memoryTotal = (summaries?.summaries ?? [])
     .filter((row) => (summaries?.injectedIds ?? []).includes(row.id))
     .reduce((sum, row) => sum + row.tokenCount, 0);
 
-  return (
-    <Sheet
-      tone="blue"
-      title={tab === "guides" ? strings.chat.guides : strings.chat.memory}
-      meta={strings.chat.guidesTotal(tab === "guides" ? guideTotal : memoryTotal)}
-      onClose={onClose}
-    >
+  const body = (
+    <>
       {/* Both costs are on the switch, not only the open one: the question a
           user has here is which of the two is eating their context. */}
       <div className="mt-[10px] mb-[4px] flex gap-[6px]">
@@ -94,7 +90,9 @@ export function ContextSheet({
           onRebuild={onRebuild}
           onEdit={onEditGuide}
           onFlush={onFlush}
-          onClose={onClose}
+          // As a pane there is nothing to close, so the panel's own dismiss is
+          // a no-op rather than a button that appears to do nothing.
+          onClose={onClose ?? (() => undefined)}
         />
       ) : (
         <MemoryPanel
@@ -107,6 +105,21 @@ export function ContextSheet({
           onForget={onForgetSummary}
         />
       )}
+    </>
+  );
+
+  // A pane on a wide screen, a sheet on a phone — the same body either way,
+  // so the two cannot drift into being two different views of one thing.
+  return onClose === undefined ? (
+    body
+  ) : (
+    <Sheet
+      tone="blue"
+      title={tab === "guides" ? strings.chat.guides : strings.chat.memory}
+      meta={strings.chat.guidesTotal(tab === "guides" ? guideTotal : memoryTotal)}
+      onClose={onClose}
+    >
+      {body}
     </Sheet>
   );
 }

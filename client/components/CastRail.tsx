@@ -33,12 +33,15 @@ export function CastRail({
   onScope,
   onCue,
   onMember,
+  embedded,
   writingName,
   guidesCost,
   onGuides,
   autopilotOn,
   onToggleAutopilot,
 }: {
+  /** One tab inside the Inspector rather than a pane of its own (§43). */
+  embedded?: boolean;
   cast: SceneMemberDto[];
   nextSpeaker: NextSpeakerDto | null;
   /** The active path, for the last line each character spoke. */
@@ -67,7 +70,15 @@ export function CastRail({
   }
 
   return (
-    <aside className="flex w-[292px] flex-none flex-col border-l border-rule bg-bg-sunken">
+    // Embedded: the Inspector owns the pane's width, border and ground, and
+    // this is one tab inside it (§20 phase 43). Standalone is the old shape.
+    <aside
+      className={
+        embedded === true
+          ? "flex min-h-0 flex-1 flex-col"
+          : "flex w-[292px] flex-none flex-col border-l border-rule bg-bg-sunken"
+      }
+    >
       <div className="hairline flex-none px-[18px] pt-[22px] pb-[12px]">
         <p className="section-label">{strings.chat.whoSpeaksNext}</p>
       </div>
