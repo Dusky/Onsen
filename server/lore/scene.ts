@@ -45,7 +45,14 @@ export interface SceneActivationOptions {
 export function activateForScene(options: SceneActivationOptions): ActivationResult {
   const history = options.history ?? activePath(options.db, options.scene.id);
   const tokenizer = options.tokenizer ?? createEstimatingTokenizer();
-  const books = booksForScene(options.db, options.scene.id, options.scene.persona_id);
+  const books = booksForScene(
+    options.db,
+    options.scene.id,
+    options.scene.persona_id,
+    // §11's author memory reaches a scene by ownership rather than by a
+    // binding, so the scene's author has to be part of the question.
+    options.scene.author_id,
+  );
 
   return activateLore({
     entries: candidatesFor(options.db, books),

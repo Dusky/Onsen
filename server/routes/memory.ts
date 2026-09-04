@@ -13,6 +13,10 @@ import {
 } from "../db/queries/memory.ts";
 import { isMemoryKind } from "../../shared/types.ts";
 import type { MemoryRunner } from "../memory/runner.ts";
+import type { AuthorMemory } from "../memory/author.ts";
+import { findAuthor } from "../db/queries/authors.ts";
+import { listEntries, memoryBookOf } from "../db/queries/lore.ts";
+import type { Database } from "bun:sqlite";
 
 /**
  * Narrative memory's HTTP surface (SPEC §11 layer 3).
@@ -41,9 +45,110 @@ async function body(c: { req: { json(): Promise<unknown> } }): Promise<Record<st
   }
 }
 
-export function memoryRoutes(ctx: AppContext, memory: MemoryRunner): Hono<AppEnv> {
+export function memoryRoutes(
+  ctx: AppContext,
+  memory: MemoryRunner,
+  authorMemory: AuthorMemory,
+): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
   app.use("*", requireAuth());
+
+  /* ---------------- §11's author memory ---------------- */
+
+  /**
+   * What this author remembers across roleplays.
+   *
+   * The entries are ordinary lore entries in a book the author owns, so this
+   * reads them rather than reimplementing them — and says which the author
+   * wrote, which is §11's provenance requirement.
+   */
+  app.get("/authors/:authorId", (c) => {
+    const author = findAuthor(ctx.db, c.req.param("authorId"));
+    if (author === null) return c.json(notFound("writing partner"), 404);
+    const book = memoryBookOf(ctx.db, author.id);
+    return c.json({
+      enabled: author.memory_enabled === 1,
+      bookId: book?.ulid ?? null,
+      tokenBudget: book?.token_budget ?? 0,
+      entries:
+        book === null
+          ? []
+          : listEntries(ctx.db, book.id).map((entry) => ({
+              id: entry.ulid,
+              title: entry.title,
+              content: entry.content,
+              keys: parseKeys(entry.keys),
+              enabled: entry.enabled === 1,
+              /** §11: provenance, so a reader can tell their notes from its. */
+              writtenByAuthor: entry.written_by === "author",
+              writtenInScene:
+                entry.written_in_scene_id === null
+                  ? null
+                  : sceneTitleOf(ctx.db, entry.written_in_scene_id),
+              updatedAt: entry.updated_at,
+            })),
+    });
+  });
+
+  /** §11: "Keep it strictly opt-in." */
+  app.patch("/authors/:authorId", async (c) => {
+    const author = findAuthor(ctx.db, c.req.param("authorId"));
+    if (author === null) return c.json(notFound("writing partner"), 404);
+    const input = await body(c);
+    if (typeof input["enabled"] === "boolean") {
+      ctx.db
+        .query("UPDATE authors SET memory_enabled = $on, updated_at = $now WHERE id = $id")
+        .run({ id: author.id, on: input["enabled"] ? 1 : 0, now: Date.now() });
+    }
+    // §11's "hard token cap, separate budget" — the book's own, which §10's
+    // budgeting already honours.
+    if (typeof input["tokenBudget"] === "number" && Number.isFinite(input["tokenBudget"])) {
+      const book = memoryBookOf(ctx.db, author.id);
+      if (book !== null) {
+        ctx.db
+          .query("UPDATE lorebooks SET token_budget = $budget WHERE id = $id")
+          .run({ id: book.id, budget: Math.max(0, Math.trunc(input["tokenBudget"])) });
+      }
+    }
+    const after = findAuthor(ctx.db, author.ulid)!;
+    return c.json({ enabled: after.memory_enabled === 1 });
+  });
+
+  /**
+   * "Remember this" (§11).
+   *
+   * Awaited, unlike the entity extractor: the reader pressed a button and is
+   * waiting to see what the author wrote down.
+   */
+  app.post("/authors/:authorId/remember", async (c) => {
+    const author = findAuthor(ctx.db, c.req.param("authorId"));
+    if (author === null) return c.json(notFound("writing partner"), 404);
+    if (author.memory_enabled !== 1) {
+      return c.json(badRequest("Switch this partner's memory on first."), 400);
+    }
+    const input = await body(c);
+    const scene = findScene(ctx.db, String(input["sceneId"] ?? ""));
+    if (scene === null) return c.json(notFound("roleplay"), 404);
+    if (scene.author_id !== author.id) {
+      return c.json(badRequest("That roleplay has a different writing partner."), 400);
+    }
+
+    const note = await authorMemory.remember(scene);
+    return c.json({ note });
+  });
+
+  /** §11's one-click wipe. The book stays; what it holds does not. */
+  app.delete("/authors/:authorId/entries", (c) => {
+    const author = findAuthor(ctx.db, c.req.param("authorId"));
+    if (author === null) return c.json(notFound("writing partner"), 404);
+    const book = memoryBookOf(ctx.db, author.id);
+    if (book === null) return c.json({ removed: 0 });
+    const before = listEntries(ctx.db, book.id).length;
+    ctx.db.query("DELETE FROM lore_entries WHERE lorebook_id = $book").run({ book: book.id });
+    return c.json({ removed: before });
+  });
+
+  /* ---------------- §11 layer 3 ---------------- */
 
   app.get("/scenes/:sceneId", (c) => {
     const scene = findScene(ctx.db, c.req.param("sceneId"));
@@ -134,4 +239,22 @@ export function memoryRoutes(ctx: AppContext, memory: MemoryRunner): Hono<AppEnv
   });
 
   return app;
+}
+
+/** An entry's keys, however the column holds them. */
+function parseKeys(raw: string): string[] {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((k): k is string => typeof k === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Which roleplay a note came out of, so it has a way back to its own scene. */
+function sceneTitleOf(db: Database, sceneId: number): string | null {
+  const row = db.query("SELECT title FROM scenes WHERE id = $id").get({ id: sceneId }) as
+    | { title: string }
+    | null;
+  return row?.title ?? null;
 }

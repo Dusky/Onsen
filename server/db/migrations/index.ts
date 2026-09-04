@@ -33,6 +33,7 @@ import packs from "./0032_packs.sql" with { type: "text" };
 import webhooks from "./0033_webhooks.sql" with { type: "text" };
 import outboundApi from "./0034_outbound_api.sql" with { type: "text" };
 import narrativeMemory from "./0035_narrative_memory.sql" with { type: "text" };
+import authorMemory from "./0036_author_memory.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -83,4 +84,5 @@ export const migrations: readonly Migration[] = [
   { version: 33, name: "webhooks", sql: webhooks },
   { version: 34, name: "outbound_api", sql: outboundApi },
   { version: 35, name: "narrative_memory", sql: narrativeMemory },
+  { version: 36, name: "author_memory", sql: authorMemory },
 ];

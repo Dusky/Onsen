@@ -219,6 +219,9 @@ const TRACKER_OPS: readonly SideCallOp[] = TRACKER_KINDS.map((kind) => ({
 /** §11 layer 3's extractor. Off by default: the whole feature is opt-in. */
 export const MEMORY_EXTRACT = "memory_extract";
 
+/** §11's author memory: the author writing something down to carry forward. */
+export const AUTHOR_REMEMBER = "author_remember";
+
 export const OP_KINDS: readonly OpKind[] = [
   {
     key: TURN_CLASSIFIER,
@@ -529,6 +532,25 @@ export const OP_KINDS: readonly OpKind[] = [
     variables: ["transcript"],
     hideable: false,
     autoByDefault: true,
+  },
+  {
+    key: AUTHOR_REMEMBER,
+    runs: "side_call",
+    label: "Remember this",
+    description:
+      "The author writes a note to carry into its other roleplays: an unresolved thread, a recurring name, what you seem to enjoy.",
+    stage: "post_generation",
+    // Warmer than the extractor. This one writes a sentence the reader will
+    // read, not a record — and §11 wants it in the author's own voice.
+    samplers: { temperature: 0.6, top_p: 0.95 },
+    timeoutMs: 30_000,
+    replyLimit: 1_500,
+    variables: ["transcript", "author", "known"],
+    hideable: false,
+    // §11: "Keep it strictly opt-in. An author that silently accumulates notes
+    // about the user is a different product with different expectations." So
+    // this never runs unasked, whatever the op config says.
+    autoByDefault: false,
   },
   {
     key: MEMORY_EXTRACT,

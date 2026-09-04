@@ -30,6 +30,8 @@ export interface LorebookRow {
   scan_depth: number;
   recursion_depth: number;
   raw_import: string | null;
+  /** §11's author memory: set when this book is one author's own notes. */
+  owner_author_id: number | null;
   created_at: number;
   updated_at: number;
 }
@@ -68,6 +70,9 @@ export interface LoreEntryRow {
   prevent_further_recursion: number;
   automation_id: string | null;
   raw_entry: string | null;
+  /** §11: provenance, so an entry can say the author wrote it. Null otherwise. */
+  written_by: "author" | null;
+  written_in_scene_id: number | null;
   created_at: number;
   updated_at: number;
 }
@@ -136,20 +141,37 @@ export function booksForScene(
   db: Database,
   sceneId: number,
   personaId: number | null,
+  authorId: number | null = null,
 ): LorebookRow[] {
   return db
     .query(
       `SELECT DISTINCT b.* FROM lorebooks b
-         JOIN lorebook_bindings bind ON bind.lorebook_id = b.id
+         LEFT JOIN lorebook_bindings bind ON bind.lorebook_id = b.id
         WHERE bind.scope = 'global'
            OR (bind.scope = 'scene' AND bind.scene_id = $scene)
            OR (bind.scope = 'persona' AND bind.persona_id IS NOT NULL
                AND bind.persona_id = $persona)
            OR (bind.scope = 'character' AND bind.character_id IN (
                  SELECT character_id FROM scene_members WHERE scene_id = $scene))
+           -- §11's author memory. Ownership *is* the binding: a book that
+           -- belongs to this scene's author reaches it without the reader
+           -- attaching it, which is the point - it is the author's own notes,
+           -- not something the reader curated for one story.
+           --
+           -- A LEFT JOIN because this book has no binding row at all, and an
+           -- inner join would have quietly excluded exactly the case this
+           -- clause exists for.
+           OR (b.owner_author_id IS NOT NULL AND b.owner_author_id = $author)
         ORDER BY b.name`,
     )
-    .all({ scene: sceneId, persona: personaId }) as LorebookRow[];
+    .all({ scene: sceneId, persona: personaId, author: authorId }) as LorebookRow[];
+}
+
+/** The author's own book, or null. One per author, by unique index. */
+export function memoryBookOf(db: Database, authorId: number): LorebookRow | null {
+  return db.query("SELECT * FROM lorebooks WHERE owner_author_id = $author").get({
+    author: authorId,
+  }) as LorebookRow | null;
 }
 
 /** Turn rows into what the engine takes, one entry per book per scene. */
@@ -361,7 +383,12 @@ export function updateEntry(
          insertion_role = $insertion_role, outlet_name = $outlet_name,
          recursion_level = $recursion_level, non_recursable = $non_recursable,
          prevent_further_recursion = $prevent_further_recursion,
-         automation_id = $automation_id, updated_at = $now
+         automation_id = $automation_id,
+         -- §11's author-memory provenance. Written here rather than by its own
+         -- statement because the patch type already accepts these, and a patch
+         -- field the statement ignores is a trap for the next caller.
+         written_by = $written_by, written_in_scene_id = $written_in_scene_id,
+         updated_at = $now
        WHERE id = $id RETURNING *`,
     )
     .get({
@@ -395,6 +422,8 @@ export function updateEntry(
       non_recursable: next.non_recursable,
       prevent_further_recursion: next.prevent_further_recursion,
       automation_id: next.automation_id,
+      written_by: next.written_by,
+      written_in_scene_id: next.written_in_scene_id,
       now: Date.now(),
     }) as LoreEntryRow;
 }

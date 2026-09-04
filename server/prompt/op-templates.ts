@@ -219,7 +219,32 @@ For each thing, give three scores from 0 to 1:
 Reply with JSON only, no commentary, in exactly this shape:
 {"entities": [{"kind": "person|place|object|event|fact", "name": "...", "content": "one or two sentences", "salience": {"emotional": 0.0, "narrative": 0.0, "density": 0.0}}], "relations": [{"from": "name", "to": "name", "kind": "owes money to", "content": "...", "salience": {"emotional": 0.0, "narrative": 0.0, "density": 0.0}}]}`;
 
+/**
+ * §11's author memory.
+ *
+ * Asked in the second person and about the author's *own* experience, because
+ * that is what this memory is for: not what happened in the story, which the
+ * summaries already hold, but what the partner would want to know next time.
+ * §11's examples are all of that kind — unresolved threads, what the reader
+ * tends to enjoy, recurring characters.
+ */
+const AUTHOR_REMEMBER_TEMPLATE = `You are {{author}}, a writing partner. Write one note to your future self, to carry into other roleplays with this reader.
+
+You already remember:
+{{known}}
+
+What just happened:
+{{transcript}}
+
+Note something that will still matter after this roleplay ends: a thread left hanging, a name that keeps coming back, something about how this reader likes to be written for. Not a summary of the plot — you have that elsewhere.
+
+Give it a short title and the words that should bring it back to mind.
+
+Reply with JSON only, no commentary, in exactly this shape:
+{"title": "...", "keys": ["word", "another"], "content": "one or two sentences, in your own voice"}`;
+
 const DEFAULTS: Record<string, string> = {
+  author_remember: AUTHOR_REMEMBER_TEMPLATE,
   memory_extract: MEMORY_EXTRACT_TEMPLATE,
   [ANALYSE_SLOP]: ANALYSE_SLOP_TEMPLATE,
   [SUMMARISE]: SUMMARISE_TEMPLATE,
