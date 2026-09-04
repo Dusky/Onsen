@@ -2624,7 +2624,14 @@ Each phase ends in a working, usable application.
 39. Author memory.
 40. Optional tabletop module — dice, skill checks, stat and inventory tracking
     as user-defined state schemas. Deterministic rolls happen server-side, never
-    in the model.
+    in the model. **Not built.** The line already says "optional", and the
+    expensive half of it is the user-defined schemas: a schema language, a
+    builder UI, validation, and a way for a check to reference a stat — a
+    product in its own right, sitting on top of a mode nothing else in Onsen
+    depends on. `{{roll:NdM}}` already rolls server-side (§3's macros), which
+    is the part the "don't roll dice in the model" rule was protecting. If this
+    is picked up later, split it: rolls and checks as recorded events first,
+    stats only if the checks get used.
 41. TTS, image generation, captioning.
 42. Chub import, community asset browsing.
 43. Polish — mention strategy, group greetings, bulk import, PWA.

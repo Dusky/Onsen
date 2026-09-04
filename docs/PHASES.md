@@ -3637,3 +3637,30 @@ author owns the flag; the memory route owns the budget.
 **The lorebooks list called it "Not attached to anything."** True of its
 bindings, false of the book: it reaches every scene its author is in. It reads
 "Written by Vesper" now, in the slot the other bindings use.
+
+---
+
+## Phase 40 — Optional tabletop module — not built
+
+Skipped deliberately, with the reasoning recorded here so a later reader does
+not have to reconstruct it.
+
+§20 calls this one optional, and it is the only phase that does. What it asks
+for is two features of very different sizes wearing one name:
+
+- **Rolls and checks** — a die rolled server-side, a modifier, an outcome the
+  model narrates rather than picks. Small, and mostly already here:
+  `{{roll:NdM}}` has resolved server-side since §3's macros, which is the part
+  the "don't roll dice in the model" rule exists to protect. What is missing is
+  a *record* of a roll — an event on the message rather than a number
+  substituted into a prompt — and outcome tiers.
+- **Stat and inventory tracking as user-defined state schemas** — a schema
+  language, a builder UI for it, validation, and a way for a check to reference
+  a stat by name. That is a product, not a phase, and everything it would sit
+  on is per-scene state that only tabletop mode would ever read.
+
+Nothing else in Onsen depends on it, and `Mode: tabletop` in §8's prompt options
+already lets an author run a table in prose without any of it.
+
+If it is picked up later, the split above is the shape: rolls and checks as
+recorded events first, and stats only if the checks turn out to get used.
