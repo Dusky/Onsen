@@ -46,6 +46,7 @@ import {
   usePreferences,
   useSetPreferences,
   useApiKeys,
+  useSignOut,
 } from "../lib/queries.ts";
 import { TabBar } from "../components/TabBar.tsx";
 import { Sheet } from "../components/Sheet.tsx";
@@ -1306,6 +1307,7 @@ function EmbeddingsSection() {
 /* ------------------------------------------------------------------ */
 
 export function SettingsScreen() {
+  const signOut = useSignOut();
   const providers = useProviders();
   const profiles = useConnectionProfiles();
   const presets = usePresets();
@@ -1543,6 +1545,17 @@ export function SettingsScreen() {
           <EmbeddingsSection />
 
           <UpdateGroup />
+
+          {/* Last, and on its own: the only control here that ends the
+              session rather than changing it. */}
+          <div className="mt-[26px] border-t border-rule pt-[18px]">
+            <button type="button" className="btn w-full" onClick={() => signOut.mutate(undefined)}>
+              {strings.settings.signOut}
+            </button>
+            <p className="chrome mt-[7px] text-[10px] leading-[1.6] text-ink-dim">
+              {strings.settings.signOutHint}
+            </p>
+          </div>
         </div>
       </main>
 

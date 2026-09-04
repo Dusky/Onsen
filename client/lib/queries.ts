@@ -591,6 +591,25 @@ export function useSetLeaf(sceneId: string) {
   );
 }
 
+/**
+ * Sign out.
+ *
+ * The endpoint has existed since phase 1 and nothing called it, so a
+ * self-hosted install you opened on a shared machine could not be locked
+ * again. The whole cache is dropped rather than invalidated: what it holds is
+ * the signed-out user's scenes.
+ */
+export function useSignOut() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<{ ok: true }>("/auth/logout"),
+    onSuccess: () => {
+      client.clear();
+      window.location.href = "/";
+    },
+  });
+}
+
 /* ------------------------------------------------------------------ */
 /* Checkpoints (SPEC §2)                                               */
 /* ------------------------------------------------------------------ */

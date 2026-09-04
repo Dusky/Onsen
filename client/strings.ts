@@ -380,6 +380,10 @@ export const strings = {
 
   settings: {
     kicker: "Settings",
+    /* There was no way out of a signed-in install until now. */
+    signOut: "Sign out",
+    signOutHint:
+      "Locks this browser. Everything stays on the server; you will need the password again.",
 
     /** Connections group (design handoff, screen 3i). */
     providers: "Providers",
@@ -447,6 +451,12 @@ export const strings = {
       "XTC drops the most-likely tokens while keeping one viable choice, which raises creativity. Threshold is how likely a token must be to qualify; probability is how often it fires.",
     /** Preset import (SPEC §18, phase 28). */
     importPreset: "Import a SillyTavern preset",
+    /* §18: "Don't pretend round-tripping is clean when it isn't." */
+    exportPresetLabel: "Save a copy",
+    exportPresetOwn: "Save this preset",
+    exportPresetSt: "Save for SillyTavern",
+    exportPresetHint:
+      "The SillyTavern file carries the samplers and the sizes. Prompt blocks live in option groups here, not on the preset, so they do not go with it — the file says so where it is missing them.",
     importingPreset: "Importing…",
     presetImported: (name: string) => `Imported ${name}.`,
     presetReport: (report: {

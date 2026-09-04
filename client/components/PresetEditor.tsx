@@ -202,9 +202,50 @@ export function PresetEditor({ preset, onClose }: { preset: PresetDto; onClose()
             />
           </>
         ) : null}
+
+        {/* §18 requires both, and the endpoint has served both since phase 28
+            with nothing calling it. A download rather than a copy: a preset is
+            a file people move between installs. */}
+        <p className="section-label mt-[22px] mb-[8px]">{strings.settings.exportPresetLabel}</p>
+        <button
+          type="button"
+          className="btn mb-[8px] w-full"
+          onClick={() => void download(preset, "onsen")}
+        >
+          {strings.settings.exportPresetOwn}
+        </button>
+        <button
+          type="button"
+          className="btn w-full"
+          onClick={() => void download(preset, "sillytavern")}
+        >
+          {strings.settings.exportPresetSt}
+        </button>
+        <p className="chrome mt-[7px] text-[9px] leading-[1.5] text-ink-dim">
+          {strings.settings.exportPresetHint}
+        </p>
       </div>
     </Sheet>
   );
+}
+
+/**
+ * Fetch a preset and hand it to the browser as a file.
+ *
+ * Through fetch rather than a plain link because the endpoint is behind the
+ * session cookie and returns JSON: a link would open it in a tab.
+ */
+async function download(preset: PresetDto, format: "onsen" | "sillytavern"): Promise<void> {
+  const response = await fetch(`/api/connections/presets/${preset.id}/export?format=${format}`);
+  if (!response.ok) return;
+  const text = JSON.stringify(await response.json(), null, 2);
+  const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+  const link = document.createElement("a");
+  link.href = url;
+  const suffix = format === "sillytavern" ? "-sillytavern" : "";
+  link.download = `${preset.name.replace(/[^\w -]+/g, "").trim() || "preset"}${suffix}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 /**
