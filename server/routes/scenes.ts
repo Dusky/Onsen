@@ -31,6 +31,7 @@ import {
   type MessageRow,
   type SceneRow,
 } from "../db/queries/history.ts";
+import { attachToMessage, pendingAttachments } from "../db/queries/media.ts";
 import {
   addSceneMember,
   findAuthor,
@@ -570,6 +571,16 @@ export function sceneRoutes(
       content,
       ...(request.isHidden === undefined ? {} : { isHidden: request.isHidden }),
     });
+    // Pictures the reader attached while typing this line now belong to it
+    // (§20 phase 41). Bound here rather than at upload, because the message
+    // they belong to does not exist until this moment — and binding is what
+    // makes the caption reach the prompt.
+    if (request.authorType === "user") {
+      for (const pending of pendingAttachments(ctx.db, sceneRow.id)) {
+        attachToMessage(ctx.db, pending.id, row.id);
+      }
+    }
+
     const dto = messageDto(ctx.db, row, sceneRow.ulid);
 
     // §14's two message-side events. Not awaited: an action is a side call, and

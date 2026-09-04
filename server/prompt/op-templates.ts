@@ -243,7 +243,14 @@ Give it a short title and the words that should bring it back to mind.
 Reply with JSON only, no commentary, in exactly this shape:
 {"title": "...", "keys": ["word", "another"], "content": "one or two sentences, in your own voice"}`;
 
+const CAPTION_IMAGE_TEMPLATE = `Describe what is in this image, for someone who cannot see it.
+
+Write two or three sentences of plain description: who or what is in it, where, and what is happening. Say what is actually there. Do not guess at names, do not invent a story around it, and do not say what it might mean.
+
+Reply with the description alone.`;
+
 const DEFAULTS: Record<string, string> = {
+  caption_image: CAPTION_IMAGE_TEMPLATE,
   author_remember: AUTHOR_REMEMBER_TEMPLATE,
   memory_extract: MEMORY_EXTRACT_TEMPLATE,
   [ANALYSE_SLOP]: ANALYSE_SLOP_TEMPLATE,

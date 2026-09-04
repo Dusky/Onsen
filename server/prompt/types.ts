@@ -42,11 +42,29 @@ export type {
 
 export type PromptRole = "system" | "user" | "assistant";
 
+/**
+ * A picture travelling with a message, as bytes rather than a link (§20 phase
+ * 41). Providers all take base64; none of them will fetch a URL from a server
+ * they cannot reach, which is every self-hosted install.
+ */
+export interface PromptImage {
+  mime: string;
+  base64: string;
+}
+
 export interface NormalizedMessage {
   role: PromptRole;
   content: string;
   /** Speaker label, where the provider supports one. */
   name?: string;
+  /**
+   * Pictures this message carries (§20 phase 41), for a provider whose
+   * capabilities say it can see. Only ever set by the captioning op, which
+   * builds its own prompt: a roleplay prompt carries a caption as text and
+   * never the bytes, so the history stays cacheable and a scene's context is
+   * not spent on an image it already has words for.
+   */
+  images?: PromptImage[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -78,6 +96,15 @@ export interface ProviderCapabilities {
   supportsGrammar: boolean;
   emitsReasoning: boolean;
   supportsPromptCaching: boolean;
+  /**
+   * Whether this provider accepts images in a message (§20 phase 41).
+   *
+   * A property of the wire format, not of the model: an OpenAI-shaped endpoint
+   * can carry image parts whether or not the model behind it looks at them.
+   * Captioning refuses a provider that says false here, and says so, rather
+   * than sending bytes that will be silently ignored.
+   */
+  supportsVision: boolean;
   tokenizer: TokenizerId | null;
 }
 
@@ -246,6 +273,16 @@ export interface PromptMessage {
    * most providers advise against feeding it back.
    */
   reasoning?: string | null;
+  /**
+   * What the pictures on this message show (§20 phase 41).
+   *
+   * Captions, not bytes. The author reacts to a description because that is
+   * what survives the trip: a picture would cost the scene's context every
+   * turn it stayed in history, would break prompt caching the moment it was
+   * evicted, and would need a vision model for the roleplay itself rather
+   * than for the one call that reads it.
+   */
+  attachments?: string[];
   /**
    * Covered by a summary the prompt is carrying (§11). Only meaningful when the
    * scene has asked for raw eviction; otherwise the message is shown as well as

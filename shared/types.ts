@@ -438,6 +438,63 @@ export interface MessageDto {
    * as narration (SPEC §3.5). The text is intact; the attribution is not.
    */
   parseDegraded: boolean;
+  /**
+   * Pictures and audio hanging off this turn (§20 phase 41): an illustration
+   * drawn for it, a reading of it, or a picture the reader attached.
+   *
+   * Empty for almost every message, which is why it is a list rather than three
+   * nullable fields — a turn can have all three and often has none.
+   */
+  media: MediaAssetDto[];
+}
+
+/* ------------------------------------------------------------------ */
+/* Media (SPEC §20 phase 41)                                           */
+/* ------------------------------------------------------------------ */
+
+export type MediaRole = "illustration" | "speech" | "attachment";
+
+export interface MediaAssetDto {
+  id: string;
+  kind: "image" | "audio";
+  role: MediaRole;
+  /** Served by this app. A provider URL would expire and leak who looked. */
+  url: string;
+  mime: string;
+  bytes: number;
+  width: number | null;
+  height: number | null;
+  /** What was asked for, so a picture can be explained and tried again. */
+  prompt: string | null;
+  /** What a vision model saw. This is the text that reaches the prompt. */
+  caption: string | null;
+  createdAt: number;
+}
+
+export interface MediaServiceDto {
+  id: string;
+  name: string;
+  purpose: "image" | "speech";
+  kind: string;
+  /** Resolved server-side, so no raw enum ever reaches a screen. */
+  kindLabel: string;
+  baseUrl: string | null;
+  model: string | null;
+  options: Record<string, unknown>;
+  hasApiKey: boolean;
+  apiKeyMask: string | null;
+  enabled: boolean;
+  isDefault: boolean;
+}
+
+/** What kinds of service can be added, with the words to describe them. */
+export interface MediaKindDto {
+  purpose: "image" | "speech";
+  kind: string;
+  label: string;
+  hint: string;
+  defaultBaseUrl: string;
+  needsKey: boolean;
 }
 
 /* ------------------------------------------------------------------ */

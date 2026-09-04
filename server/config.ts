@@ -13,6 +13,7 @@ export interface Config {
   uploadsDir: string;
   avatarsDir: string;
   spritesDir: string;
+  mediaDir: string;
   port: number;
   host: string;
   /** Cookies get the Secure attribute only when we know we are behind TLS. */
@@ -37,6 +38,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     uploadsDir: join(dataDir, "uploads"),
     avatarsDir: join(dataDir, "avatars"),
     spritesDir: join(dataDir, "sprites"),
+    mediaDir: join(dataDir, "media"),
     port: Number(env.ONSEN_PORT ?? env.PORT ?? 8787),
     host: env.ONSEN_HOST ?? "0.0.0.0",
     secureCookies: envFlag("ONSEN_SECURE_COOKIES", false),
@@ -47,7 +49,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
 
 /** Create the data directories. Safe to call repeatedly. */
 export function ensureDataDirs(config: Config): void {
-  for (const dir of [config.dataDir, config.uploadsDir, config.avatarsDir, config.spritesDir]) {
+  for (const dir of [
+    config.dataDir,
+    config.uploadsDir,
+    config.avatarsDir,
+    config.spritesDir,
+    config.mediaDir,
+  ]) {
     mkdirSync(dir, { recursive: true });
   }
 }

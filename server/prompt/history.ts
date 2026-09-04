@@ -80,7 +80,23 @@ function roleFor(message: PromptMessage): PromptRole {
  */
 function costOf(tokenizer: Tokenizer, message: PromptMessage, prefix: string): number {
   const body = message.tokenCount ?? tokenizer.count(message.content);
-  return prefix === "" ? body : body + tokenizer.count(prefix);
+  const withPrefix = prefix === "" ? body : body + tokenizer.count(prefix);
+  // Counted rather than assumed: the cached count on the row is the message's
+  // own text, and a caption is not part of it (§20 phase 41).
+  return withPrefix + tokenizer.count(attachmentsOf(message));
+}
+
+/**
+ * What the pictures on a turn show, as a line of its own (§20 phase 41).
+ *
+ * Bracketed and named, so the author can tell a description of a photograph the
+ * reader pasted from something a character said. Empty for the overwhelming
+ * majority of turns, which is why it concatenates rather than joins.
+ */
+function attachmentsOf(message: PromptMessage): string {
+  const captions = (message.attachments ?? []).filter((caption) => caption.trim() !== "");
+  if (captions.length === 0) return "";
+  return `\n${captions.map((caption) => `[image: ${caption.trim()}]`).join("\n")}`;
 }
 
 export function renderHistory(ctx: PromptContext, mode: RenderMode): RenderedHistory {
@@ -134,7 +150,7 @@ export function renderHistory(ctx: PromptContext, mode: RenderMode): RenderedHis
       // The reasoning goes *before* the turn it produced, because that is the
       // order it happened in and the only order that reads as thinking rather
       // than as an afterword.
-      content: `${thought}${prefix}${message.content}`,
+      content: `${thought}${prefix}${message.content}${attachmentsOf(message)}`,
       messageId: message.id,
       tokens,
     });

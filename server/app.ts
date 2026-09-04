@@ -32,11 +32,13 @@ import { webhookRoutes } from "./routes/webhooks.ts";
 import { openAiRoutes } from "./routes/openai.ts";
 import { apiKeyRoutes, sceneApiRoutes } from "./routes/api-keys.ts";
 import { memoryRoutes } from "./routes/memory.ts";
+import { mediaRoutes } from "./routes/media.ts";
 import { createRateLimiter } from "./middleware/rate-limit.ts";
 import { hashToken } from "./db/queries/api-keys.ts";
 import { WebhookSender } from "./webhooks/sender.ts";
 import { MemoryRunner } from "./memory/runner.ts";
 import { AuthorMemory } from "./memory/author.ts";
+import { MediaRunner } from "./media/runner.ts";
 import { TriggerRunner } from "./triggers/runner.ts";
 import type { createAdapter } from "./adapters/index.ts";
 import { spaStatic } from "./static.ts";
@@ -115,6 +117,12 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   const memory = options.memoryRunner ?? new MemoryRunner({ db: ctx.db, keyring: ctx.keyring, tasks });
   generation.setMemory(memory);
   const authorMemory = new AuthorMemory({ db: ctx.db, tasks });
+  const media = new MediaRunner({
+    db: ctx.db,
+    keyring: ctx.keyring,
+    tasks,
+    mediaDir: ctx.config.mediaDir,
+  });
   const autopilot = new AutopilotRunner({ db: ctx.db, tasks });
   // Bound both ways, late, because each needs the other: the service reports
   // landings, the runner starts turns (SPEC §6).
@@ -191,6 +199,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   api.route("/api-keys", apiKeyRoutes(ctx));
   api.route("/scene-api", sceneApiRoutes(ctx));
   api.route("/memory", memoryRoutes(ctx, memory, authorMemory));
+  api.route("/media", mediaRoutes(ctx, media));
   api.route("/lorebooks", loreRoutes(ctx));
   api.route("/dossiers", dossierRoutes(ctx));
 

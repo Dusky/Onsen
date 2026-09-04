@@ -125,6 +125,7 @@ export function anthropicCapabilities(model: string, rules = anthropicModelRules
     supportsGrammar: false,
     emitsReasoning: true,
     supportsPromptCaching: true,
+    supportsVision: true,
     tokenizer: null,
   };
 }
@@ -209,9 +210,21 @@ export function createAnthropicAdapter(config: AdapterConfig): Adapter {
       settings: SamplerSettings,
       signal: AbortSignal,
     ): AsyncIterable<TokenChunk> {
-      const messages = prompt.messages.map((message) => ({
+      const messages: { role: string; content: unknown }[] = prompt.messages.map((message) => ({
         role: message.role,
-        content: message.content,
+        // Anthropic's blocks rather than OpenAI's parts (§20 phase 41), and the
+        // image comes first: the API's own guidance is that a question about a
+        // picture reads better after it.
+        content:
+          message.images === undefined || message.images.length === 0
+            ? message.content
+            : [
+                ...message.images.map((image) => ({
+                  type: "image",
+                  source: { type: "base64", media_type: image.mime, data: image.base64 },
+                })),
+                { type: "text", text: message.content },
+              ],
       }));
 
       if (capabilities.supportsPrefill && prompt.prefill !== undefined && prompt.prefill !== "") {

@@ -14,6 +14,7 @@ import type {
   PromptTurn,
 } from "../prompt/index.ts";
 import { activePath, type MessageRowWithSiblings, type SceneRow } from "../db/queries/history.ts";
+import { assetsForMessages } from "../db/queries/media.ts";
 import { activeTrackers } from "../db/queries/trackers.ts";
 import {
   castRowsOf,
@@ -179,7 +180,9 @@ function toPromptMessage(
   summarized: Set<number>,
   scripts: ScriptContext,
   names: Map<number, string>,
+  captions: Map<number, string[]>,
 ): PromptMessage {
+  const attachments = captions.get(row.id);
   return {
     id: row.ulid,
     kind: row.kind,
@@ -191,6 +194,7 @@ function toPromptMessage(
     tokenCount: row.token_count,
     isSummarized: summarized.has(row.id),
     reasoning: row.reasoning,
+    ...(attachments === undefined ? {} : { attachments }),
   };
 }
 
@@ -385,6 +389,21 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
   // §14's prompt-stage scripts, loaded once for the whole transcript.
   const promptScripts = scriptContext(options.db, options.scene.id);
 
+  // What the pictures on these turns show (§20 phase 41). One query for the
+  // whole path rather than one per message, and captions only: the bytes never
+  // reach a roleplay prompt.
+  const attachmentCaptions = new Map<number, string[]>();
+  for (const asset of assetsForMessages(
+    options.db,
+    history.map((row) => row.id),
+  )) {
+    if (asset.role !== "attachment" || asset.caption === null || asset.message_id === null) continue;
+    attachmentCaptions.set(asset.message_id, [
+      ...(attachmentCaptions.get(asset.message_id) ?? []),
+      asset.caption,
+    ]);
+  }
+
   // Presence is expressed in message identifiers, so the internal ids stored on
   // membership have to be resolved against the history being rendered.
   const messageUlids = new Map(history.map((row) => [row.id, row.ulid]));
@@ -479,7 +498,14 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
     author: authorRow === null ? null : toPromptAuthor(authorRow),
     persona: toPromptPersona(personaRow),
     history: history.map((row) =>
-      toPromptMessage(row, characterUlids, injected.coveredMessageIds, promptScripts, characterNames),
+      toPromptMessage(
+        row,
+        characterUlids,
+        injected.coveredMessageIds,
+        promptScripts,
+        characterNames,
+        attachmentCaptions,
+      ),
     ),
     // Already matched and resolved by the activation model (§10).
     lore: lore.activated.map((entry) => ({

@@ -36,6 +36,9 @@ export const OPENAI_COMPATIBLE_CAPABILITIES: ProviderCapabilities = {
   supportsGrammar: false,
   emitsReasoning: false,
   supportsPromptCaching: true,
+  // The chat-completions content-part shape carries images, and every
+  // OpenAI-compatible server accepts the field whether its model looks or not.
+  supportsVision: true,
   tokenizer: null,
 };
 
@@ -131,9 +134,24 @@ export function createOpenAiAdapter(config: AdapterConfig): Adapter {
       settings: SamplerSettings,
       signal: AbortSignal,
     ): AsyncIterable<TokenChunk> {
-      const messages = [
+      const messages: { role: string; content: unknown }[] = [
         ...(prompt.system === undefined ? [] : [{ role: "system", content: prompt.system }]),
-        ...prompt.messages.map((message) => ({ role: message.role, content: message.content })),
+        ...prompt.messages.map((message) => ({
+          role: message.role,
+          // A plain string unless the message carries pictures (§20 phase 41).
+          // Sending the content-part array unconditionally would work on OpenAI
+          // and break several local servers that only implement the string.
+          content:
+            message.images === undefined || message.images.length === 0
+              ? message.content
+              : [
+                  { type: "text", text: message.content },
+                  ...message.images.map((image) => ({
+                    type: "image_url",
+                    image_url: { url: `data:${image.mime};base64,${image.base64}` },
+                  })),
+                ],
+        })),
       ];
 
       // Prefill: a partial assistant turn the model continues from (§13). On

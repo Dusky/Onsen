@@ -85,6 +85,7 @@ export const OPENAI: ProviderCapabilities = {
   supportsGrammar: false,
   emitsReasoning: false,
   supportsPromptCaching: true,
+  supportsVision: false,
   tokenizer: null,
 };
 

@@ -52,6 +52,9 @@ export const TEXT_COMPLETION_CAPABILITIES: ProviderCapabilities = {
   supportsGrammar: true,
   emitsReasoning: false,
   supportsPromptCaching: false,
+  // A raw completion endpoint takes a string. There is nowhere to put a
+  // picture, which is a fact about the format rather than a limitation.
+  supportsVision: false,
   tokenizer: null,
 };
 

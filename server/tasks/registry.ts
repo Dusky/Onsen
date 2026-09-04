@@ -222,6 +222,9 @@ export const MEMORY_EXTRACT = "memory_extract";
 /** §11's author memory: the author writing something down to carry forward. */
 export const AUTHOR_REMEMBER = "author_remember";
 
+/** §20 phase 41: what a picture the reader attached actually shows. */
+export const CAPTION_IMAGE = "caption_image";
+
 export const OP_KINDS: readonly OpKind[] = [
   {
     key: TURN_CLASSIFIER,
@@ -570,6 +573,24 @@ export const OP_KINDS: readonly OpKind[] = [
     // Auto-triggered where the scene has switched memory on, which is the
     // switch that actually decides it. This flag only says it may run unasked.
     autoByDefault: true,
+  },
+  {
+    key: CAPTION_IMAGE,
+    runs: "side_call",
+    label: "Describe a picture",
+    description:
+      "Looks at an image you attached and writes what is in it, so the author can react to something it cannot see.",
+    stage: "pre_generation",
+    // Low, and for the extractor's reason: an invented detail here becomes a
+    // fact of the scene the moment the author writes around it.
+    samplers: { temperature: 0.2, top_p: 0.9 },
+    timeoutMs: 45_000,
+    replyLimit: 1_500,
+    variables: [],
+    hideable: false,
+    // Runs when a picture is attached, which is the reader asking for it. There
+    // is no unattended path that could fire this.
+    autoByDefault: false,
   },
 ];
 

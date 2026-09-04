@@ -1,4 +1,5 @@
 import type { Database } from "bun:sqlite";
+import { assetsForMessages, toMediaAssetDto } from "./media.ts";
 import { ulid } from "../../lib/ulid.ts";
 import { runStage, scriptContext, type ScriptContext } from "../../scripts/runtime.ts";
 import { originOfRequest, sceneChannel } from "../../sync/channel.ts";
@@ -8,6 +9,7 @@ import type {
   MessageDto,
   MessageKind,
   AnnotationDto,
+  MediaAssetDto,
   MessageSegmentDto,
   SceneDto,
   SceneMemberDto,
@@ -165,8 +167,11 @@ export function toMessageDto(
   segments: MessageSegmentDto[] | null = null,
   /** What the passes found. Passed in for the same reason segments are. */
   annotations: AnnotationDto[] = [],
+  /** Pictures and audio on this turn (§20 phase 41), passed in for the same reason. */
+  media: MediaAssetDto[] = [],
 ): MessageDto {
   return {
+    media,
     id: row.ulid,
     sceneId: sceneUlid,
     parentId: parentUlid,
@@ -865,8 +870,14 @@ export function messageDto(db: Database, row: MessageRow, sceneUlid: string): Me
       speakers,
       row.kind === "beat" ? segmentDtosOf(db, row, speakers) : null,
       annotationDtosOf(db, row.id),
+      mediaDtosOf(db, row.id),
     ),
   );
+}
+
+/** What is hanging off one message (§20 phase 41). */
+function mediaDtosOf(db: Database, messageId: number): MediaAssetDto[] {
+  return assetsForMessages(db, [messageId]).map(toMediaAssetDto);
 }
 
 /**
