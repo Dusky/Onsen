@@ -1,0 +1,154 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; background: #100e0b; }
+    a { color: #d78872; } a:hover { color: #c0503c; }
+    .m { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+    .p { font-family: "Spectral", Georgia, serif; }
+    .lbl { font-family: "IBM Plex Mono", monospace; font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; }
+    .cat { padding: 6px 14px; display: flex; align-items: center; gap: 9px; }
+    .field { border: 1px solid #2a251e; background: #100e0b; padding: 7px 10px; font-family: "IBM Plex Mono", monospace; font-size: 10.5px; color: #c9c1b1; }
+    .tr { display: grid; grid-template-columns: 200px 1fr 90px; align-items: center; padding: 9px 0; border-bottom: 1px solid #221e18; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; height: 900px; background: #100e0b; color: #e8e2d6; display: flex; flex-direction: column; overflow: hidden;">
+<div style="flex-grow: 1; display: grid; grid-template-columns: 236px 1fr; overflow: hidden;">
+
+  <!-- Eight categories where there were thirty-one labels. -->
+  <div style="border-right: 1px solid #221e18; background: #14120f; display: flex; flex-direction: column; overflow: hidden;">
+    <div style="height: 44px; flex: none; display: flex; align-items: center; padding: 0 14px; border-bottom: 1px solid #221e18; gap: 10px;">
+      <span class="m" style="font-size: 13px; color: #8b8477;">&lsaquo;</span>
+      <span class="lbl" style="letter-spacing: 0.16em; color: #c9c1b1;">Settings</span>
+    </div>
+
+    <div style="padding: 9px 10px; border-bottom: 1px solid #221e18;">
+      <div style="border: 1px solid #2a251e; padding: 6px 9px;">
+        <span class="m" style="font-size: 9.5px; color: #6f6a5f;">Filter settings</span>
+      </div>
+    </div>
+
+    <div style="padding-top: 8px; display: flex; flex-direction: column;">
+      <div class="cat" style="background: #1a1611; border-left: 2px solid #c0503c;"><span class="m" style="font-size: 11px; color: #e8e2d6;">Models</span></div>
+      <div class="cat" style="border-left: 2px solid transparent;"><span class="m" style="font-size: 11px; color: #8b8477;">Generation</span></div>
+      <div class="cat" style="border-left: 2px solid transparent;"><span class="m" style="font-size: 11px; color: #8b8477;">Background tasks</span></div>
+      <div class="cat" style="border-left: 2px solid transparent;"><span class="m" style="font-size: 11px; color: #8b8477;">Reading</span></div>
+      <div class="cat" style="border-left: 2px solid transparent;"><span class="m" style="font-size: 11px; color: #8b8477;">Pictures &amp; voices</span></div>
+      <div class="cat" style="border-left: 2px solid transparent;"><span class="m" style="font-size: 11px; color: #8b8477;">Data bank</span></div>
+      <div class="cat" style="border-left: 2px solid transparent;"><span class="m" style="font-size: 11px; color: #8b8477;">Automation</span></div>
+      <div class="cat" style="border-left: 2px solid transparent;"><span class="m" style="font-size: 11px; color: #8b8477;">Connections out</span></div>
+      <div class="cat" style="border-left: 2px solid transparent;"><span class="m" style="font-size: 11px; color: #8b8477;">Packs &amp; updates</span></div>
+    </div>
+
+    <span style="flex-grow: 1;"></span>
+    <div style="border-top: 1px solid #221e18; padding: 10px 14px;">
+      <span class="m" style="font-size: 10.5px; color: #8b8477;">Sign out</span>
+    </div>
+  </div>
+
+  <!-- One category at a time, as a table rather than a stack of labels. -->
+  <div style="background: #14120f; display: flex; flex-direction: column; overflow: hidden;">
+    <div style="height: 44px; flex: none; border-bottom: 1px solid #221e18; display: flex; align-items: center; padding: 0 22px; gap: 12px;">
+      <span class="p" style="font-size: 15px;">Models</span>
+      <span class="lbl" style="color: #6f6a5f;">2 providers &middot; 3 profiles</span>
+      <span style="flex-grow: 1;"></span>
+      <span class="lbl" style="color: #c0503c;">Add a provider</span>
+    </div>
+
+    <div style="padding: 20px 22px; overflow: hidden;">
+
+      <div style="display: grid; grid-template-columns: 200px 1fr 90px; padding-bottom: 7px; border-bottom: 1px solid #2f2a22;">
+        <span class="lbl" style="color: #6f6a5f;">Provider</span>
+        <span class="lbl" style="color: #6f6a5f;">Endpoint</span>
+        <span class="lbl" style="color: #6f6a5f; text-align: right;">State</span>
+      </div>
+
+      <div class="tr">
+        <span class="m" style="font-size: 11px; color: #e8e2d6;">llama.cpp</span>
+        <span class="m" style="font-size: 10.5px; color: #8b8477;">http://127.0.0.1:8080/v1 &middot; mistral-small</span>
+        <span class="lbl" style="color: #7fa65b; text-align: right;">&#9679; Ready</span>
+      </div>
+      <div class="tr">
+        <span class="m" style="font-size: 11px; color: #e8e2d6;">Anthropic</span>
+        <span class="m" style="font-size: 10.5px; color: #8b8477;">api.anthropic.com &middot; keyed &middot; &bull;&bull;&bull;&bull;7f3a</span>
+        <span class="lbl" style="color: #7fa65b; text-align: right;">&#9679; Ready</span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 200px 1fr 90px; padding: 22px 0 7px; border-bottom: 1px solid #2f2a22;">
+        <span class="lbl" style="color: #6f6a5f;">Profile</span>
+        <span class="lbl" style="color: #6f6a5f;">Runs on</span>
+        <span class="lbl" style="color: #6f6a5f; text-align: right;">Used for</span>
+      </div>
+
+      <div class="tr">
+        <span class="m" style="font-size: 11px; color: #e8e2d6;">Prose</span>
+        <span class="m" style="font-size: 10.5px; color: #8b8477;">llama.cpp &middot; mistral-small &middot; 32k</span>
+        <span class="lbl" style="color: #c0503c; text-align: right;">Default</span>
+      </div>
+      <div class="tr">
+        <span class="m" style="font-size: 11px; color: #e8e2d6;">Cheap</span>
+        <span class="m" style="font-size: 10.5px; color: #8b8477;">llama.cpp &middot; qwen-1.5b &middot; 8k</span>
+        <span class="lbl" style="color: #6f6a5f; text-align: right;">14 ops</span>
+      </div>
+      <div class="tr">
+        <span class="m" style="font-size: 11px; color: #e8e2d6;">Vision</span>
+        <span class="m" style="font-size: 10.5px; color: #8b8477;">Anthropic &middot; claude-sonnet-4-5</span>
+        <span class="lbl" style="color: #6f6a5f; text-align: right;">Captions</span>
+      </div>
+
+      <!-- Editing happens in place, in the pane, not in a stack of sheets. -->
+      <div style="margin-top: 26px; border: 1px solid #2f2a22; background: #16130f;">
+        <div style="padding: 11px 15px; border-bottom: 1px solid #221e18; display: flex; align-items: center; gap: 11px;">
+          <span class="lbl" style="color: #c9c1b1;">Editing &mdash; Prose</span>
+          <span style="flex-grow: 1;"></span>
+          <span class="lbl" style="color: #6f6a5f;">esc to close</span>
+        </div>
+        <div style="padding: 15px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <span class="lbl" style="color: #6f6a5f;">Name</span>
+            <div class="field">Prose</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <span class="lbl" style="color: #6f6a5f;">Provider</span>
+            <div class="field">llama.cpp</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <span class="lbl" style="color: #6f6a5f;">Model</span>
+            <div class="field">mistral-small</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <span class="lbl" style="color: #6f6a5f;">Context</span>
+            <div class="field">32768</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <span class="lbl" style="color: #6f6a5f;">Reply cap</span>
+            <div class="field">1024</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <span class="lbl" style="color: #6f6a5f;">Preset</span>
+            <div class="field">Modern defaults</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <div style="flex: none; height: 24px; background: #100e0b; border-top: 1px solid #221e18; display: flex; align-items: center; padding: 0 14px; gap: 16px;">
+    <span class="lbl" style="color: #7fa65b;">&#9679; llama.cpp</span>
+    <span class="lbl" style="color: #6f6a5f;">Saved</span>
+    <span style="flex-grow: 1;"></span>
+    <span class="lbl" style="color: #6f6a5f;">&#8984;K commands</span>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

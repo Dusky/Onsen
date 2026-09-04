@@ -1,17 +1,26 @@
 {
+  "pages": [
+    { "id": "page-1", "name": "Workbench" },
+    { "id": "page-2", "name": "Directions not taken" }
+  ],
   "artboards": [
-    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1440, "h": 900, "title": "Manuscript — desktop" },
-    { "file": "Workbench.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 900, "title": "Workbench — desktop" },
-    { "file": "Room.dc.html", "x": 0, "y": 1060, "w": 1440, "h": 900, "title": "Room — desktop" },
-    { "file": "Thread.dc.html", "x": 1560, "y": 1060, "w": 1440, "h": 900, "title": "Thread — desktop" },
-    { "file": "Mobile.dc.html", "x": 0, "y": 2120, "w": 1780, "h": 900, "title": "All four — phone" }
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1440, "h": 900, "title": "Workbench — the roleplay", "page": "page-1" },
+    { "file": "Palette.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 900, "title": "⌘K — every command", "page": "page-1" },
+    { "file": "Settings.dc.html", "x": 0, "y": 1060, "w": 1440, "h": 900, "title": "Settings — eight categories", "page": "page-1" },
+    { "file": "Phone.dc.html", "x": 1560, "y": 1060, "w": 1360, "h": 940, "title": "Phone — three states", "page": "page-1" },
+
+    { "file": "Manuscript.dc.html", "x": 0, "y": 0, "w": 1440, "h": 900, "title": "Manuscript", "page": "page-2" },
+    { "file": "Room.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 900, "title": "Room", "page": "page-2" },
+    { "file": "Thread.dc.html", "x": 0, "y": 1060, "w": 1440, "h": 900, "title": "Thread", "page": "page-2" },
+    { "file": "Mobile.dc.html", "x": 1560, "y": 1060, "w": 1780, "h": 900, "title": "The four, on a phone", "page": "page-2" }
   ],
   "annotations": [
-    { "id": "brief", "x": 0, "y": -190, "w": 640, "text": "Four directions for Onsen's polish pass.\n\nSame tokens throughout — warm near-black #14120f, ink #e8e2d6, red #c0503c, blue #5b7fa6, Spectral for prose. What changes is the bet, not the palette.\n\nStatic mockups, for picking a direction." },
-    { "id": "manuscript", "x": 0, "y": -96, "w": 640, "text": "MANUSCRIPT — the current thesis, actually committed. Speaker names hang in the left margin; the machinery moves to the right margin in the blue pencil. The wasted desktop width becomes margin that holds something." },
-    { "id": "workbench", "x": 1560, "y": -96, "w": 640, "text": "WORKBENCH — accept it's a power tool with 200 endpoints. Three panes, ⌘K instead of a 19-button sheet, and four inspector tabs instead of thirty-one section labels." },
-    { "id": "room", "x": 0, "y": 964, "w": 640, "text": "ROOM — faces. A presence strip showing who is on stage and who has gone quiet, an avatar beside every voice, warmer ground. Closest to what the SillyTavern audience already knows." },
-    { "id": "thread", "x": 1560, "y": 964, "w": 640, "text": "THREAD — play-by-post, which is where roleplay actually comes from. Not precious: solid header bars, real buttons, alternating post rows, a quick-reply box. Chrome that admits it is chrome." }
+    { "id": "thesis", "x": 0, "y": -230, "w": 700, "page": "page-1", "text": "WORKBENCH — chosen.\n\nThe bet: it is a power tool with 200 endpoints, so stop apologising for that. Hierarchy comes from structure — panes, tabs, tables, a status bar — instead of from 31 identically-weighted labels.\n\nSame tokens as before. Nothing here is a new colour." },
+    { "id": "a-story", "x": 0, "y": -104, "w": 700, "page": "page-1", "text": "A turn is SELECTED (j/k), which is what gives ⌘K something to act on. Its four common actions sit in place with their keys; the other fifteen are two keystrokes away. The status bar collects every chip that used to float on some other screen." },
+    { "id": "a-palette", "x": 1560, "y": -104, "w": 700, "page": "page-1", "text": "The 19-button sheet AND the ops grid, replaced by one thing. Scoped to the selected turn — the header says which — and grouped: this turn, this roleplay, go to. Fuzzy match, so \"dr\" finds Draw this and Director note." },
+    { "id": "a-settings", "x": 0, "y": 956, "w": 700, "page": "page-1", "text": "31 section labels in one 1,596-line scroll become 8 categories and a filter. Rows are a table with columns that mean something; editing opens IN the pane rather than in a stack of sheets. Sign out finally exists." },
+    { "id": "a-phone", "x": 1560, "y": 956, "w": 700, "page": "page-1", "text": "The direction's real test, since it is desktop-shaped. Three panes collapse to one: the rail becomes the back arrow, the inspector becomes the status bar, and the palette gives the phone all 200 commands without a single stacked-button sheet." },
+    { "id": "notdone", "x": 0, "y": -104, "w": 700, "page": "page-2", "text": "Kept for the record. Manuscript's margin idea and Room's presence strip are both liftable into Workbench later if wanted — they are not mutually exclusive with it." }
   ],
-  "launch": { "view": "canvas" }
+  "launch": { "view": "canvas", "page": "page-1" }
 }

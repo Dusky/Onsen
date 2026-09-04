@@ -1,0 +1,151 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; background: #0c0a08; }
+    a { color: #d78872; } a:hover { color: #c0503c; }
+    .m { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+    .p { font-family: "Spectral", Georgia, serif; }
+    .lbl { font-family: "IBM Plex Mono", monospace; font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; }
+    .phone { width: 390px; height: 760px; flex: none; overflow: hidden; display: flex; flex-direction: column; background: #14120f; }
+    .cap { font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: #8b8477; margin-bottom: 10px; }
+    .note { font-family: "IBM Plex Mono", monospace; font-size: 9.5px; line-height: 1.55; color: #6f6a5f; margin-top: 11px; width: 390px; }
+    .row { display: flex; justify-content: space-between; align-items: baseline; padding: 7px 0; border-bottom: 1px solid #221e18; }
+  </style>
+</helmet>
+
+<div style="width: 1360px; height: 940px; background: #0c0a08; padding: 26px 24px; display: flex; gap: 28px; box-sizing: border-box;">
+
+  <!-- 1. The log. Three panes collapse to one; the rest becomes two handles. -->
+  <div style="display: flex; flex-direction: column;">
+    <div class="cap">Reading</div>
+    <div class="phone">
+      <div style="flex: none; height: 46px; border-bottom: 1px solid #221e18; display: flex; align-items: center; padding: 0 15px; gap: 11px;">
+        <span class="m" style="font-size: 14px; color: #8b8477;">&lsaquo;</span>
+        <span class="p" style="font-size: 15px;">The pass</span>
+        <span style="flex-grow: 1;"></span>
+        <span class="lbl" style="color: #6f6a5f;">Setup</span>
+      </div>
+      <div style="flex-grow: 1; padding: 14px 0; display: flex; flex-direction: column; overflow: hidden;">
+        <div style="display: flex; gap: 10px; padding: 7px 15px;">
+          <span class="lbl" style="color: #6f6a5f; width: 40px; flex: none; padding-top: 3px; text-align: right;">You</span>
+          <p class="p" style="margin: 0; font-size: 15.5px; line-height: 1.55; color: #9a9284;">Ask her what it would take.</p>
+        </div>
+        <div style="display: flex; gap: 10px; padding: 7px 15px 9px; background: #171410; border-left: 2px solid #c0503c;">
+          <span class="lbl" style="color: #c0503c; width: 40px; flex: none; padding-top: 3px; text-align: right;">Aldan</span>
+          <div style="display: flex; flex-direction: column; gap: 9px;">
+            <p class="p" style="margin: 0; font-size: 15.5px; line-height: 1.55; color: #e8e2d6; text-wrap: pretty;">The lamp on the counter had burned down to a stub, and nobody had said anything about it for ten minutes.</p>
+            <div style="display: flex; gap: 12px; align-items: center;">
+              <span class="lbl" style="color: #8b8477;">Reroll</span>
+              <span class="lbl" style="color: #8b8477;">Edit</span>
+              <span class="lbl" style="color: #6f7d8c;">&hellip; more</span>
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px; padding: 7px 15px;">
+          <span class="lbl" style="color: #c0503c; width: 40px; flex: none; padding-top: 3px; text-align: right;">Mira</span>
+          <p class="p" style="margin: 0; font-size: 15.5px; line-height: 1.55; color: #e8e2d6; text-wrap: pretty;">&ldquo;Short.&rdquo; She said it the way you say a word you intend to make somebody regret.</p>
+        </div>
+      </div>
+      <div style="flex: none; padding: 10px 15px 12px; display: flex; gap: 9px; align-items: center;">
+        <div style="flex-grow: 1; border: 1px solid #2a251e; background: #100e0b; padding: 12px;"><span class="p" style="font-size: 15.5px; color: #6f6a5f;">Direct the scene&hellip;</span></div>
+        <div style="width: 44px; height: 44px; background: #c0503c; display: flex; align-items: center; justify-content: center;"><span class="m" style="font-size: 14px; color: #f0e9dc;">&uarr;</span></div>
+      </div>
+      <!-- The status bar is the inspector's handle. Tap it, it comes up. -->
+      <div style="flex: none; height: 34px; background: #100e0b; border-top: 1px solid #221e18; display: flex; align-items: center; padding: 0 15px; gap: 13px;">
+        <span class="lbl" style="color: #7fa65b;">&#9679;</span>
+        <span class="lbl" style="color: #6f6a5f;">4,180 tok</span>
+        <span style="flex-grow: 1;"></span>
+        <span class="lbl" style="color: #8b8477;">Context &and;</span>
+      </div>
+    </div>
+    <p class="note">The desktop's three panes become one. The rail is the back arrow, and the inspector is the status bar &mdash; tapping it raises the panel beside.</p>
+  </div>
+
+  <!-- 2. The inspector, raised. -->
+  <div style="display: flex; flex-direction: column;">
+    <div class="cap">Context, raised</div>
+    <div class="phone">
+      <div style="flex-grow: 1; opacity: 0.28; padding: 40px 15px; display: flex; flex-direction: column; gap: 16px;">
+        <p class="p" style="margin: 0; font-size: 15.5px; line-height: 1.55; color: #9a9284;">Ask her what it would take.</p>
+        <p class="p" style="margin: 0; font-size: 15.5px; line-height: 1.55; color: #e8e2d6;">The lamp on the counter had burned down to a stub, and nobody had said anything about it.</p>
+      </div>
+      <div style="flex: none; background: #16130f; border-top: 1px solid #2f2a22;">
+        <div style="display: flex; align-items: stretch; border-bottom: 1px solid #221e18;">
+          <div style="padding: 12px 13px; border-bottom: 2px solid #c0503c;"><span class="lbl" style="color: #e8e2d6;">Context</span></div>
+          <div style="padding: 12px 13px;"><span class="lbl" style="color: #6f6a5f;">Cast</span></div>
+          <div style="padding: 12px 13px;"><span class="lbl" style="color: #6f6a5f;">Lore</span></div>
+          <div style="padding: 12px 13px;"><span class="lbl" style="color: #6f6a5f;">Memory</span></div>
+          <span style="flex-grow: 1;"></span>
+          <div style="padding: 12px 15px;"><span class="lbl" style="color: #8b8477;">&or;</span></div>
+        </div>
+        <div style="padding: 14px 15px 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 9px;">
+            <span class="lbl" style="color: #c9c1b1;">Prompt</span>
+            <span class="m" style="font-size: 9.5px; color: #8b8477;">4,180 / 32,768</span>
+          </div>
+          <div style="height: 5px; display: flex; background: #1a1611; margin-bottom: 14px;">
+            <div style="width: 15%; background: #8b8477;"></div>
+            <div style="width: 29%; background: #6f6a5f;"></div>
+            <div style="width: 9%; background: #5b7fa6;"></div>
+            <div style="width: 5%; background: #3f6486;"></div>
+            <div style="width: 42%; background: #c0503c;"></div>
+          </div>
+          <div class="row"><span class="m" style="font-size: 10px; color: #c9c1b1;">System &middot; author</span><span class="m" style="font-size: 9px; color: #6f6a5f;">612</span></div>
+          <div class="row"><span class="m" style="font-size: 10px; color: #c9c1b1;">Cast &middot; 3 cards</span><span class="m" style="font-size: 9px; color: #6f6a5f;">1,204</span></div>
+          <div class="row"><span class="m" style="font-size: 10px; color: #b9c3ce;">Guides &middot; 3</span><span class="m" style="font-size: 9px; color: #6f6a5f;">378</span></div>
+          <div class="row" style="border-bottom: none;"><span class="m" style="font-size: 10px; color: #c9c1b1;">History &middot; 21 turns</span><span class="m" style="font-size: 9px; color: #6f6a5f;">1,796</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="note">Same four tabs, same table. Nothing is invented for the phone &mdash; the panel is the panel, laid down instead of standing up.</p>
+  </div>
+
+  <!-- 3. The palette, which is how the phone gets 200 commands without 19 buttons. -->
+  <div style="display: flex; flex-direction: column;">
+    <div class="cap">Commands</div>
+    <div class="phone">
+      <div style="flex: none; padding: 13px 15px; border-bottom: 1px solid #2f2a22; background: #16130f; display: flex; align-items: center; gap: 10px;">
+        <span class="m" style="font-size: 13px; color: #6f6a5f;">&rsaquo;</span>
+        <span class="m" style="font-size: 14px; color: #e8e2d6;">dr</span>
+        <span style="width: 1px; height: 15px; background: #c0503c;"></span>
+        <span style="flex-grow: 1;"></span>
+        <span class="lbl" style="color: #c0503c;">Aldan &middot; 19</span>
+      </div>
+      <div style="flex-grow: 1; background: #16130f; display: flex; flex-direction: column;">
+        <div style="padding: 10px 15px 5px;"><span class="lbl" style="color: #6f6a5f;">On this turn</span></div>
+        <div style="padding: 11px 15px; background: #1e1712; border-left: 2px solid #c0503c; display: flex; align-items: center;">
+          <span class="m" style="font-size: 12.5px; color: #e8e2d6;"><span style="color: #c0503c;">Dr</span>aw this</span>
+          <span style="flex-grow: 1;"></span>
+          <span class="m" style="font-size: 9px; color: #6f6a5f;">picture</span>
+        </div>
+        <div style="padding: 11px 15px; display: flex; align-items: center;">
+          <span class="m" style="font-size: 12.5px; color: #c9c1b1;">Rea<span style="color: #c0503c;">d</span> it aloud</span>
+          <span style="flex-grow: 1;"></span>
+          <span class="m" style="font-size: 9px; color: #6f6a5f;">voice</span>
+        </div>
+        <div style="padding: 11px 15px; display: flex; align-items: center;">
+          <span class="m" style="font-size: 12.5px; color: #c9c1b1;">Hi<span style="color: #c0503c;">d</span>e f<span style="color: #c0503c;">r</span>om the author</span>
+        </div>
+        <div style="padding: 10px 15px 5px; border-top: 1px solid #221e18;"><span class="lbl" style="color: #6f6a5f;">In this roleplay</span></div>
+        <div style="padding: 11px 15px; display: flex; align-items: center;">
+          <span class="m" style="font-size: 12.5px; color: #c9c1b1;"><span style="color: #c0503c;">D</span>i<span style="color: #c0503c;">r</span>ector note&hellip;</span>
+        </div>
+        <div style="padding: 11px 15px; display: flex; align-items: center;">
+          <span class="m" style="font-size: 12.5px; color: #c9c1b1;">Ad<span style="color: #c0503c;">d</span> a cha<span style="color: #c0503c;">r</span>acter&hellip;</span>
+        </div>
+      </div>
+    </div>
+    <p class="note">The nineteen-button sheet, replaced. Long-press a turn or tap &ldquo;more&rdquo; and type two letters &mdash; the same list the desktop gets from &#8984;K.</p>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

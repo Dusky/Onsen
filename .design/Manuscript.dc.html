@@ -1,0 +1,95 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,500;1,300;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; background: #14120f; }
+    a { color: #d78872; } a:hover { color: #c0503c; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+    .prose { font-family: "Spectral", Georgia, serif; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; height: 900px; background: #14120f; color: #e8e2d6; display: flex; flex-direction: column; overflow: hidden;">
+
+  <!-- One quiet bar. Everything that was a chip is now a word. -->
+  <div style="height: 54px; flex: none; border-bottom: 1px solid #221e18; display: flex; align-items: center; padding: 0 34px; gap: 26px;">
+    <span class="mono" style="font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: #6f6a5f;">Onsen</span>
+    <span class="prose" style="font-size: 16px; color: #e8e2d6; letter-spacing: -0.01em;">The pass</span>
+    <span style="flex-grow: 1;"></span>
+    <div style="display: flex; gap: 22px;">
+      <span class="mono" style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #6f6a5f;">Cast</span>
+      <span class="mono" style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #6f6a5f;">Marks · 2</span>
+      <span class="mono" style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #6f6a5f;">Setup</span>
+    </div>
+  </div>
+
+  <!-- The page. Three columns: names hang left, prose centres, marginalia right. -->
+  <div style="flex-grow: 1; display: grid; grid-template-columns: 1fr 168px 660px 232px 1fr; align-items: start; padding-top: 46px; overflow: hidden;">
+
+    <div></div>
+
+    <!-- Left margin: who is speaking, hanging beside the first line. -->
+    <div style="display: flex; flex-direction: column; gap: 40px; padding-right: 26px; text-align: right;">
+      <div class="mono" style="font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #6f6a5f; padding-top: 5px;">You</div>
+      <div class="mono" style="font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #8b8477; padding-top: 5px;">Aldan</div>
+      <div class="mono" style="font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #8b8477; padding-top: 5px;">Mira</div>
+    </div>
+
+    <!-- The prose. No rules between turns; the margin does the separating. -->
+    <div style="display: flex; flex-direction: column; gap: 40px;">
+      <p class="prose" style="margin: 0; font-size: 17.5px; line-height: 1.64; color: #9a9284;">Ask her what it would take.</p>
+
+      <div style="display: flex; flex-direction: column; gap: 15px;">
+        <p class="prose" style="margin: 0; font-size: 17.5px; line-height: 1.64; color: #e8e2d6; text-wrap: pretty;">The lamp on the counter had burned down to a stub, and nobody had said anything about it for ten minutes.</p>
+        <p class="prose" style="margin: 0; font-size: 17.5px; line-height: 1.64; color: #e8e2d6; text-wrap: pretty;">He turned the ledger around so she could see the column. <span style="color: #c9c1b1;">&ldquo;That is what I mean by short.&rdquo;</span></p>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 15px;">
+        <p class="prose" style="margin: 0; font-size: 17.5px; line-height: 1.64; color: #e8e2d6; text-wrap: pretty;"><span style="color: #c9c1b1;">&ldquo;Short.&rdquo;</span> She said it the way you say a word you intend to make somebody regret. <span style="color: #c9c1b1;">&ldquo;Say the number, Aldan.&rdquo;</span></p>
+      </div>
+    </div>
+
+    <!-- Right margin: what the machinery did, in the blue pencil, out of the way. -->
+    <div style="display: flex; flex-direction: column; gap: 40px; padding-left: 30px;">
+      <div style="height: 26px;"></div>
+      <div style="display: flex; flex-direction: column; gap: 7px; border-left: 1px solid #232a31; padding-left: 13px;">
+        <span class="mono" style="font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #6f7d8c;">Lore fired</span>
+        <span class="prose" style="font-size: 13px; line-height: 1.5; color: #6f7d8c; font-style: italic;">The ledger &middot; Coldharbour</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 7px; border-left: 1px solid #232a31; padding-left: 13px;">
+        <span class="mono" style="font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #6f7d8c;">Guide</span>
+        <span class="prose" style="font-size: 13px; line-height: 1.5; color: #6f7d8c; font-style: italic;">Mira is waiting him out.</span>
+      </div>
+    </div>
+
+    <div></div>
+  </div>
+
+  <!-- The composer is a line on the page, not a panel bolted under it. -->
+  <div style="flex: none; border-top: 1px solid #221e18; padding: 20px 0 26px;">
+    <div style="width: 660px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px;">
+      <div style="display: flex; align-items: baseline; gap: 14px;">
+        <span class="mono" style="font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #6f6a5f;">You</span>
+        <span class="prose" style="font-size: 17.5px; line-height: 1.64; color: #6f6a5f; font-style: italic;">Direct the scene&hellip;</span>
+      </div>
+      <div style="display: flex; gap: 20px; align-items: center;">
+        <span class="mono" style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #8b8477;">Nudge</span>
+        <span class="mono" style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #8b8477;">Steer</span>
+        <span class="mono" style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #8b8477;">As me</span>
+        <span class="mono" style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #8b8477;">Off script</span>
+        <span style="flex-grow: 1;"></span>
+        <span class="mono" style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #c0503c;">Reply without me &rarr;</span>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

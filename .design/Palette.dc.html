@@ -1,0 +1,99 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; background: #100e0b; }
+    a { color: #d78872; } a:hover { color: #c0503c; }
+    .m { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+    .p { font-family: "Spectral", Georgia, serif; }
+    .lbl { font-family: "IBM Plex Mono", monospace; font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; }
+    .cmd { display: flex; align-items: center; gap: 12px; padding: 8px 16px; }
+    .key { font-family: "IBM Plex Mono", monospace; font-size: 8.5px; color: #6f6a5f; border: 1px solid #2a251e; padding: 1px 5px; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; height: 900px; background: #100e0b; color: #e8e2d6; position: relative; overflow: hidden;">
+
+  <!-- The workbench behind, dimmed. -->
+  <div style="position: absolute; inset: 0; display: grid; grid-template-columns: 236px 1fr 356px; opacity: 0.3;">
+    <div style="border-right: 1px solid #221e18; background: #14120f;"></div>
+    <div style="background: #14120f; padding: 60px 18px; display: flex; flex-direction: column; gap: 20px;">
+      <p class="p" style="margin: 0; font-size: 16px; line-height: 1.56; color: #9a9284;">Ask her what it would take.</p>
+      <p class="p" style="margin: 0; font-size: 16px; line-height: 1.56; color: #e8e2d6;">The lamp on the counter had burned down to a stub, and nobody had said anything about it for ten minutes.</p>
+      <p class="p" style="margin: 0; font-size: 16px; line-height: 1.56; color: #e8e2d6;">&ldquo;Short.&rdquo; She said it the way you say a word you intend to make somebody regret.</p>
+    </div>
+    <div style="border-left: 1px solid #221e18; background: #14120f;"></div>
+  </div>
+  <div style="position: absolute; inset: 0; background: #0c0a08; opacity: 0.55;"></div>
+
+  <!-- The palette. Scoped to whatever j/k has selected. -->
+  <div style="position: absolute; left: 50%; top: 96px; transform: translateX(-50%); width: 620px; background: #16130f; border: 1px solid #2f2a22;">
+
+    <div style="padding: 14px 16px 12px; border-bottom: 1px solid #221e18; display: flex; align-items: center; gap: 11px;">
+      <span class="m" style="font-size: 13px; color: #6f6a5f;">&rsaquo;</span>
+      <span class="m" style="font-size: 14px; color: #e8e2d6;">dr</span>
+      <span style="width: 1px; height: 16px; background: #c0503c;"></span>
+      <span style="flex-grow: 1;"></span>
+      <span class="lbl" style="color: #c0503c;">Aldan &middot; turn 19</span>
+    </div>
+
+    <div style="padding: 9px 16px 5px;"><span class="lbl" style="color: #6f6a5f;">On this turn</span></div>
+    <div class="cmd" style="background: #1e1712; border-left: 2px solid #c0503c;">
+      <span class="m" style="font-size: 12.5px; color: #e8e2d6;"><span style="color: #c0503c;">Dr</span>aw this</span>
+      <span style="flex-grow: 1;"></span>
+      <span class="m" style="font-size: 9.5px; color: #6f6a5f;">picture &middot; SD WebUI</span>
+    </div>
+    <div class="cmd" style="border-left: 2px solid transparent;">
+      <span class="m" style="font-size: 12.5px; color: #c9c1b1;">Rea<span style="color: #c0503c;">d</span> it aloud</span>
+      <span style="flex-grow: 1;"></span>
+      <span class="m" style="font-size: 9.5px; color: #6f6a5f;">voice</span>
+    </div>
+    <div class="cmd" style="border-left: 2px solid transparent;">
+      <span class="m" style="font-size: 12.5px; color: #c9c1b1;">Hi<span style="color: #c0503c;">d</span>e f<span style="color: #c0503c;">r</span>om the author</span>
+      <span style="flex-grow: 1;"></span>
+      <span class="key">H</span>
+    </div>
+    <div class="cmd" style="border-left: 2px solid transparent;">
+      <span class="m" style="font-size: 12.5px; color: #c9c1b1;">Rewrite this&hellip;</span>
+      <span style="flex-grow: 1;"></span>
+      <span class="m" style="font-size: 9.5px; color: #6f6a5f;">correct</span>
+    </div>
+
+    <div style="padding: 12px 16px 5px; border-top: 1px solid #221e18;"><span class="lbl" style="color: #6f6a5f;">In this roleplay</span></div>
+    <div class="cmd" style="border-left: 2px solid transparent;">
+      <span class="m" style="font-size: 12.5px; color: #c9c1b1;"><span style="color: #c0503c;">D</span>i<span style="color: #c0503c;">r</span>ector note&hellip;</span>
+      <span style="flex-grow: 1;"></span>
+      <span class="m" style="font-size: 9.5px; color: #6f6a5f;">steer every turn</span>
+    </div>
+    <div class="cmd" style="border-left: 2px solid transparent;">
+      <span class="m" style="font-size: 12.5px; color: #c9c1b1;">Ad<span style="color: #c0503c;">d</span> a cha<span style="color: #c0503c;">r</span>acter&hellip;</span>
+      <span style="flex-grow: 1;"></span>
+      <span class="m" style="font-size: 9.5px; color: #6f6a5f;">cast</span>
+    </div>
+
+    <div style="padding: 12px 16px 5px; border-top: 1px solid #221e18;"><span class="lbl" style="color: #6f6a5f;">Go to</span></div>
+    <div class="cmd" style="border-left: 2px solid transparent;">
+      <span class="m" style="font-size: 12.5px; color: #c9c1b1;">Col<span style="color: #c0503c;">d</span>ha<span style="color: #c0503c;">r</span>bour</span>
+      <span style="flex-grow: 1;"></span>
+      <span class="m" style="font-size: 9.5px; color: #6f6a5f;">roleplay &middot; 3 replies</span>
+    </div>
+
+    <div style="border-top: 1px solid #221e18; padding: 9px 16px; display: flex; gap: 16px; align-items: center;">
+      <span class="lbl" style="color: #6f6a5f;">&uarr;&darr; move</span>
+      <span class="lbl" style="color: #6f6a5f;">&crarr; run</span>
+      <span class="lbl" style="color: #6f6a5f;">esc close</span>
+      <span style="flex-grow: 1;"></span>
+      <span class="lbl" style="color: #6f6a5f;">Everything the app can do</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
