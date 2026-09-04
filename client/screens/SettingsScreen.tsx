@@ -55,6 +55,7 @@ import { TriggerEditor } from "../components/TriggerEditor.tsx";
 import { ExportPackSheet, InstallPackSheet, RemovePackSheet } from "../components/PackSheets.tsx";
 import { WebhookEditor } from "../components/WebhookEditor.tsx";
 import { ApiKeyEditor } from "../components/ApiKeyEditor.tsx";
+import { MediaSettings } from "../components/MediaSettings.tsx";
 
 /**
  * Settings (design handoff, screen 3i).
@@ -1528,6 +1529,12 @@ export function SettingsScreen() {
           <ApiKeysSection />
 
           <WebhooksSection />
+
+          {/* §20 phase 41: what draws and what speaks. Near the data bank and
+              the webhooks rather than up with the providers, because these are
+              services the app talks to and not models it writes with. */}
+          <p className="section-label mb-[4px]">{strings.media.title}</p>
+          <MediaSettings />
 
           <PacksSection />
 

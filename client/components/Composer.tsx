@@ -37,6 +37,18 @@ interface ComposerProps {
    * The composer also aligns to the prose column rather than the window.
    */
   wide?: boolean;
+  /**
+   * Attaching a picture (§20 phase 41).
+   *
+   * Always offered where a scene can take one. Describing it needs a model that
+   * can see, but a picture nobody described is still worth having: the two
+   * switches on it mean a reader can keep one for themselves that the story
+   * never learns about.
+   */
+  onAttach?(file: File): void;
+  attaching?: boolean;
+  /** Pictures waiting to go with the next line, as thumbnails. */
+  pending?: { id: string; url: string }[];
 }
 
 export function Composer({
@@ -46,6 +58,9 @@ export function Composer({
   speakerInitials,
   draft,
   onDraftChange,
+  onAttach,
+  attaching,
+  pending,
   opsOpen,
   onToggleOps,
   ops,
@@ -82,6 +97,23 @@ export function Composer({
           closed by default, so the resting composer stays two rows tall. */}
       {ops === undefined ? null : <div className="mb-[11px]">{ops}</div>}
 
+      {/* What is going with the next line (§20 phase 41). Above the field
+          rather than inside it: a picture is not text, and the row it sits in
+          has to stay one line tall on a phone. */}
+      {pending !== undefined && pending.length > 0 ? (
+        <div className="mb-[9px] flex flex-wrap gap-[6px]">
+          {pending.map((image) => (
+            <img
+              key={image.id}
+              src={image.url}
+              alt=""
+              className="h-[46px] w-[46px] object-cover"
+              style={{ border: "1px solid var(--onsen-color-rule)" }}
+            />
+          ))}
+        </div>
+      ) : null}
+
       <div className="flex items-end gap-[8px]">
         <textarea
           ref={field}
@@ -100,6 +132,37 @@ export function Composer({
             }
           }}
         />
+
+        {/* Attach a picture (§20 phase 41). A label rather than a button,
+            because the input it drives has to be a real file input and a
+            styled one of those is a label every time. */}
+        {onAttach === undefined ? null : (
+          <label
+            className="chrome flex h-[46px] w-[46px] flex-none cursor-pointer items-center justify-center border text-[15px]"
+            style={{
+              borderColor: "var(--onsen-color-border-quiet)",
+              color: attaching === true
+                ? "var(--onsen-color-red)"
+                : "var(--onsen-color-text-muted)",
+            }}
+            aria-label={strings.media.attach}
+            title={strings.media.attach}
+          >
+            {attaching === true ? "…" : "+"}
+            <input
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                // Cleared so choosing the same file twice fires again, which a
+                // file input otherwise refuses to do.
+                event.target.value = "";
+                if (file !== undefined) onAttach(file);
+              }}
+            />
+          </label>
+        )}
 
         {/* The ops key. Takes the red active treatment while the drawer is
             open — and is absent where the ops are already a visible row. */}

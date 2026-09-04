@@ -656,6 +656,59 @@ describe("attachments", () => {
     expect(await promptFor()).toContain("[image: A single dark pixel");
   });
 
+  test("a picture reaches the client on both paths that build a message", async () => {
+    const t = await signedIn();
+    const { sceneId } = await scene(t);
+    await withVision(t);
+    adapter.taskReply = "A dot.";
+    await upload(t, sceneId);
+
+    // The path a send returns.
+    const sent = await json<MessageDto>(t, "POST", `/api/scenes/${sceneId}/messages`, {
+      kind: "user",
+      authorType: "user",
+      content: "Look at this.",
+    });
+    expect(sent.media).toHaveLength(1);
+
+    // And the path that reads the whole scene. Two functions build a message
+    // DTO — `messageDto` and `activePathDtos` — and wiring only one is exactly
+    // how a picture ends up in the database and not on the screen.
+    const read = await json<{ messages: MessageDto[] }>(t, "GET", `/api/scenes/${sceneId}`);
+    const carried = read.messages.find((message) => message.id === sent.id)!;
+    expect(carried.media).toHaveLength(1);
+    expect(carried.media[0]!.url).toBe(sent.media[0]!.url);
+  });
+
+  test("a picture waiting to be sent travels with the scene", async () => {
+    const t = await signedIn();
+    const { sceneId } = await scene(t);
+    await withVision(t);
+    adapter.taskReply = "A dot.";
+    await upload(t, sceneId);
+
+    // It belongs to no message until a line is sent, so the composer can only
+    // show it if the scene read carries it.
+    const before = await json<{ pendingMedia: { id: string }[] }>(
+      t,
+      "GET",
+      `/api/scenes/${sceneId}`,
+    );
+    expect(before.pendingMedia).toHaveLength(1);
+
+    await json(t, "POST", `/api/scenes/${sceneId}/messages`, {
+      kind: "user",
+      authorType: "user",
+      content: "Look at this.",
+    });
+    const after = await json<{ pendingMedia: { id: string }[] }>(
+      t,
+      "GET",
+      `/api/scenes/${sceneId}`,
+    );
+    expect(after.pendingMedia).toEqual([]);
+  });
+
   test("something that is not a picture is refused", async () => {
     const t = await signedIn();
     const { sceneId } = await scene(t);

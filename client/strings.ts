@@ -844,6 +844,66 @@ export const strings = {
     saved: "Saved",
   },
 
+  /* Pictures, voices and captions (SPEC §20 phase 41). */
+  media: {
+    kicker: "Pictures and voices",
+    title: "Pictures and voices",
+    explainer:
+      "Draw a scene, hear a line read aloud, or show the author a picture. Each needs a service of its own — a local one is fine, and nothing here is on unless you set it up.",
+
+    imageSection: "What draws",
+    speechSection: "What speaks",
+    noImageService: "No picture service yet.",
+    noSpeechService: "No voice service yet.",
+    addImage: "Add a picture service",
+    addSpeech: "Add a voice service",
+
+    serviceName: "Name",
+    serviceKind: "Kind",
+    serviceUrl: "Address",
+    serviceModel: "Model",
+    serviceModelHint: "Leave empty to use whatever the service has loaded.",
+    serviceKey: "API key",
+    serviceKeyKept: (mask: string) => `Stored: ${mask}. Leave empty to keep it.`,
+    serviceKeyNotNeeded: "Usually blank for a local service.",
+    serviceDefault: "Use this one",
+    serviceIsDefault: "In use",
+    /** A badge on the row: state. The buttons below say the action instead. */
+    serviceOff: "Off",
+    serviceEnable: "Turn it on",
+    serviceDisable: "Turn it off",
+    serviceDelete: "Remove",
+    serviceDeleteConfirm: (name: string) => `Remove ${name}? Pictures it already made stay.`,
+    save: "Save",
+
+    /* On a message. */
+    illustrate: "Draw this",
+    illustrating: "Drawing…",
+    speak: "Read it aloud",
+    speaking: "Reading…",
+    attach: "Add a picture",
+    attaching: "Adding…",
+
+    /* On a picture. */
+    drawnFrom: "Drawn from",
+    describedAs: "The author is told",
+    notDescribed: "Not described yet.",
+    recaption: "Describe it again",
+    recaptioning: "Looking…",
+    /* The two switches, said as what they do rather than as state. */
+    hide: "Hide from the log",
+    unhide: "Show in the log",
+    dropFromPrompt: "Keep it from the author",
+    addToPrompt: "Show it to the author",
+    hiddenNote: "Hidden here.",
+    quietNote: "The author is not told about this.",
+    remove: "Delete",
+    removeConfirm: "Delete this picture? It is gone from every branch.",
+    /* Said once, where the distinction first bites. */
+    switchesHint:
+      "Hiding it here and keeping it from the author are separate. A picture can be one, both or neither.",
+  },
+
   authors: {
     kicker: "Writing partner",
     listTitle: "Authors",

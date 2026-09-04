@@ -308,10 +308,16 @@ export function mediaRoutes(ctx: AppContext, media: MediaRunner): Hono<AppEnv> {
   /**
    * Upload an image for the author to react to.
    *
-   * Captioned on the way in, because the caption is the part that reaches the
-   * prompt. A failed caption still stores the picture: the reader can see it in
-   * the log, and a picture with no description is a better outcome than an
-   * upload that vanished.
+   * Captioned on the way in, and awaited, because the caption is the part that
+   * reaches the prompt. Returning early would look faster and would lose the
+   * race that matters: the picture binds to the next line the reader sends, so
+   * a caption still running when they press send goes with a message the author
+   * is told nothing about.
+   *
+   * A failed caption still stores the picture: the reader can see it in the
+   * log, can ask again, and — with the two switches — may have wanted a
+   * picture the story never learns about anyway. An upload that vanished
+   * because a side call failed would be the worse outcome.
    */
   app.post("/scenes/:sceneId/attachments", async (c) => {
     const scene = findScene(ctx.db, c.req.param("sceneId"));

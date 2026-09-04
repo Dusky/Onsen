@@ -842,6 +842,16 @@ export function activePathDtos(db: Database, scene: SceneRow): MessageDto[] {
   // on every open of a scene, which is the cost that decides where §14's
   // display stage runs.
   const scripts = scriptContext(db, scene.id);
+  // One query for the whole path rather than one per turn, for the same reason
+  // the scripts are loaded once (§20 phase 41).
+  const media = new Map<number, MediaAssetDto[]>();
+  for (const asset of assetsForMessages(
+    db,
+    rows.map((row) => row.id),
+  )) {
+    if (asset.message_id === null) continue;
+    media.set(asset.message_id, [...(media.get(asset.message_id) ?? []), toMediaAssetDto(asset)]);
+  }
   return rows.map((row, index) =>
     displayScripted(
       scripts,
@@ -854,6 +864,7 @@ export function activePathDtos(db: Database, scene: SceneRow): MessageDto[] {
         // own single segment and does not need it sent twice.
         row.kind === "beat" ? segmentDtosOf(db, row, speakers) : null,
         annotationDtosOf(db, row.id),
+        media.get(row.id) ?? [],
       ),
     ),
   );

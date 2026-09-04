@@ -938,6 +938,11 @@ export interface SceneWithHistoryDto {
   guides: GuideDto[];
   /** Null when the cast is empty or entirely benched. */
   nextSpeaker: NextSpeakerDto | null;
+  /**
+   * Pictures attached but not yet sent (§20 phase 41). They belong to no
+   * message until a line is sent, so they travel with the scene.
+   */
+  pendingMedia: MediaAssetDto[];
 }
 
 export interface CheckpointDto {

@@ -33,6 +33,9 @@ import type {
   SceneApiDto,
   MemoryEntityDto,
   AuthorMemoryDto,
+  MediaAssetDto,
+  MediaKindDto,
+  MediaServiceDto,
   SavedFilterDto,
   TrackerDto,
   CreateConnectionProfileRequest,
@@ -1848,4 +1851,136 @@ export function useWipeAuthorMemory(authorId: string) {
   return useAuthorMemoryMutation(authorId, () =>
     api.delete<{ removed: number }>(`/memory/authors/${authorId}/entries`),
   );
+}
+
+/* ------------------------------------------------------------------ */
+/* Pictures, voices and captions (SPEC §20 phase 41)                   */
+/* ------------------------------------------------------------------ */
+
+const mediaKeys = {
+  services: ["media", "services"] as const,
+  kinds: ["media", "kinds"] as const,
+};
+
+/** What kinds of service exist, with the words for them (never a raw enum). */
+export function useMediaKinds() {
+  return useQuery({
+    queryKey: mediaKeys.kinds,
+    queryFn: () => api.get<{ kinds: MediaKindDto[] }>("/media/kinds"),
+    staleTime: Infinity,
+  });
+}
+
+export function useMediaServices() {
+  return useQuery({
+    queryKey: mediaKeys.services,
+    queryFn: () => api.get<{ services: MediaServiceDto[] }>("/media/services"),
+  });
+}
+
+function useMediaServiceMutation<TArgs, TResult>(fn: (args: TArgs) => Promise<TResult>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => void client.invalidateQueries({ queryKey: mediaKeys.services }),
+  });
+}
+
+export function useCreateMediaService() {
+  return useMediaServiceMutation((body: Record<string, unknown>) =>
+    api.post<MediaServiceDto>("/media/services", body),
+  );
+}
+
+export function useUpdateMediaService() {
+  return useMediaServiceMutation(({ id, ...body }: Record<string, unknown> & { id: string }) =>
+    api.patch<MediaServiceDto>(`/media/services/${id}`, body),
+  );
+}
+
+export function useDeleteMediaService() {
+  return useMediaServiceMutation((id: string) => api.delete<void>(`/media/services/${id}`));
+}
+
+/**
+ * Everything that changes a message's media invalidates the scene.
+ *
+ * The assets ride on the message DTO rather than in a list of their own, so
+ * there is nothing else to refresh — and the prompt changes too, because an
+ * attachment's caption is carried on the next turn.
+ */
+function useSceneMediaMutation<TArgs, TResult>(
+  sceneId: string,
+  fn: (args: TArgs) => Promise<TResult>,
+) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => void client.invalidateQueries({ queryKey: keys.scene(sceneId) }),
+  });
+}
+
+export function useIllustrate(sceneId: string) {
+  return useSceneMediaMutation(
+    sceneId,
+    ({ messageId, prompt }: { messageId: string; prompt?: string }) =>
+      api.post<{ asset: MediaAssetDto }>(
+        `/media/messages/${messageId}/illustrate`,
+        prompt === undefined ? {} : { prompt },
+      ),
+  );
+}
+
+export function useSpeak(sceneId: string) {
+  return useSceneMediaMutation(sceneId, (messageId: string) =>
+    api.post<{ asset: MediaAssetDto }>(`/media/messages/${messageId}/speak`),
+  );
+}
+
+/** §20 phase 41's two switches: in the log, in the prompt, both or neither. */
+export function useSetMediaVisibility(sceneId: string) {
+  return useSceneMediaMutation(
+    sceneId,
+    ({ id, ...body }: { id: string; hidden?: boolean; inPrompt?: boolean }) =>
+      api.patch<MediaAssetDto>(`/media/files/${id}`, body),
+  );
+}
+
+export function useDeleteMedia(sceneId: string) {
+  return useSceneMediaMutation(sceneId, (id: string) => api.delete<void>(`/media/files/${id}`));
+}
+
+export function useRecaption(sceneId: string) {
+  return useSceneMediaMutation(sceneId, (id: string) =>
+    api.post<{ asset: MediaAssetDto; caption: string | null }>(`/media/attachments/${id}/caption`),
+  );
+}
+
+/**
+ * Attach a picture to the roleplay.
+ *
+ * Multipart, so it goes through fetch directly — `request()` sets a JSON
+ * content type whenever there is a body, which eats the multipart boundary.
+ * That was a real bug once already, in phase 34.
+ */
+export function useAttachImage(sceneId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      const response = await fetch(`/api/media/scenes/${sceneId}/attachments`, {
+        method: "POST",
+        body: form,
+      });
+      const body = (await response.json()) as {
+        asset?: MediaAssetDto;
+        captionError?: string | null;
+        error?: { message: string };
+      };
+      if (!response.ok) throw new Error(body.error?.message ?? "That picture could not be added.");
+      return { asset: body.asset!, captionError: body.captionError ?? null };
+    },
+    onSuccess: () => void client.invalidateQueries({ queryKey: keys.scene(sceneId) }),
+  });
 }

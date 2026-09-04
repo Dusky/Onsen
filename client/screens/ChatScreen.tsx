@@ -11,6 +11,9 @@ import {
   useSendMessage,
   useSetLeaf,
   useSiblings,
+  useAttachImage,
+  useIllustrate,
+  useSpeak,
 } from "../lib/queries.ts";
 import { useGeneration } from "../lib/generation.ts";
 import { MessageBlock, MessageEditor, OocBlock, Reasoning } from "../components/MessageBlock.tsx";
@@ -271,6 +274,16 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   // rather than living on the row forever.
   const sawAutopilot = useRef(false);
   const [autopilotNote, setAutopilotNote] = useState<string | null>(null);
+  /**
+   * What a picture or voice service said when it refused (§20 phase 41).
+   *
+   * Shown where the autopilot's reason is shown: a service being unreachable is
+   * news for a moment and then it is furniture, and it clears on the next act.
+   */
+  const [mediaNote, setMediaNote] = useState<string | null>(null);
+  const illustrate = useIllustrate(sceneId);
+  const speak = useSpeak(sceneId);
+  const attach = useAttachImage(sceneId);
   useEffect(() => {
     if (apState === null) return;
     if (apState.active) {
@@ -709,6 +722,17 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           {autopilotNote}
         </p>
       ) : null}
+
+      {mediaNote !== null ? (
+        <button
+          type="button"
+          onClick={() => setMediaNote(null)}
+          className="chrome block text-left text-[9px] leading-[1.5] tracking-[0.06em] uppercase"
+          style={{ color: "var(--onsen-color-red)" }}
+        >
+          {mediaNote}
+        </button>
+      ) : null}
     </>
   );
 
@@ -842,6 +866,19 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           }
           draft={draft}
           onDraftChange={setDraft}
+          onAttach={(file) =>
+            attach.mutate(file, {
+              // A caption that failed is worth saying once — the picture is
+              // still here, and the reader may have wanted it that way.
+              onSuccess: (result) => setMediaNote(result.captionError),
+              onError: (error) => setMediaNote(error.message),
+            })
+          }
+          attaching={attach.isPending}
+          pending={(scene.data?.pendingMedia ?? []).map((asset) => ({
+            id: asset.id,
+            url: asset.url,
+          }))}
           opsOpen={opsPanel !== null}
           onToggleOps={() => setOpsPanel(opsPanel === null ? "grid" : null)}
           ops={opsDrawer()}
@@ -1020,6 +1057,26 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             label={runPasses.isPending ? strings.chat.checking : strings.chat.checkTurn}
             onClick={() => {
               runPasses.mutate(acting.id);
+              setActing(null);
+            }}
+          />
+          {/* §20 phase 41. Here rather than in the ops grid: these leave the
+              prose alone and add something beside it, which is a different kind
+              of act from the six that rewrite a turn. */}
+          <SheetAction
+            label={illustrate.isPending ? strings.media.illustrating : strings.media.illustrate}
+            onClick={() => {
+              illustrate.mutate(
+                { messageId: acting.id },
+                { onError: (error) => setMediaNote(error.message) },
+              );
+              setActing(null);
+            }}
+          />
+          <SheetAction
+            label={speak.isPending ? strings.media.speaking : strings.media.speak}
+            onClick={() => {
+              speak.mutate(acting.id, { onError: (error) => setMediaNote(error.message) });
               setActing(null);
             }}
           />

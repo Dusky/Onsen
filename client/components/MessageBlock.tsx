@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { AnnotationDto, MessageDto, MessageSegmentDto } from "@shared/types.ts";
 import { useSwipe } from "../lib/gestures.ts";
 import { strings } from "../strings.ts";
+import { MessageMedia } from "./MessageMedia.tsx";
 
 /**
  * One message in the log.
@@ -386,6 +387,12 @@ export function MessageBlock({
           <p className="chrome mt-[8px] text-[8.5px] leading-[1.5] tracking-[0.06em] text-ink-dim uppercase">
             {strings.chat.beatUnparsed}
           </p>
+        ) : null}
+        {/* §20 phase 41: what was drawn for this turn, read aloud from it, or
+            attached to it. Below the prose, because it illustrates the words
+            rather than replacing them. */}
+        {message.media.length > 0 ? (
+          <MessageMedia sceneId={message.sceneId} assets={message.media} />
         ) : null}
         {message.editedAt !== null ? (
           <p className="chrome mt-[8px] text-[8.5px] tracking-[0.1em] text-ink-dim uppercase">

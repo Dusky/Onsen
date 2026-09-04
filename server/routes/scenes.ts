@@ -31,7 +31,7 @@ import {
   type MessageRow,
   type SceneRow,
 } from "../db/queries/history.ts";
-import { attachToMessage, pendingAttachments } from "../db/queries/media.ts";
+import { attachToMessage, pendingAttachments, toMediaAssetDto } from "../db/queries/media.ts";
 import {
   addSceneMember,
   findAuthor,
@@ -164,6 +164,10 @@ export function sceneRoutes(
       // Versioned per message, so what comes back follows the active path
       // (SPEC §8) — rewinding rewinds them.
       guides: activeGuides(ctx.db, sceneRow.id).map(toGuideDto),
+      // Pictures attached but not yet sent (§20 phase 41). They belong to no
+      // message, so they travel with the scene or they are invisible until the
+      // line they go with exists — which is too late to show the reader.
+      pendingMedia: pendingAttachments(ctx.db, sceneRow.id).map(toMediaAssetDto),
     };
   }
 
