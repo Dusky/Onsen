@@ -190,6 +190,21 @@ export const strings = {
 
     /* Named places in the tree (SPEC §2). */
     checkpoint: "Mark this place",
+
+    /* The palette (§20 phase 43). */
+    paletteOpen: "Commands",
+    palettePlaceholder: "Type a command",
+    paletteEmpty: "Nothing matches that.",
+    paletteHintMove: "\u2191\u2193 move",
+    paletteHintRun: "\u21b5 run",
+    paletteHintClose: "esc close",
+    paletteScope: (speaker: string) => `${speaker}'s turn`,
+    paletteGroups: {
+      turn: "On this turn",
+      scene: "In this roleplay",
+      goto: "Go to",
+    } as Record<string, string>,
+    paletteMore: "More\u2026",
     checkpointName: "Call it",
     checkpointNamePlaceholder: "before she opens the ledger",
     checkpointSave: "Mark it",

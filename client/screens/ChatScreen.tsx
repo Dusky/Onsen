@@ -15,6 +15,7 @@ import {
   useIllustrate,
   useSpeak,
   useCheckpoints,
+  useSignOut,
 } from "../lib/queries.ts";
 import { useGeneration } from "../lib/generation.ts";
 import { MessageBlock, MessageEditor, OocBlock, Reasoning } from "../components/MessageBlock.tsx";
@@ -22,6 +23,7 @@ import { OocChannel } from "../components/OocChannel.tsx";
 import { Composer } from "../components/Composer.tsx";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
 import { CheckpointsSheet, MarkSheet } from "../components/Checkpoints.tsx";
+import { CommandPalette } from "../components/CommandPalette.tsx";
 import { InspectorSheet } from "../components/InspectorSheet.tsx";
 import { CastStrip } from "../components/CastStrip.tsx";
 import { OpsGrid, OpsRow, OpPrompt, type Op } from "../components/OpsGrid.tsx";
@@ -285,6 +287,92 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const [mediaNote, setMediaNote] = useState<string | null>(null);
   /** The message being marked, while the name is being typed (§2). */
   const [marking, setMarking] = useState<MessageDto | null>(null);
+  const signOut = useSignOut();
+  /** The palette opened on nothing, by key, rather than on a turn. */
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  /**
+   * ⌘K anywhere in a roleplay.
+   *
+   * Ignored while a field has focus so it cannot eat a keystroke someone meant
+   * for the composer, and registered once for the screen rather than per turn.
+   */
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "k" || !(event.metaKey || event.ctrlKey)) return;
+      const inField = document.activeElement?.matches("input, textarea, [contenteditable]");
+      if (inField === true) return;
+      event.preventDefault();
+      setPaletteOpen(true);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  /**
+   * Run a command by id (§20 phase 43).
+   *
+   * One map, keyed by the registry's ids, so `test/commands.test.ts` can prove
+   * every command in the palette actually does something. A row that does
+   * nothing on return is the failure the whole registry exists to prevent.
+   */
+  function runCommand(id: string, on: MessageDto | null): void {
+    const turn = on;
+    const handlers: Record<string, () => void> = {
+      /* on the selected turn */
+      "inspect": () => turn && setInspecting(turn),
+      "reroll": () => void (turn && reroll(turn)),
+      "edit": () => turn && setEditing(turn.id),
+      "branch": () => turn && setLeaf.mutate({ messageId: turn.id, descend: false }),
+      "mark": () => turn && setMarking(turn),
+      "hide": () => turn && edit.mutate({ messageId: turn.id, isHidden: !turn.isHidden }),
+      "check": () => turn && runPasses.mutate(turn.id),
+      "illustrate": () =>
+        turn &&
+        illustrate.mutate({ messageId: turn.id }, { onError: (e) => setMediaNote(e.message) }),
+      "speak": () =>
+        turn && speak.mutate(turn.id, { onError: (e) => setMediaNote(e.message) }),
+      "expand": () => void (turn && revise(turn, "expand")),
+      "correct": () => turn && setCorrecting(turn),
+      "recast": () => turn && setRecasting(turn),
+      "split": () =>
+        turn &&
+        confirm(strings.chat.splitBeatConfirm, () => split.mutate(turn.id), {
+          confirmLabel: strings.chat.splitBeat,
+        }),
+      "copy": () => void navigator.clipboard?.writeText(turn?.content ?? ""),
+      "delete": () =>
+        turn &&
+        confirm(strings.chat.deleteConfirm, () => remove.mutate(turn.id), {
+          confirmLabel: strings.chat.delete,
+        }),
+      // §7: offered and explained rather than hidden. The palette greys it and
+      // shows the reason, so this is never reached.
+      "continue": () => undefined,
+
+      /* on the roleplay */
+      "nudge": () => setOpsPanel("nudge"),
+      "steer": () => setOpsPanel("steer"),
+      "impersonate": () => setOpsPanel("impersonate"),
+      "guided-swipe": () => setOpsPanel("guided_swipe"),
+      "ooc": () => setOocOpen(true),
+      "no-reply": () => void generation.start(nextTurn()).then(() => setCued(null)),
+      "guides": () => setGuidesOpen(true),
+      "attach": () => document.querySelector<HTMLInputElement>('input[type="file"][accept="image/*"]')?.click(),
+      "marks": () => setMarksOpen(true),
+      "setup": () => navigate({ name: "setup", sceneId }),
+
+      /* go to */
+      "go-scenes": () => navigate({ name: "scenes" }),
+      "go-characters": () => navigate({ name: "characters" }),
+      "go-authors": () => navigate({ name: "authors" }),
+      "go-lorebooks": () => navigate({ name: "lorebooks" }),
+      "go-settings": () => navigate({ name: "settings" }),
+      "sign-out": () => signOut.mutate(undefined),
+    };
+    handlers[id]?.();
+  }
+
   const [marksOpen, setMarksOpen] = useState(false);
   const checkpoints = useCheckpoints(sceneId);
   const illustrate = useIllustrate(sceneId);
@@ -1040,150 +1128,20 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         </Sheet>
       ) : null}
 
-      {acting !== null ? (
-        <Sheet title={strings.chat.actions} onClose={() => setActing(null)}>
-          {/* §16: the inspector is reachable from any message — its own
-              generation where it has one, the reply it prompted where it does
-              not, and never more than a long-press away. */}
-          <SheetAction
-            label={strings.chat.inspect}
-            onClick={() => {
-              setInspecting(acting);
-              setActing(null);
-            }}
-          />
-          <SheetAction label={strings.chat.reroll} onClick={() => void reroll(acting)} />
-          <SheetAction
-            label={strings.chat.edit}
-            onClick={() => {
-              setEditing(acting.id);
-              setActing(null);
-            }}
-          />
-          {/* Branching is a leaf move: the next message forks at this point. */}
-          <SheetAction
-            label={strings.chat.branch}
-            onClick={() => {
-              setLeaf.mutate({ messageId: acting.id, descend: false });
-              setActing(null);
-            }}
-          />
-          {/* §2's checkpoints. The server half has existed since phase 2 and
-              nothing ever called it: a branch is where the story went, a mark
-              is a place you chose to be able to return to. */}
-          <SheetAction
-            label={strings.chat.checkpoint}
-            onClick={() => {
-              setMarking(acting);
-              setActing(null);
-            }}
-          />
-          {/* §2: "excluded from the prompt entirely, though still shown in the
-              log". Settable through the API since phase 2 and never offered. */}
-          <SheetAction
-            label={acting.isHidden ? strings.chat.showToPrompt : strings.chat.hideFromPrompt}
-            onClick={() => {
-              edit.mutate({ messageId: acting.id, isHidden: !acting.isHidden });
-              setActing(null);
-            }}
-          />
-          {/* SPEC §7.5: auto-run per scene, or manual per message. This is the
-              per-message half — a second read of one turn you are unsure about. */}
-          <SheetAction
-            label={runPasses.isPending ? strings.chat.checking : strings.chat.checkTurn}
-            onClick={() => {
-              runPasses.mutate(acting.id);
-              setActing(null);
-            }}
-          />
-          {/* §20 phase 41. Here rather than in the ops grid: these leave the
-              prose alone and add something beside it, which is a different kind
-              of act from the six that rewrite a turn. */}
-          <SheetAction
-            label={illustrate.isPending ? strings.media.illustrating : strings.media.illustrate}
-            onClick={() => {
-              illustrate.mutate(
-                { messageId: acting.id },
-                { onError: (error) => setMediaNote(error.message) },
-              );
-              setActing(null);
-            }}
-          />
-          <SheetAction
-            label={speak.isPending ? strings.media.speaking : strings.media.speak}
-            onClick={() => {
-              speak.mutate(acting.id, { onError: (error) => setMediaNote(error.message) });
-              setActing(null);
-            }}
-          />
-          <SheetAction label={strings.chat.opExpand} onClick={() => void revise(acting, "expand")} />
-          {/* Continue lives here rather than in the ops grid: no adapter that
-              ships can accept a partial assistant turn, and a permanently dark
-              cell in a six-cell grid spends a sixth of it on an apology. It is
-              still offered, and it still says why (SPEC §7). */}
-          <SheetAction
-            label={strings.chat.opContinue}
-            disabled
-            onClick={() => void revise(acting, "continue")}
-          />
-          <p className="chrome py-[8px] text-[9px] leading-[1.5] text-ink-dim">
-            {strings.chat.opContinueUnavailable}
-          </p>
-          <SheetAction
-            label={strings.chat.opCorrect}
-            onClick={() => {
-              setCorrecting(acting);
-              setActing(null);
-            }}
-          />
-          {/* A beat has parts, and correcting one of them is not a reroll of the
-              whole exchange: that distinction is the point of recast (§7). */}
-          {acting.kind === "beat" && (acting.segments?.length ?? 0) > 1 ? (
-            <>
-              <SheetAction
-                label={strings.chat.recast}
-                onClick={() => {
-                  setRecasting(acting);
-                  setActing(null);
-                }}
-              />
-              <SheetAction
-                label={strings.chat.splitBeat}
-                onClick={() =>
-                  confirm(
-                    strings.chat.splitBeatConfirm,
-                    () => {
-                      split.mutate(acting.id);
-                      setActing(null);
-                    },
-                    { confirmLabel: strings.chat.splitBeat },
-                  )
-                }
-              />
-            </>
-          ) : null}
-          <SheetAction
-            label={strings.chat.copy}
-            onClick={() => {
-              void navigator.clipboard?.writeText(acting.content);
-              setActing(null);
-            }}
-          />
-          <SheetAction
-            label={strings.chat.delete}
-            destructive
-            onClick={() =>
-              confirm(
-                strings.chat.deleteConfirm,
-                () => {
-                  remove.mutate(acting.id);
-                  setActing(null);
-                },
-                { confirmLabel: strings.chat.delete },
-              )
-            }
-          />
-        </Sheet>
+      {/* §20 phase 43: the message sheet IS the palette, opened on a turn.
+          One list of commands, two ways in, so an action added to one surface
+          cannot go missing from the other. Sixteen stacked identical buttons
+          were a menu pretending to be a form. */}
+      {acting !== null || paletteOpen ? (
+        <CommandPalette
+          hasScene
+          selectedSpeaker={acting === null ? null : (acting.speakerName ?? strings.chat.narratorName)}
+          onRun={(id) => runCommand(id, acting)}
+          onClose={() => {
+            setActing(null);
+            setPaletteOpen(false);
+          }}
+        />
       ) : null}
 
       {marking !== null ? (
