@@ -1087,9 +1087,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             the desktop shows beside the log, laid down rather than stood up. */}
         <StatusBar
           profileName={scene.data?.scene.connectionProfileName ?? null}
-          // Not wired yet: the prompt total is only known after a generation, and
-          // a status bar showing an invented number is worse than one showing none.
-          tokens={null}
+          tokens={scene.data?.scene.lastPromptTokens ?? null}
           generating={isGenerating}
           {...(isDesktop ? {} : { onOpenContext: () => setGuidesOpen(true) })}
         />

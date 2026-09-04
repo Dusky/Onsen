@@ -6,7 +6,7 @@ import {
   until,
   type TestHarness,
 } from "./helpers.ts";
-import { V2_CARD, pngCard } from "./card-fixtures.ts";
+import { V2_CARD_SILENT, pngCard } from "./card-fixtures.ts";
 import { cleanSummary, summaryQuestion } from "../server/summaries/runner.ts";
 import { defaultTemplateOf } from "../server/prompt/index.ts";
 import {
@@ -89,7 +89,7 @@ async function statusOf(t: TestHarness, method: string, path: string, body?: unk
 /** A scene with `turns` messages already in it, alternating reader and reply. */
 async function sceneWith(t: TestHarness, turns: number, settings: Record<string, unknown> = {}) {
   const form = new FormData();
-  form.append("file", new File([pngCard({ chara: V2_CARD }) as unknown as BlobPart], "bell.png"));
+  form.append("file", new File([pngCard({ chara: V2_CARD_SILENT }) as unknown as BlobPart], "bell.png"));
   const { character } = (await (
     await t.fetch("/api/characters/import", { method: "POST", body: form })
   ).json()) as { character: CharacterDto };

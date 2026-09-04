@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { ScriptedAdapter, completeSetup, createHarness, until, type TestHarness } from "./helpers.ts";
-import { V1_CARD, V2_CARD, charxCard, jsonBytes, pngCard } from "./card-fixtures.ts";
+import { V1_CARD, V2_CARD_SILENT, charxCard, jsonBytes, pngCard } from "./card-fixtures.ts";
 import {
   cleanRefinement,
   lockCheckQuestion,
@@ -84,11 +84,11 @@ async function scene(t: TestHarness) {
     name: "Wren",
     description: "A surveyor waiting out the weather.",
   });
-  const bell = await importCharacter(t, pngCard({ chara: V2_CARD }), "bell.png");
+  const bell = await importCharacter(t, pngCard({ chara: V2_CARD_SILENT }), "bell.png");
   const aldan = await importCharacter(t, jsonBytes(V1_CARD), "aldan.json");
   const mira = await importCharacter(
     t,
-    charxCard({ ...V2_CARD, data: { ...V2_CARD.data, name: "Mira Vance" } }),
+    charxCard({ ...V2_CARD_SILENT, data: { ...V2_CARD_SILENT.data, name: "Mira Vance" } }),
     "mira.charx",
   );
 

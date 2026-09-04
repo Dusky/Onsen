@@ -313,12 +313,9 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               </button>
             ))}
           </div>
-          {/* `mention` is accepted by the schema but not yet built; the director
-              falls back to round robin and says so rather than silently doing
-              something else. */}
           {scene.turnStrategy === "mention" ? (
             <p className="chrome mb-[22px] text-[9.5px] leading-[1.5] text-ink-dim">
-              {strings.sceneSetup.strategyNotReady}
+              {strings.sceneSetup.strategyMentionHint}
             </p>
           ) : scene.turnStrategy === "classifier" ? (
             <p className="chrome mb-[16px] text-[9.5px] leading-[1.5] text-ink-dim">

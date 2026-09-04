@@ -3,6 +3,16 @@ import { activePath, lastSpeakerOf, type SceneRow } from "../db/queries/history.
 import { castRowsOf } from "../db/queries/authors.ts";
 import { chooseSpeaker, type DirectorDecision, type TurnStrategy } from "./director.ts";
 
+/** The stored JSON array, defensively — a bad row must not fail a whole scene. */
+function mentionKeywordsFrom(json: string): string[] {
+  try {
+    const parsed: unknown = JSON.parse(json);
+    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 /**
  * The bridge between stored state and the pure turn director.
  *
@@ -35,6 +45,7 @@ export function resolveNextSpeaker(
       name: row.name,
       isActive: row.is_active === 1,
       displayOrder: row.display_order,
+      mentionKeywords: mentionKeywordsFrom(row.mention_keywords),
     })),
     history: activePath(db, scene.id).map((row) => {
       // For a beat this is whoever spoke last *inside* it, not the member it is

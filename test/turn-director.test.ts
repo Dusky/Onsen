@@ -6,7 +6,7 @@ import {
   until,
   type TestHarness,
 } from "./helpers.ts";
-import { V1_CARD, V2_CARD, charxCard, jsonBytes, pngCard } from "./card-fixtures.ts";
+import { V1_CARD, V2_CARD_SILENT, charxCard, jsonBytes, pngCard } from "./card-fixtures.ts";
 import type {
   AuthorDto,
   CharacterDto,
@@ -65,11 +65,11 @@ async function importCharacter(t: TestHarness, bytes: Uint8Array, filename: stri
 
 async function classifierScene(t: TestHarness) {
   const author = await json<AuthorDto>(t, "POST", "/api/authors", { name: "Kestrel" });
-  const bell = await importCharacter(t, pngCard({ chara: V2_CARD }), "bell.png");
+  const bell = await importCharacter(t, pngCard({ chara: V2_CARD_SILENT }), "bell.png");
   const aldan = await importCharacter(t, jsonBytes(V1_CARD), "aldan.json");
   const mira = await importCharacter(
     t,
-    charxCard({ ...V2_CARD, data: { ...V2_CARD.data, name: "Mira Vance" } }),
+    charxCard({ ...V2_CARD_SILENT, data: { ...V2_CARD_SILENT.data, name: "Mira Vance" } }),
     "mira.charx",
   );
 

@@ -70,8 +70,8 @@ async function makeScene(t: TestHarness): Promise<{ sceneId: string; first: Mess
     connectionProfileId: profiles[0]!.id,
   });
   await json<SceneDto>(t, "PUT", `/api/scenes/${created.id}/cast/${character.id}`);
-  // Scenes start empty — the greeting arrives with the card, not the scene —
-  // so every test that needs a message on the path starts with this one.
+  // The scene opens on Bell's greeting (phase 43), so the path already has a
+  // turn on it; every test that needs a reader's message adds this one.
   const first = await json<MessageDto>(t, "POST", `/api/scenes/${created.id}/messages`, {
     kind: "user",
     authorType: "user",
@@ -137,6 +137,22 @@ describe("the prompt inspector (SPEC §16)", () => {
     expect(body.debug.totalTokens).toBeGreaterThan(0);
     // The reader's message is on the path the prompt carried.
     expect(body.debug.historyIncluded.length).toBeGreaterThan(1);
+  });
+
+  test("the scene reports the same total to the status bar (§16)", async () => {
+    // The number has been stored since phase 25 and shown only here. The status
+    // bar reads the same row, so the two can never disagree.
+    const t = await signedIn();
+    const { sceneId } = await makeScene(t);
+
+    const before = await json<SceneWithHistoryDto>(t, "GET", `/api/scenes/${sceneId}`);
+    expect(before.scene.lastPromptTokens).toBeNull();
+
+    const { assistant } = await exchange(t, sceneId, "The oil is low.");
+    const { body } = await inspectorOf(t, sceneId, assistant.id);
+    const after = await json<SceneWithHistoryDto>(t, "GET", `/api/scenes/${sceneId}`);
+
+    expect(after.scene.lastPromptTokens).toBe(body.debug.totalTokens);
   });
 
   test("a reader's message reaches the prompt of the reply it prompted", async () => {

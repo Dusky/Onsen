@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { ScriptedAdapter, completeSetup, createHarness, until, type TestHarness } from "./helpers.ts";
-import { V2_CARD, pngCard } from "./card-fixtures.ts";
+import { V2_CARD_SILENT, pngCard } from "./card-fixtures.ts";
 import { triggersFor, type EventTrigger } from "../server/triggers/select.ts";
 import type {
   CharacterDto,
@@ -129,7 +129,7 @@ async function statusOf(t: TestHarness, method: string, path: string, body?: unk
 
 async function scene(t: TestHarness): Promise<string> {
   const form = new FormData();
-  form.append("file", new File([pngCard({ chara: V2_CARD }) as unknown as BlobPart], "bell.png"));
+  form.append("file", new File([pngCard({ chara: V2_CARD_SILENT }) as unknown as BlobPart], "bell.png"));
   const { character } = (await (
     await t.fetch("/api/characters/import", { method: "POST", body: form })
   ).json()) as { character: CharacterDto };

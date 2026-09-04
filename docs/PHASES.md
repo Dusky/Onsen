@@ -2488,7 +2488,8 @@ proposals are filtered to the vocabulary before they reach the gate.
   viewer this phase's job was to make possible, not to build.
 - **Tag renaming across the library.** A rename is a bulk untag+tag, which the
   bulk route already does; the UI does not yet offer it as one action.
-- **Chub import and folder import** — §9's import work is phase 42.
+- **Chub import and folder import** — §9's import work is phase 42. (Folder
+  import landed in phase 43 instead; phase 42 was deferred.)
 - **Drag-to-reorder folders** — there is no hierarchy to reorder.
 
 ### Surprises
@@ -3746,3 +3747,118 @@ double, but the thirty seconds made a real design point concrete: the upload
 awaits its caption on purpose, because the picture binds to the next line sent
 and a caption still running when the reader presses send goes with a message the
 author is told nothing about.
+
+
+---
+
+## Phase 42 — Chub import, community asset browsing (deferred)
+
+§20's line 42 is "Chub import, community asset browsing." Not built, and not
+because it ran out of room: every other phase reaches only the machine the app
+is installed on. This one reaches out to somebody else's service — a third
+party's search, their rate limits, their content, their availability, and their
+terms — and it is the only phase in the build order that does. That is a
+decision about what the app *is*, not a feature with an obvious shape, and it
+was taken as its own decision rather than folded into a phase.
+
+What was in scope for it and is now unclaimed:
+
+- **Import from a Chub URL** (§9's other import line). The folder half landed in
+  phase 43; the URL half needs the network policy above before it needs any code.
+- **Browsing and searching a community library from inside the app**, with
+  whatever preview, filtering and provenance that implies.
+
+Nothing else depends on it. `PHASES.md` previously said "§9's import work is
+phase 42", which was true when it was written and is no longer: folder import is
+built and lives in phase 43.
+
+---
+
+## Phase 43 — Polish
+
+§20's last line: "Polish — mention strategy, group greetings, bulk import, PWA."
+
+Three of the four were the same shape, and it is the shape this project has
+tripped over more than any other: **the schema, the parser and the strings all
+existed, and nothing read them.** `turn_strategy` had accepted `'mention'` since
+migration 0006 and the director quietly ran round robin. `group_greetings` was
+parsed from V3's `group_only_greetings`, stored, editable and exported, and read
+by nothing — because *no scene ever got an opening message at all*. The prompt's
+token total had been computed, stored and served to the inspector since phase 25
+and shown nowhere else.
+
+### What was built
+
+**Migration 0039** — `characters.mention_keywords`, a JSON array beside the
+greeting arrays. On the character rather than on `scene_members`, so the
+vocabulary travels with the card, is edited once, and rides along on export
+under `extensions.onsen.mention_keywords`.
+
+**The mention strategy** (§6) — `server/generation/mention.ts`, pure, scanning
+the last message for each eligible candidate's name and keywords. Whole-word and
+case-insensitive; the later match in the sentence wins, because "Ana, ask Bell"
+is addressed to Bell. The reason quotes the keyword that fired — *"the captain"
+in the last message* — and says only "Named in the last message" when it was the
+name, so a reader who configured a keyword can see that it is the one that
+worked.
+
+**Scenes open** (§2, §9) — `server/scenes/greeting.ts`, called when a scene with
+no messages gains its first cast member. Every alternate greeting lands too, as
+a root sibling, so the reader gets them on the swipe carousel they already know
+and this needed no UI of its own. A group scene prefers the opener's
+`group_greetings` and falls back to their own first message.
+
+**Bulk import** (§9) — `POST /characters/import/bulk`, taking a multi-select or
+a whole folder, and reporting per file in the same add/skip shape a pack install
+already reports. One unreadable file must not lose the other 199, so nothing is
+a 400 except an empty upload.
+
+**The PWA** (§16) — a web manifest, a hand-written service worker generated from
+`client/sw-template.js` with the build's own hashed filenames, and an icon drawn
+from the design system: a Spectral `O` over the red hairline. `/api` is never
+cached, so "no offline chat sync" is a property of the code rather than a hope.
+
+**The status bar's token count** — `SceneDto.lastPromptTokens`, read with
+`json_extract` from the same `generations.prompt_debug` row the inspector falls
+back to, so the two can never disagree.
+
+### Deliberately deferred
+
+- **Scene export.** Asked about during planning and left out: it is a format
+  decision (whole tree plus settings, or the active path only) with a migration
+  path to think about, not a polish item.
+- **Import from a Chub URL.** §9 couples it with folder import, but §20 puts
+  Chub in phase 42, which was deferred as its own decision. See above.
+- **A 192px icon.** Chromium clamps its window below roughly 350px and returns a
+  downscaled 512 with the rule cropped off, so the small size shipped is 256 —
+  which every launcher accepts. Noted in `client/public/icons/README.md` so the
+  next person does not rediscover it.
+
+### Spec changes
+
+§6's `mention` paragraph stops saying it falls back unconditionally and says
+what it now does. §2 gains a `Settled while building phase 43` note on when a
+scene opens. §16's PWA line points at what implements it. Migration 0039 joins
+§2's schema sketch. §20's line 42 records the deferral.
+
+### Surprises
+
+**"The first cast member opens the scene" is not the same as "the first cast
+member with a greeting opens it."** The first version seeded from whoever
+happened to carry a `first_mes`, so casting a silent character and then a
+talkative one opened the scene in the second one's voice. Four tests failed in
+ways that looked like fixture noise and were not: who opens has to be readable
+off the cast list, or it is not a decision the reader made.
+
+**Twenty-eight tests failed the moment scenes started opening, and every one of
+them was right to.** They were fixtures saying "a scene with ten turns in it"
+that now had eleven. The fix was a `V2_CARD_SILENT` fixture so those tests keep
+meaning what they say — but the twenty-eight were an accurate measure of how
+much of the app had been built on top of an empty room.
+
+**Cards carry "Mira Vance"; readers type "Mira".** The first browser drive of
+the mention strategy chose the right character for the wrong reason — round
+robin — because the full name never appeared in the message. Matching the first
+word of a multi-word name is what makes the feature the thing people mean by it.
+The tests all passed before that, because I had written them with full names in
+the messages.

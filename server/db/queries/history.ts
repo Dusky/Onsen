@@ -214,6 +214,7 @@ export function toSceneDto(
     activeLeafUlid: string | null;
     messageCount: number;
     lastLine: string | null;
+    lastPromptTokens: number | null;
   },
 ): SceneDto {
   return {
@@ -251,6 +252,7 @@ export function toSceneDto(
     activeLeafId: extras.activeLeafUlid,
     messageCount: extras.messageCount,
     lastLine: extras.lastLine,
+    lastPromptTokens: extras.lastPromptTokens,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -836,7 +838,31 @@ export function sceneDto(db: Database, row: SceneRow): SceneDto {
     activeLeafUlid: ulidOf(db, "messages", row.active_leaf_id),
     messageCount: countMessages(db, row.id),
     lastLine: lastLine(db, row.active_leaf_id),
+    lastPromptTokens: lastPromptTokens(db, row.id),
   });
+}
+
+/**
+ * What the last prompt built for this scene cost, for the status bar (§16).
+ *
+ * The number has been computed, stored and served to the inspector since phase
+ * 25 — `generations.prompt_debug`, written at build time so a cancelled or
+ * failed generation answers as completely as a finished one — and shown nowhere
+ * else. This is the same row the inspector falls back to.
+ *
+ * `json_extract` rather than parsing in TypeScript: a debug record carries every
+ * block of the prompt, and the scene list would otherwise parse all of that per
+ * row to read one integer.
+ */
+function lastPromptTokens(db: Database, sceneId: number): number | null {
+  const row = db
+    .query(
+      `SELECT json_extract(prompt_debug, '$.totalTokens') AS tokens FROM generations
+        WHERE scene_id = $scene AND prompt_debug IS NOT NULL
+        ORDER BY id DESC LIMIT 1`,
+    )
+    .get({ scene: sceneId }) as { tokens: number | null } | null;
+  return typeof row?.tokens === "number" ? row.tokens : null;
 }
 
 /**

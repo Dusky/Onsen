@@ -40,6 +40,19 @@ export const V2_CARD = {
   },
 };
 
+/**
+ * Bell with nothing to open a scene with.
+ *
+ * Casting a character now seeds the scene's opening message (SPEC §2, phase
+ * 43), which is right and is what most fixtures do not want: a test about
+ * summarisation thresholds or autopilot caps wants to say "a scene with ten
+ * turns in it" and mean ten.
+ */
+export const V2_CARD_SILENT = {
+  ...V2_CARD,
+  data: { ...V2_CARD.data, first_mes: "", alternate_greetings: [] },
+};
+
 /** A V3 card, which adds group-only greetings. */
 export const V3_CARD = {
   spec: "chara_card_v3",

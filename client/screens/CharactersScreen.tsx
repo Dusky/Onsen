@@ -1,6 +1,10 @@
 import { useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import type { CharacterDto, SavedFilterDto } from "@shared/types.ts";
+import type {
+  BulkImportCharactersResponse,
+  CharacterDto,
+  SavedFilterDto,
+} from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { navigate } from "../lib/router.ts";
@@ -15,6 +19,7 @@ import {
   useDeleteCharacter,
   useDeleteFilter,
   useDeriveCharacter,
+  useBulkImportCharacters,
   useImportCharacter,
   useSeedDemo,
   useSavedFilters,
@@ -96,6 +101,8 @@ export function CharactersScreen() {
   const folders = useCharacterFolders();
   const savedFilters = useSavedFilters();
   const importCard = useImportCharacter();
+  const bulkImport = useBulkImportCharacters();
+  const busy = importCard.isPending || bulkImport.isPending;
   const seedDemo = useSeedDemo();
   const create = useCreateCharacter();
   const bulk = useBulkCharacters();
@@ -115,6 +122,8 @@ export function CharactersScreen() {
   const [confirmNode, confirm] = useConfirm();
   const [notice, setNotice] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const folderInput = useRef<HTMLInputElement>(null);
+  const [report, setReport] = useState<BulkImportCharactersResponse | null>(null);
   const derive = useDeriveCharacter(menuFor?.id ?? "");
 
   const list = characters.data ?? [];
@@ -133,13 +142,30 @@ export function CharactersScreen() {
     overscan: 4,
   });
 
-  function onFile(file: File | undefined) {
-    if (file === undefined) return;
+  /**
+   * One file keeps the single-card path, which reports the warnings a card
+   * carries. Several go through the bulk endpoint, which reports per file —
+   * "it worked" is not an answer for a folder of two hundred (SPEC §9).
+   */
+  function onFiles(chosen: FileList | null) {
+    const files = [...(chosen ?? [])];
+    if (files.length === 0) return;
     setNotice(null);
-    importCard.mutate(file, {
-      onSuccess: (result) => {
-        setNotice([strings.characters.imported(result.character.name), ...result.warnings].join(" "));
-      },
+
+    if (files.length === 1) {
+      importCard.mutate(files[0]!, {
+        onSuccess: (result) => {
+          setNotice(
+            [strings.characters.imported(result.character.name), ...result.warnings].join(" "),
+          );
+        },
+        onError: (error) => setNotice(error.message),
+      });
+      return;
+    }
+
+    bulkImport.mutate(files, {
+      onSuccess: (result) => setReport(result),
       onError: (error) => setNotice(error.message),
     });
   }
@@ -398,35 +424,60 @@ export function CharactersScreen() {
             </div>
           </div>
         ) : (
-          <div className="mx-auto flex w-full max-w-[var(--onsen-list-measure)] gap-[8px]">
+          <div className="mx-auto flex w-full max-w-[var(--onsen-list-measure)] flex-wrap gap-[8px]">
             <input
               ref={fileInput}
               type="file"
               hidden
+              multiple
               accept=".png,.charx,.json,image/png,application/zip,application/json"
               onChange={(event) => {
-                onFile(event.target.files?.[0]);
+                onFiles(event.target.files);
+                event.target.value = "";
+              }}
+            />
+            {/* A folder is its own input: `webkitdirectory` is non-standard but
+                universally supported, and the multi-select above is the
+                fallback that always works. No accept filter — a folder holds
+                whatever it holds, and the report says what was passed over. */}
+            <input
+              ref={folderInput}
+              type="file"
+              hidden
+              multiple
+              // @ts-expect-error — not in React's typings; every engine here has it.
+              webkitdirectory=""
+              onChange={(event) => {
+                onFiles(event.target.files);
                 event.target.value = "";
               }}
             />
             <button
               type="button"
-              className="btn btn-primary flex-1"
-              disabled={importCard.isPending}
+              className="btn btn-primary min-w-[92px] flex-1"
+              disabled={busy}
               onClick={() => fileInput.current?.click()}
             >
-              {importCard.isPending ? strings.characters.importing : strings.characters.import}
+              {busy ? strings.characters.importing : strings.characters.import}
             </button>
             <button
               type="button"
-              className="btn flex-1"
+              className="btn min-w-[92px] flex-1"
+              disabled={busy}
+              onClick={() => folderInput.current?.click()}
+            >
+              {strings.characters.importFolder}
+            </button>
+            <button
+              type="button"
+              className="btn min-w-[92px] flex-1"
               onClick={() => setAiOpen(true)}
             >
               {strings.characters.writeWithAi}
             </button>
             <button
               type="button"
-              className="btn flex-1"
+              className="btn min-w-[92px] flex-1"
               disabled={create.isPending}
               onClick={() =>
                 create.mutate(
@@ -443,6 +494,56 @@ export function CharactersScreen() {
           </div>
         )}
       </footer>
+
+      {/* What a folder import actually did, file by file. A folder is never
+          clean, and the skips are the half worth reading (SPEC §9). */}
+      {report !== null ? (
+        <Sheet
+          title={strings.characters.importReport}
+          meta={strings.characters.importReportMeta(report.added, report.skipped)}
+          onClose={() => setReport(null)}
+        >
+          <div className="pt-[8px] pb-[14px]">
+            {report.items.length === 0 ? (
+              <p className="text-[14px] leading-[1.6] text-ink-prose-muted">
+                {strings.characters.importNothing}
+              </p>
+            ) : null}
+            {(["add", "skip"] as const).map((action) => {
+              const rows = report.items.filter((item) => item.action === action);
+              if (rows.length === 0) return null;
+              return (
+                <div key={action}>
+                  <p className="section-label mt-[10px] mb-[6px]">
+                    {action === "add"
+                      ? strings.characters.importAdded
+                      : strings.characters.importSkipped}
+                  </p>
+                  {rows.map((item) => (
+                    <div
+                      key={item.filename}
+                      className="border-b border-rule py-[9px]"
+                      style={{ opacity: action === "add" ? 1 : 0.6 }}
+                    >
+                      <div className="flex items-baseline justify-between gap-[10px]">
+                        <span className="min-w-0 flex-1 truncate text-[14px]">{item.name}</span>
+                        <span className="chrome flex-none text-[9px] tracking-[0.08em] text-ink-dim">
+                          {item.filename}
+                        </span>
+                      </div>
+                      {item.detail !== "" ? (
+                        <p className="chrome mt-[3px] text-[10px] leading-[1.5] text-ink-dim">
+                          {item.detail}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        </Sheet>
+      ) : null}
 
       {aiOpen ? (
         <Sheet title={strings.characters.writeTitle} onClose={() => setAiOpen(false)}>

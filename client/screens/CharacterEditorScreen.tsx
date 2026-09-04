@@ -103,6 +103,23 @@ function TextField({
 }
 
 /** A list of greetings: alternates and group-only openings both use this. */
+/**
+ * "doc, the captain, cap" -> ["doc", "the captain", "cap"], deduped
+ * case-insensitively. Blanks fall out, so a trailing comma is not a keyword
+ * that matches everything.
+ */
+function splitKeywords(raw: string): string[] {
+  const seen = new Set<string>();
+  const keywords: string[] = [];
+  for (const part of raw.split(",")) {
+    const trimmed = part.trim();
+    if (trimmed === "" || seen.has(trimmed.toLowerCase())) continue;
+    seen.add(trimmed.toLowerCase());
+    keywords.push(trimmed);
+  }
+  return keywords;
+}
+
 function GreetingList({
   items,
   onChange,
@@ -246,6 +263,20 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                   </FieldRow>
                 </div>
               </div>
+
+              {/* SPEC §6: what the `mention` director listens for besides the
+                  name. Comma separated because these are short — "doc", "the
+                  captain" — and a list editor for two words is a list editor
+                  too many. */}
+              <FieldRow
+                label={strings.characters.mentionKeywords}
+                hint={strings.characters.mentionKeywordsHint}
+              >
+                <TextField
+                  value={character.mentionKeywords.join(", ")}
+                  onCommit={(raw) => save({ mentionKeywords: splitKeywords(raw) })}
+                />
+              </FieldRow>
 
               <FieldRow label={strings.characters.description} tokens={tokens.description}>
                 <TextField

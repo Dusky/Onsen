@@ -810,6 +810,13 @@ export const strings = {
     create: "New card",
     importing: "Reading card…",
     imported: (name: string) => `Imported ${name}.`,
+    importFolder: "Import folder",
+    importReport: "Imported",
+    importReportMeta: (added: number, skipped: number) =>
+      `${added} added \u00b7 ${skipped} skipped`,
+    importAdded: "Added",
+    importSkipped: "Skipped",
+    importNothing: "Nothing in that folder was a character card.",
     noResults: "Nothing matches that.",
     tokens: (n: number) => `${n} TOK`,
 
@@ -890,6 +897,9 @@ export const strings = {
     scenario: "Scenario",
     speech: "Speech",
     speechHint: "Speech tics, vocabulary, rhythm. Sent only when this character is speaking.",
+    mentionKeywords: "Also answers to",
+    mentionKeywordsHint:
+      "Comma separated. In a scene set to \u201cBy mention\u201d, any of these in the last message hands them the turn \u2014 their name always does.",
     exampleDialogue: "Example dialogue",
     firstMessage: "First message",
     alternateGreetings: "Alternate greetings",
@@ -1045,7 +1055,8 @@ export const strings = {
     strategyRoundRobin: "Round robin",
     strategyMention: "By mention",
     strategyClassifier: "Let a model decide",
-    strategyNotReady: "Not built yet — falls back to round robin",
+    strategyMentionHint:
+      "Whoever the last message names — by their name, or a keyword set on their card. Nobody named, round robin.",
     strategyClassifierHint:
       "A model reads the last few turns and picks, in its own words. It runs when you send.",
 

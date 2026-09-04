@@ -61,6 +61,7 @@ import type {
   UpdatePersonaRequest,
   GuideDto,
   GuideKind,
+  BulkImportCharactersResponse,
   ImportCharacterResponse,
   UpdateCharacterRequest,
   MessageDto,
@@ -717,6 +718,31 @@ export function useImportCharacter() {
         );
       }
       return body as ImportCharacterResponse;
+    },
+    onSuccess: () => void client.invalidateQueries({ queryKey: characterKeys.all }),
+  });
+}
+
+/**
+ * Bulk import (SPEC §9): a multi-select, or a whole folder. Reports per file
+ * rather than throwing, because a folder is not clean and one unreadable file
+ * must not lose the rest.
+ */
+export function useBulkImportCharacters() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (files: File[]): Promise<BulkImportCharactersResponse> => {
+      const form = new FormData();
+      for (const file of files) form.append("files", file);
+      const response = await fetch("/api/characters/import/bulk", { method: "POST", body: form });
+      const body: unknown = await response.json();
+      if (!response.ok) {
+        throw new Error(
+          (body as { error?: { message?: string } }).error?.message ??
+            "Those files could not be read.",
+        );
+      }
+      return body as BulkImportCharactersResponse;
     },
     onSuccess: () => void client.invalidateQueries({ queryKey: characterKeys.all }),
   });

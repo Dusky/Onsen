@@ -6,7 +6,7 @@ import {
   until,
   type TestHarness,
 } from "./helpers.ts";
-import { V2_CARD, pngCard } from "./card-fixtures.ts";
+import { V2_CARD_SILENT, pngCard } from "./card-fixtures.ts";
 import { buildPromptContext } from "../server/generation/context.ts";
 import { buildPrompt } from "../server/prompt/index.ts";
 import { OPENAI_COMPATIBLE_CAPABILITIES } from "../server/adapters/index.ts";
@@ -84,7 +84,7 @@ async function fullyDressedScene(t: TestHarness) {
   });
 
   const form = new FormData();
-  form.append("file", new File([pngCard({ chara: V2_CARD }) as unknown as BlobPart], "bell.png"));
+  form.append("file", new File([pngCard({ chara: V2_CARD_SILENT }) as unknown as BlobPart], "bell.png"));
   const imported = (await (
     await t.fetch("/api/characters/import", { method: "POST", body: form })
   ).json()) as { character: CharacterDto };

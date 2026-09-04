@@ -36,6 +36,7 @@ import narrativeMemory from "./0035_narrative_memory.sql" with { type: "text" };
 import authorMemory from "./0036_author_memory.sql" with { type: "text" };
 import media from "./0037_media.sql" with { type: "text" };
 import mediaVisibility from "./0038_media_visibility.sql" with { type: "text" };
+import mentionKeywords from "./0039_mention_keywords.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -89,4 +90,5 @@ export const migrations: readonly Migration[] = [
   { version: 36, name: "author_memory", sql: authorMemory },
   { version: 37, name: "media", sql: media },
   { version: 38, name: "media_visibility", sql: mediaVisibility },
+  { version: 39, name: "mention_keywords", sql: mentionKeywords },
 ];

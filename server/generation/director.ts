@@ -9,6 +9,7 @@
  * TURNS". A reason nobody can read is the arbitrary dice roll this is meant to
  * replace.
  */
+import { mentionedIn, termsFor } from "./mention.ts";
 
 export type TurnStrategy = "manual" | "round_robin" | "mention" | "classifier";
 
@@ -19,6 +20,11 @@ export interface DirectorCandidate {
   /** A benched character is not chosen and is not offered. */
   isActive: boolean;
   displayOrder: number;
+  /**
+   * What else this character answers to, beyond their name (SPEC §6, migration
+   * 0039). Only the `mention` strategy reads it.
+   */
+  mentionKeywords?: string[];
 }
 
 export interface DirectorHistoryEntry {
@@ -132,10 +138,42 @@ export function chooseSpeaker(input: DirectorInput): DirectorDecision | null {
       };
     }
 
-    // `mention` is not implemented yet. Falling back to round robin is what
-    // SPEC §6 specifies for it; saying so is what stops the choice looking
-    // arbitrary.
+    /**
+     * SPEC §6: "activate when a name or configured keyword appears in the last
+     * message; fall back to round robin".
+     *
+     * Only the last message, because that is what §6 says and because a scan
+     * over the whole path would keep re-electing whoever was named ten turns
+     * ago. The previous speaker is not eligible — the never-twice rule holds
+     * here as everywhere, and "unless requested" is the explicit pick handled
+     * above, not a name that happens to appear in the prose.
+     */
     case "mention": {
+      const last = input.history.at(-1);
+      const eligible = active.filter((member) => member.id !== previous);
+      const named =
+        last === undefined || eligible.length === 0
+          ? null
+          : mentionedIn(last.content, eligible.map(termsFor));
+
+      if (named !== null) {
+        // Quote what matched, unless it was the name itself. "Named in the last
+        // message" is true of a keyword too, and a reader who set up "the
+        // doctor" deserves to see that the phrase is what fired rather than
+        // wondering which word did.
+        const term = named.term.toLowerCase();
+        const name = named.candidate.name.trim().toLowerCase();
+        const matched = term === name || name.startsWith(`${term} `);
+        return {
+          characterId: named.candidate.id,
+          name: named.candidate.name,
+          source: "director",
+          reason: matched
+            ? "Named in the last message"
+            : `“${named.term}” in the last message`,
+        };
+      }
+
       const chosen = nextInOrder(active, previous);
       return {
         characterId: chosen.id,

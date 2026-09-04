@@ -4,8 +4,9 @@ A self-hosted, mobile-first AI roleplay frontend. Group scenes are the primary
 case: one AI **author** with its own personality plays the whole cast, like a GM
 running a table, while you direct.
 
-> **Status: phase 41 of 43 — usable.** Set it up, import character cards, give
-> the AI an author persona of its own, and run a group scene: one writing
+> **Status: phase 43 of 43 — feature complete, less the deferred phase 42.**
+> Set it up, import character cards — one at a time, or a whole folder at once —
+> give the AI an author persona of its own, and run a group scene: one writing
 > partner voicing a whole cast, **beats** — a whole exchange between several
 > characters written in one go, which you can then correct one character at a
 > time or split into separate turns — and a **turn director that can be a model**
@@ -106,6 +107,11 @@ bun run start          # http://localhost:8787
 
 Open the app and the setup wizard asks for a password and one connection
 profile. There is no second account and no registration.
+
+It is an installable web app: add it to a phone's home screen and it opens
+standalone, in its own window, with the shell cached so it starts without
+waiting on the network. Nothing about a scene is cached — there is no offline
+mode, and offline it says so rather than showing you a stale story.
 
 ### A single-file executable
 

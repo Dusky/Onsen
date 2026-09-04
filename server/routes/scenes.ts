@@ -44,7 +44,8 @@ import {
   setMemberActive,
   setTurnStrategy,
 } from "../db/queries/authors.ts";
-import { findCharacter } from "../db/queries/characters.ts";
+import { findCharacter, type CharacterRow } from "../db/queries/characters.ts";
+import { seedGreeting } from "../scenes/greeting.ts";
 import { scriptText } from "../scripts/runtime.ts";
 import type { TriggerRunner } from "../triggers/runner.ts";
 import type { WebhookSender } from "../webhooks/sender.ts";
@@ -446,6 +447,8 @@ export function sceneRoutes(
     if (character === null) return c.json(notFound("character"), 404);
 
     addSceneMember(ctx.db, sceneRow.id, character.id);
+    // A scene with nobody in it had nobody to open it. Now it does (§2, §9).
+    seedGreeting(ctx.db, sceneRow.id, character);
     return c.json(sceneDto(ctx.db, sceneRow));
   });
 
@@ -468,11 +471,18 @@ export function sceneRoutes(
       return c.json(badRequest("A list of characterIds is required."), 400);
     }
 
+    let opener: CharacterRow | null = null;
     for (const id of body.characterIds) {
       if (typeof id !== "string") continue;
       const character = findCharacter(ctx.db, id);
-      if (character !== null) addSceneMember(ctx.db, sceneRow.id, character.id);
+      if (character === null) continue;
+      addSceneMember(ctx.db, sceneRow.id, character.id);
+      opener ??= character;
     }
+    // The first character named in the request opens, and only once the whole
+    // cast is in — whether the scene is a group is what decides between the
+    // card's group greetings and its own (§2).
+    if (opener !== null) seedGreeting(ctx.db, sceneRow.id, opener);
     return c.json(sceneDto(ctx.db, sceneRow));
   });
 

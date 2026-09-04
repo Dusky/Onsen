@@ -140,6 +140,7 @@ scenario           -- scene framing, may be overridden per-scene
 first_message      -- greeting
 alternate_greetings -- string[]  (multiple openings per card)
 group_greetings    -- string[]  (openings used only in group scenes)
+mention_keywords   -- string[]  (what else §6's mention director listens for)
 example_dialogue   -- parsed into structured example turns
 voice_notes        -- speech tics, vocabulary, rhythm; injected only when spotlighted
 depth_prompt       -- text injected at a fixed depth whenever this character is
@@ -940,7 +941,13 @@ Decides who speaks next in a group scene.
 - **manual** — user taps a character to speak.
 - **round_robin** — cycle through active members in display order.
 - **mention** — activate when a name or configured keyword appears in the last
-  message; fall back to round robin.
+  message; fall back to round robin. Matching is whole-word and
+  case-insensitive, over each candidate's name, the first word of a multi-word
+  name (cards carry "Mira Vance"; readers type "Mira"), and their
+  `mention_keywords`. The last match in the message wins — "Ana, ask Bell" is
+  addressed to Bell — and the previous speaker is never eligible. The reason
+  quotes the keyword that fired, so a configured phrase is visibly the thing
+  that worked.
 - **classifier** — a cheap call to a small model asking which cast member would
   most plausibly respond next, given the last few messages and the cast list.
 
@@ -2387,7 +2394,11 @@ toggle.
 - Touch gestures must not fight the scroll container — use a gesture library
   with direction locking.
 - Web manifest plus a service worker caching the app shell only. No offline
-  chat sync.
+  chat sync. `client/public/manifest.webmanifest` and `client/sw-template.js`,
+  the latter filled in with the build's hashed filenames by a Vite plugin. The
+  worker returns from its `fetch` handler untouched for anything under `/api`,
+  so "no offline chat sync" is enforced rather than intended; offline, the shell
+  paints and the app says it cannot reach the server, in its own voice.
 - No hover-dependent affordances anywhere.
 - Virtualized lists everywhere; cached parsed cards; lazy sprite loading.
 
@@ -2704,7 +2715,10 @@ Each phase ends in a working, usable application.
     is picked up later, split it: rolls and checks as recorded events first,
     stats only if the checks get used.
 41. TTS, image generation, captioning. See §12.
-42. Chub import, community asset browsing.
+42. Chub import, community asset browsing. **Deferred** — the only phase that
+    reaches a third party's service, which is a decision about what the app is
+    rather than a feature with an obvious shape. §9's folder import moved to
+    phase 43; the Chub URL half waits with this.
 43. Polish — mention strategy, group greetings, bulk import, PWA.
 
 Settled while building phase 15.

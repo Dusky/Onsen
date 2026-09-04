@@ -218,18 +218,88 @@ describe("manual", () => {
   });
 });
 
-describe("strategies that do not decide here", () => {
-  test("fall back to round robin and say which fallback they took", () => {
-    // SPEC §6 specifies the fallback for `mention`; saying so is what stops the
-    // choice looking arbitrary.
-    const mention = chooseSpeaker({
+describe("mention (SPEC §6)", () => {
+  function mention(content: string, members = cast("Bell", "Mira", "Ana")) {
+    return chooseSpeaker({ strategy: "mention", cast: members, history: [said(null, content)] });
+  }
+
+  test("a name in the last message hands over the turn", () => {
+    const decision = mention("Mira, what do you make of it?");
+    expect(decision).toMatchObject({ characterId: "mira", source: "director" });
+    expect(decision!.reason).toBe("Named in the last message");
+  });
+
+  test("a configured keyword does too, and the reason quotes it", () => {
+    const members = cast("Bell", "Mira");
+    members[1]!.mentionKeywords = ["the captain"];
+    const decision = mention("I asked the captain already.", members);
+    expect(decision).toMatchObject({ characterId: "mira" });
+    expect(decision!.reason).toContain("the captain");
+  });
+
+  test("matching is whole-word — \"already\" does not name Al", () => {
+    const members = cast("Al", "Bell");
+    const decision = mention("She had already gone.", members);
+    // Nobody was named, so it falls back rather than electing Al on a fragment.
+    expect(decision!.reason).toContain("round robin");
+  });
+
+  test("the later of two names wins — the sentence is addressed to them", () => {
+    const decision = mention("Ana, ask Mira about the key.");
+    expect(decision).toMatchObject({ characterId: "mira" });
+  });
+
+  test("a benched member is never named into the turn", () => {
+    const members = cast("Bell", "Mira");
+    members[1]!.isActive = false;
+    const decision = mention("Mira?", members);
+    expect(decision).toMatchObject({ characterId: "bell" });
+  });
+
+  test("the previous speaker is not eligible, even named", () => {
+    // Never twice consecutively unless *requested* — a name in the prose is not
+    // a request, which is the explicit pick handled elsewhere.
+    const decision = chooseSpeaker({
+      strategy: "mention",
+      cast: cast("Bell", "Mira"),
+      history: [said("bell", "…"), said(null, "Bell, again?")],
+    });
+    expect(decision).toMatchObject({ characterId: "mira" });
+    expect(decision!.reason).toContain("round robin");
+  });
+
+  test("a first name names them — cards carry \"Mira Vance\", readers type \"Mira\"", () => {
+    const members = cast("Sister Bell", "Mira Vance");
+    const decision = mention("Mira, how short are we?", members);
+    expect(decision).toMatchObject({ characterId: "mira vance" });
+    // Still the name, so the reason does not quote it back as a keyword.
+    expect(decision!.reason).toBe("Named in the last message");
+  });
+
+  test("a name is matched case-insensitively", () => {
+    expect(mention("mira?")).toMatchObject({ characterId: "mira" });
+  });
+
+  test("nobody named falls back to round robin and says so", () => {
+    const decision = chooseSpeaker({
       strategy: "mention",
       cast: cast("Bell", "Mira"),
       history: [said("bell")],
     });
-    expect(mention).toMatchObject({ characterId: "mira" });
-    expect(mention!.reason).toContain("round robin");
+    expect(decision).toMatchObject({ characterId: "mira" });
+    expect(decision!.reason).toContain("round robin");
+  });
 
+  test("a name with punctuation in it is not a regex", () => {
+    const members = cast("Dr. J", "Bell");
+    // "DrXJ" would match if "." compiled to "any character".
+    expect(mention("DrXJ is late.", members)!.reason).toContain("round robin");
+    expect(mention("Dr. J is late.", members)).toMatchObject({ characterId: "dr. j" });
+  });
+});
+
+describe("strategies that do not decide here", () => {
+  test("fall back to round robin and say which fallback they took", () => {
     // The classifier is a model call, which a pure function called on every
     // read of a scene cannot make. What it returns is the fallback that stands
     // if the call fails, said out loud as provisional rather than decided.

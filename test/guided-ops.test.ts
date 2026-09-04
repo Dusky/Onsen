@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { ScriptedAdapter, completeSetup, createHarness, until, type TestHarness } from "./helpers.ts";
-import { V1_CARD, V2_CARD, charxCard, jsonBytes, pngCard } from "./card-fixtures.ts";
+import { V1_CARD, V2_CARD_SILENT, charxCard, jsonBytes, pngCard } from "./card-fixtures.ts";
 import { impersonateQuestion, cleanImpersonation } from "../server/generation/impersonate.ts";
 import type {
   AuthorDto,
@@ -77,11 +77,11 @@ async function scene(t: TestHarness) {
     description: "A surveyor waiting out the weather.",
   });
   const characters = [
-    await importCharacter(t, pngCard({ chara: V2_CARD }), "bell.png"),
+    await importCharacter(t, pngCard({ chara: V2_CARD_SILENT }), "bell.png"),
     await importCharacter(t, jsonBytes(V1_CARD), "aldan.json"),
     await importCharacter(
       t,
-      charxCard({ ...V2_CARD, data: { ...V2_CARD.data, name: "Mira Vance" } }),
+      charxCard({ ...V2_CARD_SILENT, data: { ...V2_CARD_SILENT.data, name: "Mira Vance" } }),
       "mira.charx",
     ),
   ];

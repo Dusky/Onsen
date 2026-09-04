@@ -49,6 +49,8 @@ import { createEstimatingTokenizer } from "../prompt/index.ts";
 import type {
   BulkCharacterRequest,
   CharacterFilterQuery,
+  BulkImportCharactersResponse,
+  CharacterImportItemDto,
   ImportCharacterResponse,
   PromptRoleName,
   UpdateCharacterRequest,
@@ -135,6 +137,66 @@ export function characterRoutes(ctx: AppContext, tasks: TaskRunner): Hono<AppEnv
   });
 
   /**
+   * Everything after the bytes have been parsed: the avatar on disk, the row,
+   * the CharX sprites, and the warnings that say what was not understood.
+   *
+   * Shared by the single-file route and the bulk one, so a folder import and a
+   * one-off import cannot drift into behaving differently.
+   */
+  async function persistCard(
+    filename: string,
+    imported: ReturnType<typeof importCard>,
+  ): Promise<{ row: CharacterRow; warnings: string[] }> {
+    // The avatar is written before the row so a failure leaves an orphaned file
+    // rather than a character pointing at nothing.
+    let avatarPath: string | null = null;
+    if (imported.avatar !== null) {
+      avatarPath = `${imported.sourceHash.slice(0, 32)}.${imported.avatar.extension}`;
+      await Bun.write(join(ctx.config.avatarsDir, avatarPath), imported.avatar.data);
+    }
+
+    const row = insertCharacter(ctx.db, {
+      card: imported.card,
+      rawCard: imported.rawCard,
+      format: imported.format,
+      avatarPath,
+      sourceFilename: filename,
+      sourceHash: imported.sourceHash,
+    });
+
+    // CharX bundles carry expression sprites under an `expressions/` tree;
+    // import them into the pack so the VN stage has something to draw (§12).
+    // The label is the filename stem; anything that is not named like a sprite
+    // is left for re-export, not guessed at.
+    let expressionCount = 0;
+    for (const [path, data] of imported.assets) {
+      const match = /(?:^|\/)expressions?\/([a-zA-Z0-9_-]+)\.(?:png|jpe?g|webp|gif)$/i.exec(path);
+      if (match === null) continue;
+      const label = match[1]!.toLowerCase();
+      const pack = ensurePack(ctx.db, row.id, `${row.name} sprites`);
+      const filePath = `${row.id}-${label}-${ulid()}.${path.split(".").at(-1) ?? "png"}`;
+      await Bun.write(join(ctx.config.spritesDir, filePath), data);
+      addExpression(ctx.db, pack.id, label, filePath, 0);
+      expressionCount += 1;
+    }
+
+    const warnings = [...imported.warnings];
+    if (expressionCount > 0) {
+      warnings.push(
+        `Imported ${expressionCount} expression sprite${expressionCount === 1 ? "" : "s"}.`,
+      );
+    }
+    if (imported.unmodelledFields.length > 0) {
+      // Silent partial imports are the worst outcome (SPEC §18); naming what
+      // was not understood is the difference between preserved and lost.
+      warnings.push(
+        `Preserved but not shown in the editor: ${imported.unmodelledFields.join(", ")}.`,
+      );
+    }
+    return { row, warnings };
+  }
+
+  /**
    * Import a card. The file's own bytes decide the format; a card renamed from
    * .charx to .png still imports correctly.
    */
@@ -172,55 +234,94 @@ export function characterRoutes(ctx: AppContext, tasks: TaskRunner): Hono<AppEnv
       return c.json(body, 200);
     }
 
-    // The avatar is written before the row so a failure leaves an orphaned file
-    // rather than a character pointing at nothing.
-    let avatarPath: string | null = null;
-    if (imported.avatar !== null) {
-      avatarPath = `${imported.sourceHash.slice(0, 32)}.${imported.avatar.extension}`;
-      await Bun.write(join(ctx.config.avatarsDir, avatarPath), imported.avatar.data);
-    }
-
-    const row = insertCharacter(ctx.db, {
-      card: imported.card,
-      rawCard: imported.rawCard,
-      format: imported.format,
-      avatarPath,
-      sourceFilename: file.name,
-      sourceHash: imported.sourceHash,
-    });
-
-    // CharX bundles carry expression sprites under an `expressions/` tree;
-    // import them into the pack so the VN stage has something to draw (§12).
-    // The label is the filename stem; anything that is not named like a sprite
-    // is left for re-export, not guessed at.
-    let expressionCount = 0;
-    for (const [path, data] of imported.assets) {
-      const match = /(?:^|\/)expressions?\/([a-zA-Z0-9_-]+)\.(?:png|jpe?g|webp|gif)$/i.exec(path);
-      if (match === null) continue;
-      const label = match[1]!.toLowerCase();
-      const pack = ensurePack(ctx.db, row.id, `${row.name} sprites`);
-      const filePath = `${row.id}-${label}-${ulid()}.${path.split(".").at(-1) ?? "png"}`;
-      await Bun.write(join(ctx.config.spritesDir, filePath), data);
-      addExpression(ctx.db, pack.id, label, filePath, 0);
-      expressionCount += 1;
-    }
-
-    const warnings = [...imported.warnings];
-    if (expressionCount > 0) {
-      warnings.push(`Imported ${expressionCount} expression sprite${expressionCount === 1 ? "" : "s"}.`);
-    }
-    if (imported.unmodelledFields.length > 0) {
-      // Silent partial imports are the worst outcome (SPEC §18); naming what
-      // was not understood is the difference between preserved and lost.
-      warnings.push(
-        `Preserved but not shown in the editor: ${imported.unmodelledFields.join(", ")}.`,
-      );
-    }
+    const { row, warnings } = await persistCard(file.name, imported);
 
     const body: ImportCharacterResponse = {
       character: toCharacterDto(ctx.db, row),
       duplicateOf: null,
       warnings,
+    };
+    return c.json(body, 201);
+  });
+
+  /**
+   * Bulk import (SPEC §9): a multi-select, or a whole folder.
+   *
+   * One bad file must not lose the other 199, so nothing here is a 400 except
+   * an empty upload. Every file gets a row in the report saying what happened
+   * to it — the same add/skip plan a pack install already reports, because a
+   * folder of two hundred cards is exactly the case where "it worked" is not an
+   * answer.
+   *
+   * Files are handled one at a time rather than in parallel: they are read into
+   * memory whole, and a folder drop is not the moment to hold two hundred cards
+   * at once.
+   */
+  app.post("/import/bulk", async (c) => {
+    let files: File[] = [];
+    try {
+      const form = await c.req.formData();
+      files = form.getAll("files").filter((entry): entry is File => entry instanceof File);
+    } catch {
+      return c.json(badRequest("Expected a file upload."), 400);
+    }
+    if (files.length === 0) return c.json(badRequest("No files were uploaded."), 400);
+
+    const items: CharacterImportItemDto[] = [];
+    for (const file of files) {
+      if (file.size > MAX_CARD_BYTES) {
+        items.push({
+          name: file.name,
+          filename: file.name,
+          action: "skip",
+          detail: "Too large.",
+          characterId: null,
+        });
+        continue;
+      }
+
+      let imported;
+      try {
+        imported = importCard(new Uint8Array(await file.arrayBuffer()), file.name);
+      } catch (caught) {
+        // A folder holds whatever a folder holds — a readme, a stray avatar, a
+        // truncated download. Naming why each was passed over is the report.
+        items.push({
+          name: file.name,
+          filename: file.name,
+          action: "skip",
+          detail: caught instanceof CardError ? caught.message : "Not a character card.",
+          characterId: null,
+        });
+        continue;
+      }
+
+      const existing = findByHash(ctx.db, imported.sourceHash);
+      if (existing !== null) {
+        items.push({
+          name: existing.name,
+          filename: file.name,
+          action: "skip",
+          detail: "Already in the library.",
+          characterId: existing.ulid,
+        });
+        continue;
+      }
+
+      const { row, warnings } = await persistCard(file.name, imported);
+      items.push({
+        name: row.name,
+        filename: file.name,
+        action: "add",
+        detail: warnings.join(" "),
+        characterId: row.ulid,
+      });
+    }
+
+    const body: BulkImportCharactersResponse = {
+      added: items.filter((item) => item.action === "add").length,
+      skipped: items.filter((item) => item.action === "skip").length,
+      items,
     };
     return c.json(body, 201);
   });

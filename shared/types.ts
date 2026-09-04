@@ -637,6 +637,27 @@ export interface PackListDto {
 }
 
 /** One thing an install would do. `skip` never writes. */
+/**
+ * One file's fate in a bulk import (SPEC §9, §20 phase 43). Deliberately the
+ * same shape as a pack's plan item, which is the report the app already knows
+ * how to read: what it was, whether it landed, and why not.
+ */
+export interface CharacterImportItemDto {
+  /** The character's name where the file parsed, the filename where it did not. */
+  name: string;
+  filename: string;
+  action: "add" | "skip";
+  detail: string;
+  /** Set when the file landed, or when it was a duplicate of something here. */
+  characterId: string | null;
+}
+
+export interface BulkImportCharactersResponse {
+  added: number;
+  skipped: number;
+  items: CharacterImportItemDto[];
+}
+
 export interface PackPlanItemDto {
   kind: PackKind;
   name: string;
@@ -862,6 +883,12 @@ export interface SceneDto {
   connectionProfileId: string | null;
   /** The profile's name, so the status bar can say which model answers (§43). */
   connectionProfileName: string | null;
+  /**
+   * What the scene's last built prompt cost, for the status bar (§16). Null
+   * until something has been generated here — a status bar showing an invented
+   * number is worse than one showing none.
+   */
+  lastPromptTokens: number | null;
   turnStrategy: TurnStrategy;
   /**
    * Where the classifier turn director runs (SPEC §6). Null means the scene's
@@ -1719,6 +1746,12 @@ export interface CharacterDto {
   groupGreetings: string[];
   exampleDialogue: string | null;
   voiceNotes: string | null;
+  /**
+   * What this character answers to beyond their name, for §6's `mention` turn
+   * strategy. Ours rather than the card's, so it exports under
+   * `extensions.onsen.mention_keywords`.
+   */
+  mentionKeywords: string[];
 
   depthPrompt: string | null;
   depthPromptDepth: number;
@@ -1760,6 +1793,7 @@ export interface UpdateCharacterRequest {
   groupGreetings?: string[];
   exampleDialogue?: string | null;
   voiceNotes?: string | null;
+  mentionKeywords?: string[];
   depthPrompt?: string | null;
   depthPromptDepth?: number;
   depthPromptRole?: PromptRoleName;

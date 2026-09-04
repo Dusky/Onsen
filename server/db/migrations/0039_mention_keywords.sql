@@ -1,0 +1,16 @@
+-- 0039 mention keywords — SPEC §20 phase 43.
+--
+-- SPEC §6's `mention` strategy fires when "a name or configured keyword appears
+-- in the last message". Names the director already has; this is where the
+-- keywords live.
+--
+-- On the character rather than on `scene_members`, so the vocabulary travels
+-- with the card: "the doctor" is a fact about who this character is, edited once
+-- in the card editor, and it rides along on export under
+-- `extensions.onsen.mention_keywords`. The cost is that a keyword means the same
+-- thing in every scene, which is the right trade for a field you would otherwise
+-- retype at every casting.
+--
+-- A JSON array of strings, matching how `alternate_greetings` and
+-- `group_greetings` are already stored on this table.
+ALTER TABLE characters ADD COLUMN mention_keywords TEXT NOT NULL DEFAULT '[]';

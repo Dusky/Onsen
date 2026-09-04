@@ -30,6 +30,8 @@ export interface CharacterRow {
   group_greetings: string;
   example_dialogue: string | null;
   voice_notes: string | null;
+  /** JSON array. What this character answers to beyond their name (§6). */
+  mention_keywords: string;
   depth_prompt: string | null;
   depth_prompt_depth: number;
   depth_prompt_role: PromptRoleName;
@@ -124,6 +126,7 @@ export function toCharacterDto(db: Database, row: CharacterRow): CharacterDto {
     groupGreetings: parseArray(row.group_greetings),
     exampleDialogue: row.example_dialogue,
     voiceNotes: row.voice_notes,
+    mentionKeywords: parseArray(row.mention_keywords),
     depthPrompt: row.depth_prompt,
     depthPromptDepth: row.depth_prompt_depth,
     depthPromptRole: row.depth_prompt_role,
@@ -163,8 +166,42 @@ export function toNormalisedCard(row: CharacterRow): NormalisedCard {
     depthPrompt: row.depth_prompt,
     depthPromptDepth: row.depth_prompt_depth,
     depthPromptRole: row.depth_prompt_role,
-    extensions: parseObject(row.extensions),
+    extensions: withMentionKeywords(parseObject(row.extensions), parseArray(row.mention_keywords)),
   };
+}
+
+/**
+ * Mention keywords are ours, not a card field — SillyTavern has no home for
+ * them. Namespaced under `onsen` on the way out and read back on the way in, so
+ * exporting and re-importing a character does not silently drop them. The same
+ * trick `server/lore/export.ts` uses for the fields V2 cannot carry.
+ */
+const MENTION_EXTENSION = "mention_keywords";
+
+function withMentionKeywords(
+  extensions: Record<string, unknown>,
+  keywords: string[],
+): Record<string, unknown> {
+  const onsen = { ...asRecord(extensions["onsen"]) };
+  if (keywords.length === 0) delete onsen[MENTION_EXTENSION];
+  else onsen[MENTION_EXTENSION] = keywords;
+  if (Object.keys(onsen).length === 0) {
+    const { onsen: _dropped, ...rest } = extensions;
+    return rest;
+  }
+  return { ...extensions, onsen };
+}
+
+/** Mention keywords carried by an imported card, if it was one of ours. */
+export function mentionKeywordsOf(extensions: Record<string, unknown>): string[] {
+  const value = asRecord(extensions["onsen"])[MENTION_EXTENSION];
+  return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 /* ------------------------------------------------------------------ */
@@ -189,14 +226,14 @@ export function insertCharacter(db: Database, input: NewCharacter): CharacterRow
       `INSERT INTO characters (
          ulid, name, avatar_path, description, personality, scenario, first_message,
          alternate_greetings, group_greetings, example_dialogue, voice_notes,
-         depth_prompt, depth_prompt_depth, depth_prompt_role,
+         mention_keywords, depth_prompt, depth_prompt_depth, depth_prompt_role,
          system_prompt, post_history_instructions, creator_notes, tags, creator,
          character_version, raw_card, raw_card_format, extensions,
          source_filename, source_hash, created_at, updated_at
        ) VALUES (
          $ulid, $name, $avatar_path, $description, $personality, $scenario, $first_message,
          $alternate_greetings, $group_greetings, $example_dialogue, $voice_notes,
-         $depth_prompt, $depth_prompt_depth, $depth_prompt_role,
+         $mention_keywords, $depth_prompt, $depth_prompt_depth, $depth_prompt_role,
          $system_prompt, $post_history_instructions, $creator_notes, $tags, $creator,
          $character_version, $raw_card, $raw_card_format, $extensions,
          $source_filename, $source_hash, $now, $now
@@ -214,6 +251,7 @@ export function insertCharacter(db: Database, input: NewCharacter): CharacterRow
       group_greetings: JSON.stringify(input.card.groupGreetings),
       example_dialogue: input.card.exampleDialogue,
       voice_notes: input.voiceNotes ?? null,
+      mention_keywords: JSON.stringify(mentionKeywordsOf(input.card.extensions)),
       depth_prompt: input.card.depthPrompt,
       depth_prompt_depth: input.card.depthPromptDepth,
       depth_prompt_role: input.card.depthPromptRole,
@@ -277,6 +315,7 @@ const PATCHABLE = {
 const PATCHABLE_ARRAYS = {
   alternateGreetings: "alternate_greetings",
   groupGreetings: "group_greetings",
+  mentionKeywords: "mention_keywords",
   tags: "tags",
 } as const;
 
@@ -350,6 +389,7 @@ function snapshotOfCharacter(row: CharacterRow): Record<string, unknown> {
     groupGreetings: parseArray(row.group_greetings),
     exampleDialogue: row.example_dialogue,
     voiceNotes: row.voice_notes,
+    mentionKeywords: parseArray(row.mention_keywords),
     depthPrompt: row.depth_prompt,
     depthPromptDepth: row.depth_prompt_depth,
     depthPromptRole: row.depth_prompt_role,

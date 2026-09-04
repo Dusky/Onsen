@@ -8,7 +8,14 @@
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
     <meta name="color-scheme" content="dark light" />
+    <!-- The installed app's chrome, so a standalone window does not open on a
+         white status bar over the dark ground (SPEC §16). -->
+    <meta name="theme-color" content="#14120f" />
     <title>Onsen</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- iOS reads this rather than the manifest's icons. -->
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="icon" href="/icons/onsen-256.png" type="image/png" />
     <link rel="stylesheet" href="/fonts/fonts.css" />
   </head>
   <body>
