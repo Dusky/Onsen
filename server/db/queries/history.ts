@@ -203,6 +203,7 @@ export function toSceneDto(
   extras: {
     presetUlid: string | null;
     profileUlid: string | null;
+    profileName: string | null;
     turnStrategy: SceneDto["turnStrategy"];
     directorProfileUlid: string | null;
     authorUlid: string | null;
@@ -220,6 +221,7 @@ export function toSceneDto(
     title: row.title,
     presetId: extras.presetUlid,
     connectionProfileId: extras.profileUlid,
+    connectionProfileName: extras.profileName,
     turnStrategy: extras.turnStrategy,
     directorProfileId: extras.directorProfileUlid,
     directorNote: row.director_note,
@@ -816,6 +818,14 @@ export function sceneDto(db: Database, row: SceneRow): SceneDto {
   return toSceneDto(row, {
     presetUlid: ulidOf(db, "presets", row.preset_id),
     profileUlid: ulidOf(db, "connection_profiles", row.connection_profile_id),
+    profileName:
+      row.connection_profile_id === null
+        ? null
+        : ((
+            db
+              .query("SELECT name FROM connection_profiles WHERE id = $id")
+              .get({ id: row.connection_profile_id }) as { name: string } | null
+          )?.name ?? null),
     turnStrategy: row.turn_strategy,
     directorProfileUlid: ulidOf(db, "connection_profiles", row.director_profile_id),
     authorUlid: author.ulid,

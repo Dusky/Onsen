@@ -24,6 +24,8 @@ import { Composer } from "../components/Composer.tsx";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
 import { CheckpointsSheet, MarkSheet } from "../components/Checkpoints.tsx";
 import { CommandPalette } from "../components/CommandPalette.tsx";
+import { StatusBar } from "../components/StatusBar.tsx";
+import { COMMANDS } from "../lib/commands.ts";
 import { InspectorSheet } from "../components/InspectorSheet.tsx";
 import { CastStrip } from "../components/CastStrip.tsx";
 import { OpsGrid, OpsRow, OpPrompt, type Op } from "../components/OpsGrid.tsx";
@@ -290,6 +292,25 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const signOut = useSignOut();
   /** The palette opened on nothing, by key, rather than on a turn. */
   const [paletteOpen, setPaletteOpen] = useState(false);
+  /**
+   * The turn ⌘K and the single-key accelerators act on (§20 phase 43).
+   *
+   * Null is the resting state: nothing is selected until the reader picks a
+   * turn, so a stray keystroke cannot reroll something they were only reading.
+   */
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  /**
+   * What the palette acts on: a long-press names a turn explicitly, otherwise
+   * whatever j/k has selected. Opening ⌘K with nothing selected is a real
+   * state — the palette then offers only what does not need a turn.
+   *
+   * Declared here rather than beside `messages`: it reads `selectedId`, and
+   * hoisting it above that state put it in the temporal dead zone, which no
+   * test caught and the first page load did.
+   */
+  const paletteTurn =
+    acting ?? messages.find((message) => message.id === selectedId) ?? null;
 
   /**
    * ⌘K anywhere in a roleplay.
@@ -299,15 +320,56 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
    */
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "k" || !(event.metaKey || event.ctrlKey)) return;
+      // Never steal a keystroke meant for a field, and never fight a modifier
+      // combination the browser or the OS owns.
       const inField = document.activeElement?.matches("input, textarea, [contenteditable]");
       if (inField === true) return;
+
+      if (event.key === "k" && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        setPaletteOpen(true);
+        return;
+      }
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+      // j/k walk the log, the way every reader-shaped tool does. Down is
+      // towards the newest turn, because that is the direction a scene runs.
+      if (event.key === "j" || event.key === "k") {
+        const ids = messages.map((message) => message.id);
+        if (ids.length === 0) return;
+        event.preventDefault();
+        const at = selectedId === null ? -1 : ids.indexOf(selectedId);
+        const next =
+          event.key === "j"
+            ? Math.min(ids.length - 1, at + 1)
+            : Math.max(0, at === -1 ? ids.length - 1 : at - 1);
+        setSelectedId(ids[next] ?? null);
+        document
+          .querySelector(`[data-message-id="${ids[next]}"]`)
+          ?.scrollIntoView({ block: "nearest" });
+        return;
+      }
+
+      if (event.key === "Escape") {
+        setSelectedId(null);
+        return;
+      }
+
+      // Single-key accelerators, only with a turn selected — which is what
+      // makes them safe: there is nothing to act on until the reader picks one.
+      if (selectedId === null) return;
+      const command = COMMANDS.find(
+        (candidate) => candidate.key === event.key && candidate.unavailable === undefined,
+      );
+      if (command === undefined) return;
+      const turn = messages.find((message) => message.id === selectedId);
+      if (turn === undefined) return;
       event.preventDefault();
-      setPaletteOpen(true);
+      runCommand(command.id, turn);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  });
 
   /**
    * Run a command by id (§20 phase 43).
@@ -734,6 +796,8 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         onReroll={() => void reroll(message)}
         onOpenVersions={() => setVersionsFor(message)}
         onLongPress={() => setActing(message)}
+        selected={selectedId === message.id}
+        onSelect={() => setSelectedId(message.id)}
         onRevert={(note) => revert.mutate(note.id)}
         {...(isDesktop
           ? {
@@ -979,6 +1043,17 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           wide={isDesktop}
         />
 
+        {/* §20 phase 43: what is true right now, in one line. On a phone its
+            right-hand control is the only way to the inspector — the same panel
+            the desktop shows beside the log, laid down rather than stood up. */}
+        <StatusBar
+          profileName={scene.data?.scene.connectionProfileName ?? null}
+          // Not wired yet: the prompt total is only known after a generation, and
+          // a status bar showing an invented number is worse than one showing none.
+          tokens={null}
+          generating={isGenerating}
+          {...(isDesktop ? {} : { onOpenContext: () => setGuidesOpen(true) })}
+        />
     </>
   );
 
@@ -1135,8 +1210,8 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       {acting !== null || paletteOpen ? (
         <CommandPalette
           hasScene
-          selectedSpeaker={acting === null ? null : (acting.speakerName ?? strings.chat.narratorName)}
-          onRun={(id) => runCommand(id, acting)}
+          selectedSpeaker={paletteTurn === null ? null : speakerFor(paletteTurn, authorName)}
+          onRun={(id) => runCommand(id, paletteTurn)}
           onClose={() => {
             setActing(null);
             setPaletteOpen(false);

@@ -860,6 +860,8 @@ export interface SceneDto {
   title: string;
   presetId: string | null;
   connectionProfileId: string | null;
+  /** The profile's name, so the status bar can say which model answers (§43). */
+  connectionProfileName: string | null;
   turnStrategy: TurnStrategy;
   /**
    * Where the classifier turn director runs (SPEC §6). Null means the scene's

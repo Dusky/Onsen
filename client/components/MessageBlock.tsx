@@ -20,6 +20,9 @@ interface MessageBlockProps {
   onReroll(): void;
   onOpenVersions(): void;
   onLongPress(): void;
+  /** The turn ⌘K and the accelerators act on (§20 phase 43). */
+  selected?: boolean;
+  onSelect?(): void;
   /** Streaming text replaces the content while this message is being written. */
   streamingText?: string;
   /**
@@ -269,6 +272,8 @@ export function MessageBlock({
   onReroll,
   onOpenVersions,
   onLongPress,
+  selected,
+  onSelect,
   streamingText,
   recasting,
   onRevert,
@@ -296,6 +301,25 @@ export function MessageBlock({
       // The whole block is the gesture target, so the affordance matches the
       // thing being acted on rather than a handle beside it.
       aria-label={`${speakerName}: ${text.slice(0, 80)}`}
+      // §20 phase 43: the selected turn is what ⌘K and the single-key
+      // accelerators act on, so it has to be visible without being loud —
+      // a red edge in the gutter, not a highlight over the prose.
+      aria-current={selected === true ? "true" : undefined}
+      data-selected={selected === true ? "true" : undefined}
+      // The anchor j/k scrolls to. On the element rather than in a ref map,
+      // because the log is virtualised and refs to unmounted rows go stale.
+      data-message-id={message.id}
+      onClick={onSelect}
+      style={
+        selected === true
+          ? {
+              borderLeft: "2px solid var(--onsen-color-red)",
+              marginLeft: "-20px",
+              paddingLeft: "18px",
+              background: "var(--onsen-color-bg-raised)",
+            }
+          : undefined
+      }
     >
       <header className="mb-[10px] flex items-center gap-[10px]">
         <span

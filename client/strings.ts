@@ -205,6 +205,15 @@ export const strings = {
       goto: "Go to",
     } as Record<string, string>,
     paletteMore: "More\u2026",
+
+    /* The status bar (§20 phase 43). `statusWriting` above is the cast rail's. */
+    barIdle: "Idle",
+    barWriting: "Writing",
+    barSelect: "j / k select",
+    barCommands: "\u2318K commands",
+    barContext: "Context",
+    barNoModel: "No model",
+    barTokens: (n: number) => `${n.toLocaleString()} tok`,
     checkpointName: "Call it",
     checkpointNamePlaceholder: "before she opens the ledger",
     checkpointSave: "Mark it",
