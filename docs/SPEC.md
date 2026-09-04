@@ -292,6 +292,17 @@ See §10 for the full activation model.
 Lorebook:
   id, name, description, scan_depth, token_budget, recursive_scanning
   owner_author_id    -- nullable; set for author memory (§11)
+MediaService:        -- §12, phase 41
+  id, name, purpose (image | speech), kind (openai | a1111)
+  base_url, api_key_encrypted, model, options, enabled, is_default
+MediaAsset:
+  id, kind (image | audio), role (illustration | speech | attachment)
+  path (content-addressed), mime, bytes, width, height, duration_ms
+  prompt             -- what was asked for
+  caption            -- what a vision model saw; this is what reaches a prompt
+  is_hidden          -- not drawn in the log
+  in_prompt          -- the caption reaches the prompt (attachments only)
+  service_id, message_id, character_id, scene_id
 LoreEntry:
   id, lorebook_id, keys (string[]), secondary_keys (string[]), content
   written_by         -- nullable; 'author' for a note the author wrote (§11)
@@ -1832,6 +1843,56 @@ single-character one — seeing who is on stage is how a reader tracks a scene.
 - On mobile: sprites occupy the upper portion, chat scrolls below. Must degrade
   to normal chat with a toggle, and must not hurt scroll performance.
 
+### Pictures, voices and captions (§20 phase 41)
+
+Three features that share a table and little else: drawing something for a
+message, reading one aloud, and showing the author a picture the reader
+attached. All three are off until a service is configured.
+
+`media_services` carries a **purpose** (`image` or `speech`) and a **kind**, and
+is otherwise shaped like `providers` — a name, a base URL, an encrypted key, a
+model. Two image adapters ship: the OpenAI shape, and A1111's `/sdapi/v1/txt2img`
+for the local WebUIs. Speech is the OpenAI shape only, because that is the one
+the local TTS servers chose to emulate.
+
+Captions do **not** use a media service. A caption comes from a language model
+that can see, so it runs on an ordinary connection profile, through the ops
+registry, as `caption_image`.
+
+#### Settled while building phase 41
+
+- **A picture never reaches a roleplay prompt; its caption does.** Bytes in
+  history would cost the context window on every turn, break prompt caching the
+  moment they were evicted, and make the whole scene need a vision model rather
+  than the one call that reads the picture. The caption is rendered as
+  `[image: …]` on the turn the picture is attached to.
+- **`NormalizedMessage.images` is only ever set by the captioning op**, which
+  builds its own prompt. `supportsVision` is a property of the wire format, not
+  of the model: an OpenAI-shaped endpoint carries image parts whether or not
+  what is behind it looks at them.
+- **A text-completion endpoint is refused before the call, not after.** There is
+  nowhere in a raw completion to put a picture, and sending one buys a confident
+  description of nothing. The refusal names the setting that fixes it.
+- **A plain string is still sent when a message has no picture.** Several local
+  servers implement the string form of `content` and not the array.
+- **Two switches per picture, not one:** `is_hidden` (drawn in the log) and
+  `in_prompt` (the author is told). §2 already makes this split for messages,
+  and all four states are things a reader wants — including a picture they keep
+  for themselves that the story never learns about.
+- **A hidden picture leaves a line saying so**, with the action to bring it
+  back. One that simply vanished would be indistinguishable from a deleted one,
+  and deleting is a different button with a different consequence.
+- **The attachment upload awaits its caption.** Returning early looks faster and
+  loses the race that matters: the picture binds to the next line sent, so a
+  caption still running when the reader presses send goes with a message the
+  author is told nothing about. A failed caption still keeps the picture.
+- **Assets are content-addressed**, so a regenerated identical picture costs a
+  row and no bytes, and a delete unlinks the file only when no other row shares
+  it.
+- **The illustration prompt is the message prose, stripped** of speaker labels,
+  emphasis and OOC asides — and editable. Writing a good image prompt out of a
+  paragraph needs a model, and that op is deferred rather than faked.
+
 ---
 
 ## 13. Sampler and reasoning settings
@@ -2632,7 +2693,7 @@ Each phase ends in a working, usable application.
     is the part the "don't roll dice in the model" rule was protecting. If this
     is picked up later, split it: rolls and checks as recorded events first,
     stats only if the checks get used.
-41. TTS, image generation, captioning.
+41. TTS, image generation, captioning. See §12.
 42. Chub import, community asset browsing.
 43. Polish — mention strategy, group greetings, bulk import, PWA.
 

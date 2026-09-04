@@ -4,7 +4,7 @@ A self-hosted, mobile-first AI roleplay frontend. Group scenes are the primary
 case: one AI **author** with its own personality plays the whole cast, like a GM
 running a table, while you direct.
 
-> **Status: phase 39 of 43 — usable.** Set it up, import character cards, give
+> **Status: phase 41 of 43 — usable.** Set it up, import character cards, give
 > the AI an author persona of its own, and run a group scene: one writing
 > partner voicing a whole cast, **beats** — a whole exchange between several
 > characters written in one go, which you can then correct one character at a
@@ -61,7 +61,12 @@ running a table, while you direct.
 > **keeps track of who and what** — people, places, things and facts pulled out
 > of the story as it goes, scored by how much they matter, brought back when the
 > moment needs them and fading when it does not; edit one and the extractor
-> never touches it again. A writing partner can also **remember you between
+> never touches it again. It can **draw a scene, read a line aloud, and look at
+> a picture you paste in** — a local Stable Diffusion WebUI or anything speaking
+> the OpenAI shape — and what the author is told about a picture is its
+> description, never the file, so a scene's context is not spent on an image it
+> already has words for. Hiding a picture from the log and keeping it from the
+> author are separate switches. A writing partner can also **remember you between
 > roleplays** — a thread left hanging, a name that keeps coming back, how you
 > like to be written for — but only when you ask it to, note by note, and every
 > note is one you can read, edit or throw away. Built

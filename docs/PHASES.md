@@ -3664,3 +3664,85 @@ already lets an author run a table in prose without any of it.
 
 If it is picked up later, the split above is the shape: rolls and checks as
 recorded events first, and stats only if the checks turn out to get used.
+
+---
+
+## Phase 41 — Pictures, voices and captions
+
+§20 gives this phase one line: "TTS, image generation, captioning." §17's tier 3
+names the same three as the case for code extensions, and says not to design
+that API speculatively. Those cannot both be followed literally. This is the
+alternative tier 3 implies: the integrations built in, declaratively configured,
+with the key handling and the "keys stay server-side" rule the providers table
+already holds.
+
+### What was built
+
+**Migrations 0037 and 0038** — `media_services` (a purpose, a kind, and
+otherwise the shape of `providers`), `media_assets` (content-addressed, with
+provenance and both visibility switches).
+
+**Two image adapters and one speech adapter** — the OpenAI shape for hosted
+services and the local ones that emulate it, and A1111's `/sdapi/v1/txt2img`,
+which is a genuinely different API: a real negative prompt, settings as
+top-level fields, and the model as a checkpoint override. Speech is the OpenAI
+shape only, because there is no single local TTS API and the local servers that
+exist emulate that one.
+
+**Vision through the existing adapters** — an optional `images` on
+`NormalizedMessage` and a `supportsVision` capability. OpenAI emits content
+parts, Anthropic emits blocks with the image first, text completion declares
+false and the captioner refuses it.
+
+**A caption is what reaches a prompt**, rendered as `[image: …]` on the turn the
+picture belongs to. The bytes never do.
+
+**Two switches per picture** — in the log, and in the prompt — after the user
+asked for them, and the four states they produce are all things a reader wants.
+
+**The client** — services in Settings, drawing and reading aloud on a message,
+attaching in the composer with a pending strip, and a sheet on any picture
+carrying its provenance and both switches.
+
+### Deliberately deferred
+
+- **An op that writes the image prompt.** A paragraph of prose is a poor prompt
+  for an image model, and rewriting it well needs a model. The prose is stripped
+  of speaker labels, emphasis and asides, and the prompt is editable — which is
+  honest, where a bad automatic rewrite would not be.
+- **ComfyUI.** Its API is a workflow graph rather than a request, so supporting
+  it means shipping or importing workflow JSON and mapping fields into it. A1111
+  covers the local audience with one adapter; Comfy needs a design.
+- **Speech that plays as a turn arrives.** Reading aloud is asked for per
+  message. Auto-narration needs a queue, an interrupt, and a decision about what
+  happens on a reroll — three questions this phase does not answer.
+- **Expression sprites and visual novel staging** (§12's other half) remain as
+  they were; nothing here touches them.
+
+### Spec changes
+
+§12 gains a "Pictures, voices and captions" section with a
+`Settled while building phase 41` block of ten decisions. §2's schema sketch
+gains `MediaService` and `MediaAsset`. §20's line 41 points at §12.
+
+### Surprises
+
+**Two functions build a message DTO, and I wired one.** `messageDto` serves a
+single write; `activePathDtos` serves the whole scene. Illustrating a message
+succeeded end to end — the stub logged the request, the file was written, the
+row existed — and the log stayed empty, because the scene read goes through the
+other one. Nothing in 28 passing tests touched the gap. There is a test on both
+paths now.
+
+**`w-full` on a picture.** A 96px attachment stretched to the prose measure is a
+large empty box with a dot in the middle of it, which is exactly what it looked
+like. Images size themselves and are capped instead of filled.
+
+**The stub's caption match broke on its own success.** With an image, `content`
+is an array of parts rather than a string, so `last.includes(...)` was false and
+every caption fell through to the default reply — which the stub streams slowly,
+so an upload appeared to hang for thirty seconds. The bug was in the test
+double, but the thirty seconds made a real design point concrete: the upload
+awaits its caption on purpose, because the picture binds to the next line sent
+and a caption still running when the reader presses send goes with a message the
+author is told nothing about.
