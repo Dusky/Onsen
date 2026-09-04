@@ -1,0 +1,115 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;1,400&display=swap">
+  <style>
+    body { margin: 0; background: #1a1613; }
+    a { color: #d78872; } a:hover { color: #c0503c; }
+    .ui { font-family: -apple-system, "Segoe UI", system-ui, sans-serif; }
+    .prose { font-family: "Spectral", Georgia, serif; }
+    .btn { border: 1px solid #3a332a; background: #221d18; padding: 4px 9px; font-size: 11px; color: #b3aa9b; }
+    .face { width: 74px; height: 74px; border: 2px solid #3a332a; display: flex; align-items: center; justify-content: center; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; height: 900px; background: #1a1613; color: #ddd5c7; display: flex; flex-direction: column; overflow: hidden;">
+
+  <!-- Chrome that looks like chrome. No apology. -->
+  <div style="flex: none; background: #241d18; border-bottom: 2px solid #3a332a; padding: 0 18px; height: 42px; display: flex; align-items: center; gap: 18px;">
+    <span class="ui" style="font-size: 14px; font-weight: 600; color: #e8e2d6; letter-spacing: 0.02em;">Onsen</span>
+    <div style="display: flex; gap: 3px;">
+      <span class="ui" style="font-size: 12px; color: #f0e9dc; background: #c0503c; padding: 5px 11px;">Roleplays</span>
+      <span class="ui" style="font-size: 12px; color: #b3aa9b; padding: 5px 11px;">Cast</span>
+      <span class="ui" style="font-size: 12px; color: #b3aa9b; padding: 5px 11px;">Lore</span>
+      <span class="ui" style="font-size: 12px; color: #b3aa9b; padding: 5px 11px;">Settings</span>
+    </div>
+    <span style="flex-grow: 1;"></span>
+    <span class="ui" style="font-size: 11px; color: #8b8477;">21 replies &middot; 2 marks</span>
+  </div>
+
+  <!-- Thread title bar. -->
+  <div style="flex: none; padding: 13px 18px; border-bottom: 1px solid #2c2620; display: flex; align-items: baseline; gap: 10px;">
+    <span class="ui" style="font-size: 11px; color: #8b8477;">Roleplays &rsaquo;</span>
+    <span class="prose" style="font-size: 21px; color: #f0e9dc;">The pass</span>
+    <span style="flex-grow: 1;"></span>
+    <span class="btn ui">Setup</span>
+    <span class="btn ui">Marks</span>
+  </div>
+
+  <div style="flex-grow: 1; overflow: hidden; display: flex; flex-direction: column;">
+
+    <!-- Post. Avatar column, body column, a footer of real buttons. -->
+    <div style="display: flex; border-bottom: 1px solid #2c2620; background: #1a1613;">
+      <div style="width: 176px; flex: none; padding: 16px; border-right: 1px solid #2c2620; display: flex; flex-direction: column; gap: 8px; align-items: center;">
+        <div class="face" style="background: repeating-linear-gradient(45deg, #33291f 0 6px, #2a2219 6px 12px); border-color: #6a4a3a;"><span class="prose" style="font-size: 26px; color: #e2cdb4;">Y</span></div>
+        <span class="ui" style="font-size: 12px; font-weight: 600; color: #e2cdb4;">You</span>
+        <span class="ui" style="font-size: 10px; color: #7a7263;">reader</span>
+      </div>
+      <div style="flex-grow: 1; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px;">
+        <p class="prose" style="margin: 0; font-size: 16.5px; line-height: 1.58; color: #cfc7b8;">Ask her what it would take.</p>
+        <div style="display: flex; gap: 5px; margin-top: 2px;">
+          <span class="btn ui">Edit</span><span class="btn ui">Mark</span><span class="btn ui">Hide</span><span class="btn ui">Delete</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; border-bottom: 1px solid #2c2620; background: #1d1815;">
+      <div style="width: 176px; flex: none; padding: 16px; border-right: 1px solid #2c2620; display: flex; flex-direction: column; gap: 8px; align-items: center;">
+        <div class="face" style="background: linear-gradient(160deg, #6b4436, #3a2620);"><span class="prose" style="font-size: 26px; color: #f0e9dc;">A</span></div>
+        <span class="ui" style="font-size: 12px; font-weight: 600; color: #e8e2d6;">Aldan Roe</span>
+        <span class="ui" style="font-size: 10px; color: #7a7263;">keeps the ledger</span>
+        <span class="ui" style="font-size: 10px; color: #7fa65b;">on stage</span>
+      </div>
+      <div style="flex-grow: 1; padding: 16px 20px; display: flex; flex-direction: column; gap: 11px;">
+        <p class="prose" style="margin: 0; font-size: 16.5px; line-height: 1.58; color: #e8e2d6; text-wrap: pretty;">The lamp on the counter had burned down to a stub, and nobody had said anything about it for ten minutes.</p>
+        <p class="prose" style="margin: 0; font-size: 16.5px; line-height: 1.58; color: #e8e2d6; text-wrap: pretty;">He turned the ledger around so she could see the column. &ldquo;That is what I mean by short.&rdquo;</p>
+        <div style="display: flex; gap: 5px; align-items: center; margin-top: 2px;">
+          <span class="btn ui">Reroll</span><span class="btn ui">Edit</span><span class="btn ui">Branch</span><span class="btn ui">Draw</span><span class="btn ui">Speak</span><span class="btn ui">Mark</span>
+          <span style="flex-grow: 1;"></span>
+          <span class="ui" style="font-size: 10px; color: #7a7263;">2 lore &middot; 3 guides &middot; 412 tok</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; border-bottom: 1px solid #2c2620; background: #1a1613;">
+      <div style="width: 176px; flex: none; padding: 16px; border-right: 1px solid #2c2620; display: flex; flex-direction: column; gap: 8px; align-items: center;">
+        <div class="face" style="background: linear-gradient(160deg, #4a4a5e, #292933);"><span class="prose" style="font-size: 26px; color: #e8e2d6;">M</span></div>
+        <span class="ui" style="font-size: 12px; font-weight: 600; color: #e8e2d6;">Mira Vance</span>
+        <span class="ui" style="font-size: 10px; color: #7a7263;">wants the number</span>
+      </div>
+      <div style="flex-grow: 1; padding: 16px 20px; display: flex; flex-direction: column; gap: 11px;">
+        <p class="prose" style="margin: 0; font-size: 16.5px; line-height: 1.58; color: #e8e2d6; text-wrap: pretty;">&ldquo;Short.&rdquo; She said it the way you say a word you intend to make somebody regret. &ldquo;Say the number, Aldan.&rdquo;</p>
+        <div style="display: flex; gap: 5px; margin-top: 2px;">
+          <span class="btn ui">Reroll</span><span class="btn ui">Edit</span><span class="btn ui">Branch</span><span class="btn ui">Draw</span><span class="btn ui">Speak</span><span class="btn ui">Mark</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick reply, the way a thread ends. -->
+  <div style="flex: none; border-top: 2px solid #3a332a; background: #1d1815; padding: 12px 18px 15px;">
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+      <span class="ui" style="font-size: 11px; font-weight: 600; color: #c9c1b1;">Quick reply</span>
+      <span style="flex-grow: 1;"></span>
+      <span class="btn ui">Nudge</span><span class="btn ui">Steer</span><span class="btn ui">As me</span><span class="btn ui">Off script</span>
+    </div>
+    <div style="display: flex; gap: 9px; align-items: stretch;">
+      <div style="flex-grow: 1; border: 1px solid #3a332a; background: #14110e; padding: 10px 12px; min-height: 44px;">
+        <span class="prose" style="font-size: 16px; color: #6f6a5f;">Direct the scene&hellip;</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 5px;">
+        <span class="ui" style="font-size: 12px; color: #f0e9dc; background: #c0503c; border: 1px solid #c0503c; padding: 7px 20px; text-align: center;">Post</span>
+        <span class="btn ui" style="text-align: center;">Reply without me</span>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

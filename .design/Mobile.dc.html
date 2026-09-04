@@ -1,0 +1,168 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; background: #0c0a08; }
+    a { color: #d78872; } a:hover { color: #c0503c; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+    .prose { font-family: "Spectral", Georgia, serif; }
+    .ui { font-family: -apple-system, "Segoe UI", system-ui, sans-serif; }
+    .phone { width: 390px; height: 780px; flex: none; overflow: hidden; display: flex; flex-direction: column; }
+    .cap { font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: #8b8477; margin-bottom: 11px; }
+    .btn { border: 1px solid #3a332a; background: #221d18; padding: 5px 9px; font-size: 11px; color: #b3aa9b; }
+  </style>
+</helmet>
+
+<div style="width: 1780px; height: 900px; background: #0c0a08; padding: 26px 24px; display: flex; gap: 26px; box-sizing: border-box;">
+
+  <!-- MANUSCRIPT -->
+  <div style="display: flex; flex-direction: column;">
+    <div class="cap">Manuscript</div>
+    <div class="phone" style="background: #14120f;">
+      <div style="flex: none; padding: 16px 20px 12px; border-bottom: 1px solid #221e18; display: flex; align-items: baseline; gap: 12px;">
+        <span class="mono" style="font-size: 15px; color: #8b8477;">&lsaquo;</span>
+        <span class="prose" style="font-size: 16px; color: #e8e2d6;">The pass</span>
+      </div>
+      <div style="flex-grow: 1; padding: 22px 24px; display: flex; flex-direction: column; gap: 26px; overflow: hidden;">
+        <div style="display: flex; flex-direction: column; gap: 7px;">
+          <span class="mono" style="font-size: 8.5px; letter-spacing: 0.18em; text-transform: uppercase; color: #6f6a5f;">You</span>
+          <p class="prose" style="margin: 0; font-size: 17px; line-height: 1.64; color: #9a9284;">Ask her what it would take.</p>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 7px;">
+          <span class="mono" style="font-size: 8.5px; letter-spacing: 0.18em; text-transform: uppercase; color: #8b8477;">Aldan</span>
+          <p class="prose" style="margin: 0; font-size: 17px; line-height: 1.64; color: #e8e2d6; text-wrap: pretty;">The lamp on the counter had burned down to a stub, and nobody had said anything about it for ten minutes. He turned the ledger around so she could see the column. &ldquo;That is what I mean by short.&rdquo;</p>
+          <span class="mono" style="font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase; color: #6f7d8c; margin-top: 4px;">&bull; 2 lore &middot; 3 guides</span>
+        </div>
+      </div>
+      <div style="flex: none; border-top: 1px solid #221e18; padding: 16px 24px 22px; display: flex; flex-direction: column; gap: 13px;">
+        <span class="prose" style="font-size: 17px; color: #6f6a5f; font-style: italic;">Direct the scene&hellip;</span>
+        <div style="display: flex; gap: 16px; align-items: center;">
+          <span class="mono" style="font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #8b8477;">Nudge</span>
+          <span class="mono" style="font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #8b8477;">Steer</span>
+          <span style="flex-grow: 1;"></span>
+          <span class="mono" style="font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #c0503c;">Send &rarr;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WORKBENCH -->
+  <div style="display: flex; flex-direction: column;">
+    <div class="cap">Workbench</div>
+    <div class="phone" style="background: #14120f;">
+      <div style="flex: none; height: 46px; border-bottom: 1px solid #221e18; display: flex; align-items: center; padding: 0 16px; gap: 12px;">
+        <span class="mono" style="font-size: 14px; color: #8b8477;">&lsaquo;</span>
+        <span class="prose" style="font-size: 15px;">The pass</span>
+        <span style="flex-grow: 1;"></span>
+        <span class="mono" style="font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase; color: #6f6a5f;">4,180 tok</span>
+      </div>
+      <div style="flex-grow: 1; padding: 16px; display: flex; flex-direction: column; gap: 15px; overflow: hidden;">
+        <div style="display: flex; gap: 10px;">
+          <span class="mono" style="font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #6f6a5f; width: 42px; flex: none; padding-top: 3px;">You</span>
+          <p class="prose" style="margin: 0; font-size: 15.5px; line-height: 1.55; color: #9a9284;">Ask her what it would take.</p>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <span class="mono" style="font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #c0503c; width: 42px; flex: none; padding-top: 3px;">Aldan</span>
+          <p class="prose" style="margin: 0; font-size: 15.5px; line-height: 1.55; color: #e8e2d6; text-wrap: pretty;">The lamp on the counter had burned down to a stub, and nobody had said anything about it for ten minutes. He turned the ledger around so she could see the column.</p>
+        </div>
+      </div>
+      <!-- The inspector becomes a drawer handle on a phone. -->
+      <div style="flex: none; border-top: 1px solid #221e18; background: #100e0b; padding: 9px 16px; display: flex; gap: 14px; align-items: center;">
+        <span class="mono" style="font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase; color: #e8e2d6; border-bottom: 2px solid #c0503c; padding-bottom: 3px;">Context</span>
+        <span class="mono" style="font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase; color: #6f6a5f;">Cast</span>
+        <span class="mono" style="font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase; color: #6f6a5f;">Lore</span>
+        <span class="mono" style="font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase; color: #6f6a5f;">Memory</span>
+      </div>
+      <div style="flex: none; padding: 12px 16px 20px; display: flex; gap: 9px; align-items: center;">
+        <div style="flex-grow: 1; border: 1px solid #2a251e; background: #100e0b; padding: 12px;"><span class="prose" style="font-size: 15.5px; color: #6f6a5f;">Direct the scene&hellip;</span></div>
+        <div style="width: 44px; height: 44px; background: #c0503c; display: flex; align-items: center; justify-content: center;"><span class="mono" style="font-size: 14px; color: #f0e9dc;">&uarr;</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROOM -->
+  <div style="display: flex; flex-direction: column;">
+    <div class="cap">Room</div>
+    <div class="phone" style="background: radial-gradient(120% 70% at 50% 0%, #1d1815 0%, #171310 60%, #120f0c 100%);">
+      <div style="flex: none; padding: 14px 18px 12px; border-bottom: 1px solid #241f19; display: flex; align-items: center; gap: 12px;">
+        <span class="mono" style="font-size: 14px; color: #8b8477;">&lsaquo;</span>
+        <div style="display: flex; gap: 8px;">
+          <div style="width: 30px; height: 30px; border: 1px solid #c0503c; background: linear-gradient(160deg, #6b4436, #3a2620); display: flex; align-items: center; justify-content: center;"><span class="prose" style="font-size: 13px; color: #f0e9dc;">A</span></div>
+          <div style="width: 30px; height: 30px; border: 1px solid #2f2a22; background: linear-gradient(160deg, #4a4a5e, #292933); display: flex; align-items: center; justify-content: center;"><span class="prose" style="font-size: 13px; color: #cfc9c0;">M</span></div>
+          <div style="width: 30px; height: 30px; border: 1px solid #2f2a22; background: linear-gradient(160deg, #4b5240, #272b21); opacity: 0.42; display: flex; align-items: center; justify-content: center;"><span class="prose" style="font-size: 13px; color: #cfc9c0;">B</span></div>
+        </div>
+        <span style="flex-grow: 1;"></span>
+        <span class="prose" style="font-size: 14px; color: #8b8477;">The pass</span>
+      </div>
+      <div style="flex-grow: 1; padding: 18px 18px; display: flex; flex-direction: column; gap: 18px; overflow: hidden;">
+        <div style="display: flex; justify-content: flex-end;">
+          <p class="prose" style="margin: 0; font-size: 16px; line-height: 1.58; color: #e2cdb4; background: #241c15; border: 1px solid #33291f; padding: 10px 13px; max-width: 250px;">Ask her what it would take.</p>
+        </div>
+        <div style="display: flex; gap: 11px;">
+          <div style="width: 34px; height: 34px; flex: none; border: 1px solid #2f2a22; background: linear-gradient(160deg, #6b4436, #3a2620); display: flex; align-items: center; justify-content: center;"><span class="prose" style="font-size: 14px; color: #f0e9dc;">A</span></div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <span class="mono" style="font-size: 9.5px; color: #d78872;">Aldan Roe</span>
+            <p class="prose" style="margin: 0; font-size: 16px; line-height: 1.6; color: #e8e2d6; text-wrap: pretty;">The lamp on the counter had burned down to a stub, and nobody had said anything about it for ten minutes.</p>
+          </div>
+        </div>
+      </div>
+      <div style="flex: none; border-top: 1px solid #241f19; background: #14110e; padding: 12px 16px 20px; display: flex; gap: 10px; align-items: center;">
+        <div style="width: 36px; height: 36px; flex: none; border: 1px solid #33291f; background: #241c15; display: flex; align-items: center; justify-content: center;"><span class="prose" style="font-size: 11px; color: #e2cdb4;">You</span></div>
+        <div style="flex-grow: 1; border: 1px solid #2a251e; background: #100e0b; padding: 11px 12px;"><span class="prose" style="font-size: 15.5px; color: #6f6a5f;">Direct the scene&hellip;</span></div>
+        <div style="width: 44px; height: 44px; background: #c0503c; display: flex; align-items: center; justify-content: center;"><span class="mono" style="font-size: 14px; color: #f0e9dc;">&uarr;</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- THREAD -->
+  <div style="display: flex; flex-direction: column;">
+    <div class="cap">Thread</div>
+    <div class="phone" style="background: #1a1613;">
+      <div style="flex: none; background: #241d18; border-bottom: 2px solid #3a332a; height: 42px; display: flex; align-items: center; padding: 0 14px; gap: 10px;">
+        <span class="ui" style="font-size: 15px; color: #b3aa9b;">&lsaquo;</span>
+        <span class="ui" style="font-size: 13px; font-weight: 600; color: #f0e9dc;">The pass</span>
+        <span style="flex-grow: 1;"></span>
+        <span class="ui" style="font-size: 10px; color: #8b8477;">21 replies</span>
+      </div>
+      <div style="flex-grow: 1; overflow: hidden; display: flex; flex-direction: column;">
+        <div style="border-bottom: 1px solid #2c2620; padding: 12px 14px; display: flex; flex-direction: column; gap: 9px; background: #1a1613;">
+          <div style="display: flex; align-items: center; gap: 9px;">
+            <div style="width: 30px; height: 30px; border: 2px solid #6a4a3a; background: repeating-linear-gradient(45deg, #33291f 0 5px, #2a2219 5px 10px); display: flex; align-items: center; justify-content: center;"><span class="prose" style="font-size: 12px; color: #e2cdb4;">Y</span></div>
+            <span class="ui" style="font-size: 12px; font-weight: 600; color: #e2cdb4;">You</span>
+          </div>
+          <p class="prose" style="margin: 0; font-size: 16px; line-height: 1.56; color: #cfc7b8;">Ask her what it would take.</p>
+        </div>
+        <div style="border-bottom: 1px solid #2c2620; padding: 12px 14px; display: flex; flex-direction: column; gap: 9px; background: #1d1815;">
+          <div style="display: flex; align-items: center; gap: 9px;">
+            <div style="width: 30px; height: 30px; border: 2px solid #3a332a; background: linear-gradient(160deg, #6b4436, #3a2620); display: flex; align-items: center; justify-content: center;"><span class="prose" style="font-size: 12px; color: #f0e9dc;">A</span></div>
+            <span class="ui" style="font-size: 12px; font-weight: 600; color: #e8e2d6;">Aldan Roe</span>
+            <span class="ui" style="font-size: 10px; color: #7fa65b;">on stage</span>
+          </div>
+          <p class="prose" style="margin: 0; font-size: 16px; line-height: 1.56; color: #e8e2d6; text-wrap: pretty;">The lamp on the counter had burned down to a stub, and nobody had said anything about it for ten minutes.</p>
+          <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+            <span class="btn ui">Reroll</span><span class="btn ui">Edit</span><span class="btn ui">Branch</span><span class="btn ui">Draw</span>
+          </div>
+        </div>
+      </div>
+      <div style="flex: none; border-top: 2px solid #3a332a; background: #1d1815; padding: 10px 14px 18px; display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; gap: 4px;">
+          <span class="btn ui">Nudge</span><span class="btn ui">Steer</span><span class="btn ui">As me</span>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: stretch;">
+          <div style="flex-grow: 1; border: 1px solid #3a332a; background: #14110e; padding: 11px 12px;"><span class="prose" style="font-size: 15.5px; color: #6f6a5f;">Direct the scene&hellip;</span></div>
+          <span class="ui" style="font-size: 12px; color: #f0e9dc; background: #c0503c; padding: 0 18px; display: flex; align-items: center;">Post</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

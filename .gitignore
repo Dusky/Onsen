@@ -6,3 +6,7 @@ data/
 .env
 .env.local
 .onsen-dev.pid
+
+# The seeded design canvas: 2.5 MB of editor payload wrapped around the
+# artboards next to it. The .dc.html sources are the record; this is a build.
+.design/onsen-ui-directions.html

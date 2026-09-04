@@ -1,0 +1,17 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1440, "h": 900, "title": "Manuscript — desktop" },
+    { "file": "Workbench.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 900, "title": "Workbench — desktop" },
+    { "file": "Room.dc.html", "x": 0, "y": 1060, "w": 1440, "h": 900, "title": "Room — desktop" },
+    { "file": "Thread.dc.html", "x": 1560, "y": 1060, "w": 1440, "h": 900, "title": "Thread — desktop" },
+    { "file": "Mobile.dc.html", "x": 0, "y": 2120, "w": 1780, "h": 900, "title": "All four — phone" }
+  ],
+  "annotations": [
+    { "id": "brief", "x": 0, "y": -190, "w": 640, "text": "Four directions for Onsen's polish pass.\n\nSame tokens throughout — warm near-black #14120f, ink #e8e2d6, red #c0503c, blue #5b7fa6, Spectral for prose. What changes is the bet, not the palette.\n\nStatic mockups, for picking a direction." },
+    { "id": "manuscript", "x": 0, "y": -96, "w": 640, "text": "MANUSCRIPT — the current thesis, actually committed. Speaker names hang in the left margin; the machinery moves to the right margin in the blue pencil. The wasted desktop width becomes margin that holds something." },
+    { "id": "workbench", "x": 1560, "y": -96, "w": 640, "text": "WORKBENCH — accept it's a power tool with 200 endpoints. Three panes, ⌘K instead of a 19-button sheet, and four inspector tabs instead of thirty-one section labels." },
+    { "id": "room", "x": 0, "y": 964, "w": 640, "text": "ROOM — faces. A presence strip showing who is on stage and who has gone quiet, an avatar beside every voice, warmer ground. Closest to what the SillyTavern audience already knows." },
+    { "id": "thread", "x": 1560, "y": 964, "w": 640, "text": "THREAD — play-by-post, which is where roleplay actually comes from. Not precious: solid header bars, real buttons, alternating post rows, a quick-reply box. Chrome that admits it is chrome." }
+  ],
+  "launch": { "view": "canvas" }
+}

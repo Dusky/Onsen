@@ -1,0 +1,93 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; background: #171310; }
+    a { color: #d78872; } a:hover { color: #c0503c; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+    .prose { font-family: "Spectral", Georgia, serif; }
+    .face { width: 40px; height: 40px; flex: none; border: 1px solid #2f2a22; display: flex; align-items: center; justify-content: center; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; height: 900px; background: radial-gradient(120% 90% at 50% 0%, #1d1815 0%, #171310 55%, #120f0c 100%); color: #e8e2d6; display: flex; flex-direction: column; overflow: hidden;">
+
+  <!-- Who is in the room. Present, lit; absent, dimmed. -->
+  <div style="flex: none; padding: 16px 30px 14px; border-bottom: 1px solid #241f19; display: flex; align-items: center; gap: 26px;">
+    <span class="prose" style="font-size: 16px; color: #e8e2d6;">The pass</span>
+    <div style="display: flex; gap: 18px; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 9px;">
+        <div class="face" style="background: linear-gradient(160deg, #6b4436, #3a2620); border-color: #c0503c;"><span class="prose" style="font-size: 15px; color: #f0e9dc;">A</span></div>
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <span class="mono" style="font-size: 9.5px; color: #e8e2d6;">Aldan</span>
+          <span class="mono" style="font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase; color: #c0503c;">Speaking</span>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 9px;">
+        <div class="face" style="background: linear-gradient(160deg, #4a4a5e, #292933);"><span class="prose" style="font-size: 15px; color: #cfc9c0;">M</span></div>
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <span class="mono" style="font-size: 9.5px; color: #c9c1b1;">Mira</span>
+          <span class="mono" style="font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase; color: #6f6a5f;">Watching</span>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 9px; opacity: 0.42;">
+        <div class="face" style="background: linear-gradient(160deg, #4b5240, #272b21);"><span class="prose" style="font-size: 15px; color: #cfc9c0;">B</span></div>
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <span class="mono" style="font-size: 9.5px; color: #8b8477;">Sister Bell</span>
+          <span class="mono" style="font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase; color: #6f6a5f;">Gone quiet</span>
+        </div>
+      </div>
+    </div>
+    <span style="flex-grow: 1;"></span>
+    <span class="mono" style="font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: #6f6a5f;">Setup</span>
+  </div>
+
+  <!-- The log. A face beside every voice. -->
+  <div style="flex-grow: 1; overflow: hidden; padding: 26px 0;">
+    <div style="width: 880px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px;">
+
+      <div style="display: flex; gap: 15px; justify-content: flex-end;">
+        <p class="prose" style="margin: 0; font-size: 17px; line-height: 1.6; color: #e2cdb4; background: #241c15; border: 1px solid #33291f; padding: 11px 15px; max-width: 520px;">Ask her what it would take.</p>
+      </div>
+
+      <div style="display: flex; gap: 15px;">
+        <div class="face" style="background: linear-gradient(160deg, #6b4436, #3a2620);"><span class="prose" style="font-size: 16px; color: #f0e9dc;">A</span></div>
+        <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 2px;">
+          <span class="mono" style="font-size: 10px; letter-spacing: 0.05em; color: #d78872;">Aldan Roe</span>
+          <p class="prose" style="margin: 0; font-size: 17px; line-height: 1.62; color: #e8e2d6; text-wrap: pretty;">The lamp on the counter had burned down to a stub, and nobody had said anything about it for ten minutes. He turned the ledger around so she could see the column. &ldquo;That is what I mean by short.&rdquo;</p>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 15px;">
+        <div class="face" style="background: linear-gradient(160deg, #4a4a5e, #292933);"><span class="prose" style="font-size: 16px; color: #cfc9c0;">M</span></div>
+        <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 2px;">
+          <span class="mono" style="font-size: 10px; letter-spacing: 0.05em; color: #9fb0c4;">Mira Vance</span>
+          <p class="prose" style="margin: 0; font-size: 17px; line-height: 1.62; color: #e8e2d6; text-wrap: pretty;">&ldquo;Short.&rdquo; She said it the way you say a word you intend to make somebody regret. &ldquo;Say the number, Aldan.&rdquo;</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Composer carries the face of whoever answers next. -->
+  <div style="flex: none; border-top: 1px solid #241f19; padding: 15px 0 20px; background: #14110e;">
+    <div style="width: 880px; margin: 0 auto; display: flex; gap: 13px; align-items: flex-end;">
+      <div class="face" style="background: #241c15; border-color: #33291f;"><span class="prose" style="font-size: 15px; color: #e2cdb4;">You</span></div>
+      <div style="flex-grow: 1; border: 1px solid #2a251e; background: #100e0b; padding: 12px 14px;">
+        <span class="prose" style="font-size: 16px; color: #6f6a5f;">Direct the scene&hellip;</span>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; background: #c0503c;">
+        <span class="mono" style="font-size: 15px; color: #f0e9dc;">&uarr;</span>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
