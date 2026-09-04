@@ -388,6 +388,15 @@ export function MessageBlock({
             {strings.chat.beatUnparsed}
           </p>
         ) : null}
+        {/* §2: still in the log, out of the prompt. Said on the message rather
+            than only in the menu that set it — a turn the author cannot see
+            reads exactly like one it can, and the difference matters most when
+            you are wondering why it did not react. */}
+        {message.isHidden ? (
+          <p className="chrome mt-[8px] text-[8.5px] tracking-[0.1em] uppercase" style={{ color: "var(--onsen-color-blue-text)" }}>
+            {strings.chat.hiddenFromPrompt}
+          </p>
+        ) : null}
         {/* §20 phase 41: what was drawn for this turn, read aloud from it, or
             attached to it. Below the prose, because it illustrates the words
             rather than replacing them. */}

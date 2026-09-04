@@ -33,6 +33,7 @@ import type {
   SceneApiDto,
   MemoryEntityDto,
   AuthorMemoryDto,
+  CheckpointDto,
   MediaAssetDto,
   MediaKindDto,
   MediaServiceDto,
@@ -587,6 +588,62 @@ export function useRevertAnnotation(sceneId: string) {
 export function useSetLeaf(sceneId: string) {
   return useSceneMutation(sceneId, (body: SetActiveLeafRequest) =>
     api.put<SceneWithHistoryDto>(`/scenes/${sceneId}/leaf`, body),
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Checkpoints (SPEC §2)                                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Named places in the tree.
+ *
+ * The whole server half of this has existed since phase 2 and nothing ever
+ * called it. A branch is where the story went; a checkpoint is a place you
+ * chose to be able to come back to, which is a different thing and the reason
+ * a tree alone does not cover it.
+ */
+const checkpointKeys = {
+  scene: (sceneId: string) => ["scenes", sceneId, "checkpoints"] as const,
+};
+
+export function useCheckpoints(sceneId: string) {
+  return useQuery({
+    queryKey: checkpointKeys.scene(sceneId),
+    queryFn: () => api.get<CheckpointDto[]>(`/scenes/${sceneId}/checkpoints`),
+  });
+}
+
+function useCheckpointMutation<TArgs, TResult>(
+  sceneId: string,
+  fn: (args: TArgs) => Promise<TResult>,
+) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: checkpointKeys.scene(sceneId) });
+      // Restoring moves the leaf, so the transcript changed too.
+      void client.invalidateQueries({ queryKey: keys.scene(sceneId) });
+    },
+  });
+}
+
+export function useCreateCheckpoint(sceneId: string) {
+  return useCheckpointMutation(sceneId, (body: { name: string; messageId?: string }) =>
+    api.post<CheckpointDto>(`/scenes/${sceneId}/checkpoints`, body),
+  );
+}
+
+export function useRestoreCheckpoint(sceneId: string) {
+  return useCheckpointMutation(sceneId, (checkpointId: string) =>
+    api.post<SceneWithHistoryDto>(`/scenes/${sceneId}/checkpoints/${checkpointId}/restore`),
+  );
+}
+
+export function useDeleteCheckpoint(sceneId: string) {
+  return useCheckpointMutation(sceneId, (checkpointId: string) =>
+    api.delete<void>(`/scenes/${sceneId}/checkpoints/${checkpointId}`),
   );
 }
 

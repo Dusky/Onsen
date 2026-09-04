@@ -187,6 +187,27 @@ export const strings = {
     reroll: "Reroll",
     edit: "Edit",
     branch: "Branch from here",
+
+    /* Named places in the tree (SPEC §2). */
+    checkpoint: "Mark this place",
+    checkpointName: "Call it",
+    checkpointNamePlaceholder: "before she opens the ledger",
+    checkpointSave: "Mark it",
+    checkpoints: "Marked places",
+    checkpointsEmpty: "Nothing marked yet.",
+    checkpointsHint:
+      "A branch is where the story went. A mark is a place you chose to be able to come back to — going back to one leaves every branch where it is.",
+    checkpointGo: "Go back to it",
+    checkpointForget: "Forget this mark",
+    checkpointForgetConfirm: (name: string) =>
+      `Forget the mark on ${name}? The message and everything after it stay.`,
+    checkpointAt: (excerpt: string) => `at "${excerpt}"`,
+
+    /* §2: kept in the log, kept out of the prompt. */
+    hideFromPrompt: "Keep this from the author",
+    showToPrompt: "Show this to the author",
+    hiddenFromPrompt: "The author is not shown this.",
+
     copy: "Copy",
     copied: "Copied",
     delete: "Delete",

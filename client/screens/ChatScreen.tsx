@@ -14,12 +14,14 @@ import {
   useAttachImage,
   useIllustrate,
   useSpeak,
+  useCheckpoints,
 } from "../lib/queries.ts";
 import { useGeneration } from "../lib/generation.ts";
 import { MessageBlock, MessageEditor, OocBlock, Reasoning } from "../components/MessageBlock.tsx";
 import { OocChannel } from "../components/OocChannel.tsx";
 import { Composer } from "../components/Composer.tsx";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
+import { CheckpointsSheet, MarkSheet } from "../components/Checkpoints.tsx";
 import { InspectorSheet } from "../components/InspectorSheet.tsx";
 import { CastStrip } from "../components/CastStrip.tsx";
 import { OpsGrid, OpsRow, OpPrompt, type Op } from "../components/OpsGrid.tsx";
@@ -281,6 +283,10 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
    * news for a moment and then it is furniture, and it clears on the next act.
    */
   const [mediaNote, setMediaNote] = useState<string | null>(null);
+  /** The message being marked, while the name is being typed (§2). */
+  const [marking, setMarking] = useState<MessageDto | null>(null);
+  const [marksOpen, setMarksOpen] = useState(false);
+  const checkpoints = useCheckpoints(sceneId);
   const illustrate = useIllustrate(sceneId);
   const speak = useSpeak(sceneId);
   const attach = useAttachImage(sceneId);
@@ -914,6 +920,17 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             Both are chips onto screens that do not exist yet — the inspector is
             phase 25 and the VN stage is phase 29 — and a number with nothing
             behind it to open is worse than the space it saves. */}
+        {/* §2's marked places. Only offered once there is one: a chip onto an
+            empty list is the thing the comment above argues against. */}
+        {(checkpoints.data?.length ?? 0) > 0 ? (
+          <button
+            type="button"
+            onClick={() => setMarksOpen(true)}
+            className="chrome flex-none border border-border-quiet px-[9px] py-[6px] text-[9px] tracking-[0.12em] text-ink-muted uppercase"
+          >
+            {`${strings.chat.checkpoints} · ${checkpoints.data?.length ?? 0}`}
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={() => navigate({ name: "setup", sceneId })}
@@ -1051,6 +1068,25 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
               setActing(null);
             }}
           />
+          {/* §2's checkpoints. The server half has existed since phase 2 and
+              nothing ever called it: a branch is where the story went, a mark
+              is a place you chose to be able to return to. */}
+          <SheetAction
+            label={strings.chat.checkpoint}
+            onClick={() => {
+              setMarking(acting);
+              setActing(null);
+            }}
+          />
+          {/* §2: "excluded from the prompt entirely, though still shown in the
+              log". Settable through the API since phase 2 and never offered. */}
+          <SheetAction
+            label={acting.isHidden ? strings.chat.showToPrompt : strings.chat.hideFromPrompt}
+            onClick={() => {
+              edit.mutate({ messageId: acting.id, isHidden: !acting.isHidden });
+              setActing(null);
+            }}
+          />
           {/* SPEC §7.5: auto-run per scene, or manual per message. This is the
               per-message half — a second read of one turn you are unsure about. */}
           <SheetAction
@@ -1148,6 +1184,14 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             }
           />
         </Sheet>
+      ) : null}
+
+      {marking !== null ? (
+        <MarkSheet sceneId={sceneId} message={marking} onClose={() => setMarking(null)} />
+      ) : null}
+
+      {marksOpen ? (
+        <CheckpointsSheet sceneId={sceneId} onClose={() => setMarksOpen(false)} />
       ) : null}
 
       {guidesOpen ? (

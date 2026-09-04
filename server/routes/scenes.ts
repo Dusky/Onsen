@@ -28,6 +28,7 @@ import {
   toMessageDto,
   updateMessage,
   updateScene,
+  excerptOfMessage,
   type MessageRow,
   type SceneRow,
 } from "../db/queries/history.ts";
@@ -860,7 +861,10 @@ export function sceneRoutes(
         ulid: string;
       }
     ).ulid;
-    return c.json(toCheckpointDto(row, sceneRow.ulid, messageUlid), 201);
+    return c.json(
+      toCheckpointDto(row, sceneRow.ulid, messageUlid, excerptOfMessage(ctx.db, messageId)),
+      201,
+    );
   });
 
   /**
@@ -902,7 +906,12 @@ export function sceneRoutes(
           | { ulid: string }
           | null
       )?.ulid;
-      return toCheckpointDto(row, sceneRow.ulid, messageUlid ?? "");
+      return toCheckpointDto(
+        row,
+        sceneRow.ulid,
+        messageUlid ?? "",
+        excerptOfMessage(ctx.db, row.message_id),
+      );
     });
   }
 

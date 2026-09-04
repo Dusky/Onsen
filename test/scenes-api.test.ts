@@ -444,6 +444,28 @@ describe("checkpoints", () => {
     expect(await pathOf(t, scene)).toEqual(["one", "two", "three, differently"]);
   });
 
+  test("a mark carries a line of what it marks, wherever it points", async () => {
+    const t = await signedIn();
+    const scene = await newScene(t);
+    await post(t, scene, "one");
+    const marked = await post(t, scene, "the ledger says eleven barrels short");
+    await post(t, scene, "three");
+
+    const created = await send<CheckpointDto>(t, "POST", `/api/scenes/${scene.id}/checkpoints`, {
+      name: "before she opens it",
+      messageId: marked.id,
+    });
+    expect(created.body.excerpt).toBe("the ledger says eleven barrels short");
+
+    // Rewind past it, so the marked message is no longer on the active path.
+    // The excerpt still resolves: a mark points wherever the reader put it,
+    // which is very often not where the story currently is, and a list that
+    // could not name its own rows would be six identical lines.
+    await send(t, "PUT", `/api/scenes/${scene.id}/leaf`, { messageId: null });
+    const listed = await send<CheckpointDto[]>(t, "GET", `/api/scenes/${scene.id}/checkpoints`);
+    expect(listed.body[0]!.excerpt).toBe("the ledger says eleven barrels short");
+  });
+
   test("defaults to the active leaf and needs a name", async () => {
     const t = await signedIn();
     const scene = await newScene(t);

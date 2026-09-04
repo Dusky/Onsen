@@ -258,14 +258,33 @@ export function toCheckpointDto(
   row: CheckpointRow,
   sceneUlid: string,
   messageUlid: string,
+  /**
+   * A line of the message this marks.
+   *
+   * Resolved here rather than in the client, because a mark points wherever the
+   * reader put it — which is very often *not* on the active path, that being
+   * most of the point. The client has only the path it is showing.
+   */
+  excerpt: string | null = null,
 ): CheckpointDto {
   return {
     id: row.ulid,
     sceneId: sceneUlid,
     messageId: messageUlid,
     name: row.name,
+    excerpt,
     createdAt: row.created_at,
   };
+}
+
+/** One line of a message, for a list that has to tell two of them apart. */
+export function excerptOfMessage(db: Database, messageId: number): string | null {
+  const row = db.query("SELECT content FROM messages WHERE id = $id").get({ id: messageId }) as
+    | { content: string }
+    | null;
+  if (row === null) return null;
+  const flat = row.content.replace(/\s+/g, " ").trim();
+  return flat.length <= 80 ? flat : `${flat.slice(0, 79)}…`;
 }
 
 /* ------------------------------------------------------------------ */

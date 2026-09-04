@@ -950,6 +950,11 @@ export interface CheckpointDto {
   sceneId: string;
   messageId: string;
   name: string;
+  /**
+   * A line of the message this marks. Resolved server-side: a mark often points
+   * off the active path, which the client is not holding.
+   */
+  excerpt: string | null;
   createdAt: number;
 }
 
