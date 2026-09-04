@@ -1306,8 +1306,50 @@ function EmbeddingsSection() {
 
 /* ------------------------------------------------------------------ */
 
+/**
+ * The nine places settings live (SPEC §20 phase 43).
+ *
+ * Thirty-one section labels in one 1,596-line scroll was not a hierarchy: when
+ * everything is a heading, nothing is, and nothing can be found twice. The
+ * filter searches these names and the words under them, so a reader who
+ * remembers "webhook" but not "connections out" still lands on it.
+ */
+const CATEGORIES = [
+  { id: "models", words: ["provider", "profile", "model", "api key", "endpoint", "anthropic", "llama"] },
+  { id: "generation", words: ["preset", "sampler", "temperature", "context", "reasoning", "prefill"] },
+  { id: "tasks", words: ["routing", "ops", "background", "guide", "summariser", "classifier"] },
+  { id: "reading", words: ["font", "size", "theme", "prose", "light", "dark"] },
+  { id: "media", words: ["picture", "voice", "image", "speech", "tts", "draw", "caption"] },
+  { id: "data", words: ["embedding", "document", "retrieval", "rag", "data bank"] },
+  { id: "automation", words: ["trigger", "script", "regex", "action", "event"] },
+  { id: "outward", words: ["api key", "webhook", "outbound", "bridge", "token"] },
+  { id: "packs", words: ["pack", "update", "import", "export", "version"] },
+] as const;
+
+type CategoryId = (typeof CATEGORIES)[number]["id"];
+
 export function SettingsScreen() {
   const signOut = useSignOut();
+  const [category, setCategory] = useState<CategoryId>("models");
+  const [filter, setFilter] = useState("");
+
+  /**
+   * Which categories the filter leaves standing. An empty filter leaves all of
+   * them, so typing is additive rather than a mode to get into and out of.
+   */
+  const needle = filter.trim().toLowerCase();
+  const matching = CATEGORIES.filter(
+    (entry) =>
+      needle === "" ||
+      (strings.settings.categories[entry.id] ?? entry.id).toLowerCase().includes(needle) ||
+      entry.words.some((word) => word.includes(needle)),
+  );
+  // A filter that hides the open category would show an empty pane, so the
+  // first survivor takes over.
+  const active = matching.some((entry) => entry.id === category)
+    ? category
+    : (matching[0]?.id ?? category);
+  const show = (id: CategoryId) => id === active;
   const providers = useProviders();
   const profiles = useConnectionProfiles();
   const presets = usePresets();
@@ -1341,8 +1383,49 @@ export function SettingsScreen() {
         <h1 className="screen-title mt-[6px]">{strings.settings.kicker}</h1>
       </header>
 
+      {/* §20 phase 43: nine places, and a filter that searches the words under
+          them as well as their names — a reader who remembers "webhook" but not
+          "connections out" still lands on it. Horizontal on a phone, because a
+          left rail there would eat a third of the width. */}
+      <div className="hairline flex flex-none flex-col gap-[9px] px-[22px] pb-[11px]">
+        <input
+          value={filter}
+          onChange={(event) => setFilter(event.target.value)}
+          placeholder={strings.settings.filterSettings}
+          aria-label={strings.settings.filterSettings}
+          className="field"
+        />
+        <div className="-mx-[4px] flex gap-[3px] overflow-x-auto">
+          {matching.map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              onClick={() => setCategory(entry.id)}
+              aria-current={entry.id === active ? "page" : undefined}
+              className="chrome flex min-h-[44px] flex-none items-center px-[10px] text-[9.5px] tracking-[0.12em] uppercase"
+              style={{
+                color:
+                  entry.id === active
+                    ? "var(--onsen-color-text)"
+                    : "var(--onsen-color-text-muted)",
+                borderBottom: `2px solid ${entry.id === active ? "var(--onsen-color-red)" : "transparent"}`,
+              }}
+            >
+              {strings.settings.categories[entry.id] ?? entry.id}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <main className="min-h-0 flex-1 overflow-y-auto px-[22px] py-[16px]">
         <div className="mx-auto w-full max-w-[var(--onsen-list-measure)]">
+          {matching.length === 0 ? (
+            <p className="chrome text-[10px] leading-[1.6] text-ink-dim">
+              {strings.settings.categoryEmpty}
+            </p>
+          ) : null}
+          {show("models") ? (
+            <>
           {/* Providers */}
           <p className="section-label mb-[4px]">{strings.settings.providers}</p>
           <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
@@ -1416,6 +1499,10 @@ export function SettingsScreen() {
             {strings.settings.addProfile}
           </button>
 
+            </>
+          ) : null}
+          {show("generation") ? (
+            <>
           {/* How the model is asked to write (SPEC §13). */}
           <p className="section-label mb-[4px]">{strings.settings.generation}</p>
           <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
@@ -1478,6 +1565,10 @@ export function SettingsScreen() {
           ) : null}
           <div className="mb-[26px]" />
 
+            </>
+          ) : null}
+          {show("tasks") ? (
+            <>
           {/* Routing by operation — the interesting one. */}
           <p className="section-label mb-[4px]">{strings.settings.routing}</p>
           <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
@@ -1524,27 +1615,39 @@ export function SettingsScreen() {
               </Row>
             );
           })}
+            </>
+          ) : null}
           <div className="h-[20px]" />
 
-          <ReadingSection />
+          {show("reading") ? <ReadingSection /> : null}
 
-          <ApiKeysSection />
+          {show("outward") ? (
+            <>
+              <ApiKeysSection />
+              <WebhooksSection />
+            </>
+          ) : null}
 
-          <WebhooksSection />
+          {/* §20 phase 41: what draws and what speaks. Its own category rather
+              than filed under the data bank, because "what draws" is a question
+              nobody goes looking for under "embeddings". */}
+          {show("media") ? (
+            <>
+              <p className="section-label mb-[4px]">{strings.media.title}</p>
+              <MediaSettings />
+            </>
+          ) : null}
 
-          {/* §20 phase 41: what draws and what speaks. Near the data bank and
-              the webhooks rather than up with the providers, because these are
-              services the app talks to and not models it writes with. */}
-          <p className="section-label mb-[4px]">{strings.media.title}</p>
-          <MediaSettings />
+          {show("packs") ? (
+            <>
+              <PacksSection />
+              <UpdateGroup />
+            </>
+          ) : null}
 
-          <PacksSection />
+          {show("automation") ? <AutomationSection /> : null}
 
-          <AutomationSection />
-
-          <EmbeddingsSection />
-
-          <UpdateGroup />
+          {show("data") ? <EmbeddingsSection /> : null}
 
           {/* Last, and on its own: the only control here that ends the
               session rather than changing it. */}

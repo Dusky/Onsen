@@ -406,6 +406,20 @@ export const strings = {
     kicker: "Settings",
     /* There was no way out of a signed-in install until now. */
     signOut: "Sign out",
+    /* §20 phase 43: eight places instead of one 1,596-line scroll. */
+    filterSettings: "Filter settings",
+    categories: {
+      models: "Models",
+      generation: "Generation",
+      tasks: "Background tasks",
+      reading: "Reading",
+      media: "Pictures & voices",
+      data: "Data bank",
+      automation: "Automation",
+      outward: "Connections out",
+      packs: "Packs & updates",
+    } as Record<string, string>,
+    categoryEmpty: "Nothing here matches that.",
     signOutHint:
       "Locks this browser. Everything stays on the server; you will need the password again.",
 
