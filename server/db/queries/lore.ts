@@ -543,6 +543,14 @@ export function toBookDto(db: Database, row: LorebookRow): LorebookDto {
     name: row.name,
     description: row.description,
     managed,
+    ownerAuthorName:
+      row.owner_author_id === null
+        ? null
+        : ((
+            db.query("SELECT name FROM authors WHERE id = $id").get({ id: row.owner_author_id }) as
+              | { name: string }
+              | null
+          )?.name ?? null),
     tokenBudget: row.token_budget,
     scanDepth: row.scan_depth,
     recursionDepth: row.recursion_depth,

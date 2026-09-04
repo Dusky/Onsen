@@ -32,6 +32,7 @@ import type {
   NewApiKeyDto,
   SceneApiDto,
   MemoryEntityDto,
+  AuthorMemoryDto,
   SavedFilterDto,
   TrackerDto,
   CreateConnectionProfileRequest,
@@ -706,6 +707,9 @@ export function useUpdateAuthor(id: string) {
     onSuccess: (author) => {
       client.setQueryData(authorKeys.one(id), author);
       void client.invalidateQueries({ queryKey: authorKeys.all });
+      // Switching memory on makes the author's book (§11), so what the memory
+      // panel knows — the budget, the link to the entries — is stale now.
+      void client.invalidateQueries({ queryKey: ["author-memory", id] });
     },
   });
 }
@@ -1784,4 +1788,64 @@ export function useEditMemoryEntity(sceneId: string) {
 
 export function useDeleteMemoryEntity(sceneId: string) {
   return useMemoryMutation(sceneId, (id: string) => api.delete<void>(`/memory/entities/${id}`));
+}
+
+/* ------------------------------------------------------------------ */
+/* Author memory (SPEC §11)                                            */
+/* ------------------------------------------------------------------ */
+
+const authorMemoryKeys = {
+  author: (authorId: string) => ["author-memory", authorId] as const,
+};
+
+export function useAuthorMemory(authorId: string, enabled = true) {
+  return useQuery({
+    queryKey: authorMemoryKeys.author(authorId),
+    queryFn: () => api.get<AuthorMemoryDto>(`/memory/authors/${authorId}`),
+    enabled,
+  });
+}
+
+function useAuthorMemoryMutation<TArgs, TResult>(
+  authorId: string,
+  fn: (args: TArgs) => Promise<TResult>,
+) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: authorMemoryKeys.author(authorId) });
+      // The book is an ordinary lorebook, so the lorebooks list has changed too
+      // the first time the author writes anything.
+      void client.invalidateQueries({ queryKey: loreKeys.all });
+    },
+  });
+}
+
+/** §11's "hard token cap, separate budget". */
+export function useSetAuthorMemoryBudget(authorId: string) {
+  return useAuthorMemoryMutation(authorId, (tokenBudget: number) =>
+    api.patch<{ enabled: boolean }>(`/memory/authors/${authorId}`, { tokenBudget }),
+  );
+}
+
+/**
+ * "Remember this" (SPEC §11).
+ *
+ * Takes the roleplay because that is what there is to remember — the author
+ * editor has no scene, which is why this lives beside the story instead.
+ */
+export function useRememberThis(authorId: string) {
+  return useAuthorMemoryMutation(authorId, (sceneId: string) =>
+    api.post<{ note: { title: string } | null }>(`/memory/authors/${authorId}/remember`, {
+      sceneId,
+    }),
+  );
+}
+
+/** §11's one-click wipe. The book stays; what it holds does not. */
+export function useWipeAuthorMemory(authorId: string) {
+  return useAuthorMemoryMutation(authorId, () =>
+    api.delete<{ removed: number }>(`/memory/authors/${authorId}/entries`),
+  );
 }

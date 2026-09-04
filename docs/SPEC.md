@@ -294,6 +294,8 @@ Lorebook:
   owner_author_id    -- nullable; set for author memory (§11)
 LoreEntry:
   id, lorebook_id, keys (string[]), secondary_keys (string[]), content
+  written_by         -- nullable; 'author' for a note the author wrote (§11)
+  written_in_scene_id -- nullable; the roleplay it came out of
   selective_logic    -- enum: and_any | and_all | not_any | not_all
   use_regex          -- keys are regex rather than literals
   insertion_order, insertion_position, insertion_depth, insertion_role
@@ -1755,6 +1757,37 @@ and the editor.
 
 Keep it strictly opt-in. An author that silently accumulates notes about the
 user is a different product with different expectations.
+
+#### Settled while building phase 39
+
+- **Ownership is the binding.** The author's book has no `lorebook_bindings` row
+  and never will: `booksForScene` matches it on `owner_author_id`. This is why
+  the query's join had to become a `LEFT JOIN` — an inner join silently dropped
+  the one book that has no binding to join against, and every test passed.
+- **The book is made when memory is switched on, not on the first note.** §11
+  asks for a "hard token cap", and a lorebook's budget of `0` means uncapped.
+  Deferring the book meant showing a budget of 0 for a book that did not exist,
+  which reads as the opposite of a cap. Default budget is 512.
+- **`memory_enabled` has one writer.** It is an author column, set through
+  `PATCH /authors/:id`. The memory route owns the budget and nothing else — one
+  flag with two routes able to write it is how the two come to disagree.
+- **Provenance is two columns, not a convention.** `written_by` and
+  `written_in_scene_id`, so "the author wrote this, in that roleplay" is
+  something a screen can read rather than something a comment claims. The patch
+  type accepted both before the `UPDATE` statement wrote either, and it
+  typechecked: provenance would have been invisible with nothing to show for it.
+- **A note with no keys gets its title as a key.** An entry with no keys never
+  activates, which makes it a note nobody sees again. A worse key beats none.
+- **The lorebooks list says who wrote a book, not that it is unbound.** The
+  author's book shows "Written by Vesper" in the slot the bindings use — the one
+  book that always reaches its scenes must not be listed as reaching none.
+- **"Remember this" lives beside the roleplay; the switch lives on the author.**
+  There is something to remember about a scene and nothing to remember about an
+  author editor. Whether a partner keeps notes about you is a question about the
+  partner.
+- **Entries are edited in §10's lorebook editor**, reached by a link from the
+  author's card. A second editor for the same rows is a second editor to keep
+  correct.
 
 ### What not to claim
 

@@ -89,11 +89,13 @@ export function LoreSheet({
               <span className="block truncate text-[14px]">{book.name}</span>
               <span className="chrome mt-[3px] block truncate text-[9px] tracking-[0.08em] text-ink-dim uppercase">
                 {strings.lore.entries(book.entryCount)}
-                {book.managed
-                  ? ` · ${strings.lore.managedNote}`
-                  : own === undefined
-                    ? ` · ${strings.lore.globalNote}`
-                    : ""}
+                {book.ownerAuthorName !== null
+                  ? ` · ${strings.lore.ownedBy(book.ownerAuthorName)}`
+                  : book.managed
+                    ? ` · ${strings.lore.managedNote}`
+                    : own === undefined
+                      ? ` · ${strings.lore.globalNote}`
+                      : ""}
               </span>
             </button>
             {own === undefined || book.managed ? null : (

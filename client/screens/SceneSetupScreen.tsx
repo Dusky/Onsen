@@ -48,6 +48,7 @@ import {
 import { Sheet } from "../components/Sheet.tsx";
 import { TURN_STRATEGIES, type TurnStrategy } from "@shared/types.ts";
 import { MemorySection } from "../components/NarrativeMemory.tsx";
+import { RememberThis } from "../components/AuthorMemory.tsx";
 
 /**
  * Scene setup: who is writing, who you are, and who is in it.
@@ -654,6 +655,18 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               rule that a reader's edit is never overwritten needs somewhere to
               edit for it to mean anything. */}
           <MemorySection sceneId={sceneId} />
+
+          {/* §11's author memory, asked for from the roleplay because that is
+              what there is to remember. The switch is on the author's card:
+              whether a partner keeps notes about you is a question about the
+              partner, not about one story. */}
+          {scene.authorId !== null && scene.authorName !== null ? (
+            <RememberThis
+              sceneId={sceneId}
+              authorId={scene.authorId}
+              authorName={scene.authorName}
+            />
+          ) : null}
 
           {/* §19: whether an outside client may drive this roleplay. Off by
               default and enabled per scene, which the spec is explicit about —

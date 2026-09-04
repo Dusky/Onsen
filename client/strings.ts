@@ -869,6 +869,21 @@ export const strings = {
     memory: "Remember across roleplays",
     memoryHint:
       "Off by default. An author that quietly accumulates notes about you is a different thing, so this stays a choice.",
+    memoryNotes: "What it remembers",
+    memoryEmpty: "Nothing yet. Ask it to remember something from inside a roleplay.",
+    /** §11's provenance, said as a sentence rather than a badge nobody decodes. */
+    memoryByAuthor: (name: string) => `${name} wrote this`,
+    memoryByYou: "You wrote this",
+    memoryInScene: (title: string) => `in ${title}`,
+    memoryBudget: "Token budget",
+    memoryBudgetHint:
+      "The most these notes may add to a prompt. They fire on keywords like any other lore, so only the relevant ones show up.",
+    memoryOpenBook: "Open as a lorebook",
+    memoryOpenBookHint:
+      "These notes are an ordinary lorebook. Edit, disable or rewrite any of them there.",
+    memoryWipe: "Forget everything",
+    memoryWipeConfirm: (name: string) =>
+      `Delete every note ${name} has written? The roleplays they came from are untouched.`,
     makeDefault: "Use by default",
     isDefault: "Default",
     cardTotal: "Author total",
@@ -956,6 +971,17 @@ export const strings = {
     memoryYours: "Yours",
     memoryYoursHint: "You wrote this, so the extractor leaves it alone.",
     memoryQuiet: (n: number) => (n === 0 ? "Just now" : `${n} ${n === 1 ? "turn" : "turns"} ago`),
+
+    /* §11's author memory, asked for here because this is the roleplay there is
+       something to remember about. The switch itself lives on the author. */
+    remember: "Author's memory",
+    rememberThis: "Remember this",
+    rememberThisWorking: "Writing…",
+    rememberHint: (name: string) =>
+      `${name} writes one note about this roleplay and carries it into the others.`,
+    rememberDone: (title: string) => `Noted: ${title}`,
+    rememberNothing: "Nothing worth writing down yet.",
+    rememberOff: (name: string) => `Off for ${name}. Switch it on in their card.`,
     memoryDelete: "Forget it",
     memoryDeleteConfirm: "This note is deleted. The extractor may write it again later.",
     memoryLinks: "Connected",
@@ -1132,6 +1158,12 @@ export const strings = {
       `Imported ${name} \u2014 ${entries} ${entries === 1 ? "entry" : "entries"}.`,
     entries: (n: number) => `${n} ${n === 1 ? "ENTRY" : "ENTRIES"}`,
     unbound: "Not attached to anything",
+    /**
+     * §11: the one book whose author is what attaches it, in the slot the
+     * other bindings use, and parallel to managedNote's "Written by the app":
+     * both answer the same question, which is who put these words here.
+     */
+    ownedBy: (author: string) => `Written by ${author}`,
     /** How a book reaches a prompt at all (§10). */
     bindingGlobal: "Every roleplay",
     bindingScene: (name: string) => `Roleplay: ${name}`,

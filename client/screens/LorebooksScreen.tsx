@@ -42,9 +42,11 @@ function Row({ book }: { book: LorebookDto }) {
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[15px] font-medium">{book.name}</span>
         <span className="chrome mt-[4px] block truncate text-[9px] tracking-[0.08em] text-ink-dim uppercase">
-          {book.bindings.length === 0
-            ? strings.lore.unbound
-            : book.bindings.map(bindingLabel).join(" · ")}
+          {book.ownerAuthorName !== null
+            ? strings.lore.ownedBy(book.ownerAuthorName)
+            : book.bindings.length === 0
+              ? strings.lore.unbound
+              : book.bindings.map(bindingLabel).join(" · ")}
         </span>
       </span>
       <span className="chrome flex-none text-[9px] tracking-[0.08em] text-ink-dim uppercase">

@@ -1,8 +1,14 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { ScriptedAdapter, completeSetup, createHarness, until, type TestHarness } from "./helpers.ts";
 import { V2_CARD, pngCard } from "./card-fixtures.ts";
-import { parseNote } from "../server/memory/author.ts";
-import type { AuthorDto, CharacterDto, ConnectionProfileDto, SceneDto } from "../shared/types.ts";
+import { DEFAULT_MEMORY_BUDGET, parseNote } from "../server/memory/author.ts";
+import type {
+  AuthorDto,
+  AuthorMemoryDto,
+  CharacterDto,
+  ConnectionProfileDto,
+  SceneDto,
+} from "../shared/types.ts";
 
 /**
  * Author memory (SPEC §11, §20 phase 39).
@@ -80,18 +86,8 @@ async function scene(t: TestHarness): Promise<Setup> {
   return { sceneId: created.id, authorId: author.id };
 }
 
-interface MemoryDto {
-  enabled: boolean;
-  bookId: string | null;
-  entries: {
-    id: string;
-    title: string;
-    content: string;
-    keys: string[];
-    writtenByAuthor: boolean;
-    writtenInScene: string | null;
-  }[];
-}
+/** The client's own view of it, so the route and the screen cannot drift. */
+type MemoryDto = AuthorMemoryDto;
 
 const NOTE = JSON.stringify({
   title: "Who paid",
@@ -136,20 +132,52 @@ describe("the posture §11 insists on", () => {
     ).toBe(400);
   });
 
-  test("the book is made on first use, not at author creation", async () => {
+  test("the book is made when memory is switched on, not at author creation", async () => {
     const t = await signedIn();
     const { authorId } = await scene(t);
-    await json(t, "PATCH", `/api/memory/authors/${authorId}`, { enabled: true });
-    // A book that existed from the start would appear in the lorebooks list as
-    // an empty thing the reader did not make and cannot explain.
+    // A book that existed for every author from the start would appear in the
+    // lorebooks list as an empty thing the reader did not make.
     expect((await json<MemoryDto>(t, "GET", `/api/memory/authors/${authorId}`)).bookId).toBeNull();
     expect(await json<{ id: string }[]>(t, "GET", "/api/lorebooks")).toHaveLength(0);
+
+    await json(t, "PATCH", `/api/authors/${authorId}`, { memoryEnabled: true });
+    const after = await json<MemoryDto>(t, "GET", `/api/memory/authors/${authorId}`);
+    expect(after.bookId).not.toBeNull();
+    // §11 asks for a "hard token cap". A lorebook's budget of 0 is uncapped,
+    // which is the column's default and the wrong one for a book that grows
+    // across every roleplay the author is in.
+    expect(after.tokenBudget).toBe(DEFAULT_MEMORY_BUDGET);
+  });
+
+  test("the lorebooks list says whose book it is, not that it is attached to nothing", async () => {
+    const t = await signedIn();
+    const { authorId } = await scene(t);
+    await json(t, "PATCH", `/api/authors/${authorId}`, { memoryEnabled: true });
+    const books = await json<
+      { name: string; bindings: unknown[]; ownerAuthorName: string | null }[]
+    >(t, "GET", "/api/lorebooks");
+    expect(books).toHaveLength(1);
+    // It has no bindings and never will — ownership is what attaches it — so a
+    // list that read this as "not attached to anything" would describe the one
+    // book that always reaches its scenes as the one that reaches none.
+    expect(books[0]!.bindings).toEqual([]);
+    expect(books[0]!.ownerAuthorName).toBe("Kestrel");
+  });
+
+  test("the budget is the reader's to move", async () => {
+    const t = await signedIn();
+    const { authorId } = await scene(t);
+    await json(t, "PATCH", `/api/authors/${authorId}`, { memoryEnabled: true });
+    await json(t, "PATCH", `/api/memory/authors/${authorId}`, { tokenBudget: 120 });
+    expect((await json<MemoryDto>(t, "GET", `/api/memory/authors/${authorId}`)).tokenBudget).toBe(
+      120,
+    );
   });
 
   test("never runs unasked", async () => {
     const t = await signedIn();
     const { sceneId, authorId } = await scene(t);
-    await json(t, "PATCH", `/api/memory/authors/${authorId}`, { enabled: true });
+    await json(t, "PATCH", `/api/authors/${authorId}`, { memoryEnabled: true });
 
     adapter.taskReply = NOTE;
     const snapshot = await json<{ id: string }>(t, "POST", `/api/scenes/${sceneId}/generate`, {});
@@ -167,7 +195,7 @@ describe("the posture §11 insists on", () => {
 describe("remembering", () => {
   async function ready(t: TestHarness): Promise<Setup> {
     const setup = await scene(t);
-    await json(t, "PATCH", `/api/memory/authors/${setup.authorId}`, { enabled: true });
+    await json(t, "PATCH", `/api/authors/${setup.authorId}`, { memoryEnabled: true });
     return setup;
   }
 
@@ -222,7 +250,7 @@ describe("remembering", () => {
     const t = await signedIn();
     const { sceneId, authorId } = await ready(t);
     const other = await json<AuthorDto>(t, "POST", "/api/authors", { name: "Wren" });
-    await json(t, "PATCH", `/api/memory/authors/${other.id}`, { enabled: true });
+    await json(t, "PATCH", `/api/authors/${other.id}`, { memoryEnabled: true });
     expect(
       await statusOf(t, "POST", `/api/memory/authors/${other.id}/remember`, { sceneId }),
     ).toBe(400);
@@ -247,7 +275,7 @@ describe("the wipe §11 asks for", () => {
   test("empties the book and keeps it", async () => {
     const t = await signedIn();
     const { sceneId, authorId } = await scene(t);
-    await json(t, "PATCH", `/api/memory/authors/${authorId}`, { enabled: true });
+    await json(t, "PATCH", `/api/authors/${authorId}`, { memoryEnabled: true });
     adapter.taskReply = NOTE;
     await json(t, "POST", `/api/memory/authors/${authorId}/remember`, { sceneId });
 
@@ -268,7 +296,7 @@ describe("the wipe §11 asks for", () => {
   test("deleting the partner takes the book with it", async () => {
     const t = await signedIn();
     const { sceneId, authorId } = await scene(t);
-    await json(t, "PATCH", `/api/memory/authors/${authorId}`, { enabled: true });
+    await json(t, "PATCH", `/api/authors/${authorId}`, { memoryEnabled: true });
     adapter.taskReply = NOTE;
     await json(t, "POST", `/api/memory/authors/${authorId}/remember`, { sceneId });
     expect(await json<{ id: string }[]>(t, "GET", "/api/lorebooks")).toHaveLength(1);

@@ -3553,3 +3553,87 @@ one; git had it back in a second, but the near-miss is the point — two feature
 called memory, one layer apart, and the second one walked into the first one's
 name without looking. The new one is `NarrativeMemory.tsx`, and it says in its
 header comment which layer it is not.
+
+---
+
+## Phase 39 — Author memory
+
+§11's optional cross-scene memory: what a writing partner remembers about you
+between roleplays. Off by default, per author.
+
+The whole design is one sentence of §11's: "a lorebook with `owner_author_id`
+set, so it reuses keyword activation, budgeting, and the editor." Nothing here
+is a second retrieval mechanism, a second budget or a second editor.
+
+### What was built
+
+**Migration 0036** — `lorebooks.owner_author_id` with a unique partial index
+(one book per author), and provenance on entries: `written_by`,
+`written_in_scene_id`.
+
+**Ownership as a binding** — `booksForScene` matches the author's book on
+`owner_author_id` alongside the four binding scopes. The book has no
+`lorebook_bindings` row at all, which is the point.
+
+**`AUTHOR_REMEMBER`**, a registry op with `autoByDefault: false`. It is shown
+the recent turns and the titles it already holds, and asked for one note as
+JSON: a thread left hanging, a name that keeps coming back, something about how
+this reader likes to be written for. Explicitly *not* a plot summary — layer 1
+has that.
+
+**A section on the author's card** — the notes with their provenance, the token
+budget, a link into §10's lorebook editor, and §11's one-click wipe.
+
+**"Remember this" beside the roleplay**, because that is where there is
+something to remember. When the author's memory is off the block says so and
+where the switch is, rather than putting a second copy of the switch somewhere
+that does not own it.
+
+### Deliberately deferred
+
+- **The "at scene end" trigger.** §11 offers "prompted at scene end or on
+  request"; only the request is built. A scene has no end — it has a last
+  message, and a note written every time a reader stops reading is the silent
+  accumulation §11 warns against.
+- **Editing a note in place on the author's card.** The link goes to the
+  lorebook editor. §11 says the feature reuses the editor, and a second editor
+  for the same rows is a second editor to keep correct.
+- **Deduplication.** The op is shown what it already holds so it does not
+  repeat, but nothing rejects a near-duplicate. Two notes about the same thing
+  is a model problem with a reader-visible fix — the wipe, and the editor.
+
+### Spec changes
+
+§11's author memory section gains a `Settled while building phase 39` block with
+eight decisions. §2's schema sketch gains `written_by` and
+`written_in_scene_id` on `LoreEntry`.
+
+### Surprises
+
+**An `INNER JOIN` that dropped the only book it was written for.**
+`booksForScene` joined `lorebook_bindings`, which is correct for every book that
+has one — and the author's book has none, because ownership is what attaches it.
+The book was invisible and the whole feature was a no-op. Every existing lore
+test passed, because every book in them has a binding. A `LEFT JOIN` and the
+ownership clause in the `WHERE`.
+
+**`updateEntry` accepted two fields and wrote neither.** The patch type listed
+`written_by` and `written_in_scene_id`; the `UPDATE` statement did not mention
+them. TypeScript was satisfied — the type described the argument, not the SQL.
+Provenance would have been a column that was always null behind a UI that
+promised to show it.
+
+**A budget of 0 meant uncapped, and 0 was what the screen showed.** The book was
+made on the first note, so before then the author's card showed a token budget
+of 0 for a book that did not exist — reading as "no limit" on the one screen
+§11 asks to carry a hard cap. The book is made when memory is switched on now,
+with a real default of 512.
+
+**Two routes could write one flag.** `PATCH /memory/authors/:id` set
+`memory_enabled`, and so did `PATCH /authors/:id`, which is what the toggle in
+the UI had always used. Both worked, which is how they would have drifted. The
+author owns the flag; the memory route owns the budget.
+
+**The lorebooks list called it "Not attached to anything."** True of its
+bindings, false of the book: it reaches every scene its author is in. It reads
+"Written by Vesper" now, in the slot the other bindings use.

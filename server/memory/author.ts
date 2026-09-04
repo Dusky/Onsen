@@ -57,6 +57,17 @@ function transcriptOf(db: Database, scene: SceneRow): string {
 }
 
 /**
+ * How much of a prompt the author's notes may take before §10 starts dropping
+ * them, until the reader says otherwise.
+ *
+ * §11 asks for a "hard token cap", and a lorebook's budget of 0 means uncapped
+ * — the column's default, and the wrong one here. An author accumulating notes
+ * across every roleplay is exactly the book that would quietly grow until it
+ * crowded out the story.
+ */
+export const DEFAULT_MEMORY_BUDGET = 512;
+
+/**
  * The author's own book, made on first use rather than at author creation.
  *
  * A book that existed for every author from the start would appear in the
@@ -69,11 +80,10 @@ export function ensureMemoryBook(db: Database, author: AuthorRow): LorebookRow {
     name: `${author.name}'s memory`,
     description: "What this writing partner remembers across roleplays (SPEC §11).",
   });
-  db.query("UPDATE lorebooks SET owner_author_id = $author WHERE id = $id").run({
-    id: book.id,
-    author: author.id,
-  });
-  return { ...book, owner_author_id: author.id };
+  db.query(
+    "UPDATE lorebooks SET owner_author_id = $author, token_budget = $budget WHERE id = $id",
+  ).run({ id: book.id, author: author.id, budget: DEFAULT_MEMORY_BUDGET });
+  return { ...book, owner_author_id: author.id, token_budget: DEFAULT_MEMORY_BUDGET };
 }
 
 export function buildRememberPrompt(question: string, authorName: string): BuiltPrompt {

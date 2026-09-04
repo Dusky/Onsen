@@ -757,6 +757,39 @@ export interface MemoryRecallTrace {
   userEdited: boolean;
 }
 
+/* ------------------------------------------------------------------ */
+/* Author memory (SPEC §11)                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * One thing an author wrote down about a reader.
+ *
+ * A lore entry, because that is literally what it is: §11 implements author
+ * memory as a lorebook the author owns, so this carries a lore entry's fields
+ * plus the two that say where it came from.
+ */
+export interface AuthorNoteDto {
+  id: string;
+  title: string;
+  content: string;
+  keys: string[];
+  enabled: boolean;
+  /** §11: "provenance showing the author wrote it." False for the reader's. */
+  writtenByAuthor: boolean;
+  /** The roleplay it came out of, by title. Null once that roleplay is gone. */
+  writtenInScene: string | null;
+  updatedAt: number;
+}
+
+export interface AuthorMemoryDto {
+  enabled: boolean;
+  /** Null until the author has written something and the book exists. */
+  bookId: string | null;
+  /** §11's "separate budget" — the book's own, which §10 already honours. */
+  tokenBudget: number;
+  entries: AuthorNoteDto[];
+}
+
 export interface SceneDto {
   id: string;
   title: string;
@@ -1176,6 +1209,14 @@ export interface LorebookDto {
    * nothing, and nothing would say so.
    */
   managed: boolean;
+  /**
+   * The author whose memory this is (§11), by name. Null for every other book.
+   *
+   * It has no bindings and never will: ownership is what attaches it, so a list
+   * that showed it as unbound would be describing the one book that always
+   * reaches its scenes as the one that reaches none.
+   */
+  ownerAuthorName: string | null;
   /** Lowest-priority entries drop when this is exceeded. 0 is no budget (§10). */
   tokenBudget: number;
   scanDepth: number;

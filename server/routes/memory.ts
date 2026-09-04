@@ -90,18 +90,18 @@ export function memoryRoutes(
     });
   });
 
-  /** §11: "Keep it strictly opt-in." */
+  /**
+   * §11's "hard token cap, separate budget" — the book's own, which §10's
+   * budgeting already honours.
+   *
+   * Only the budget. Whether an author remembers at all is `memory_enabled`, an
+   * author column since the authors table existed, and it is set through the
+   * author — one flag with two routes able to write it is how the two disagree.
+   */
   app.patch("/authors/:authorId", async (c) => {
     const author = findAuthor(ctx.db, c.req.param("authorId"));
     if (author === null) return c.json(notFound("writing partner"), 404);
     const input = await body(c);
-    if (typeof input["enabled"] === "boolean") {
-      ctx.db
-        .query("UPDATE authors SET memory_enabled = $on, updated_at = $now WHERE id = $id")
-        .run({ id: author.id, on: input["enabled"] ? 1 : 0, now: Date.now() });
-    }
-    // §11's "hard token cap, separate budget" — the book's own, which §10's
-    // budgeting already honours.
     if (typeof input["tokenBudget"] === "number" && Number.isFinite(input["tokenBudget"])) {
       const book = memoryBookOf(ctx.db, author.id);
       if (book !== null) {
@@ -110,8 +110,7 @@ export function memoryRoutes(
           .run({ id: book.id, budget: Math.max(0, Math.trunc(input["tokenBudget"])) });
       }
     }
-    const after = findAuthor(ctx.db, author.ulid)!;
-    return c.json({ enabled: after.memory_enabled === 1 });
+    return c.json({ enabled: author.memory_enabled === 1 });
   });
 
   /**

@@ -15,6 +15,7 @@ import {
   updateAuthor,
   updatePersona,
 } from "../db/queries/authors.ts";
+import { ensureMemoryBook } from "../memory/author.ts";
 import type { UpdateAuthorRequest, UpdatePersonaRequest } from "../../shared/types.ts";
 
 /**
@@ -75,7 +76,13 @@ export function authorRoutes(ctx: AppContext): Hono<AppEnv> {
       return c.json(badRequest("An author needs a name."), 400);
     }
 
-    return c.json(toAuthorDto(updateAuthor(ctx.db, row.id, { ...patch })));
+    const updated = updateAuthor(ctx.db, row.id, { ...patch });
+    // §11: switching memory on is what makes the book, rather than the first
+    // note. The reader has to be able to see the token cap and the link to the
+    // entries before there is anything in them — and a budget of 0 shown for a
+    // book that does not exist yet reads as "uncapped", which is its opposite.
+    if (patch.memoryEnabled === true) ensureMemoryBook(ctx.db, updated);
+    return c.json(toAuthorDto(updated));
   });
 
   app.delete("/:authorId", (c) => {

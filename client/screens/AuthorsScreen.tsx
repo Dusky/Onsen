@@ -5,6 +5,7 @@ import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { navigate } from "../lib/router.ts";
 import { useAuthor, useAuthors, useCreateAuthor, useDeleteAuthor, useUpdateAuthor } from "../lib/queries.ts";
 import { TabBar } from "../components/TabBar.tsx";
+import { AuthorNotes } from "../components/AuthorMemory.tsx";
 
 /**
  * The author: the AI's own identity, and the product's defining bet.
@@ -345,6 +346,13 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
               />
             </span>
           </button>
+
+          {/* §11: the notes themselves, under the switch that allows them.
+              Hidden while it is off, because a list of what an author is not
+              collecting is a strange thing to show. */}
+          {author.memoryEnabled ? (
+            <AuthorNotes authorId={author.id} authorName={author.name} />
+          ) : null}
 
           {!author.isDefault ? (
             <button
