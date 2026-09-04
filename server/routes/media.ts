@@ -13,6 +13,7 @@ import {
   insertService,
   listServices,
   makeDefault,
+  setVisibility,
   updateService,
   toMediaAssetDto,
   type MediaServiceRow,
@@ -209,6 +210,23 @@ export function mediaRoutes(ctx: AppContext, media: MediaRunner): Hono<AppEnv> {
         "Cache-Control": "private, max-age=31536000, immutable",
       },
     });
+  });
+
+  /**
+   * Where a picture appears: in the log, in the prompt, both or neither.
+   *
+   * Two switches because they answer different questions — §2 makes the same
+   * split for a hidden message, which stays in the log and leaves the prompt.
+   */
+  app.patch("/files/:assetId", async (c) => {
+    const asset = findAsset(ctx.db, c.req.param("assetId"));
+    if (asset === null) return c.json(notFound("file"), 404);
+    const body = await readJson(c);
+    setVisibility(ctx.db, asset.id, {
+      ...(typeof body["hidden"] === "boolean" ? { hidden: body["hidden"] } : {}),
+      ...(typeof body["inPrompt"] === "boolean" ? { inPrompt: body["inPrompt"] } : {}),
+    });
+    return c.json(toMediaAssetDto(findAsset(ctx.db, asset.ulid)!));
   });
 
   app.delete("/files/:assetId", async (c) => {

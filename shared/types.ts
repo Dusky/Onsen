@@ -468,6 +468,14 @@ export interface MediaAssetDto {
   prompt: string | null;
   /** What a vision model saw. This is the text that reaches the prompt. */
   caption: string | null;
+  /**
+   * Not drawn in the log. Independent of `inPrompt`: where a picture appears
+   * and what the author is told about it are different questions, which is the
+   * same split §2 makes for a hidden message.
+   */
+  hidden: boolean;
+  /** Whether the caption reaches the prompt. Only meaningful for an attachment. */
+  inPrompt: boolean;
   createdAt: number;
 }
 

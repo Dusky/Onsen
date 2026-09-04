@@ -43,6 +43,10 @@ export interface MediaAssetRow {
   message_id: number | null;
   character_id: number | null;
   scene_id: number | null;
+  /** Not drawn in the log (§20 phase 41). Independent of `in_prompt`. */
+  is_hidden: number;
+  /** Whether this asset's caption reaches the prompt. Attachments only. */
+  in_prompt: number;
   created_at: number;
   updated_at: number;
 }
@@ -253,6 +257,33 @@ export function attachToMessage(db: Database, assetId: number, messageId: number
   });
 }
 
+/**
+ * Where a picture appears, on each of the two axes it can appear on.
+ *
+ * Separate from `setCaption` because these are the reader's decisions and that
+ * one is the model's — nothing that runs unattended may flip these.
+ */
+export function setVisibility(
+  db: Database,
+  assetId: number,
+  patch: { hidden?: boolean; inPrompt?: boolean },
+): void {
+  const assignments: string[] = [];
+  const params: Record<string, number> = { id: assetId, now: Date.now() };
+  if (patch.hidden !== undefined) {
+    assignments.push("is_hidden = $hidden");
+    params["hidden"] = patch.hidden ? 1 : 0;
+  }
+  if (patch.inPrompt !== undefined) {
+    assignments.push("in_prompt = $in_prompt");
+    params["in_prompt"] = patch.inPrompt ? 1 : 0;
+  }
+  if (assignments.length === 0) return;
+  db.query(
+    `UPDATE media_assets SET ${assignments.join(", ")}, updated_at = $now WHERE id = $id`,
+  ).run(params);
+}
+
 export function setCaption(db: Database, assetId: number, caption: string): void {
   db.query("UPDATE media_assets SET caption = $caption, updated_at = $now WHERE id = $id").run({
     id: assetId,
@@ -295,6 +326,8 @@ export function toMediaAssetDto(row: MediaAssetRow): MediaAssetDto {
     height: row.height,
     prompt: row.prompt,
     caption: row.caption,
+    hidden: row.is_hidden === 1,
+    inPrompt: row.in_prompt === 1,
     createdAt: row.created_at,
   };
 }

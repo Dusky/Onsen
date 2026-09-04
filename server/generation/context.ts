@@ -397,7 +397,10 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
     options.db,
     history.map((row) => row.id),
   )) {
+    // `in_prompt` is the reader's switch and is checked here, which is the one
+    // place it can be honoured for every kind of generation at once.
     if (asset.role !== "attachment" || asset.caption === null || asset.message_id === null) continue;
+    if (asset.in_prompt !== 1) continue;
     attachmentCaptions.set(asset.message_id, [
       ...(attachmentCaptions.get(asset.message_id) ?? []),
       asset.caption,

@@ -521,6 +521,26 @@ async function withVision(t: TestHarness): Promise<void> {
   await json(t, "PATCH", "/api/tasks/caption_image", { connectionProfileId: profile.id });
 }
 
+/**
+ * The prompt the prose was written from.
+ *
+ * Neither `prompts.at(-1)` nor the first one after the request: the
+ * post-generation pipeline runs trackers and guides through the same adapter
+ * and is not awaited, so a straggler from the previous turn lands in either
+ * position. Every side call asks exactly one question, so message count is the
+ * discriminator that actually holds.
+ */
+async function roleplayPrompt(t: TestHarness, sceneId: string): Promise<BuiltPrompt> {
+  const before = adapter.prompts.length;
+  await json(t, "POST", `/api/scenes/${sceneId}/generate`, {});
+  await adapter.started;
+  adapter.push("She looked.");
+  adapter.end();
+  const written = adapter.prompts.slice(before).find((sent) => sent.messages.length > 1);
+  expect(written).toBeDefined();
+  return written!;
+}
+
 describe("attachments", () => {
   test("a text-completion endpoint is refused, and told how to fix it", async () => {
     const t = await signedIn();
@@ -555,12 +575,7 @@ describe("attachments", () => {
       authorType: "user",
       content: "Look at this.",
     });
-    await json(t, "POST", `/api/scenes/${sceneId}/generate`, {});
-    await adapter.started;
-    adapter.push("She looked.");
-    adapter.end();
-
-    const sent = adapter.prompts.at(-1)!;
+    const sent = await roleplayPrompt(t, sceneId);
     const wire = JSON.stringify(sent.messages);
     expect(wire).toContain("[image: A single dark pixel on a white field.]");
     // The whole point: a roleplay prompt carries words about the picture and
@@ -594,6 +609,51 @@ describe("attachments", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("image/png");
     expect(new Uint8Array(await response.arrayBuffer()).byteLength).toBe(PNG_BYTES.byteLength);
+  });
+
+  test("the two switches are independent, and only one of them touches the prompt", async () => {
+    const t = await signedIn();
+    const { sceneId } = await scene(t);
+    await withVision(t);
+    adapter.taskReply = "A single dark pixel on a white field.";
+    const uploaded = await upload(t, sceneId);
+    const assetId = uploaded.body.asset.id;
+
+    await json(t, "POST", `/api/scenes/${sceneId}/messages`, {
+      kind: "user",
+      authorType: "user",
+      content: "Look at this.",
+    });
+
+    const promptFor = async (): Promise<string> =>
+      JSON.stringify((await roleplayPrompt(t, sceneId)).messages);
+
+    // Hidden from the log is not hidden from the author. §2 makes the same
+    // split for a message, and a single switch would force one on the other.
+    const hidden = await json<{ hidden: boolean; inPrompt: boolean }>(
+      t,
+      "PATCH",
+      `/api/media/files/${assetId}`,
+      { hidden: true },
+    );
+    expect(hidden.hidden).toBe(true);
+    expect(hidden.inPrompt).toBe(true);
+    expect(await promptFor()).toContain("[image: A single dark pixel");
+
+    // Out of the prompt is the switch that changes what the author is told.
+    const quiet = await json<{ hidden: boolean; inPrompt: boolean }>(
+      t,
+      "PATCH",
+      `/api/media/files/${assetId}`,
+      { inPrompt: false },
+    );
+    expect(quiet.hidden).toBe(true);
+    expect(quiet.inPrompt).toBe(false);
+    expect(await promptFor()).not.toContain("[image:");
+
+    // And back: turning it on again returns it to the prompt.
+    await json(t, "PATCH", `/api/media/files/${assetId}`, { inPrompt: true, hidden: false });
+    expect(await promptFor()).toContain("[image: A single dark pixel");
   });
 
   test("something that is not a picture is refused", async () => {
