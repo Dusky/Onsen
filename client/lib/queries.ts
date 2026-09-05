@@ -62,6 +62,7 @@ import type {
   GuideDto,
   GuideKind,
   BulkImportCharactersResponse,
+  MigrationReportDto,
   ImportCharacterResponse,
   UpdateCharacterRequest,
   MessageDto,
@@ -745,6 +746,35 @@ export function useBulkImportCharacters() {
       return body as BulkImportCharactersResponse;
     },
     onSuccess: () => void client.invalidateQueries({ queryKey: characterKeys.all }),
+  });
+}
+
+/**
+ * Moving in from SillyTavern (SPEC §20 phase 44).
+ *
+ * Each file goes up under the path it had inside SillyTavern's data folder —
+ * the third argument to `append` sets the filename the server sees, which is
+ * the only field a multipart part carries for it, and the folder is what says
+ * whether a bare JSON object is an instruct template or a context one.
+ */
+export function useImportSillyTavern() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (files: Array<{ path: string; file: File }>): Promise<MigrationReportDto> => {
+      const form = new FormData();
+      for (const { path, file } of files) form.append("files", file, path);
+      const response = await fetch("/api/migrate/sillytavern", { method: "POST", body: form });
+      const body: unknown = await response.json();
+      if (!response.ok) {
+        throw new Error(
+          (body as { error?: { message?: string } }).error?.message ??
+            "That folder could not be read.",
+        );
+      }
+      return body as MigrationReportDto;
+    },
+    // A migration touches almost everything, so nothing cached survives it.
+    onSuccess: () => void client.invalidateQueries(),
   });
 }
 

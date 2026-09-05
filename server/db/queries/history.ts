@@ -415,6 +415,12 @@ export interface NewMessage {
   /** The cast member this turn was voiced as, where there is one. */
   characterId?: number | null;
   isHidden?: boolean;
+  /**
+   * The model's own thinking, kept apart from the prose (§13). Set only by an
+   * import, which is the one path that already knows it: a generation writes it
+   * when the stream ends, not when the row is created.
+   */
+  reasoning?: string | null;
 }
 
 /**
@@ -473,8 +479,8 @@ export function appendMessage(db: Database, input: NewMessage): MessageRow {
   const now = Date.now();
   const row = db
     .query(
-      `INSERT INTO messages (ulid, scene_id, parent_id, kind, author_type, content, character_id, is_hidden, created_at)
-       VALUES ($ulid, $scene_id, $parent_id, $kind, $author_type, $content, $character_id, $is_hidden, $now)
+      `INSERT INTO messages (ulid, scene_id, parent_id, kind, author_type, content, character_id, is_hidden, reasoning, created_at)
+       VALUES ($ulid, $scene_id, $parent_id, $kind, $author_type, $content, $character_id, $is_hidden, $reasoning, $now)
        RETURNING *`,
     )
     .get({
@@ -486,6 +492,7 @@ export function appendMessage(db: Database, input: NewMessage): MessageRow {
       content: input.content,
       character_id: input.characterId ?? null,
       is_hidden: input.isHidden ? 1 : 0,
+      reasoning: input.reasoning ?? null,
       now,
     }) as MessageRow;
 

@@ -423,6 +423,7 @@ export const strings = {
       automation: "Automation",
       outward: "Connections out",
       packs: "Packs & updates",
+      migrate: "Moving in",
     } as Record<string, string>,
     categoryEmpty: "Nothing here matches that.",
     signOutHint:
@@ -728,6 +729,29 @@ export const strings = {
       regex: "Regex scripts",
       triggers: "Triggers",
       banlists: "Ban list",
+    } as Record<string, string>,
+
+    /** Moving in from SillyTavern (SPEC §20 phase 44). */
+    migrate: "Move in from SillyTavern",
+    migrateHint:
+      "Pick your SillyTavern data folder \u2014 the one holding characters, chats and settings.json. " +
+      "Cards, conversations, personas, world info, instruct templates and regex scripts come across. " +
+      "Only the files it can read are uploaded, and it says what happened to each one.",
+    migrateChoose: "Choose the folder",
+    migrateWorking: "Reading the folder\u2026",
+    migrateEmpty: "Nothing in that folder looked like a SillyTavern install.",
+    migrateNothing: "Nothing in it could be read.",
+    migrateResult: (added: number, skipped: number) =>
+      `${added} brought over \u00b7 ${skipped} skipped`,
+    migrateKind: {
+      character: "Cast",
+      chat: "Roleplay",
+      group_chat: "Group roleplay",
+      persona: "You",
+      lorebook: "Lore",
+      instruct: "Instruct template",
+      context: "Context template",
+      regex: "Regex script",
     } as Record<string, string>,
 
     /** The data bank's embeddings provider (SPEC §11, phase 30). */

@@ -3862,3 +3862,82 @@ robin — because the full name never appeared in the message. Matching the firs
 word of a multi-word name is what makes the feature the thing people mean by it.
 The tests all passed before that, because I had written them with full names in
 the messages.
+
+
+---
+
+## Phase 44 — Moving in from SillyTavern
+
+Not from §20's build order, which ended at 43. This came out of asking what was
+still between Onsen and being a SillyTavern replacement, and the answer was not
+features: **nobody could move in.** The whole import surface was three
+endpoints — cards, world info, chat-completion presets. A switcher brought those
+and abandoned every conversation they had ever had, plus their personas, their
+instruct templates and their regex scripts, four of which were features Onsen
+already had and simply did not accept SillyTavern's file for.
+
+### What was built
+
+**Migration 0040** — `scenes.import_source` and `scenes.import_hash`. A chat has
+no stable identifier of its own, but the expected flow is "import, see six chats
+skipped for a missing card, fix that, run it again", and a second pass has to
+recognise the first one's work or the fix costs a duplicate of everything.
+
+**`server/sillytavern/chat.ts`** — pure. JSONL in, a tree of turns out.
+
+**`server/sillytavern/settings.ts`** — pure. Personas, instruct templates,
+regex scripts, and the refusal for the one thing that cannot come across.
+
+**`server/sillytavern/index.ts`** — classification by path, then apply in
+dependency order: cards, personas, world info, templates, scripts, chats,
+groups. Nothing throws for a bad file; every file gets a row in the report.
+
+**`POST /api/migrate/sillytavern`** and a *Moving in* section in Settings. The
+client filters before it uploads — a real install is hundreds of megabytes and
+almost none of it is readable here — and sends each surviving file under the
+path it had inside SillyTavern, because the folder is the only thing that tells
+an instruct template from a context template from a sampler preset.
+
+**The tree mapping**, which is the whole reason this is possible rather than
+lossy: each SillyTavern turn becomes one node per swipe, siblings under the
+previous turn's live node. Their linear-with-alternates *is* our tree, so the
+swipe carousel walks an imported conversation's alternates without knowing they
+came from anywhere. Phase 43's root-sibling work covers the opening message for
+free.
+
+### Deliberately deferred
+
+- **Scene export.** Offered during planning and not picked, so Onsen still has
+  no door out. Worth saying plainly: "you can move in but not out" is a fair
+  thing for a self-hoster to be suspicious of, and it is the obvious next thing.
+- **The Gemini adapter**, which is its own phase and shares nothing with this.
+- **Chub URL import**, still waiting on phase 42's decision.
+
+### Spec changes
+
+§9 gains the import; §18 gains a `Settled while building phase 44` block of six
+decisions; §2's scene sketch gains the provenance columns; §20 gains line 44.
+
+### Surprises
+
+**Three of the five importers were not idempotent, and only the browser drive
+noticed.** Chats and cards dedupe on a hash of their bytes, which is exactly
+right for them. Lorebooks, instruct templates and regex scripts have no hash of
+their own — so re-running the import added a second copy of each, every time.
+The tests all passed, because every one of them ran the import once. The
+re-run is the *normal* second act of this feature, and it took looking at
+`added 3, skipped 7` on the second pass to see it.
+
+**"The ridge — The ridge".** A solo chat is named for its file and lives in a
+folder named for the character, so pairing them is right. A group chat's file is
+named for the group and so is the group, so pairing them says it twice. Also
+found by reading the output rather than by a test.
+
+**Every imported scene said NO MODEL.** `insertScene` takes a preset and a
+profile and defaults both to null; every existing caller passes them, so nothing
+had ever exercised the default. A migrated library where no scene can generate
+is a poor first minute, and the fix was two lookups the demo seed already does.
+
+**Playwright cannot fake `webkitRelativePath`** — but it will take a directory
+path for a `webkitdirectory` input and populate it properly, which is the only
+way to drive this feature's real client path at all.

@@ -7,6 +7,7 @@ import { setupRoutes } from "./routes/setup.ts";
 import { connectionRoutes } from "./routes/connections.ts";
 import { sceneRoutes } from "./routes/scenes.ts";
 import { characterRoutes } from "./routes/characters.ts";
+import { migrateRoutes } from "./routes/migrate.ts";
 import { authorRoutes, personaRoutes } from "./routes/authors.ts";
 import { generationRoutes, sceneGenerationRoutes } from "./routes/generation.ts";
 import { GenerationService } from "./generation/service.ts";
@@ -196,6 +197,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   api.route("/triggers", triggerRoutes(ctx, triggers));
   api.route("/packs", packRoutes(ctx));
   api.route("/webhooks", webhookRoutes(ctx, webhooks));
+  api.route("/migrate", migrateRoutes(ctx));
   api.route("/api-keys", apiKeyRoutes(ctx));
   api.route("/scene-api", sceneApiRoutes(ctx));
   api.route("/memory", memoryRoutes(ctx, memory, authorMemory));

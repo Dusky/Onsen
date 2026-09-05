@@ -4,10 +4,12 @@ A self-hosted, mobile-first AI roleplay frontend. Group scenes are the primary
 case: one AI **author** with its own personality plays the whole cast, like a GM
 running a table, while you direct.
 
-> **Status: phase 43 of 43 — feature complete, less the deferred phase 42.**
-> Set it up, import character cards — one at a time, or a whole folder at once —
-> give the AI an author persona of its own, and run a group scene: one writing
-> partner voicing a whole cast, **beats** — a whole exchange between several
+> **Status: phase 44 — feature complete, less the deferred phase 42.**
+> Set it up, **point it at your SillyTavern folder and move in** — cards, chats,
+> group chats, personas, world info, instruct templates and regex scripts all
+> come across, with your swipes intact as branches — give the AI an author
+> persona of its own, and run a group scene: one writing partner voicing a
+> whole cast, **beats** — a whole exchange between several
 > characters written in one go, which you can then correct one character at a
 > time or split into separate turns — and a **turn director that can be a model**
 > and prints its reasoning before it writes a word. Direct it as you go: nudge a

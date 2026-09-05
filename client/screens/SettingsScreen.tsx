@@ -57,6 +57,7 @@ import { ExportPackSheet, InstallPackSheet, RemovePackSheet } from "../component
 import { WebhookEditor } from "../components/WebhookEditor.tsx";
 import { ApiKeyEditor } from "../components/ApiKeyEditor.tsx";
 import { MediaSettings } from "../components/MediaSettings.tsx";
+import { MigrationSection } from "../components/MigrationSection.tsx";
 
 /**
  * Settings (design handoff, screen 3i).
@@ -1324,6 +1325,10 @@ const CATEGORIES = [
   { id: "automation", words: ["trigger", "script", "regex", "action", "event"] },
   { id: "outward", words: ["api key", "webhook", "outbound", "bridge", "token"] },
   { id: "packs", words: ["pack", "update", "import", "export", "version"] },
+  {
+    id: "migrate",
+    words: ["sillytavern", "migrate", "move", "switch", "chats", "jsonl", "import"],
+  },
 ] as const;
 
 type CategoryId = (typeof CATEGORIES)[number]["id"];
@@ -1648,6 +1653,8 @@ export function SettingsScreen() {
           {show("automation") ? <AutomationSection /> : null}
 
           {show("data") ? <EmbeddingsSection /> : null}
+
+          {show("migrate") ? <MigrationSection /> : null}
 
           {/* Last, and on its own: the only control here that ends the
               session rather than changing it. */}

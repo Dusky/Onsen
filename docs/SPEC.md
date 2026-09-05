@@ -186,6 +186,8 @@ ooc_enabled, ooc_interval
 vn_mode_enabled    -- visual novel staging
 background_path    -- the VN background, served from the data dir
 active_leaf_id     -- pointer into the message tree
+import_source      -- the SillyTavern path this came from, or null (§20 ph. 44)
+import_hash        -- of that file's bytes, so re-running the import is safe
 ```
 
 ### SceneMember
@@ -1420,6 +1422,13 @@ Ship default trackers: **Scene** (location, time of day, who is present),
   `post_history_instructions`, `extensions.depth_prompt`.
 - Export back to PNG V3 and CharX.
 - Bulk import from a folder; import from a Chub URL.
+- **Import a whole SillyTavern install** (§20 phase 44): cards, chats, group
+  chats, personas, world info, instruct templates and regex scripts, in one pass
+  over the data folder. A chat is JSONL whose swipes are alternates of a message
+  — which is this app's tree with siblings, so the conversation comes across
+  whole rather than flattened. Report per file, in the same add/skip shape a
+  pack install uses; re-running is safe, because a folder import's normal second
+  act is "the card was missing, fix it, run it again".
 - Card editor covering every field, with a per-field token-cost readout.
 - **Cache parsed cards.** Re-parsing PNG metadata is a known performance sink
   with large libraries, especially on mobile. Parse once into SQLite and
@@ -2496,6 +2505,32 @@ Export presets and scenes in your own format, and offer a lossy SillyTavern
 chat-completion export with a clear list of what didn't survive. Don't pretend
 round-tripping is clean when it isn't.
 
+### Settled while building phase 44
+
+- **A chat's header cannot be trusted.** SillyTavern writes the literal string
+  `unused` into the header line's `user_name` and `character_name` on some
+  paths. The character comes from the directory a solo chat sits in, and in a
+  group from each message's `original_avatar` — the card's filename, which is
+  SillyTavern's own identifier and the thing a rename does not desynchronise.
+- **`mes` beats `swipes[swipe_id]`.** Editing a message after swiping updates
+  `mes` and leaves the array behind, so the array supplies the alternates and
+  `mes` replaces the live one.
+- **`is_system` is `is_hidden`.** In SillyTavern that flag means "kept out of
+  the prompt, still in the log", which is what this app's `is_hidden` already
+  is. Importing those as ordinary messages would change what the model sees.
+- **Context templates are refused, by name.** `story_string` assembles the whole
+  prompt as one text template; §3's builder assembles blocks with a budget and
+  an eviction order, and there is nowhere to paste one in. The report says so
+  and names prompt options as the native equivalent, which is what this section
+  already asks for when an import's behaviour is one of your own subsystems.
+- **Instruct templates import partially, and say which fields did not.**
+  SillyTavern varies its sequences by position in the conversation and wraps
+  them on a flag; this app has one prefix and suffix per role. `wrap` in
+  particular changes the rendered prompt, so silence about it would be a bug.
+- **Files are classified by folder, not content.** An instruct template, a
+  context template and a sampler preset are all bare JSON objects under
+  neighbouring folders, and two of the three answer to overlapping field names.
+
 ---
 
 ## 19. Outbound OpenAI-compatible API
@@ -2720,6 +2755,9 @@ Each phase ends in a working, usable application.
     rather than a feature with an obvious shape. §9's folder import moved to
     phase 43; the Chub URL half waits with this.
 43. Polish — mention strategy, group greetings, bulk import, PWA.
+44. **Moving in from SillyTavern** — chats and group chats into the history
+    tree, plus personas, instruct templates and regex scripts. The features
+    were already built; what was missing was accepting their files. See §9.
 
 Settled while building phase 15.
 

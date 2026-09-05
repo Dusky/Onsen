@@ -637,6 +637,38 @@ export interface PackListDto {
 }
 
 /** One thing an install would do. `skip` never writes. */
+/** What kind of thing a migrated file turned out to be (SPEC §20 phase 44). */
+export type MigrationKind =
+  | "character"
+  | "chat"
+  | "group_chat"
+  | "persona"
+  | "lorebook"
+  | "instruct"
+  | "context"
+  | "regex";
+
+/**
+ * One file's fate in a SillyTavern import (SPEC §20 phase 44).
+ *
+ * The same add/skip shape a pack install and a bulk card import already report,
+ * with the path kept: a migration is thousands of files and "which one" is the
+ * first thing anybody asks about a line in the report.
+ */
+export interface MigrationItemDto {
+  kind: MigrationKind;
+  name: string;
+  path: string;
+  action: "add" | "skip";
+  detail: string;
+}
+
+export interface MigrationReportDto {
+  added: number;
+  skipped: number;
+  items: MigrationItemDto[];
+}
+
 /**
  * One file's fate in a bulk import (SPEC §9, §20 phase 43). Deliberately the
  * same shape as a pack's plan item, which is the report the app already knows
