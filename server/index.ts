@@ -2,6 +2,7 @@ import { ensureDataDirs, loadConfig } from "./config.ts";
 import { openDatabase } from "./db/index.ts";
 import { migrate } from "./db/migrate.ts";
 import { seedBuiltins } from "./db/queries/options.ts";
+import { seedBuiltinThemes } from "./db/queries/themes.ts";
 import { loadOrCreateKeyring } from "./lib/crypto.ts";
 import { createServer } from "./app.ts";
 import { isSetupCompleted } from "./db/queries/settings.ts";
@@ -20,6 +21,9 @@ if (result.applied.length > 0) {
 // words improve, and idempotent-by-key means an install gets new built-ins
 // without losing anything it has edited.
 seedBuiltins(db);
+// The shipped themes, for the same reason and by the same rule: matched by
+// name, so a release can add one without disturbing anything you have made.
+seedBuiltinThemes(db);
 
 const ctx: AppContext = { db, config, keyring: loadOrCreateKeyring(config) };
 const { app, generation, tasks, passes, guides, trackers, autopilot } = createServer(ctx);

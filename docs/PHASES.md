@@ -3941,3 +3941,101 @@ is a poor first minute, and the fix was two lookups the demo seed already does.
 **Playwright cannot fake `webkitRelativePath`** — but it will take a directory
 path for a `webkitdirectory` input and populate it properly, which is the only
 way to drive this feature's real client path at all.
+
+
+---
+
+## Phase 45 — Themes
+
+Two criticisms, one answer. The app read flat, and it could not be customised at
+all — where SillyTavern lets you set nearly every colour by hex, keep themes,
+and write your own CSS.
+
+Flatness was not an accident. §16's third rule — "everything is a page being
+marked up" — mandated sharp corners, 1px hairlines and no shadows, and that is
+why nothing on screen could be grouped or lifted. Once themes exist, that stops
+being a global law and becomes a theme's own choice, which is what makes the two
+complaints the same piece of work.
+
+### What was already there
+
+Most of it, which was the surprise:
+
+- **89 CSS custom properties** in `tokens.css`, and `@theme inline` mapping them
+  into Tailwind — whose own comment reads "a theme switch on `:root` re-colours
+  the whole app with no rebuild". True, and never used.
+- **Zero hardcoded hex values** in any component. Every colour already went
+  through a token.
+- A server-side key/value settings store, and `usePreferences` wired.
+- The flatness was **one rule**: `@layer base { * { border-radius: 0 } }`.
+
+And one thing that was not there at all: the Reading settings category, whose
+own search words are `font, size, theme, prose, light, dark`, contained a single
+control — a completion-chime toggle. `--onsen-prose-scale` existed, fed four
+derived size tokens, and was set by nothing. The fifth instance in this project
+of a mechanism built, promised in the strings, and driven by nothing.
+
+### What was built
+
+**Migration 0041** — a `themes` table, and the active one as a setting.
+
+**Four depth tokens** — `radius`, `border-width`, `shadow-card`, `shadow-panel`,
+plus `card-bg` and `card-padding`. All default to the flat original, so a theme
+that says nothing about depth renders exactly what shipped before. A `.turn`
+class on each message and a `.panel` class read them, so a turn becomes a card
+without a single component knowing which theme is on.
+
+**Seven shipped themes** — Ledger (the original warm palette, flat, kept so
+nothing is lost), and six grounds that are deliberately not it: Bottle,
+Nocturne, Graphite, Oxblood, Bone, Slate. Default is **Bottle at cards**.
+
+**`GET /themes/active.css`** — the active theme as a stylesheet, linked from the
+document, outside the auth wall because it is the login screen's colours too.
+
+**Import and export**, with the rule that tokens are data and CSS is code: a
+token that could close its declaration or reach the network is refused outright,
+and an imported theme's CSS lands inert in a pending field, is shown with a list
+of what it would be allowed to do, and runs only once approved.
+
+### Surprises
+
+**The theme did not reach the page, and said nothing about it.** `:root[data-theme]`
+ties `:root:not([data-theme="dark"])` on specificity, so source order decides —
+and Vite injects the app stylesheet after the document's own `<link>` elements.
+The network served the right CSS and the page ignored it. Every unit test
+passed; the browser drive printed `--onsen-color-bg = #f4efe4` five times in a
+row for five different themes. The fix is `:root:root:root`, which outranks
+anything the stylesheet can say without needing to know where the bundler put
+it.
+
+**Cream stripes on a bottle-green ground.** `--onsen-stripe` was a literal
+gradient no theme overrode. Deriving it from the surfaces fixed it for every
+theme at once, including ones nobody has written yet.
+
+**A partial theme inherits the base's leftovers, and the light base's leftovers
+are warm.** The first light theme came out with tan button borders and cream
+bars, because it set fifteen colours and the stylesheet defines ninety. Padding
+out the shipped themes would have fixed those seven and left every user-made
+theme with the same trap, so the tokens that follow another are filled in when a
+theme is serialised instead: `bg-card` follows `bg-raised`, `border-quiet`
+follows `rule`. Change five colours, get a coherent app.
+
+**A regex refactor of `tokens.css` went wrong quietly** — it stripped
+definitions out of the base block while leaving the light block's literals in
+place, which typechecks and renders and is simply wrong. Reverted and redone
+with explicit replacements, and the derivation moved into the serializer where
+it is pure and testable.
+
+**The reachability test earned its keep again.** `GET /themes/active.css` has no
+JavaScript caller — it is a `<link>` in `index.html` — so the scanner flagged it
+as unreachable. The endpoint was fine; the scanner only read TypeScript. It
+reads HTML now.
+
+### Deliberately deferred
+
+- **Wiring `--onsen-prose-scale`.** It is now the only thing left in this area
+  that is built and undriven, and it belongs with a font-size control rather
+  than being bolted onto a colour editor.
+- **Importing SillyTavern themes.** Phase 44 reads a whole install and ST keeps
+  themes under `themes/*.json`; mapping its key names onto these tokens is a
+  natural follow-on and was not part of this.

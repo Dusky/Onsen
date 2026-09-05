@@ -2395,6 +2395,35 @@ toggle.
   block by block, with token costs, **what was evicted**, retrieved chunks and
   scores, and which lore entries fired and why. Reachable from any message.
 
+### Themes
+
+Every colour, and the four values that decide depth, are `--onsen-*` custom
+properties; Tailwind maps them with `@theme inline`, so overriding them at
+`:root` re-colours the app with no rebuild. A theme is a set of those overrides
+plus, optionally, CSS of the reader's own.
+
+- **Themes live on the server**, not in the browser. §5 forbids browser storage,
+  and its reasoning is the point rather than an obstacle: the phone and the
+  desktop are two views of one install, so a theme kept in one browser is the
+  wrong shape.
+- **Served as a stylesheet**, `GET /themes/active.css`, linked from the
+  document. The colours do not wait on React, and the login screen has them.
+- **A theme names only what it changes.** Everything else falls through to the
+  stylesheet, and the tokens that follow another — `bg-card` follows
+  `bg-raised`, `border-quiet` follows `rule` — are filled in when it is
+  serialised. That is what lets somebody change five colours and get a coherent
+  app rather than hunting the one they missed.
+- **Depth is a theme value, not a rule.** `--onsen-radius`,
+  `--onsen-border-width`, `--onsen-shadow-card` and `--onsen-shadow-panel`
+  default to the flat original, so a theme that says nothing about depth looks
+  as it always did.
+- **Shipped themes are read-only.** Editing one derives a copy.
+- **Tokens are data; CSS is code.** A token value that could close its
+  declaration, or reach the network, is refused — so a shared theme cannot phone
+  home through a colour. Custom CSS *can*, which is why an imported theme's CSS
+  lands in a pending field, is shown to the reader with what it would be
+  allowed to do, and does not run until they say so.
+
 ### Mobile web specifics
 
 - `100dvh`, never `100vh`.
@@ -2758,6 +2787,8 @@ Each phase ends in a working, usable application.
 44. **Moving in from SillyTavern** — chats and group chats into the history
     tree, plus personas, instruct templates and regex scripts. The features
     were already built; what was missing was accepting their files. See §9.
+45. **Themes** — every colour and the depth values editable, saved, exported
+    and imported; shipped grounds to choose between. See §16.
 
 Settled while building phase 15.
 

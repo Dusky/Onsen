@@ -45,9 +45,13 @@
 
 @layer base {
   * {
-    /* No rounded corners anywhere except the three documented exceptions:
-       OOC bubbles, bottom sheets, and the iOS home indicator. */
-    border-radius: 0;
+    /*
+     * Corners are the theme's call (phase 45). The default is 0 — the original
+     * rule, kept as the default rather than as a law — and the three documented
+     * exceptions (OOC bubbles, bottom sheets, the iOS home indicator) still set
+     * their own.
+     */
+    border-radius: var(--onsen-radius);
   }
 
   html,
@@ -115,6 +119,25 @@
     height: var(--onsen-app-height, 100dvh);
   }
 
+  /*
+   * One turn in the log (phase 45).
+   *
+   * Every value defaults to nothing, so a flat theme renders exactly what it
+   * always did: no fill, no lift, no padding. A theme that sets them gets a
+   * card per turn without a single component knowing which it is.
+   */
+  .turn {
+    background: var(--onsen-card-bg);
+    box-shadow: var(--onsen-shadow-card);
+    padding: var(--onsen-card-padding);
+    border-radius: var(--onsen-radius);
+  }
+
+  /* A docked surface — the composer stack, a footer bar. Same rule. */
+  .panel {
+    box-shadow: var(--onsen-shadow-panel);
+  }
+
   /* The app speaking: labels, attribution, state, buttons — all chrome. */
   .chrome {
     font-family: var(--onsen-font-mono);
@@ -150,7 +173,7 @@
     min-height: var(--onsen-tap-target);
     padding: 12px 14px;
     background: var(--onsen-color-bg-input);
-    border: 1px solid var(--onsen-color-rule-strong);
+    border: var(--onsen-border-width) solid var(--onsen-color-rule-strong);
     font-family: var(--onsen-font-prose);
     font-size: var(--onsen-text-field);
     color: var(--onsen-color-text);
@@ -169,7 +192,7 @@
     font-weight: 500;
     letter-spacing: var(--onsen-tracking-button);
     text-transform: uppercase;
-    border: 1px solid var(--onsen-color-rule-strong);
+    border: var(--onsen-border-width) solid var(--onsen-color-rule-strong);
     background: transparent;
     color: var(--onsen-color-text-label);
     cursor: pointer;

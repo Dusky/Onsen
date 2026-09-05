@@ -732,6 +732,28 @@ export const strings = {
     } as Record<string, string>,
 
     /** Moving in from SillyTavern (SPEC §20 phase 44). */
+    /** Themes (SPEC §20 phase 45). */
+    theme: "Theme",
+    themeHint:
+      "Every value is a CSS custom property, and the app is its own preview. Shipped themes " +
+      "are read-only \u2014 duplicate one to make it yours. Themes live on the server, so the " +
+      "phone and the desktop agree.",
+    themeDuplicate: "Duplicate",
+    themeDelete: "Delete",
+    themeExport: "Export",
+    themeImport: "Import",
+    themeBuiltin: "This one ships with Onsen. Duplicate it to change anything.",
+    themeDepth: "Depth",
+    themeCss: "Your own CSS",
+    themeCssPlaceholder: ".prose em { color: var(--onsen-color-blue); }",
+    themeCssPending:
+      "This theme arrived with CSS. It is not running. Read it, then keep or discard it.",
+    themeCssApprove: "Apply this CSS",
+    themeCssDiscard: "Discard it",
+    themeImported: (name: string) => `Imported ${name}.`,
+    themeDropped: (n: number) =>
+      `${n} value${n === 1 ? "" : "s"} were refused for holding something other than a colour or a length.`,
+
     migrate: "Move in from SillyTavern",
     migrateHint:
       "Pick your SillyTavern data folder \u2014 the one holding characters, chats and settings.json. " +

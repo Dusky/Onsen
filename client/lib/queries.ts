@@ -63,6 +63,8 @@ import type {
   GuideKind,
   BulkImportCharactersResponse,
   MigrationReportDto,
+  ThemeDto,
+  ThemeImportDto,
   ImportCharacterResponse,
   UpdateCharacterRequest,
   MessageDto,
@@ -775,6 +777,80 @@ export function useImportSillyTavern() {
     },
     // A migration touches almost everything, so nothing cached survives it.
     onSuccess: () => void client.invalidateQueries(),
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Themes (SPEC §20 phase 45)                                          */
+/* ------------------------------------------------------------------ */
+
+export const themeKeys = { all: ["themes"] as const };
+
+export function useThemes() {
+  return useQuery({
+    queryKey: themeKeys.all,
+    queryFn: () => api.get<{ themes: ThemeDto[]; activeId: string | null }>("/themes"),
+  });
+}
+
+/**
+ * Applying a theme reloads the page.
+ *
+ * The tokens arrive as a stylesheet `<link>`, not as state, so the cheapest and
+ * most honest way to pick up a change is to fetch it again. A theme switch is
+ * a deliberate, occasional act; a reload is the right cost for it.
+ */
+function reload() {
+  window.location.reload();
+}
+
+export function useActivateTheme() {
+  return useMutation({
+    mutationFn: (id: string) => api.post<ThemeDto>(`/themes/${id}/activate`, {}),
+    onSuccess: reload,
+  });
+}
+
+export function useCreateTheme() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name: string; from?: string }) => api.post<ThemeDto>("/themes", body),
+    onSuccess: () => void client.invalidateQueries({ queryKey: themeKeys.all }),
+  });
+}
+
+export function useUpdateTheme(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) => api.patch<ThemeDto>(`/themes/${id}`, body),
+    onSuccess: () => void client.invalidateQueries({ queryKey: themeKeys.all }),
+  });
+}
+
+export function useDeleteTheme() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/themes/${id}`),
+    onSuccess: () => void client.invalidateQueries({ queryKey: themeKeys.all }),
+  });
+}
+
+export function useImportTheme() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File): Promise<ThemeImportDto> => {
+      const form = new FormData();
+      form.append("file", file);
+      const response = await fetch("/api/themes/import", { method: "POST", body: form });
+      const body: unknown = await response.json();
+      if (!response.ok) {
+        throw new Error(
+          (body as { error?: { message?: string } }).error?.message ?? "That is not a theme file.",
+        );
+      }
+      return body as ThemeImportDto;
+    },
+    onSuccess: () => void client.invalidateQueries({ queryKey: themeKeys.all }),
   });
 }
 

@@ -93,7 +93,10 @@ function clientSource(): string {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const path = join(dir, entry.name);
       if (entry.isDirectory()) walk(path);
-      else if (/\.(ts|tsx)$/.test(entry.name)) all += readFileSync(path, "utf8");
+      // `.html` because not every caller is JavaScript: the theme stylesheet is
+      // a <link> in the document, which is a real caller and was invisible here
+      // until it existed (phase 45).
+      else if (/\.(ts|tsx|html)$/.test(entry.name)) all += readFileSync(path, "utf8");
     }
   };
   walk(join(ROOT, "client"));

@@ -58,6 +58,7 @@ import { WebhookEditor } from "../components/WebhookEditor.tsx";
 import { ApiKeyEditor } from "../components/ApiKeyEditor.tsx";
 import { MediaSettings } from "../components/MediaSettings.tsx";
 import { MigrationSection } from "../components/MigrationSection.tsx";
+import { ThemeSection } from "../components/ThemeSection.tsx";
 
 /**
  * Settings (design handoff, screen 3i).
@@ -813,9 +814,12 @@ function ReadingSection() {
   return (
     <>
       <p className="section-label mb-[4px]">{strings.settings.reading}</p>
-      <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+      <p className="chrome mb-[16px] text-[10px] leading-[1.6] text-ink-dim">
         {strings.settings.readingHint}
       </p>
+
+      <ThemeSection />
+
       <p className="section-label mb-[6px]">{strings.settings.chime}</p>
       <div className="flex gap-[6px]">
         {[

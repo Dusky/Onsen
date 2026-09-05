@@ -637,6 +637,40 @@ export interface PackListDto {
 }
 
 /** One thing an install would do. `skip` never writes. */
+/**
+ * A theme (SPEC §20 phase 45).
+ *
+ * `tokens` names only what this theme changes — `--onsen-*` custom properties,
+ * without the prefix — so a theme stays small and one written today still works
+ * after a token is added tomorrow.
+ */
+export interface ThemeDto {
+  id: string;
+  name: string;
+  base: "dark" | "light";
+  tokens: Record<string, string>;
+  /** CSS the reader has approved. Served, and applied last. */
+  customCss: string;
+  /**
+   * CSS that arrived with an import and has not been approved. Shown, never
+   * applied: an imported theme is somebody else's code, and CSS can reach the
+   * network.
+   */
+  pendingCss: string;
+  isBuiltin: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** What an imported theme brought, and what it would be allowed to do. */
+export interface ThemeImportDto {
+  theme: ThemeDto;
+  /** One line per thing the pending CSS could do. Empty when it carries none. */
+  concerns: string[];
+  /** Token pairs the file carried that were refused. */
+  droppedTokens: string[];
+}
+
 /** What kind of thing a migrated file turned out to be (SPEC §20 phase 44). */
 export type MigrationKind =
   | "character"

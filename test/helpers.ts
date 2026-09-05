@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { openDatabase } from "../server/db/index.ts";
 import { migrate } from "../server/db/migrate.ts";
 import { seedBuiltins } from "../server/db/queries/options.ts";
+import { seedBuiltinThemes } from "../server/db/queries/themes.ts";
 import { loadOrCreateKeyring } from "../server/lib/crypto.ts";
 import { loadConfig, ensureDataDirs, type Config } from "../server/config.ts";
 import { createServer } from "../server/app.ts";
@@ -73,6 +74,9 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
   migrate(db);
   // The shipped options and bans, as production seeds them at boot (§13.5).
   seedBuiltins(db);
+// The shipped themes, for the same reason and by the same rule: matched by
+// name, so a release can add one without disturbing anything you have made.
+seedBuiltinThemes(db);
   const ctx: AppContext = { db, config, keyring: loadOrCreateKeyring(config, {} as NodeJS.ProcessEnv) };
   const adapterOption =
     options.adapter === undefined ? {} : { createAdapter: () => options.adapter as Adapter };

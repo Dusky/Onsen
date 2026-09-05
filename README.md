@@ -4,7 +4,7 @@ A self-hosted, mobile-first AI roleplay frontend. Group scenes are the primary
 case: one AI **author** with its own personality plays the whole cast, like a GM
 running a table, while you direct.
 
-> **Status: phase 44 — feature complete, less the deferred phase 42.**
+> **Status: phase 45 — feature complete, less the deferred phase 42.**
 > Set it up, **point it at your SillyTavern folder and move in** — cards, chats,
 > group chats, personas, world info, instruct templates and regex scripts all
 > come across, with your swipes intact as branches — give the AI an author
@@ -109,6 +109,11 @@ bun run start          # http://localhost:8787
 
 Open the app and the setup wizard asks for a password and one connection
 profile. There is no second account and no registration.
+
+Themes are yours: seven ship, every colour and the four values that decide
+depth are editable by hex, and you can save, export and import them. They live
+on the server, so the phone and the desktop agree. An imported theme's own CSS
+is shown to you before any of it runs.
 
 It is an installable web app: add it to a phone's home screen and it opens
 standalone, in its own window, with the shell cached so it starts without

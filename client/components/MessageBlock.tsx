@@ -297,7 +297,7 @@ export function MessageBlock({
   return (
     <article
       {...swipe}
-      className="group select-none"
+      className="turn group select-none"
       // The whole block is the gesture target, so the affordance matches the
       // thing being acted on rather than a handle beside it.
       aria-label={`${speakerName}: ${text.slice(0, 80)}`}
