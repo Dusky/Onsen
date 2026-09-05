@@ -83,8 +83,15 @@ export const strings = {
   scenes: {
     kicker: "Onsen",
     title: "Roleplays",
-    empty: "Nothing here yet. Start one.",
-    emptyScene: "No messages yet.",
+    empty: "No roleplays yet",
+    emptyBody:
+      "A roleplay is one continuing story: an author, a cast, and everything " +
+      "said so far. History is a tree, so you can branch at any line and keep " +
+      "both versions.",
+    emptyScene: "Nothing written yet",
+    emptySceneBody:
+      "Say something, or direct the scene — an instruction rather than a line " +
+      "works too. Reply without me starts the story without you in it.",
     create: "New roleplay",
     untitled: "Untitled",
     stillWriting: (title: string) => `Still writing in ${title}`,
@@ -874,7 +881,11 @@ export const strings = {
   characters: {
     kicker: "Library",
     title: "Cast",
-    empty: "No characters yet. Import a card to start.",
+    empty: "No characters yet",
+    emptyBody:
+      "Characters are the cast a roleplay draws from. Import a card you already " +
+      "have — PNG, CharX or JSON, from SillyTavern or anywhere else — or load " +
+      "the sample scene to see how one is put together.",
     loadDemo: "Load the demo cast",
     search: "Search",
     searchPlaceholder: "Search name, description, notes",
@@ -1063,7 +1074,11 @@ export const strings = {
   authors: {
     kicker: "Writing partner",
     listTitle: "Authors",
-    empty: "No writing partner yet. Create one to switch on author mode.",
+    empty: "No writing partner yet",
+    emptyBody:
+      "An author is the voice that plays your whole cast — its personality and " +
+      "writing style become the system prompt, and characters are roles it " +
+      "takes. Without one, a roleplay runs a single character on its own.",
     create: "New author",
     /** The defining bet, said plainly on the screen that introduces it. */
     explainer:
@@ -1130,7 +1145,11 @@ export const strings = {
     persona: "You",
     personaNone: "Not set",
     cast: "Cast",
-    castEmpty: "Nobody yet. Add a character.",
+    castEmpty: "Nobody in the cast yet",
+    castEmptyBody:
+      "The cast is who the author is allowed to play. Add one and the roleplay " +
+      "runs a single character; add several and the turn director decides who " +
+      "speaks, or you cue them yourself.",
     addToCast: "Add character",
     remove: "Remove",
     title_: "Title",
@@ -1380,7 +1399,26 @@ export const strings = {
     off: "Off",
     kicker: "Library",
     title: "Lore",
-    empty: "No lorebooks yet. Import world info, or start one.",
+    /*
+     * Empty states (§20 phase 51). Each says what the thing is *for*, because
+     * an empty screen is the one moment the app has the reader's whole
+     * attention and nothing else to compete with.
+     */
+    empty: "No lorebooks yet",
+    emptyBody:
+      "A lorebook is world info the author can draw on — places, history, who " +
+      "knows what. Entries fire on keywords in the scene, so only what is " +
+      "relevant reaches the prompt.",
+    /*
+     * The entry list inside a book used `lore.empty` — "No lorebooks yet",
+     * inside a lorebook. Nobody noticed until phase 51 rewrote that string
+     * into something that could only be about the list of books.
+     */
+    entriesEmpty: "No entries yet",
+    entriesEmptyBody:
+      "An entry is a fact and the words that summon it. Give it keys — a place, " +
+      "a name, a phrase — and it joins the prompt only on the turns where one of " +
+      "them appears, so a large book still costs almost nothing.",
     create: "New lorebook",
     import: "Import world info",
     importing: "Reading world info\u2026",

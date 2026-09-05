@@ -70,7 +70,7 @@ export function LoreSheet({
     >
       <p className="section-label mb-[6px]">{strings.lore.sheetAttached}</p>
       {reaching.length === 0 ? (
-        <p className="chrome mb-[12px] text-[11.5px] tracking-[0.12em] text-ink-dim uppercase">
+        <p className="explain mb-[12px]">
           {strings.lore.sceneRowNone}
         </p>
       ) : null}
@@ -139,7 +139,7 @@ export function LoreSheet({
           with the rule that stopped each one — the miss is the useful half. */}
       <p className="section-label mt-[16px] mb-[6px]">{strings.lore.testTitle}</p>
       {activation !== undefined && activation.length === 0 ? (
-        <p className="chrome mb-[10px] text-[11.5px] tracking-[0.12em] text-ink-dim uppercase">
+        <p className="explain mb-[10px]">
           {strings.lore.testEmpty}
         </p>
       ) : null}

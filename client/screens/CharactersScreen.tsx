@@ -6,6 +6,7 @@ import type {
   SavedFilterDto,
 } from "@shared/types.ts";
 import { strings } from "../strings.ts";
+import { EmptyState } from "../components/EmptyState.tsx";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { navigate } from "../lib/router.ts";
 import { useIsDesktop } from "../lib/breakpoint.ts";
@@ -322,23 +323,28 @@ export function CharactersScreen() {
 
           {list.length === 0 && characters.data !== undefined ? (
             <>
-              <p className="chrome text-[11.5px] tracking-[0.14em] text-ink-dim uppercase">
-                {characters.data.length === 0 ? strings.characters.empty : strings.characters.noResults}
-              </p>
               {characters.data.length === 0 ? (
-                <button
-                  type="button"
-                  className="btn mt-[10px] w-full"
-                  disabled={seedDemo.isPending}
-                  onClick={() =>
-                    seedDemo.mutate(undefined, {
-                      onSuccess: ({ sceneId }) => navigate({ name: "chat", sceneId }),
-                    })
-                  }
-                >
-                  {strings.characters.loadDemo}
-                </button>
-              ) : null}
+                <EmptyState
+                  title={strings.characters.empty}
+                  body={strings.characters.emptyBody}
+                  actions={[
+                    {
+                      label: strings.characters.import,
+                      onClick: () => fileInput.current?.click(),
+                    },
+                    {
+                      label: strings.characters.loadDemo,
+                      disabled: seedDemo.isPending,
+                      onClick: () =>
+                        seedDemo.mutate(undefined, {
+                          onSuccess: ({ sceneId }) => navigate({ name: "chat", sceneId }),
+                        }),
+                    },
+                  ]}
+                />
+              ) : (
+                <p className="explain">{strings.characters.noResults}</p>
+              )}
             </>
           ) : null}
 

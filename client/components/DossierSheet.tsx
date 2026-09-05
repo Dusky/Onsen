@@ -138,7 +138,7 @@ export function DossierSheet({
         <>
           <p className="section-label mb-[6px]">{strings.dossiers.written}</p>
           {dossiers.length === 0 ? (
-            <p className="chrome mb-[12px] text-[11.5px] tracking-[0.12em] text-ink-dim uppercase">
+            <p className="explain mb-[12px]">
               {strings.dossiers.empty}
             </p>
           ) : null}

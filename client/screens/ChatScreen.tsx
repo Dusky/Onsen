@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { MessageDto } from "@shared/types.ts";
 import { strings } from "../strings.ts";
+import { EmptyState } from "../components/EmptyState.tsx";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { navigate } from "../lib/router.ts";
 import { useSceneChannel } from "../lib/scene-channel.ts";
@@ -956,10 +957,14 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             />
           ) : (
             <div className="mx-auto flex min-h-full w-full max-w-[var(--onsen-prose-measure)] flex-col justify-end gap-[26px]">
+              {/* An unwritten scene is the one empty state with no button: the
+                  thing that ends it is the composer, already on screen and
+                  already the brightest thing on it. */}
               {logMessages.length === 0 && !isGenerating ? (
-                <p className="chrome text-[11.5px] tracking-[0.14em] text-ink-dim uppercase">
-                  {strings.scenes.emptyScene}
-                </p>
+                <EmptyState
+                  title={strings.scenes.emptyScene}
+                  body={strings.scenes.emptySceneBody}
+                />
               ) : null}
               {logMessages.map(renderMessage)}
               {tail}

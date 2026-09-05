@@ -118,7 +118,7 @@ export function CastRail({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-[14px] py-[12px]">
         {cast.length === 0 ? (
-          <p className="chrome text-[10.5px] tracking-[0.12em] text-ink-dim uppercase">
+          <p className="explain">
             {strings.sceneSetup.castEmpty}
           </p>
         ) : null}

@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import type { LoreBindingDto, LorebookDto } from "@shared/types.ts";
 import { strings } from "../strings.ts";
+import { EmptyState } from "../components/EmptyState.tsx";
 import { navigate } from "../lib/router.ts";
 import { useCreateLorebook, useImportLorebook, useLorebooks } from "../lib/queries.ts";
 import { TabBar } from "../components/TabBar.tsx";
@@ -93,9 +94,25 @@ export function LorebooksScreen() {
           {notice !== null ? <Notice>{notice}</Notice> : null}
 
           {books.data !== undefined && books.data.length === 0 ? (
-            <p className="chrome text-[11.5px] tracking-[0.14em] text-ink-dim uppercase">
-              {strings.lore.empty}
-            </p>
+            <EmptyState
+              title={strings.lore.empty}
+              body={strings.lore.emptyBody}
+              actions={[
+                {
+                  label: strings.lore.create,
+                  onClick: () =>
+                    create.mutate(
+                      { name: "New lorebook" },
+                      { onSuccess: (book) => navigate({ name: "lorebook", bookId: book.id }) },
+                    ),
+                },
+                {
+                  label: importBook.isPending ? strings.lore.importing : strings.lore.import,
+                  onClick: () => fileInput.current?.click(),
+                  disabled: importBook.isPending,
+                },
+              ]}
+            />
           ) : null}
 
           {(books.data ?? []).map((book) => (
@@ -104,6 +121,7 @@ export function LorebooksScreen() {
         </div>
       </main>
 
+      {(books.data ?? []).length === 0 ? null : (
       <footer className="flex-none border-t border-rule bg-bg-raised px-[22px] py-[12px]">
         <div className="mx-auto flex w-full max-w-[var(--onsen-list-measure)] gap-[8px]">
           <input
@@ -138,6 +156,7 @@ export function LorebooksScreen() {
           </button>
         </div>
       </footer>
+      )}
 
       <TabBar active="lore" />
     </div>

@@ -1,5 +1,6 @@
 import type { SceneDto } from "@shared/types.ts";
 import { strings } from "../strings.ts";
+import { EmptyState } from "../components/EmptyState.tsx";
 import { navigate } from "../lib/router.ts";
 import { useIsDesktop } from "../lib/breakpoint.ts";
 import { useCreateScene, useScenes } from "../lib/queries.ts";
@@ -94,6 +95,14 @@ export function ScenesScreen() {
       .catch(() => setProfileId(null));
   }, []);
 
+  /** Start one. Called from the footer and from the empty screen. */
+  function startScene() {
+    create.mutate(
+      { title: strings.scenes.untitled, connectionProfileId: profileId },
+      { onSuccess: (scene) => navigate({ name: "chat", sceneId: scene.id }) },
+    );
+  }
+
   return (
     <div className="flex screen-height flex-col bg-bg">
       <header
@@ -107,9 +116,11 @@ export function ScenesScreen() {
       <main className="min-h-0 flex-1 overflow-y-auto px-[22px]">
         <div className="mx-auto w-full max-w-[var(--onsen-list-measure)]">
           {scenes.data?.length === 0 ? (
-            <p className="chrome mt-[24px] text-[11.5px] tracking-[0.14em] text-ink-dim uppercase">
-              {strings.scenes.empty}
-            </p>
+            <EmptyState
+              title={strings.scenes.empty}
+              body={strings.scenes.emptyBody}
+              actions={[{ label: strings.scenes.create, onClick: startScene }]}
+            />
           ) : null}
           {scenes.data?.map((scene) => <SceneRow key={scene.id} scene={scene} />)}
         </div>
@@ -118,7 +129,7 @@ export function ScenesScreen() {
       {/* On a phone this is the only way to start one. With room the sidebar
           already carries it, and two identical red buttons on one screen is a
           question about which one is the real one. */}
-      {isDesktop ? null : (
+      {isDesktop || scenes.data?.length === 0 ? null : (
         <footer
           className="flex-none border-t border-rule bg-bg-raised px-[22px] pt-[12px]"
           style={{ paddingBottom: "calc(10px + env(safe-area-inset-bottom))" }}
@@ -127,12 +138,7 @@ export function ScenesScreen() {
             type="button"
             className="btn btn-primary w-full"
             disabled={create.isPending}
-            onClick={() =>
-              create.mutate(
-                { title: strings.scenes.untitled, connectionProfileId: profileId },
-                { onSuccess: (scene) => navigate({ name: "chat", sceneId: scene.id }) },
-              )
-            }
+            onClick={startScene}
           >
             {strings.scenes.create}
           </button>

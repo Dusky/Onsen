@@ -10,6 +10,7 @@ import type {
 } from "@shared/types.ts";
 import { LORE_POSITIONS } from "@shared/types.ts";
 import { strings } from "../strings.ts";
+import { EmptyState } from "../components/EmptyState.tsx";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { navigate } from "../lib/router.ts";
 import {
@@ -801,9 +802,17 @@ export function LorebookEditorScreen({ bookId }: { bookId: string }) {
           )}
 
           {entries.length === 0 ? (
-            <p className="chrome mb-[14px] text-[11.5px] tracking-[0.14em] text-ink-dim uppercase">
-              {strings.lore.empty}
-            </p>
+            <EmptyState
+              title={strings.lore.entriesEmpty}
+              body={strings.lore.entriesEmptyBody}
+              actions={[
+                {
+                  label: strings.lore.addEntry,
+                  onClick: () =>
+                    createEntry.mutate(undefined, { onSuccess: (entry) => setOpenId(entry.id) }),
+                },
+              ]}
+            />
           ) : null}
 
           {entries

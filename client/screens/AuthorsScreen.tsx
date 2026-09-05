@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { AuthorDto, UpdateAuthorRequest } from "@shared/types.ts";
 import { strings } from "../strings.ts";
+import { EmptyState } from "../components/EmptyState.tsx";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { navigate } from "../lib/router.ts";
 import { useAuthor, useAuthors, useCreateAuthor, useDeleteAuthor, useUpdateAuthor } from "../lib/queries.ts";
@@ -103,9 +104,21 @@ export function AuthorsScreen() {
           </p>
 
           {authors.data?.length === 0 ? (
-            <p className="chrome text-[11.5px] tracking-[0.14em] text-ink-dim uppercase">
-              {strings.authors.empty}
-            </p>
+            <EmptyState
+              title={strings.authors.empty}
+              body={strings.authors.emptyBody}
+              actions={[
+                {
+                  label: strings.authors.create,
+                  disabled: create.isPending,
+                  onClick: () =>
+                    create.mutate(
+                      {},
+                      { onSuccess: (author) => navigate({ name: "author", authorId: author.id }) },
+                    ),
+                },
+              ]}
+            />
           ) : null}
 
           {authors.data?.map((author) => (
@@ -134,6 +147,7 @@ export function AuthorsScreen() {
         </div>
       </main>
 
+      {(authors.data ?? []).length === 0 ? null : (
       <footer className="flex-none border-t border-rule bg-bg-raised px-[22px] py-[12px]">
         <button
           type="button"
@@ -149,6 +163,7 @@ export function AuthorsScreen() {
           {strings.authors.create}
         </button>
       </footer>
+      )}
 
       <TabBar active="authors" />
     </div>

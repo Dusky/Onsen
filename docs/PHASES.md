@@ -4403,3 +4403,51 @@ difficulty of changing a layout rather than adding to one.
 drive output rather than the screenshot, `deckText: null` looked like a
 rendering failure; the regex was case-sensitive and the labels are uppercased
 by CSS. A minute spent looking at the picture instead of the log settled it.
+
+---
+
+## Phase 51 — Empty states
+
+*"the lore page, when empty, should like, prompt you to create a lore book and
+make it easy to do so. currently it just says 'get fucked' essentially. the
+same is true elsewhere. stuff just feels incomplete and shallow."*
+
+Accurate. The copy was not the problem — `lore.empty` already read "No
+lorebooks yet. Import world info, or start one." The problem was that it was
+set as an 11.5px uppercase mono line, the smallest and coldest thing on the
+page, floating in a void, while the two buttons that would act on it sat in a
+footer at the other end of the screen. **Eight screens had a copy of that exact
+paragraph.**
+
+### What was built
+
+**`EmptyState`** — what is missing as a statement, what the thing is *for* in
+the explaining voice, and the action that ends it. Applied to roleplays, cast,
+authors, lore, lorebook entries, scene cast, and the chat log.
+
+**Copy that teaches rather than reports.** Every body says what the thing does,
+not that there is none of it: a lorebook is world info that fires on keywords
+so only what is relevant reaches the prompt; an author is the voice that plays
+the whole cast; history is a tree so you can branch and keep both versions. An
+empty screen is the one moment the app has the reader's whole attention and
+nothing else on the page to compete with.
+
+**Footers hidden while a screen is empty.** `ScenesScreen` already carried the
+note — *two identical red buttons on one screen is a question about which one
+is the real one* — and it applies exactly here.
+
+**`test/empty-states.test.ts`**, which asserts every screen that can be empty
+has one and fails on the old shape.
+
+### Surprises
+
+**The guard found four more sites than the survey did**, in panels and sheets
+rather than screens: the desktop cast rail, the lore test result, the dossier
+list, the cast picker. Those wanted the explaining voice without the card — an
+inline empty is not a page — but all four were still whispering in tracked
+uppercase mono.
+
+**A copy bug surfaced by renaming a string.** The lorebook *entry* list used
+`lore.empty` — which now reads "No lorebooks yet", inside a lorebook. It had
+been wrong since the screen was built and was invisible while the string was
+vague enough to fit both jobs.

@@ -2395,6 +2395,34 @@ toggle.
   block by block, with token costs, **what was evicted**, retrieved chunks and
   scores, and which lore entries fired and why. Reachable from any message.
 
+### Empty states
+
+The design handoff's open question 5 — *"empty states beyond 'no messages yet'
+aren't drawn"* — was answered screen by screen with the same 11.5px uppercase
+mono line floating above nothing, while the button that would end the emptiness
+sat in a footer at the other end of the page. Eight copies of it. The copy was
+mostly fine; the treatment made the app read as a shrug.
+
+An empty screen is the one moment the app has the reader's whole attention and
+nothing else on the page to compete with, so it is the one moment it can teach.
+Every empty screen therefore carries:
+
+1. **What is missing**, as a statement — "No lorebooks yet", not "empty".
+2. **What the thing is for**, in one or two sentences, in the explaining voice
+   (§16's Spectral). Not what is absent — what it would do.
+3. **The action that ends it**, right there. Where a screen's footer offers the
+   same action, the footer is hidden while the screen is empty: two identical
+   buttons on one screen is a question about which one is the real one.
+
+An *inline* empty — a panel, a sheet, the result of a test — takes the
+explaining voice without the card. The chat log is the one empty state with no
+button, because the thing that ends it is the composer, already on screen and
+already the brightest thing on it.
+
+`test/empty-states.test.ts` asserts every screen that can be empty has one, and
+fails on the old shape: chrome, tracked, uppercased, dim and small, carrying a
+string whose name ends in `empty`.
+
 ### Surfaces and size
 
 Two figures from the handoff were transcribed faithfully and were wrong for
@@ -2947,6 +2975,8 @@ Each phase ends in a working, usable application.
     surfaces far enough apart to see. See §16.
 50. **Instrument** — the chosen chat layout: the deck, the speaker's spine, and
     a hue per subsystem. See §16.
+51. **Empty states** — every screen that can be empty says what it is for and
+    carries the action that ends it. See §16.
 
 Settled while building phase 15.
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { strings } from "../strings.ts";
+import { EmptyState } from "../components/EmptyState.tsx";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { BanListSheet, OptionGroupSheet } from "../components/OptionSheets.tsx";
 import { LoreSheet, booksReaching } from "../components/LoreSheet.tsx";
@@ -362,7 +363,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                   .slice(0, 5);
                 if (runs.length === 0) {
                   return (
-                    <p className="chrome mb-[22px] text-[11.5px] tracking-[0.12em] text-ink-dim uppercase">
+                    <p className="explain mb-[22px]">
                       {strings.sceneSetup.directorRunsEmpty}
                     </p>
                   );
@@ -839,9 +840,11 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
 
           <p className="group-heading mb-[12px]">{strings.sceneSetup.cast}</p>
           {scene.cast.length === 0 ? (
-            <p className="chrome mb-[10px] text-[11.5px] tracking-[0.12em] text-ink-dim uppercase">
-              {strings.sceneSetup.castEmpty}
-            </p>
+            <EmptyState
+              title={strings.sceneSetup.castEmpty}
+              body={strings.sceneSetup.castEmptyBody}
+              actions={[{ label: strings.sceneSetup.addToCast, onClick: () => setPicking(true) }]}
+            />
           ) : null}
 
           <div className="mb-[12px] flex flex-wrap gap-[10px]">
@@ -1193,7 +1196,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
       {picking ? (
         <Sheet title={strings.sceneSetup.addToCast} onClose={() => setPicking(false)}>
           {available.length === 0 ? (
-            <p className="chrome py-[14px] text-[11.5px] tracking-[0.12em] text-ink-dim uppercase">
+            <p className="explain py-[14px]">
               {strings.characters.empty}
             </p>
           ) : null}
