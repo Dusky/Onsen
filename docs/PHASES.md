@@ -4693,3 +4693,67 @@ verification step is a real browser rather than a test.
 was written from memory and had to be corrected against `0006_group_scenes.sql`:
 `created_at` is `NOT NULL` and `joined_after_message_id` must *not* be carried,
 since a member of a fresh scene joined at the start by definition.
+
+## Amendment — the design authority was wrong about its audience
+
+Not a phase. A correction to the documents phases 47 and 49–53 were built
+against, recorded here because six phases of work came out of one sentence
+nobody wrote on purpose.
+
+### What it said
+
+`docs/design/DESIGN.md`, §Progressive disclosure:
+
+> *"UI density is the single most common complaint about the incumbent and the
+> main thing this product is reacting against. The default view of every screen
+> is clean. Depth sits behind `ADVANCED ▾`. When in doubt, hide it."*
+
+`SPEC.md` §22 carried the matching clause: *"Don't build a dense settings
+surface. The top complaint about the category leader. Progressive disclosure,
+always."*
+
+### Why it was wrong
+
+**It was generated, not briefed.** The design bundle ships `.dc.html` artboards
+— it is the output of a design session, and `HANDOFF.md`'s precedence table
+makes the design doc binding on layout and appearance. So a claim invented in
+one session became authority in every session after it. Nobody asked for it.
+
+**And it mistook the complaint.** Shown five screenshots of a real SillyTavern
+install, the reader's verdict was *"our app is clean, but I don't want or need
+clean. YOU put that on the project. not me. this app is for power users."* That
+install runs **139 chats, 23 personas, 18 ordered prompt blocks, 7 group
+members**, at font scale 0.98 with two side panels open. Its problem is not
+that it shows too much. It is that what it shows is unordered — which is why it
+needs a search box over its settings, and which categories fix and hiding does
+not.
+
+### The conflation
+
+**Terse is not sparse.** Phase 53 deleted 85 explanatory strings because they
+were asked for and they were cringe, and that was right. Nothing in it asked
+for low information density, and I supplied that anyway. The incumbent is
+simultaneously the least chatty thing on screen and the most dense: no
+explanatory prose anywhere, and a token count on every prompt block, `#46 ·
+27.3s · 868t` on every message, `1-50 .. 139` on every list. Terse *and* dense
+was always available. Onsen shipped terse and airy.
+
+### What replaced it
+
+`DESIGN.md` §Density and `SPEC.md` §16 §Density, six rules: a screen shows
+everything it governs; numbers render untapped; controls live in the row; rows
+scale with the input device (44px touch, 28–32px pointer); whitespace only
+separates what would otherwise be confused; the reading surface is the
+exception and the reader owns it. §22 now reads *"don't build a disorganised
+settings surface"* — density is fine, hunting is not.
+
+The superseded sentence is quoted in place rather than deleted, so the reversal
+is legible to whoever reads the doc next.
+
+### What stays
+
+Phase 53's register was responsive to what was actually said and is untouched:
+no uppercase, no tracking, sentence case, explanations gone. The incumbent's
+own themes agree on all four. The red = live / blue = author hues and Spectral
+for prose were never the objection either. This amendment is about spatial and
+informational density, and nothing else.

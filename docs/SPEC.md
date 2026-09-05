@@ -2504,6 +2504,38 @@ still gets a flat panel rather than a card. Twelve groups of hairline rows
 directly on the ground read as one undifferentiated field, which is what
 "everything is a page being marked up" turns into at this size.
 
+### Density
+
+Settled after phase 54, replacing the handoff's *"the default view of every
+screen is clean … when in doubt, hide it"*, which was written in a design
+session rather than briefed and which phases 47 and 49–53 each built against.
+The audience is a power user: the installs this replaces run in the low
+hundreds of chats, tens of personas and a prompt of eighteen ordered blocks.
+
+- **A screen shows everything it governs.** An `advanced` disclosure is for
+  rare machine settings, never for the second half of a form.
+- **Numbers render untapped.** Tokens, elapsed time, message id, position, and
+  `n of m` on any list that can exceed a screen. A number behind a tap is a
+  number nobody reads — which is why §16's promise of per-message stats
+  "behind a tap" went four years of phases without anyone noticing it was
+  never built.
+- **Controls live in the row** they act on. A sheet is for a form.
+- **Rows scale with the input device**: 44px on touch, 28–32px on a pointer.
+  The same list is often both, so this is a media query, not a choice.
+- **Whitespace separates things that would otherwise be confused**, and is
+  spent nowhere else.
+
+Terse and dense are not opposites, and the app should be both: no explanatory
+prose (§Voice), a great deal of visible state. The register settled in phase 53
+— sentence case, no uppercase, no tracking — is unaffected by this and stays.
+
+**The reading surface is the one exception, and the reader owns it.** Prose
+scale, measure and leading are user settings, not constants; the defaults are
+denser than the 17px/620px the handoff drew for a phone at arm's length.
+
+Enforced the way §Voice and §Surfaces are: a guard test that measures the whole
+tree, because density is a distribution and no per-file review sees it.
+
 ### Layout direction
 
 Three directions were drawn for the chat screen and **Instrument** was chosen.
@@ -3107,8 +3139,14 @@ Things existing frontends do that this project should not.
   The author model exists precisely to avoid this.
 - **Don't swap the system prompt per speaker.** It breaks prompt caching for no
   benefit under the author model.
-- **Don't build a dense settings surface.** The top complaint about the category
-  leader. Progressive disclosure, always.
+- **Don't build a *disorganised* settings surface.** Density is not the
+  complaint about the category leader — unfindability is. It needs a search box
+  because one page carries some sixty controls in no order. Categories, a
+  filter and a stable order fix that; hiding things does not, it just moves the
+  hunt. §16's density rules are the positive form of this. *(Amended after
+  phase 54: the original clause said "don't build a dense settings surface,
+  progressive disclosure, always", and six phases of restraint came out of it.
+  See `docs/PHASES.md`.)*
 - **Don't feed chain-of-thought back multi-turn by default.**
 - **Don't oversell memory.** See §11.
 - **Don't parse character cards lossily.** Preserve `raw_card`.

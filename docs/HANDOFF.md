@@ -10,6 +10,8 @@ document tells you how to work on it. It is not the specification.
 | `SPEC.md` | Behavior, architecture, data model, build order. The source of truth. |
 | `DESIGN.md` (or whatever the design output is named) | Layout, visual system, component structure. |
 | `HANDOFF.md` | This file. Process. |
+| `PHASES.md` | The per-phase record: what was built, deferred, and what surprised. |
+| `GAPS.md` | What the incumbent does that this does not, measured against a real install. Every row carries the command that proves it. Not authority — evidence. |
 
 **Precedence.** `SPEC.md` wins on behavior and data. The design doc wins on
 layout and appearance. If they conflict on something substantive — a screen

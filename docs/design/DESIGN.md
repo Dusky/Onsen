@@ -442,9 +442,22 @@ Generation continues when the user navigates away. The **"still writing" strip**
 - Respect `env(safe-area-inset-bottom)` when the keyboard is closed.
 - When the keyboard opens, the composer stack sheds rows (cast strip, director reason) in favour of the one-line cue summary.
 
-### Progressive disclosure
+### Density
 
-**UI density is the single most common complaint about the incumbent and the main thing this product is reacting against.** The default view of every screen is clean. Depth sits behind `ADVANCED ▾`. When in doubt, hide it.
+**Superseded, and worth saying why.** This section used to read:
+
+> *"UI density is the single most common complaint about the incumbent and the main thing this product is reacting against. The default view of every screen is clean. Depth sits behind `ADVANCED ▾`. When in doubt, hide it."*
+
+That was written in a design session, not briefed by anyone, and it is wrong about its own audience. The people this replaces SillyTavern for run 139 chats, 23 personas and 18 prompt blocks; they set their font scale to 0.98 and open two side panels. Their complaint about the incumbent is not that it shows too much — it is that what it shows is unordered. Six phases were built against the old sentence and each of them made the app quieter than it should be. **Density is a feature of this product, not a cost it pays.**
+
+1. **A screen shows everything it governs.** `ADVANCED ▾` is for rare machine settings — not for the second half of a form, and never as a default answer to "where does this go".
+2. **Numbers are always visible.** If the app knows a number the reader could act on — tokens, elapsed time, message id, position in a list, how many of how many — it renders it untapped and unhovered. A number behind a tap is a number nobody reads.
+3. **Controls live in the row.** A row that can be renamed, toggled, reordered or deleted carries those controls inline. A sheet is for a form, not for hiding a toggle.
+4. **Tap targets scale with the input device.** 44px is a phone rule. A pointer gets 28–32px rows, and the same list may be both.
+5. **Whitespace is not quality.** Space earns its place by separating things that would otherwise be confused, and nowhere else.
+6. **The reading surface is the exception, and the reader sets it.** Scale, measure and leading of the story text are the reader's controls, not the designer's.
+
+Terse and dense are not opposites. The app should say very little and show a great deal — the incumbent manages the first half of that and is the model for it: no explanatory prose anywhere, and a token count on every block.
 
 ### Virtualization
 
@@ -455,7 +468,7 @@ The message log and the character grid are both virtualized. Designs must surviv
 - **Keyboard focus must be visible.** The system has no focus treatment drawn — add one that fits: a 2px red outline offset 2px is consistent with the language.
 - **Respect `prefers-reduced-motion`.** Suppress the streaming pulse and any sheet-slide transitions; do not suppress the state changes themselves.
 - Contrast: the mono chrome runs small and low-contrast by design. `text-dim #6f6a5f` on `bg #14120f` is ~4.6:1 — acceptable at these weights but do not push dimmer.
-- Tap targets never below 44px.
+- Tap targets never below 44px **on touch**. A pointer device may go to 28px — see §Density rule 4.
 
 ---
 
