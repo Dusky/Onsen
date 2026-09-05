@@ -4824,3 +4824,76 @@ it too.
 - **The prompt manager** — phase 56. Reorder, enable/disable, per-block tokens
   and the data-model decision about user-authored blocks.
 - **Persona avatar, position and locking**, and the rest of `docs/GAPS.md`.
+
+## Phase 56 — The prompt manager
+
+`GAPS.md` called this the flagship gap. Researching it found the same defect the
+last three phases were named after, older than any of them.
+
+### The join that was never made
+
+- `presets.prompt_order` was created in **migration 0001**, phase 1.
+- The pure builder has honoured `ctx.preset.blockOrder` since **phase 3**.
+- `server/generation/context.ts` returned `blockOrder: null` — a literal —
+  between them, for **fifty-five phases**.
+
+Both ends looked right in isolation. `grep -rn prompt_order server/ client/
+shared/` found nothing but a preset-import test. No test asserted that what a
+preset stores is what the prompt does, which is exactly the assertion that would
+have caught it on day one, so `test/prompt-blocks.test.ts` makes that its whole
+subject: every case runs a real row through `resolvePreset` into `buildPrompt`
+and reads the assembled output.
+
+Two other things were already there: `PromptBlock.tokens` has carried per-block
+costs to the inspector all along, and the SillyTavern importer already parsed a
+preset's `prompts` array into a full `StBlock` shape.
+
+### What was built
+
+- **A preset owns its order.** `prompt_order` now holds the whole thing —
+  built-ins and hand-written blocks together, each with an enabled flag. Null
+  still means §3's default, so no existing preset needed backfilling.
+- **A block is a thing you can write.** `preset_blocks`: label, role, text, on
+  by default, ordered by `custom:<ulid>` among the built-ins. Drafted like any
+  other block, so macros resolve in them and they cost out in the inspector.
+  Before this, a block could only enter the app by importing a SillyTavern
+  preset — the options API is get, select and reset, with no create or edit.
+- **Importing a preset reproduces its prompt.** Its `prompts` land as that
+  preset's blocks honouring their enabled flags, rather than as an option group
+  selected per roleplay. That was a defensible reading of §13.5 and it made
+  every import a menu nobody had switched on.
+- **The manager**, in the preset editor: one row per block, a dot for on/off, a
+  cost for the ones that are yours, up/down, and the editor inline. Reorder is
+  two buttons — there is no drag anywhere in this client to match, drag is poor
+  under a thumb, and a library is a dependency for what an arrow does.
+
+### Surprises
+
+**The guard caught a bug in the guard's own subject.** An order whose entries
+were all disabled filtered down to `[]`, and `orderedBlockIds` treated
+`length === 0` the same as "never arranged" — so it fell through to the default
+and put every disabled block back into the prompt. Switching everything off
+turned everything on. The check is now `configured === null` only, since
+`parsePromptOrder` already returns null for an empty stored order.
+
+**A bare `new Database()` silently binds nothing.** The first version of the
+test used `new Database(":memory:")` and every migration failed on
+`schema_migrations.name` NOT NULL — with a valid string in hand. `openDatabase`
+passes bun:sqlite's `strict: true`, which is what makes `$name` parameters bind
+by name; without it the same call is accepted and binds nothing. Tests that
+exercise a real path have to open the database the real way.
+
+**The browser drive read a stale message, again.** The inspector check reported
+the custom block missing. It was in the prompt: the drive waited a fixed twelve
+seconds and then took the newest message *carrying a generation record*, which
+was still the previous turn's. Phase 55 hit the identical trap. A drive that
+waits on a clock rather than on the id it is looking for will keep doing this.
+
+### Deliberately deferred
+
+- **`injection_position` on imported blocks.** A SillyTavern block asking to sit
+  at a depth arrives in the prefix. The parser keeps `atDepth` and `depth`, so
+  the information is not lost — but placing it correctly is depth-injection
+  work, and guessing would be worse than the honest gap.
+- **Per-scene overrides of the order.** The order is the preset's; a roleplay
+  that wants a different one changes preset.

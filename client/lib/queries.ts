@@ -54,6 +54,7 @@ import type {
   TaskRunDto,
   UpdateConnectionProfileRequest,
   UpdatePresetRequest,
+  UpdatePresetBlockRequest,
   UpdateProviderRequest,
   UpdateTaskRequest,
   CharacterDto,
@@ -165,6 +166,27 @@ export function usePresets() {
 export function useUpdatePreset() {
   return useConnectionMutation(({ id, ...patch }: UpdatePresetRequest & { id: string }) =>
     api.patch<PresetDto>(`/connections/presets/${id}`, patch),
+  );
+}
+
+/* A preset's own prompt blocks (§3, §20 phase 56). Each returns the whole
+   preset, so one invalidation keeps the manager and the order in step. */
+export function useCreatePresetBlock() {
+  return useConnectionMutation((presetId: string) =>
+    api.post<PresetDto>(`/connections/presets/${presetId}/blocks`, {}),
+  );
+}
+
+export function useUpdatePresetBlock() {
+  return useConnectionMutation(
+    ({ presetId, blockId, ...patch }: UpdatePresetBlockRequest & { presetId: string; blockId: string }) =>
+      api.patch<PresetDto>(`/connections/presets/${presetId}/blocks/${blockId}`, patch),
+  );
+}
+
+export function useDeletePresetBlock() {
+  return useConnectionMutation(({ presetId, blockId }: { presetId: string; blockId: string }) =>
+    api.delete<PresetDto>(`/connections/presets/${presetId}/blocks/${blockId}`),
   );
 }
 

@@ -18,12 +18,17 @@ import type {
   BlockPlacement,
   EvictedItem,
   EvictionReason,
+  InjectionRole,
   MessageAuthorType,
   MessageKind,
   PromptBlock,
   PromptDebugInfo,
   SkipReason,
 } from "../../shared/types.ts";
+export type { PromptBlockId } from "../../shared/types.ts";
+export { DEFAULT_BLOCK_ORDER } from "../../shared/types.ts";
+import type { PromptBlockId } from "../../shared/types.ts";
+import { DEFAULT_BLOCK_ORDER } from "../../shared/types.ts";
 import type { InstructTemplate } from "./instruct.ts";
 import type { MemoryRecallTrace } from "../../shared/types.ts";
 
@@ -430,8 +435,31 @@ export interface PromptPreset {
   prefill: string | null;
   postHistoryInstructions: string | null;
   maxResponseTokens: number;
-  /** Overrides the default assembly order when set (§3). */
-  blockOrder: PromptBlockId[] | null;
+  /**
+   * Overrides the default assembly order when set (§3).
+   *
+   * Strings rather than `PromptBlockId[]` since phase 56: an entry may be
+   * `custom:<ulid>`, naming one of this preset's own blocks. Ids the builder
+   * does not recognise contribute nothing, which is what makes an order saved
+   * against an older build safe to load.
+   *
+   * Only *enabled* blocks appear here. Disabling is storage's business, done
+   * where the context is composed, so this stays a list of what to assemble.
+   */
+  blockOrder: string[] | null;
+  /**
+   * Blocks belonging to this preset, written by a person (§20 phase 56).
+   * Drafted like any other block, so macros and outlets resolve in them.
+   */
+  customBlocks: PromptCustomBlock[];
+}
+
+export interface PromptCustomBlock {
+  /** The `custom:<ulid>` id it is ordered by. */
+  id: string;
+  label: string;
+  role: InjectionRole;
+  content: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -530,78 +558,7 @@ export interface PromptContext {
 /* Blocks                                                              */
 /* ------------------------------------------------------------------ */
 
-/**
- * The assembly order of SPEC §3. These identifiers are the vocabulary a preset
- * reorders and the inspector labels, so they are stable names rather than
- * positions.
- */
-export type PromptBlockId =
-  | "system_prompt"
-  | "author_identity"
-  | "spotlight_character"
-  | "cast"
-  | "persona"
-  | "scenario"
-  | "constant_lore"
-  | "example_dialogue"
-  | "summaries"
-  | "history"
-  | "documents"
-  | "memory"
-  | "matched_lore"
-  | "guides"
-  | "trackers"
-  | "depth_prompts"
-  /** A selected prompt option, one block each so the inspector names it (§13.5). */
-  | "prompt_option"
-  /** The banned constructions in force (§13.6). */
-  | "ban_list"
-  | "director_note"
-  | "post_history"
-  | "nudge"
-  | "ooc_invitation"
-  | "spotlight_instruction"
-  | "jailbreak"
-  | "prefill"
-  /**
-   * Not part of the assembly order. Inserted by the renderer when a provider
-   * requires strict alternation and the timeline would otherwise open on an
-   * assistant turn. It is a real block so that invented text always shows up in
-   * the inspector rather than appearing in the prompt unannounced.
-   */
-  | "alternation_filler";
 
-/** SPEC §3's default order, top of context to nearest the model's response. */
-export const DEFAULT_BLOCK_ORDER: readonly PromptBlockId[] = [
-  "system_prompt",
-  "author_identity",
-  "spotlight_character",
-  "cast",
-  "persona",
-  "scenario",
-  "constant_lore",
-  "example_dialogue",
-  "summaries",
-  "history",
-  "documents",
-  "memory",
-  "matched_lore",
-  "guides",
-  "trackers",
-  "depth_prompts",
-  // Instructions about *how* to write sit near the turn with the other
-  // instructions, not up in the system prompt where a long history separates
-  // them from the writing they govern.
-  "prompt_option",
-  "ban_list",
-  "director_note",
-  "post_history",
-  "nudge",
-  "ooc_invitation",
-  "spotlight_instruction",
-  "jailbreak",
-  "prefill",
-];
 
 // BlockPlacement and PromptBlock are defined in /shared (the inspector's
 // contract) and re-exported above. Note their `id` is `PromptBlockId` here in

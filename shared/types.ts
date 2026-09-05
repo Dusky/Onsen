@@ -182,6 +182,10 @@ export interface PresetDto {
   /** How reasoning is handled for scenes on this preset (SPEC §13). */
   reasoning: ReasoningConfigDto;
   isDefault: boolean;
+  /** The assembly order, or null while this preset runs on §3's default. */
+  blockOrder: PromptOrderEntry[] | null;
+  /** This preset's own blocks (§20 phase 56). */
+  blocks: PresetBlockDto[];
   createdAt: number;
   updatedAt: number;
 }
@@ -201,6 +205,50 @@ export interface ReasoningConfigDto {
   parseInline: boolean;
 }
 
+/**
+ * One entry in a preset's assembly order (SPEC §3, §20 phase 56).
+ *
+ * `id` is a `PromptBlockId` for a built-in, or `custom:<ulid>` for a block
+ * somebody wrote. Both live in one list because the point of the manager is a
+ * hand-written block sitting *between* two built-ins.
+ */
+export interface PromptOrderEntry {
+  id: string;
+  enabled: boolean;
+}
+
+/** The `custom:` prefix that marks an order entry as a preset's own block. */
+export const CUSTOM_BLOCK_PREFIX = "custom:";
+
+export function customBlockId(ulid: string): string {
+  return `${CUSTOM_BLOCK_PREFIX}${ulid}`;
+}
+
+/** A block belonging to a preset, written by a person (SPEC §3, §13). */
+export interface PresetBlockDto {
+  id: string;
+  label: string;
+  role: InjectionRole;
+  content: string;
+  enabled: boolean;
+  /** Estimated server-side, as options are: a block with no cost shown is a
+   *  block nobody can budget for. */
+  tokenCount: number;
+}
+
+export interface CreatePresetBlockRequest {
+  label?: string;
+  role?: InjectionRole;
+  content?: string;
+}
+
+export interface UpdatePresetBlockRequest {
+  label?: string;
+  role?: InjectionRole;
+  content?: string;
+  enabled?: boolean;
+}
+
 export interface UpdatePresetRequest {
   name?: string;
   /**
@@ -214,6 +262,12 @@ export interface UpdatePresetRequest {
   maxResponseTokens?: number;
   prefill?: string | null;
   reasoning?: Partial<ReasoningConfigDto>;
+  /**
+   * The whole assembly order, built-ins and custom blocks together (§20 phase
+   * 56). Sent whole rather than as a move, so two clients cannot interleave
+   * half-orders. Null restores the default.
+   */
+  blockOrder?: PromptOrderEntry[] | null;
 }
 
 export interface ConnectionProfileDto {
@@ -1735,6 +1789,79 @@ export type BlockPlacement =
   | { kind: "outlet"; name: string };
 
 /** One assembled piece of the prompt, as the inspector shows it (§3). */
+/**
+ * The assembly order of SPEC §3. These identifiers are the vocabulary a preset
+ * reorders and the inspector labels, so they are stable names rather than
+ * positions.
+ */
+export type PromptBlockId =
+  | "system_prompt"
+  | "author_identity"
+  | "spotlight_character"
+  | "cast"
+  | "persona"
+  | "scenario"
+  | "constant_lore"
+  | "example_dialogue"
+  | "summaries"
+  | "history"
+  | "documents"
+  | "memory"
+  | "matched_lore"
+  | "guides"
+  | "trackers"
+  | "depth_prompts"
+  /** A selected prompt option, one block each so the inspector names it (§13.5). */
+  | "prompt_option"
+  /** The banned constructions in force (§13.6). */
+  | "ban_list"
+  | "director_note"
+  | "post_history"
+  | "nudge"
+  | "ooc_invitation"
+  | "spotlight_instruction"
+  | "jailbreak"
+  | "prefill"
+  /**
+   * Not part of the assembly order. Inserted by the renderer when a provider
+   * requires strict alternation and the timeline would otherwise open on an
+   * assistant turn. It is a real block so that invented text always shows up in
+   * the inspector rather than appearing in the prompt unannounced.
+   */
+  | "alternation_filler";
+
+/** SPEC §3's default order, top of context to nearest the model's response. */
+export const DEFAULT_BLOCK_ORDER: readonly PromptBlockId[] = [
+  "system_prompt",
+  "author_identity",
+  "spotlight_character",
+  "cast",
+  "persona",
+  "scenario",
+  "constant_lore",
+  "example_dialogue",
+  "summaries",
+  "history",
+  "documents",
+  "memory",
+  "matched_lore",
+  "guides",
+  "trackers",
+  "depth_prompts",
+  // Instructions about *how* to write sit near the turn with the other
+  // instructions, not up in the system prompt where a long history separates
+  // them from the writing they govern.
+  "prompt_option",
+  "ban_list",
+  "director_note",
+  "post_history",
+  "nudge",
+  "ooc_invitation",
+  "spotlight_instruction",
+  "jailbreak",
+  "prefill",
+];
+
 export interface PromptBlock {
   id: string;
   /** Human label. */

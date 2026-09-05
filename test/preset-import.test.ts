@@ -120,13 +120,12 @@ describe("the preset parser (pure)", () => {
 });
 
 describe("preset import (SPEC §18)", () => {
-  test("creates a preset, a group, and reports the loss", async () => {
+  test("creates a preset, its blocks, and reports the loss", async () => {
     const t = await signedIn();
     const { status, body } = await importPreset(t, CHAT_PRESET);
     expect(status).toBe(201);
     const report = body as {
       presetId: string;
-      groupId: string | null;
       blocksImported: number;
       blocksDisabled: number;
       markersOverridden: string[];
@@ -135,7 +134,6 @@ describe("preset import (SPEC §18)", () => {
       unsupportedMacros: string[];
     };
     expect(report.presetId).toBeTruthy();
-    expect(report.groupId).toBeTruthy();
     expect(report.blocksImported).toBe(2);
     expect(report.blocksDisabled).toBe(1);
     expect(report.markersOverridden).toEqual(["main"]);
@@ -148,10 +146,19 @@ describe("preset import (SPEC §18)", () => {
       id: string;
       name: string;
       samplerSettings: { temperature: number };
+      blocks: { enabled: boolean }[];
+      blockOrder: { id: string }[] | null;
     }[];
     const imported = presets.find((preset) => preset.id === report.presetId);
     expect(imported?.name).toBe("Ridge Suite");
     expect(imported?.samplerSettings.temperature).toBe(1.2);
+
+    // §20 phase 56: the source's prompts are this preset's own blocks, in the
+    // order the file gave and carrying its enabled flags — not a menu of
+    // options nobody switched on.
+    expect(imported?.blocks).toHaveLength(2);
+    expect(imported?.blocks.filter((block) => !block.enabled)).toHaveLength(1);
+    expect(imported?.blockOrder?.some((entry) => entry.id.startsWith("custom:"))).toBe(true);
   });
 
   test("refuses a text-completion preset clearly", async () => {

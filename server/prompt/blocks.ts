@@ -20,7 +20,13 @@ import type {
  */
 
 export interface DraftBlock {
-  id: PromptBlockId;
+  /**
+   * A `PromptBlockId`, or `custom:<ulid>` for one of the preset's own blocks
+   * (§20 phase 56). String rather than the union so a person's block can be
+   * ordered alongside the built-ins; `add` still takes the narrow type, so a
+   * typo in a built-in id is still a compile error.
+   */
+  id: string;
   label: string;
   source: string;
   role: PromptRole;
@@ -502,9 +508,9 @@ export const HISTORY_PLACEHOLDER = "<history>";
  * Build every block the context has content for, keyed by id. The caller orders
  * them, because the order is the preset's to override (SPEC §3).
  */
-export function draftBlocks(ctx: PromptContext): Map<PromptBlockId, DraftBlock[]> {
+export function draftBlocks(ctx: PromptContext): Map<string, DraftBlock[]> {
   const lore = sortLore(ctx.lore);
-  const blocks = new Map<PromptBlockId, DraftBlock[]>();
+  const blocks = new Map<string, DraftBlock[]>();
 
   function add(
     id: PromptBlockId,
@@ -519,6 +525,24 @@ export function draftBlocks(ctx: PromptContext): Map<PromptBlockId, DraftBlock[]
     const existing = blocks.get(id) ?? [];
     existing.push({ id, label, source, role, content: trimmed, placement });
     blocks.set(id, existing);
+  }
+
+  // The preset's own blocks (§20 phase 56). Drafted here rather than spliced in
+  // later so they go through macro and outlet resolution, eviction accounting
+  // and the inspector exactly as a built-in does.
+  for (const block of ctx.preset.customBlocks) {
+    const trimmed = block.content.trim();
+    if (trimmed === "") continue;
+    blocks.set(block.id, [
+      {
+        id: block.id,
+        label: block.label,
+        source: "preset block",
+        role: block.role,
+        content: trimmed,
+        placement: PREFIX,
+      },
+    ]);
   }
 
   add("system_prompt", "System prompt", "preset", ctx.preset.systemPrompt);

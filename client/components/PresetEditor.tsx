@@ -1,15 +1,25 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
+  DEFAULT_BLOCK_ORDER,
+  INJECTION_ROLES,
   MODERN_SAMPLER_DEFAULTS,
   SAMPLER_BOUNDS,
+  customBlockId,
   samplerProblem,
   type BoundedSampler,
   type PresetDto,
+  type PromptOrderEntry,
   type SamplerSettings,
 } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { Sheet } from "./Sheet.tsx";
-import { useDeletePreset, useUpdatePreset } from "../lib/queries.ts";
+import {
+  useCreatePresetBlock,
+  useDeletePreset,
+  useDeletePresetBlock,
+  useUpdatePreset,
+  useUpdatePresetBlock,
+} from "../lib/queries.ts";
 import { useConfirm } from "./ConfirmSheet.tsx";
 
 /**
@@ -50,6 +60,241 @@ const LABELS: Record<BoundedSampler, string> = {
   xtc_threshold: strings.settings.samplerXtcThreshold,
   xtc_probability: strings.settings.samplerXtcProbability,
 };
+
+/**
+ * The prompt manager (SPEC §3, §16 §Density, §20 phase 56).
+ *
+ * Every block the prompt is assembled from, in the order it is assembled, with
+ * the ones this preset owns editable in place. `presets.prompt_order` has held
+ * this since migration 0001 and nothing wrote it; the pure builder has honoured
+ * `ctx.preset.blockOrder` since phase 3 and nothing set it. This is the screen
+ * that joins them.
+ *
+ * Reorder is two buttons rather than drag: there is no drag-reorder anywhere in
+ * this client to match, HTML5 drag is poor under a thumb, and a library is a
+ * dependency for something an arrow does.
+ *
+ * Built-in blocks show no token cost, deliberately. What one costs depends on
+ * the scene it is built for — the Inspector is where a real prompt's per-block
+ * costs are read, and a number invented here would be worse than the blank.
+ */
+function PromptManager({ preset }: { preset: PresetDto }) {
+  const update = useUpdatePreset();
+  const createBlock = useCreatePresetBlock();
+  const updateBlock = useUpdatePresetBlock();
+  const removeBlock = useDeletePresetBlock();
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [confirmNode, confirm] = useConfirm();
+
+  const blocks = new Map(preset.blocks.map((block) => [customBlockId(block.id), block]));
+
+  /*
+   * What to show: the saved order, or the default with this preset's blocks
+   * where the builder would put them. Both are rendered the same way, so the
+   * list never looks different from the prompt it describes.
+   */
+  const order: PromptOrderEntry[] = useMemo(() => {
+    if (preset.blockOrder !== null) {
+      const known = new Set(preset.blockOrder.map((entry) => entry.id));
+      // A block created while an order was saved is appended rather than
+      // hidden: a block nothing points at is invisible, which is the defect
+      // this phase exists to remove.
+      const missing = preset.blocks
+        .filter((block) => !known.has(customBlockId(block.id)))
+        .map((block) => ({ id: customBlockId(block.id), enabled: true }));
+      return [...preset.blockOrder, ...missing];
+    }
+    const out: PromptOrderEntry[] = [];
+    for (const id of DEFAULT_BLOCK_ORDER) {
+      if (id === "history") {
+        for (const block of preset.blocks) out.push({ id: customBlockId(block.id), enabled: true });
+      }
+      out.push({ id, enabled: true });
+    }
+    return out;
+  }, [preset.blockOrder, preset.blocks]);
+
+  function save(next: PromptOrderEntry[]) {
+    update.mutate({ id: preset.id, blockOrder: next });
+  }
+
+  function move(index: number, by: number) {
+    const next = [...order];
+    const to = index + by;
+    if (to < 0 || to >= next.length) return;
+    const [moved] = next.splice(index, 1);
+    next.splice(to, 0, moved!);
+    save(next);
+  }
+
+  return (
+    <div className="mb-[18px]">
+      <p className="section-label mb-[6px]">{strings.settings.promptOrder}</p>
+
+      {order.map((entry, index) => {
+        const own = blocks.get(entry.id);
+        const name =
+          own?.label ?? strings.settings.blockNames[entry.id] ?? entry.id;
+        return (
+          <div key={entry.id}>
+            <div className="row flex items-baseline gap-[8px]">
+              <button
+                type="button"
+                aria-label={`${name}: ${entry.enabled ? strings.settings.blockOn : strings.settings.blockOff}`}
+                aria-pressed={entry.enabled}
+                onClick={() =>
+                  save(order.map((e, i) => (i === index ? { ...e, enabled: !e.enabled } : e)))
+                }
+                className="flex h-[22px] w-[16px] flex-none items-center"
+              >
+                {/* A dot, not the word: the app's on/off pair was drawn for one
+                    toggle in a form, and twenty-five of them down a list is a
+                    column of shouting. The row already dims when it is off, so
+                    the word was saying it twice. Red is still live (§16). */}
+                <span
+                  className="block h-[7px] w-[7px] rounded-full"
+                  style={{
+                    background: entry.enabled ? "var(--onsen-color-red)" : "transparent",
+                    border: entry.enabled ? "0" : "1px solid var(--onsen-color-rule-strong)",
+                  }}
+                />
+              </button>
+
+              <button
+                type="button"
+                disabled={own === undefined}
+                onClick={() => setOpenId(openId === entry.id ? null : entry.id)}
+                className="min-w-0 flex-1 truncate text-left text-[14px] disabled:cursor-default"
+                style={{ opacity: entry.enabled ? 1 : 0.5 }}
+              >
+                {name}
+              </button>
+
+              {own === undefined ? null : (
+                <span className="meta flex-none tabular-nums">
+                  {strings.settings.blockTokens(own.tokenCount)}
+                </span>
+              )}
+              <button
+                type="button"
+                aria-label={`${strings.settings.blockUp} ${name}`}
+                onClick={() => move(index, -1)}
+                className="chrome h-[26px] w-[22px] flex-none text-ink-dim hover:text-ink-label"
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                aria-label={`${strings.settings.blockDown} ${name}`}
+                onClick={() => move(index, 1)}
+                className="chrome h-[26px] w-[22px] flex-none text-ink-dim hover:text-ink-label"
+              >
+                ↓
+              </button>
+            </div>
+
+            {own === undefined || openId !== entry.id ? null : (
+              <div className="mb-[10px] border-l-2 border-rule-strong pt-[8px] pb-[4px] pl-[12px]">
+                <p className="section-label mb-[6px]">{strings.settings.blockLabel}</p>
+                <input
+                  className="field mb-[10px]"
+                  aria-label={strings.settings.blockLabel}
+                  defaultValue={own.label}
+                  onBlur={(event) => {
+                    const label = event.target.value.trim();
+                    if (label !== "" && label !== own.label) {
+                      updateBlock.mutate({ presetId: preset.id, blockId: own.id, label });
+                    }
+                  }}
+                />
+
+                <p className="section-label mb-[6px]">{strings.settings.blockRole}</p>
+                <div className="mb-[10px] flex gap-[6px]">
+                  {INJECTION_ROLES.map((role) => (
+                    <button
+                      key={role}
+                      type="button"
+                      className={`btn flex-1 ${own.role === role ? "btn-primary" : ""}`}
+                      onClick={() =>
+                        updateBlock.mutate({ presetId: preset.id, blockId: own.id, role })
+                      }
+                    >
+                      {strings.lore[
+                        role === "system" ? "roleSystem" : role === "user" ? "roleUser" : "roleAssistant"
+                      ]}
+                    </button>
+                  ))}
+                </div>
+
+                <p className="section-label mb-[6px]">{strings.settings.blockContent}</p>
+                <textarea
+                  className="field mb-[10px] min-h-[120px] resize-y"
+                  aria-label={strings.settings.blockContent}
+                  defaultValue={own.content}
+                  placeholder={strings.settings.blockContentPlaceholder}
+                  onBlur={(event) => {
+                    if (event.target.value !== own.content) {
+                      updateBlock.mutate({
+                        presetId: preset.id,
+                        blockId: own.id,
+                        content: event.target.value,
+                      });
+                    }
+                  }}
+                />
+
+                <button
+                  type="button"
+                  className="chrome text-[10.5px]"
+                  style={{ color: "var(--onsen-color-red)" }}
+                  onClick={() =>
+                    confirm(
+                      strings.settings.blockDeleteConfirm,
+                      () => {
+                        setOpenId(null);
+                        removeBlock.mutate({ presetId: preset.id, blockId: own.id });
+                      },
+                      { confirmLabel: strings.common.delete },
+                    )
+                  }
+                >
+                  {strings.common.delete}
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      <button
+        type="button"
+        className="btn mt-[12px] w-full"
+        disabled={createBlock.isPending}
+        onClick={() =>
+          createBlock.mutate(preset.id, {
+            onSuccess: (next) => {
+              const made = next.blocks[next.blocks.length - 1];
+              if (made !== undefined) setOpenId(customBlockId(made.id));
+            },
+          })
+        }
+      >
+        {strings.settings.blockAdd}
+      </button>
+
+      {preset.blockOrder === null ? null : (
+        <button
+          type="button"
+          className="btn mt-[8px] w-full"
+          onClick={() => update.mutate({ id: preset.id, blockOrder: null })}
+        >
+          {strings.settings.promptOrderReset}
+        </button>
+      )}
+      {confirmNode}
+    </div>
+  );
+}
 
 export function PresetEditor({ preset, onClose }: { preset: PresetDto; onClose(): void }) {
   const update = useUpdatePreset();
@@ -203,6 +448,8 @@ export function PresetEditor({ preset, onClose }: { preset: PresetDto; onClose()
         {/* §18 requires both, and the endpoint has served both since phase 28
             with nothing calling it. A download rather than a copy: a preset is
             a file people move between installs. */}
+        <PromptManager preset={preset} />
+
         <p className="section-label mt-[22px] mb-[8px]">{strings.settings.exportPresetLabel}</p>
         <button
           type="button"

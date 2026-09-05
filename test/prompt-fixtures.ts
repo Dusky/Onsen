@@ -69,6 +69,7 @@ export const PRESET: PromptPreset = {
   postHistoryInstructions: null,
   maxResponseTokens: 200,
   blockOrder: null,
+  customBlocks: [],
 };
 
 export const OPENAI: ProviderCapabilities = {

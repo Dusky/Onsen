@@ -40,6 +40,7 @@ import mentionKeywords from "./0039_mention_keywords.sql" with { type: "text" };
 import importProvenance from "./0040_import_provenance.sql" with { type: "text" };
 import themes from "./0041_themes.sql" with { type: "text" };
 import agent from "./0042_agent.sql" with { type: "text" };
+import presetBlocks from "./0043_preset_blocks.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -97,4 +98,5 @@ export const migrations: readonly Migration[] = [
   { version: 40, name: "import_provenance", sql: importProvenance },
   { version: 41, name: "themes", sql: themes },
   { version: 42, name: "agent", sql: agent },
+  { version: 43, name: "preset_blocks", sql: presetBlocks },
 ];

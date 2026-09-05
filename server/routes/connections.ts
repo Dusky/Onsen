@@ -4,6 +4,10 @@ import { requireAuth } from "../middleware/session.ts";
 import {
   countConnectionProfiles,
   createPreset,
+  createPresetBlock,
+  deletePresetBlock,
+  parsePromptOrder,
+  updatePresetBlock,
   deleteConnectionProfile,
   deletePreset,
   deleteProvider,
@@ -25,8 +29,10 @@ import {
   updatePreset,
   updateProvider,
   type PresetPatch,
+  type PresetRow,
 } from "../db/queries/connections.ts";
 import { parseReasoningConfig } from "../generation/reasoning.ts";
+import { customBlockId, isInjectionRole, type PromptOrderEntry } from "../../shared/types.ts";
 import { fetchProviderModels } from "../adapters/models.ts";
 import { parseStPreset, StPresetError } from "../presets/st.ts";
 import { importStPreset } from "../presets/import.ts";
@@ -113,7 +119,7 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
     });
   });
 
-  app.get("/presets", (c) => c.json(listPresets(ctx.db).map(toPresetDto)));
+  app.get("/presets", (c) => c.json(listPresets(ctx.db).map((row) => toPresetDto(ctx.db, row))));
 
   /**
    * A new preset on the shipped defaults (§20 phase 54).
@@ -124,7 +130,7 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
   app.post("/presets", async (c) => {
     const body = (await readJson(c)) ?? {};
     const name = text((body as Record<string, unknown>)["name"], 120) ?? "New preset";
-    return c.json(toPresetDto(createPreset(ctx.db, name)), 201);
+    return c.json(toPresetDto(ctx.db, createPreset(ctx.db, name)), 201);
   });
 
   /**
@@ -299,7 +305,98 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
       patch.reasoningConfig = JSON.stringify(parseReasoningConfig(JSON.stringify(merged)));
     }
 
-    return c.json(toPresetDto(updatePreset(ctx.db, row.id, patch)));
+    /*
+     * The assembly order (§3, §20 phase 56).
+     *
+     * Sent whole rather than as a move, so two clients cannot interleave half
+     * an order between them. Unknown ids are kept rather than dropped: an order
+     * saved by a newer build must survive a downgrade, and the builder already
+     * ignores an id it drafted nothing under.
+     */
+    if ("blockOrder" in body) {
+      const value = body["blockOrder"];
+      if (value === null) patch.promptOrder = null;
+      else if (!Array.isArray(value)) {
+        return c.json(badRequest("blockOrder must be a list, or null for the default."), 400);
+      } else {
+        const entries: PromptOrderEntry[] = [];
+        const seen = new Set<string>();
+        for (const raw of value) {
+          if (typeof raw !== "object" || raw === null) continue;
+          const entry = raw as Record<string, unknown>;
+          const id = entry["id"];
+          // A duplicated id would assemble the same block twice.
+          if (typeof id !== "string" || id === "" || seen.has(id)) continue;
+          seen.add(id);
+          entries.push({ id, enabled: entry["enabled"] !== false });
+        }
+        patch.promptOrder = entries.length === 0 ? null : JSON.stringify(entries);
+      }
+    }
+
+    return c.json(toPresetDto(ctx.db, updatePreset(ctx.db, row.id, patch)));
+  });
+
+  /* ---------------- a preset's own blocks (§20 phase 56) ---------------- */
+
+  /** The preset named in the path, or null with the 404 already written. */
+  function presetOf(c: { req: { param(name: string): string } }) {
+    return findPresetByUlid(ctx.db, c.req.param("presetId"));
+  }
+
+  app.post("/presets/:presetId/blocks", async (c) => {
+    const row = presetOf(c);
+    if (row === null) return c.json(notFound("preset"), 404);
+    const body = (await readJson(c)) ?? {};
+    const role = body["role"];
+    const id = createPresetBlock(ctx.db, row.id, {
+      label: text(body["label"], 120) ?? "New block",
+      role: isInjectionRole(role) ? role : "system",
+      content: text(body["content"], 20_000) ?? "",
+    });
+    // New blocks join the order at the end of the prefix rather than nowhere:
+    // a block that exists and is in no order is invisible, which is the defect
+    // this whole phase is about.
+    const order = parsePromptOrder(row.prompt_order);
+    if (order !== null) {
+      const at = order.findIndex((entry) => entry.id === "history");
+      const entry: PromptOrderEntry = { id: customBlockId(id), enabled: true };
+      order.splice(at === -1 ? order.length : at, 0, entry);
+      updatePreset(ctx.db, row.id, { promptOrder: JSON.stringify(order) });
+    }
+    return c.json(toPresetDto(ctx.db, findPresetByUlid(ctx.db, row.ulid) as PresetRow), 201);
+  });
+
+  app.patch("/presets/:presetId/blocks/:blockId", async (c) => {
+    const row = presetOf(c);
+    if (row === null) return c.json(notFound("preset"), 404);
+    const body = (await readJson(c)) ?? {};
+    const patch: Parameters<typeof updatePresetBlock>[3] = {};
+    const label = text(body["label"], 120);
+    if (label !== null) patch.label = label;
+    if (isInjectionRole(body["role"])) patch.role = body["role"];
+    if (typeof body["content"] === "string") patch.content = body["content"].slice(0, 20_000);
+    if (typeof body["enabled"] === "boolean") patch.enabled = body["enabled"];
+    if (!updatePresetBlock(ctx.db, row.id, c.req.param("blockId"), patch)) {
+      return c.json(notFound("block"), 404);
+    }
+    return c.json(toPresetDto(ctx.db, findPresetByUlid(ctx.db, row.ulid) as PresetRow));
+  });
+
+  app.delete("/presets/:presetId/blocks/:blockId", (c) => {
+    const row = presetOf(c);
+    if (row === null) return c.json(notFound("preset"), 404);
+    const blockUlid = c.req.param("blockId");
+    if (!deletePresetBlock(ctx.db, row.id, blockUlid)) return c.json(notFound("block"), 404);
+    // And out of the order with it, so nothing points at a block that is gone.
+    const order = parsePromptOrder(row.prompt_order);
+    if (order !== null) {
+      const kept = order.filter((entry) => entry.id !== customBlockId(blockUlid));
+      updatePreset(ctx.db, row.id, {
+        promptOrder: kept.length === 0 ? null : JSON.stringify(kept),
+      });
+    }
+    return c.json(toPresetDto(ctx.db, findPresetByUlid(ctx.db, row.ulid) as PresetRow));
   });
 
   app.get("/profiles", (c) => {

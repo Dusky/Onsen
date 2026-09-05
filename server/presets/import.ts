@@ -1,6 +1,8 @@
 import type { Database } from "bun:sqlite";
 import { ulid } from "../lib/ulid.ts";
 import { insertPreset } from "../db/queries/connections.ts";
+import { DEFAULT_BLOCK_ORDER } from "../prompt/types.ts";
+import { customBlockId, type PromptOrderEntry } from "../../shared/types.ts";
 import type { StPresetParse } from "./st.ts";
 
 /**
@@ -23,11 +25,12 @@ const MARKER_OVERRIDES: Record<string, "system_prompt" | "jailbreak"> = {
 export interface ImportReport {
   presetId: string;
   presetName: string;
-  /** The group holding the imported prompt blocks, when there were any. */
-  groupId: string | null;
-  groupName: string | null;
   blocksImported: number;
-  /** Blocks the source had disabled — imported as options, not forced on. */
+  /**
+   * Blocks the source had switched off. They arrive switched off too, in place
+   * and in order, rather than being dropped — an import that silently loses the
+   * disabled half of a preset is lossy in the way §22 warns about for cards.
+   */
   blocksDisabled: number;
   markersOverridden: string[];
   /** Markers that map to card-built blocks and so were not applied. */
@@ -62,8 +65,6 @@ export function importStPreset(db: Database, parsed: StPresetParse): ImportRepor
     return {
       presetId: preset.ulid,
       presetName: preset.name,
-      groupId: null,
-      groupName: null,
       blocksImported: 0,
       blocksDisabled: 0,
       markersOverridden,
@@ -73,60 +74,63 @@ export function importStPreset(db: Database, parsed: StPresetParse): ImportRepor
     };
   }
 
+  /*
+   * The source preset's blocks become *this preset's* blocks (§20 phase 56).
+   *
+   * They used to arrive as an option group — fragments selected per roleplay,
+   * never on by default. That was a defensible reading of §13.5 and it made
+   * importing a preset fail to reproduce its prompt: a file whose author
+   * intended "these rules always apply" turned into a menu nobody had switched
+   * on. A block that the source had enabled is now enabled here, in the order
+   * the source gave, and the report still says how many arrived switched off.
+   */
   const now = Date.now();
-  const sortOrder =
-    ((db.query("SELECT MAX(sort_order) AS max FROM option_groups").get() as { max: number | null })
-      .max ?? 0) + 1;
-  const group = db
-    .query(
-      `INSERT INTO option_groups
-         (ulid, key, name, description, cardinality, sort_order, is_builtin, created_at, updated_at)
-       VALUES ($ulid, $key, $name, $description, 'any_of', $sort, 0, $now, $now)
-       RETURNING ulid, name`,
-    )
-    .get({
-      ulid: ulid(),
-      key: `st_${ulid()}`,
-      name: `${preset.name} blocks`,
-      description: "Prompt blocks imported from a SillyTavern preset.",
-      sort: sortOrder,
-      now,
-    }) as { ulid: string; name: string };
-
-  // Enabled is honoured in the only direction that matters: nothing is forced
-  // on. The blocks arrive as options — selected per scene, never by default —
-  // and the report says how many the source had switched off.
   let disabled = 0;
+  const order: PromptOrderEntry[] = [];
   parsed.blocks
     .slice()
     .sort((a, b) => a.order - b.order)
     .forEach((block, index) => {
       if (!block.enabled) disabled += 1;
+      const blockUlid = ulid();
       db.query(
-        `INSERT INTO options
-           (ulid, group_id, key, name, fragment, position, depth, role, sort_order,
-            is_builtin, created_at, updated_at)
-         VALUES ($ulid, $group, $key, $name, $fragment, $position, $depth, $role,
-                 $sort, 0, $now, $now)`,
+        `INSERT INTO preset_blocks
+           (ulid, preset_id, label, role, content, enabled, sort_order, created_at, updated_at)
+         VALUES ($ulid, $preset, $label, $role, $content, $enabled, $sort, $now, $now)`,
       ).run({
-        ulid: ulid(),
-        group: groupIdOf(db, group.ulid),
-        key: `block_${index}`,
-        name: block.name === "" ? block.identifier : block.name,
-        fragment: block.content,
-        position: block.atDepth ? "depth" : "prefix",
-        depth: block.depth,
+        ulid: blockUlid,
+        preset: presetIdOf(db, preset.ulid),
+        label: block.name === "" ? block.identifier : block.name,
         role: block.role,
+        content: block.content,
+        enabled: block.enabled ? 1 : 0,
         sort: index,
         now,
       });
+      order.push({ id: customBlockId(blockUlid), enabled: block.enabled });
     });
+
+  /*
+   * An order built from §3's default with the imported blocks ahead of the
+   * history — the same place a hand-written block lands. `injection_position`
+   * is not honoured yet: a block asking to sit at a depth arrives in the prefix
+   * and says so in `atDepth`, which is a gap worth naming rather than a
+   * placement worth guessing at.
+   */
+  const full: PromptOrderEntry[] = [];
+  for (const id of DEFAULT_BLOCK_ORDER) {
+    if (id === "history") full.push(...order);
+    full.push({ id, enabled: true });
+  }
+  db.query("UPDATE presets SET prompt_order = $order, updated_at = $now WHERE ulid = $ulid").run({
+    order: JSON.stringify(full),
+    now,
+    ulid: preset.ulid,
+  });
 
   return {
     presetId: preset.ulid,
     presetName: preset.name,
-    groupId: group.ulid,
-    groupName: group.name,
     blocksImported: parsed.blocks.length,
     blocksDisabled: disabled,
     markersOverridden,
@@ -136,8 +140,8 @@ export function importStPreset(db: Database, parsed: StPresetParse): ImportRepor
   };
 }
 
-function groupIdOf(db: Database, ulidValue: string): number {
-  return (db.query("SELECT id FROM option_groups WHERE ulid = $ulid").get({ ulid: ulidValue }) as {
+function presetIdOf(db: Database, ulidValue: string): number {
+  return (db.query("SELECT id FROM presets WHERE ulid = $ulid").get({ ulid: ulidValue }) as {
     id: number;
   }).id;
 }

@@ -155,7 +155,7 @@ export function setupRoutes(ctx: AppContext): Hono<AppEnv> {
       response = {
         provider: toProviderDto(provider, ctx.keyring),
         profile: toConnectionProfileDto(profile, provider.ulid, preset.ulid),
-        preset: toPresetDto(preset),
+        preset: toPresetDto(ctx.db, preset),
       };
     })();
 

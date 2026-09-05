@@ -716,7 +716,31 @@ One author voicing everyone risks homogenized voices. All of these are required:
 
 ### Assembly order
 
-Default order, overridable per preset:
+Default order, overridable per preset. **Settled in phase 56:** the override is
+`presets.prompt_order`, JSON carrying the whole order — built-ins and the
+preset's own blocks together, each with an enabled flag:
+
+```json
+[{ "id": "system_prompt", "enabled": true },
+ { "id": "custom:01ABC…",  "enabled": false }]
+```
+
+A preset owns blocks a person wrote (`preset_blocks`): a label, a role, text,
+and a place in that order. They are drafted like any other block, so macros and
+outlets resolve in them and they appear in the inspector with their cost.
+Disabled blocks are filtered out where the context is composed, so the builder
+receives a list of what to assemble and stays a pure function of what it is
+handed. An id it drafted nothing under contributes nothing, which is what makes
+an order written by a newer build safe to load on an older one — but `history`
+and `spotlight_instruction` are re-appended if an order omits them, so no
+setting can drop the transcript or the user lock.
+
+The column existed from migration 0001 and the builder honoured `blockOrder`
+from phase 3; `server/generation/context.ts` returned a literal `null` between
+them until phase 56. `test/prompt-blocks.test.ts` now asserts the whole path,
+database to assembled prompt, because that is the join neither end could see
+was broken.
+
 
 1. System prompt (preset)
 2. Author identity — personality, writing style, directing style
@@ -3101,6 +3125,12 @@ Each phase ends in a working, usable application.
     what it cost, from a record the server has written since phase 4 and no DTO
     carried; rows tighten under a pointer; the persona list becomes a screen.
     Guarded by `test/density.test.ts`. See §16.
+56. **The prompt manager** — the assembly order becomes a preset's to set, and
+    a block becomes a thing you can write. `presets.prompt_order` had existed
+    since migration 0001 and the builder had honoured `blockOrder` since phase
+    3, with a literal `null` between them. An imported SillyTavern preset's
+    prompts now land as that preset's own blocks rather than as options nobody
+    switched on. Guarded by `test/prompt-blocks.test.ts`. See §3, §13, §16.
 
 Settled while building phase 15.
 

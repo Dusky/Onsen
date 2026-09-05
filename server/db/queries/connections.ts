@@ -4,12 +4,19 @@ import { decryptSecret, maskSecret, type Keyring } from "../../lib/crypto.ts";
 import {
   MODERN_SAMPLER_DEFAULTS,
   type ConnectionProfileDto,
+  type InjectionRole,
+  type PresetBlockDto,
   type PresetDto,
+  type PromptOrderEntry,
   type ProviderDto,
   type ProviderKind,
   type SamplerSettings,
 } from "../../../shared/types.ts";
 import { parseReasoningConfig } from "../../generation/reasoning.ts";
+import { createEstimatingTokenizer } from "../../prompt/tokenizer.ts";
+
+/** One estimator for every block cost, so two rows never disagree. */
+const BLOCK_TOKENIZER = createEstimatingTokenizer();
 
 /* ------------------------------------------------------------------ */
 /* Row shapes                                                          */
@@ -40,6 +47,7 @@ interface PresetRow {
   max_response_tokens: number;
   prefill: string | null;
   reasoning_config: string | null;
+  prompt_order: string | null;
   system_prompt: string | null;
   jailbreak: string | null;
   is_default: number;
@@ -103,7 +111,57 @@ function parseSamplerSettings(raw: string): SamplerSettings {
   }
 }
 
-export function toPresetDto(row: PresetRow): PresetDto {
+/**
+ * The saved assembly order, or null for §3's default.
+ *
+ * Tolerant on read: the column has existed since 0001 and was never written
+ * until phase 56, and a preset imported or hand-edited can hold anything. A
+ * shape that cannot be read is the default order, never a failed request.
+ */
+export function parsePromptOrder(raw: string | null): PromptOrderEntry[] | null {
+  if (raw === null || raw === "") return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    const out: PromptOrderEntry[] = [];
+    for (const entry of parsed) {
+      if (typeof entry !== "object" || entry === null) continue;
+      const row = entry as Record<string, unknown>;
+      if (typeof row["id"] !== "string" || row["id"] === "") continue;
+      out.push({ id: row["id"], enabled: row["enabled"] !== false });
+    }
+    return out.length === 0 ? null : out;
+  } catch {
+    return null;
+  }
+}
+
+export function listPresetBlocks(db: Database, presetId: number): PresetBlockDto[] {
+  const rows = db
+    .query(
+      `SELECT ulid, label, role, content, enabled FROM preset_blocks
+       WHERE preset_id = $preset ORDER BY sort_order, id`,
+    )
+    .all({ preset: presetId }) as {
+    ulid: string;
+    label: string;
+    role: InjectionRole;
+    content: string;
+    enabled: number;
+  }[];
+  return rows.map((row) => ({
+    id: row.ulid,
+    label: row.label,
+    role: row.role,
+    content: row.content,
+    enabled: row.enabled === 1,
+    // Estimated, as an option's count is: a block whose cost is not shown is a
+    // block nobody can budget for.
+    tokenCount: BLOCK_TOKENIZER.count(row.content),
+  }));
+}
+
+export function toPresetDto(db: Database, row: PresetRow): PresetDto {
   return {
     id: row.ulid,
     name: row.name,
@@ -113,6 +171,8 @@ export function toPresetDto(row: PresetRow): PresetDto {
     prefill: row.prefill,
     reasoning: parseReasoningConfig(row.reasoning_config),
     isDefault: row.is_default === 1,
+    blockOrder: parsePromptOrder(row.prompt_order),
+    blocks: listPresetBlocks(db, row.id),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -476,6 +536,68 @@ export interface PresetPatch {
   maxResponseTokens?: number;
   prefill?: string | null;
   reasoningConfig?: string;
+  /** The whole assembly order as JSON, or null for §3's default (phase 56). */
+  promptOrder?: string | null;
+}
+
+export function createPresetBlock(
+  db: Database,
+  presetId: number,
+  input: { label: string; role: InjectionRole; content: string },
+): string {
+  const now = Date.now();
+  const next = db
+    .query("SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM preset_blocks WHERE preset_id = $p")
+    .get({ p: presetId }) as { n: number };
+  const id = ulid();
+  db.query(
+    `INSERT INTO preset_blocks (ulid, preset_id, label, role, content, sort_order, created_at, updated_at)
+     VALUES ($ulid, $preset, $label, $role, $content, $sort, $now, $now)`,
+  ).run({
+    ulid: id,
+    preset: presetId,
+    label: input.label,
+    role: input.role,
+    content: input.content,
+    sort: next.n,
+    now,
+  });
+  return id;
+}
+
+export function updatePresetBlock(
+  db: Database,
+  presetId: number,
+  blockUlid: string,
+  patch: { label?: string; role?: InjectionRole; content?: string; enabled?: boolean },
+): boolean {
+  const current = db
+    .query("SELECT * FROM preset_blocks WHERE preset_id = $p AND ulid = $u")
+    .get({ p: presetId, u: blockUlid }) as
+    | { label: string; role: InjectionRole; content: string; enabled: number }
+    | null;
+  if (current === null) return false;
+  db.query(
+    `UPDATE preset_blocks SET label = $label, role = $role, content = $content,
+            enabled = $enabled, updated_at = $now
+      WHERE preset_id = $p AND ulid = $u`,
+  ).run({
+    p: presetId,
+    u: blockUlid,
+    label: patch.label ?? current.label,
+    role: patch.role ?? current.role,
+    content: patch.content ?? current.content,
+    enabled: (patch.enabled ?? current.enabled === 1) ? 1 : 0,
+    now: Date.now(),
+  });
+  return true;
+}
+
+export function deletePresetBlock(db: Database, presetId: number, blockUlid: string): boolean {
+  const result = db
+    .query("DELETE FROM preset_blocks WHERE preset_id = $p AND ulid = $u")
+    .run({ p: presetId, u: blockUlid });
+  return result.changes > 0;
 }
 
 export function findPresetByUlid(db: Database, ulidValue: string): PresetRow | null {
@@ -491,7 +613,7 @@ export function updatePreset(db: Database, id: number, patch: PresetPatch): Pres
       `UPDATE presets
           SET name = $name, sampler_settings = $samplers, context_size = $context,
               max_response_tokens = $max, prefill = $prefill,
-              reasoning_config = $reasoning, updated_at = $now
+              reasoning_config = $reasoning, prompt_order = $order, updated_at = $now
         WHERE id = $id
         RETURNING *`,
     )
@@ -506,6 +628,7 @@ export function updatePreset(db: Database, id: number, patch: PresetPatch): Pres
       max: patch.maxResponseTokens ?? current.max_response_tokens,
       prefill: patch.prefill === undefined ? current.prefill : patch.prefill,
       reasoning: patch.reasoningConfig ?? current.reasoning_config,
+      order: patch.promptOrder === undefined ? current.prompt_order : patch.promptOrder,
       now: Date.now(),
     }) as PresetRow;
 }

@@ -68,6 +68,7 @@ describe("determinism", () => {
         postHistoryInstructions: null,
         maxResponseTokens: 200,
         blockOrder: null,
+        customBlocks: [],
       },
       nudge: "It is {{time}} on {{date}}.",
     });
@@ -87,6 +88,7 @@ describe("determinism", () => {
         postHistoryInstructions: null,
         maxResponseTokens: 200,
         blockOrder: null,
+        customBlocks: [],
       },
     });
 

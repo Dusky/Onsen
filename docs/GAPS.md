@@ -46,10 +46,10 @@ ordered, budgeted, inspectable — and almost none of it is reachable.
 
 | Capability | Onsen | Evidence | Verdict |
 | --- | --- | --- | --- |
-| Reorder prompt blocks | **partial** | `blockOrder` consumed `server/prompt/index.ts:49`, typed `types.ts:434`; `grep -rn blockOrder client/` → 0 | close — the flagship gap |
-| Enable/disable a block | **missing** | `grep -rniE 'blockEnabled\|enabledBlocks\|disabledBlocks'` → 0 | close, with the reorder UI |
-| User-authored prompt blocks | **missing** | no concept in `PromptBlockId`; the install has 5 (`USER Consent`, `Output RULES`, `Prefill only and only for gemini`, `<DATA_history>`, `</history>`) | close — needs a data model decision |
-| Per-block token count | **partial** | `GuideDto` caches one (`shared/types.ts:1396`); no per-block figure in the manager, because there is no manager | close with the UI |
+| Reorder prompt blocks | **have** (phase 56) | The manager in `PresetEditor.tsx`, saved to `presets.prompt_order` — a column live since 0001 that nothing had ever written. Up/down, not drag | — |
+| Enable/disable a block | **have** (phase 56) | Per-entry `enabled` in the saved order; the row dims and its dot hollows. Disabled blocks are filtered out before the builder sees them | — |
+| User-authored prompt blocks | **have** (phase 56) | `preset_blocks` — owned by the preset, in its order, on by default. Ordered by `custom:<ulid>` alongside the built-ins | — |
+| Per-block token count | **have** (phase 56) | `PresetBlockDto.tokenCount`, estimated server-side, shown per custom block. Built-ins stay uncosted here: their cost is per-scene, and the Inspector is where a real prompt's is read | — |
 | Prompt inspector | **have** | `client/components/Inspector.tsx`, `InspectorSheet.tsx` | — |
 | Seed | **have** | 74 hits across shared/server/client | — |
 | Reasoning config | **have** | `ReasoningConfigDto` `shared/types.ts:196` | — |
@@ -179,11 +179,11 @@ with the clause that says so. They are here so nobody re-proposes them as gaps.
 per-message stats — the three rows marked *(phase 55)* above. Each was
 re-verified by re-running its evidence command, not by editing the row.
 
-**Phase 56 is the prompt manager**: reorder, enable/disable, per-block token
-counts, and the data-model decision about user-authored blocks (the install
-carries five: `USER Consent`, `Output RULES`, `Prefill only and only for
-gemini`, `<DATA_history>`, `</history>`). The largest single item here, and the
-one that most changes what the app is for.
+**Phase 56 (done)** built the prompt manager: reorder, enable/disable,
+per-block costs, and blocks a person writes — owned by the preset, since
+`Output RULES` is template text rather than a per-roleplay choice. The importer
+now lands a SillyTavern preset's prompts as that preset's blocks, so importing
+one reproduces its prompt instead of a menu nobody switched on.
 
 Then, in rough order of how early a session hits them: scene tags / folders /
 favourites with windowing; the persona list becoming a screen with search, plus

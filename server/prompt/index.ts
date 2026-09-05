@@ -45,9 +45,31 @@ interface TimelineEntry {
 /** Inserted only when a provider's alternation rules force invented text. */
 const ALTERNATION_FILLER = "Begin.";
 
-function orderedBlockIds(ctx: PromptContext): readonly PromptBlockId[] {
+/**
+ * The order to assemble in: a preset's own, or §3's default.
+ *
+ * Ids are strings rather than `PromptBlockId` since phase 56, because an entry
+ * may name one of the preset's own blocks (`custom:<ulid>`). An id nothing was
+ * drafted under simply contributes nothing, which is what lets an order saved
+ * by a newer build load on an older one.
+ */
+function orderedBlockIds(ctx: PromptContext): readonly string[] {
   const configured = ctx.preset.blockOrder;
-  if (configured === null || configured.length === 0) return DEFAULT_BLOCK_ORDER;
+  // Null only. An order that is *empty* is a preset whose blocks are all
+  // switched off, which is a different thing from one that has never been
+  // arranged — and conflating them put every disabled block back in the prompt.
+  // `parsePromptOrder` already returns null for an order with nothing in it, so
+  // an empty array here can only mean "everything was disabled".
+  if (configured === null) {
+    // Custom blocks still have to land somewhere when no order is saved. Ahead
+    // of the history, in the order they were given: they are instructions about
+    // how to write, and instructions after the transcript read as part of it.
+    const customs = ctx.preset.customBlocks.map((block) => block.id);
+    if (customs.length === 0) return DEFAULT_BLOCK_ORDER;
+    const at = DEFAULT_BLOCK_ORDER.indexOf("history");
+    const cut = at === -1 ? DEFAULT_BLOCK_ORDER.length : at;
+    return [...DEFAULT_BLOCK_ORDER.slice(0, cut), ...customs, ...DEFAULT_BLOCK_ORDER.slice(cut)];
+  }
   // A preset that omits a block is choosing to drop it, but it must not be able
   // to drop the history or the user-lock by accident, so both are re-appended
   // if missing.

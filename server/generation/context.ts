@@ -1,5 +1,11 @@
 import type { Database } from "bun:sqlite";
-import { MODERN_SAMPLER_DEFAULTS, type SamplerSettings } from "../../shared/types.ts";
+import {
+  CUSTOM_BLOCK_PREFIX,
+  MODERN_SAMPLER_DEFAULTS,
+  customBlockId,
+  type SamplerSettings,
+} from "../../shared/types.ts";
+import { listPresetBlocks, parsePromptOrder } from "../db/queries/connections.ts";
 import { createEstimatingTokenizer } from "../prompt/index.ts";
 import type {
   BeatBound,
@@ -69,6 +75,7 @@ export const PLACEHOLDER_SPOTLIGHT: PromptCharacter = {
 };
 
 interface PresetRow {
+  id: number;
   name: string;
   sampler_settings: string;
   system_prompt: string | null;
@@ -77,6 +84,8 @@ interface PresetRow {
   context_size: number;
   max_response_tokens: number;
   reasoning_config: string | null;
+  /** The assembly order as JSON; see `parsePromptOrder` (§20 phase 56). */
+  prompt_order: string | null;
 }
 
 export interface ResolvedPreset {
@@ -131,6 +140,32 @@ export function resolvePreset(db: Database, presetId: number | null): ResolvedPr
     }
   }
 
+  /*
+   * The assembly order and the preset's own blocks (§20 phase 56).
+   *
+   * `blockOrder` read `null` here — a literal — from phase 1 until phase 56,
+   * while `presets.prompt_order` existed in migration 0001 and the pure builder
+   * honoured `ctx.preset.blockOrder` throughout. One line between storage and
+   * consumption, and neither end could tell.
+   *
+   * Disabling happens here rather than in the builder: what reaches the prompt
+   * is a list of what to assemble, so a disabled block is simply absent. That
+   * keeps `enabled` a storage concern and the builder a pure function of what
+   * it is handed.
+   */
+  const blocks = row === null ? [] : listPresetBlocks(db, row.id);
+  const enabledById = new Map(blocks.map((block) => [customBlockId(block.id), block]));
+  const saved = parsePromptOrder(row?.prompt_order ?? null);
+  const blockOrder =
+    saved === null
+      ? null
+      : saved
+          .filter((entry) => entry.enabled)
+          // An order can outlive the block it names — deleted, or written by a
+          // build that had one this one does not.
+          .filter((entry) => !entry.id.startsWith(CUSTOM_BLOCK_PREFIX) || enabledById.has(entry.id))
+          .map((entry) => entry.id);
+
   return {
     reasoning: parseReasoningConfig(row?.reasoning_config ?? null),
     preset: {
@@ -140,7 +175,15 @@ export function resolvePreset(db: Database, presetId: number | null): ResolvedPr
       prefill: row?.prefill ?? null,
       postHistoryInstructions: null,
       maxResponseTokens: row?.max_response_tokens ?? 1024,
-      blockOrder: null,
+      blockOrder,
+      customBlocks: blocks
+        .filter((block) => block.enabled)
+        .map((block) => ({
+          id: customBlockId(block.id),
+          label: block.label,
+          role: block.role,
+          content: block.content,
+        })),
     },
     samplers,
     contextSize: row?.context_size ?? 32_768,
