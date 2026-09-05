@@ -72,3 +72,50 @@ describe("the dark palette", () => {
     expect({ step: Math.round(step), enough: step >= 3 }).toMatchObject({ enough: true });
   });
 });
+
+/**
+ * The subsystem hues (SPEC §16, §20 phase 50).
+ *
+ * Instrument's deck states what four systems are holding at once, and the
+ * whole argument for it is that four figures in one colour read as one figure.
+ * So the hues have to be far enough apart to tell apart — and far enough from
+ * red, which stays the colour of *now* and must not be mistaken for a status.
+ */
+
+function distance(a: string, b: string): number {
+  const channels = (hex: string) => {
+    const v = hex.replace("#", "");
+    return [0, 2, 4].map((i) => parseInt(v.slice(i, i + 2), 16));
+  };
+  const [x, y] = [channels(a), channels(b)];
+  return Math.sqrt(x.reduce((sum, value, i) => sum + (value - y[i]!) ** 2, 0));
+}
+
+describe("the deck's hues", () => {
+  const HUES = ["color-blue", "color-green", "color-amber"] as const;
+
+  test("exist in every theme block", () => {
+    // Three blocks: the dark base, the light media query, the explicit light.
+    for (const hue of [...HUES, "color-green-text", "color-amber-text"]) {
+      expect({ hue, blocks: valuesOf(hue).length }).toMatchObject({ blocks: 3 });
+    }
+  });
+
+  test("are far enough apart to read as different systems", () => {
+    for (const [i, a] of HUES.entries()) {
+      for (const b of HUES.slice(i + 1)) {
+        const apart = distance(dark(a), dark(b));
+        expect({ a, b, apart: Math.round(apart), ok: apart > 40 }).toMatchObject({ ok: true });
+      }
+    }
+  });
+
+  test("none of them is the red pencil", () => {
+    // Red means "now" — the cued speaker, streaming, stop. A readout wearing
+    // it would read as an alarm rather than as a count.
+    for (const hue of HUES) {
+      const apart = distance(dark(hue), dark("color-red"));
+      expect({ hue, apart: Math.round(apart), ok: apart > 40 }).toMatchObject({ ok: true });
+    }
+  });
+});

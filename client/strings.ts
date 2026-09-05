@@ -397,6 +397,22 @@ export const strings = {
     youOpens: "You chose",
     youCued: "You cued",
     yourPickOverrides: "Your pick overrides the director this turn",
+    /*
+     * The deck (§20 phase 50). Each readout says what one subsystem is
+     * holding right now — a figure, not a setting.
+     */
+    speakingNext: "Speaking next",
+    deckGuides: "Guides",
+    deckMemory: "Memory",
+    deckMedia: "Media",
+    deckLive: (n: number) => `${n} live`,
+    deckKept: (n: number) => `${n} kept`,
+    deckNone: "none",
+    deckOn: "on",
+    deckOff: "off",
+    ctxLabel: "ctx",
+    ctxOf: (used: number, total: number) =>
+      `${used.toLocaleString()} / ${total >= 1000 ? `${Math.round(total / 1000)}k` : total}`,
     benched: "Benched",
     bench: "Bench",
     unbench: "Bring back",

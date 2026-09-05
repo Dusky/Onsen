@@ -75,6 +75,16 @@ Archivo (sans) appears only in the annotation layer *around* the mocks on the de
 
 Editorial marking metaphor. Two accents, no others.
 
+> **Amended in production (phase 50).** A third hue family joins the two
+> pencils, in one place: the deck's readout row, where each subsystem states
+> what it is holding. Guides keep the blue pencil; memory takes the green this
+> document reserves for Settings; media takes a brass. The argument is the one
+> below — *nothing else is coloured* was written for a screen showing one
+> thing at a time, and four figures side by side in a single colour read as one
+> figure. **Red is not among them**, which is what keeps the rule intact: red
+> still means live, active, and now, and never means "a count". See `SPEC.md`
+> §16 and `test/surfaces.test.ts`.
+
 - **Red pencil `#c0503c`** — live, active, destructive, and "now": the cued speaker, the streaming indicator, STOP, FLUSH, autopilot, the active nav item, the primary send button, the rail down the log during generation.
 - **Blue pencil `#5b7fa6`** — the author's own voice and injected state: OOC messages, the guides panel, the guides button, the OOC voice field in the author editor.
 

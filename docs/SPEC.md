@@ -2425,6 +2425,7 @@ directly on the ground read as one undifferentiated field, which is what
 ### Layout direction
 
 Three directions were drawn for the chat screen and **Instrument** was chosen.
+It is built (§20 phase 50).
 Its bet is that the machine's state is the second half of the product, so it
 stays on screen rather than behind a tap: who speaks next and why, the cast as
 pills, and a standing row of readouts — guides live, memory kept, media, context
@@ -2442,6 +2443,35 @@ become presets over the same switches rather than three codebases — the shape
 §16's themes already use, where built-ins are starting points and every value
 underneath stays editable. What must not happen is the incumbent's answer: a
 matrix of toggles in place of a default. The default is what the app is.
+
+**What Instrument added, concretely:**
+
+- **The deck.** Above the composer: who speaks next with the reason printed
+  beside it, the cast as one segmented control, and a row saying what each
+  subsystem is holding. It collapses when the ops drawer opens, the same rule
+  the cast strip followed, because the whole stack has to fit above a keyboard
+  at 390px.
+- **The cast as segments rather than cards.** A card carried a portrait nobody
+  has supplied yet and cost 70px of height where it is scarcest. A name in a
+  segment carries the same decision. The cards survive on the desktop rail,
+  which has the room for a portrait and a last line.
+- **The speaker's spine.** A 3px rail down the left of each turn instead of a
+  hairline running right from the name. A rule between two turns reads as a
+  divider; a rail reads as belonging to one, which is what a speaker is. The
+  turn being streamed takes the red pencil, and nothing else in the log does.
+- **The context gauge.** `lastPromptTokens` had been a bare number in the
+  status bar since phase 43. A figure without its denominator is not a readout,
+  so `SceneDto` now carries `contextSize` and the bar shows a fraction and a
+  fill — green until 90% of the window, red past it.
+
+**The two-pencil rule is amended a second time.** Red for live and blue for the
+author's own voice left one red doing six unrelated jobs, and four figures in
+one colour read as one figure. So the deck gives each subsystem its own hue:
+guides keep the blue pencil they already had, memory takes the green that until
+now lit only a connection dot in Settings, and media takes a brass. **Red is
+deliberately not among them** — it stays the colour of *now*: the cued speaker,
+the streaming turn, stop. `test/surfaces.test.ts` asserts the hues are far
+enough apart to read as different systems and that none of them is the red.
 
 ### Typography
 
@@ -2915,6 +2945,8 @@ Each phase ends in a working, usable application.
     configured, not only an OpenAI-shaped one. See §4 and §25.
 49. **Legibility** — the chrome sized for a desktop as well as a phone, and
     surfaces far enough apart to see. See §16.
+50. **Instrument** — the chosen chat layout: the deck, the speaker's spine, and
+    a hue per subsystem. See §16.
 
 Settled while building phase 15.
 

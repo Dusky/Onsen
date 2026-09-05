@@ -16,11 +16,20 @@ import { strings } from "../strings.ts";
 export function StatusBar({
   profileName,
   tokens,
+  contextSize,
   generating,
   onOpenContext,
 }: {
   profileName: string | null;
   tokens: number | null;
+  /**
+   * The window the tokens are being spent out of (§20 phase 50).
+   *
+   * A raw count says how much was spent and not out of what, and Instrument's
+   * deck is built on the idea that a figure without its denominator is not a
+   * readout. Null where the scene has no preset, and the bare count stands.
+   */
+  contextSize: number | null;
   generating: boolean;
   /** Absent on desktop, where the inspector is already on screen. */
   onOpenContext?: (() => void) | undefined;
@@ -44,9 +53,35 @@ export function StatusBar({
         {profileName ?? strings.chat.barNoModel}
       </span>
 
-      {tokens === null ? null : (
-        <span className="chrome text-[10px] tracking-[0.12em] text-ink-dim uppercase">
+      {tokens === null ? null : contextSize === null || contextSize <= 0 ? (
+        <span className="chrome text-[10.5px] tracking-[0.12em] text-ink-dim uppercase">
           {strings.chat.barTokens(tokens)}
+        </span>
+      ) : (
+        // The fill takes the memory hue rather than the red pencil: this is a
+        // gauge, and red here would read as an alarm at 8% full.
+        <span className="flex min-w-0 items-center gap-[7px]">
+          <span className="chrome text-[10.5px] tracking-[0.14em] text-ink-dim uppercase">
+            {strings.chat.ctxLabel}
+          </span>
+          <span
+            className="hidden h-[3px] w-[64px] flex-none sm:inline-block"
+            style={{ background: "var(--onsen-color-rule)" }}
+          >
+            <span
+              className="block h-[3px]"
+              style={{
+                width: `${Math.min(100, Math.round((tokens / contextSize) * 100))}%`,
+                background:
+                  tokens / contextSize > 0.9
+                    ? "var(--onsen-color-red)"
+                    : "var(--onsen-color-green)",
+              }}
+            />
+          </span>
+          <span className="chrome text-[10.5px] tracking-[0.06em] text-ink-dim tabular-nums">
+            {strings.chat.ctxOf(tokens, contextSize)}
+          </span>
         </span>
       )}
 

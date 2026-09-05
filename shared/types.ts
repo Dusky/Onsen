@@ -985,6 +985,22 @@ export interface SceneDto {
    * number is worse than one showing none.
    */
   lastPromptTokens: number | null;
+  /**
+   * How many summaries stand behind this scene (§20 phase 50).
+   *
+   * The Instrument deck states what each subsystem is holding, and memory's
+   * figure is this. Before it, the number was reachable only by opening the
+   * summaries sheet, which fetches the whole set — far too much to know one
+   * count.
+   */
+  summaryCount: number;
+  /**
+   * The context window this scene's preset is fitted to (§20 phase 50).
+   *
+   * `lastPromptTokens` alone says how much was spent and not out of what. A
+   * fraction is the readable form, and it needs the denominator.
+   */
+  contextSize: number | null;
   turnStrategy: TurnStrategy;
   /**
    * Where the classifier turn director runs (SPEC §6). Null means the scene's

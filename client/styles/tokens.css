@@ -65,8 +65,24 @@
   --onsen-color-ooc-reader-bg: #2b2118;
   --onsen-color-ooc-reader-text: #e2cdb4;
 
-  /* Connection OK. Settings only — nothing else in the app is green. */
+  /*
+   * Subsystem hues (§20 phase 50).
+   *
+   * The two-pencil rule gave red to everything live and blue to the author's
+   * own voice, and left one red doing six unrelated jobs — cued speaker,
+   * streaming, stop, autopilot, destructive, primary. Instrument's deck states
+   * what each subsystem is holding, and four figures in one colour read as one
+   * figure. So: guides keep the blue pencil they already had, memory takes the
+   * green that until now only lit a connection dot in Settings, and media
+   * takes a brass. Red is not among them, which is the point — red stays the
+   * colour of *now*.
+   */
   --onsen-color-green: #7fa65b;
+  --onsen-color-green-text: #b6c6a4;
+  --onsen-color-green-text-muted: #7d8c6f;
+  --onsen-color-amber: #a6864f;
+  --onsen-color-amber-text: #cbb894;
+  --onsen-color-amber-text-muted: #8c7d5b;
 
   /* Placeholder fill standing in for user-supplied imagery. */
   /*
@@ -206,6 +222,11 @@
     --onsen-color-ooc-reader-text: #3a2c1d; /* derived */
 
     --onsen-color-green: #5d7f3f; /* derived */
+    --onsen-color-green-text: #3f5a28; /* derived */
+    --onsen-color-green-text-muted: #6a7a55; /* derived */
+    --onsen-color-amber: #8a6a2f; /* derived */
+    --onsen-color-amber-text: #5f4718; /* derived */
+    --onsen-color-amber-text-muted: #857556; /* derived */
 
   }
 }
@@ -251,5 +272,10 @@
   --onsen-color-ooc-reader-text: #3a2c1d;
 
   --onsen-color-green: #5d7f3f;
+  --onsen-color-green-text: #3f5a28;
+  --onsen-color-green-text-muted: #6a7a55;
+  --onsen-color-amber: #8a6a2f;
+  --onsen-color-amber-text: #5f4718;
+  --onsen-color-amber-text-muted: #857556;
 
 }

@@ -70,6 +70,16 @@ const FOLLOWS: ReadonlyArray<readonly [string, string]> = [
   ["color-blue-prose", "color-blue-text"],
   ["color-ooc-reader-bg", "color-bg-inset"],
   ["color-ooc-reader-text", "color-text"],
+  /*
+   * The subsystem hues (§20 phase 50). A theme that names a green or a brass
+   * gets its text weights from it; a theme that names neither keeps the base
+   * palette's, which is right — they are not the theme's accent, they are how
+   * the deck tells four systems apart.
+   */
+  ["color-green-text", "color-green"],
+  ["color-green-text-muted", "color-text-muted"],
+  ["color-amber-text", "color-amber"],
+  ["color-amber-text-muted", "color-text-muted"],
 ];
 
 /**

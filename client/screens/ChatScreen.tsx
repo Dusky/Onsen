@@ -29,6 +29,7 @@ import { Inspector, type InspectorTab } from "../components/Inspector.tsx";
 import { COMMANDS } from "../lib/commands.ts";
 import { InspectorSheet } from "../components/InspectorSheet.tsx";
 import { CastStrip } from "../components/CastStrip.tsx";
+import { Deck, Readouts } from "../components/Deck.tsx";
 import { OpsGrid, OpsRow, OpPrompt, type Op } from "../components/OpsGrid.tsx";
 import { CastRail } from "../components/CastRail.tsx";
 import { VnStage } from "../components/VnStage.tsx";
@@ -1020,12 +1021,14 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           </button>
         ) : null}
 
-        {/* With the ops drawer open the cast strip collapses away, so the whole
-            composer stack still fits above an open keyboard (design handoff). */}
+        {/* The deck (§20 phase 50). With the ops drawer open it collapses away,
+            so the whole composer stack still fits above an open keyboard —
+            the same rule the cast strip followed, and the reason Instrument's
+            cast is a segmented control rather than a row of cards. */}
         {cast.length > 0 && !isGenerating && opsPanel === null && !isDesktop ? (
-          <div className="flex-none border-t border-rule bg-bg-raised px-[16px] pt-[2px]">
+          <div className="flex-none border-t border-rule bg-bg-raised px-[16px] py-[10px]">
             <div className="mx-auto w-full max-w-[var(--onsen-prose-measure)]">
-              <CastStrip
+              <Deck
                 cast={cast}
                 nextSpeaker={nextSpeaker}
                 onCue={(characterId) => setCued(characterId)}
@@ -1033,9 +1036,14 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                 scope={scope}
                 onScope={setScope}
                 strategy={strategy}
-                autopilotOn={scene.data?.scene.autopilotEnabled ?? false}
-                onToggleAutopilot={(on) => updateScene.mutate({ autopilotEnabled: on })}
                 decidesOnSend={decidesOnSend}
+                guides={scene.data?.guides ?? []}
+                summaryCount={scene.data?.scene.summaryCount ?? 0}
+                mediaOn={scene.data?.scene.vnModeEnabled ?? false}
+                onOpen={(pane) => {
+                  setContextTab(pane === "memory" ? "memory" : "guides");
+                  setGuidesOpen(true);
+                }}
               />
             </div>
           </div>
@@ -1088,6 +1096,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         <StatusBar
           profileName={scene.data?.scene.connectionProfileName ?? null}
           tokens={scene.data?.scene.lastPromptTokens ?? null}
+          contextSize={scene.data?.scene.contextSize ?? null}
           generating={isGenerating}
           {...(isDesktop ? {} : { onOpenContext: () => setGuidesOpen(true) })}
         />
@@ -1184,6 +1193,22 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             onTab={setInspectorTab}
             context={contextBody()}
             cast={
+              <>
+                {/* The same row the phone's deck carries (§20 phase 50): four
+                    systems reading as four things rather than as one list.
+                    Above the cast, because it is scene-wide state and the
+                    cards below it are per-character. */}
+                <div className="mb-[14px]">
+                  <Readouts
+                    guides={guides}
+                    summaryCount={scene.data?.scene.summaryCount ?? 0}
+                    mediaOn={scene.data?.scene.vnModeEnabled ?? false}
+                    onOpen={(pane) => {
+                      setContextTab(pane === "memory" ? "memory" : "guides");
+                      setInspectorTab("context");
+                    }}
+                  />
+                </div>
           <CastRail
             embedded
             cast={cast}
@@ -1203,6 +1228,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
               setInspectorTab("context");
             }}
           />
+              </>
             }
           />
         </div>

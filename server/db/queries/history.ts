@@ -215,6 +215,8 @@ export function toSceneDto(
     messageCount: number;
     lastLine: string | null;
     lastPromptTokens: number | null;
+    summaryCount: number;
+    contextSize: number | null;
   },
 ): SceneDto {
   return {
@@ -253,6 +255,8 @@ export function toSceneDto(
     messageCount: extras.messageCount,
     lastLine: extras.lastLine,
     lastPromptTokens: extras.lastPromptTokens,
+    summaryCount: extras.summaryCount,
+    contextSize: extras.contextSize,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -846,6 +850,8 @@ export function sceneDto(db: Database, row: SceneRow): SceneDto {
     messageCount: countMessages(db, row.id),
     lastLine: lastLine(db, row.active_leaf_id),
     lastPromptTokens: lastPromptTokens(db, row.id),
+    summaryCount: summaryCount(db, row.id),
+    contextSize: contextSize(db, row.preset_id),
   });
 }
 
@@ -870,6 +876,23 @@ function lastPromptTokens(db: Database, sceneId: number): number | null {
     )
     .get({ scene: sceneId }) as { tokens: number | null } | null;
   return typeof row?.tokens === "number" ? row.tokens : null;
+}
+
+/** How many summaries this scene is holding (§20 phase 50's memory readout). */
+function summaryCount(db: Database, sceneId: number): number {
+  const row = db
+    .query("SELECT count(*) AS n FROM summaries WHERE scene_id = $scene")
+    .get({ scene: sceneId }) as { n: number } | null;
+  return row?.n ?? 0;
+}
+
+/** The window the scene's preset is fitted to. Null when it has no preset. */
+function contextSize(db: Database, presetId: number | null): number | null {
+  if (presetId === null) return null;
+  const row = db
+    .query("SELECT context_size FROM presets WHERE id = $id")
+    .get({ id: presetId }) as { context_size: number } | null;
+  return row?.context_size ?? null;
 }
 
 /**

@@ -4335,3 +4335,71 @@ The first instinct was a failing request. The request had never failed. Nothing
 short of driving the button and asking the DOM whether a human could see the
 result would have found it, and a unit test asserting `models.length === 2`
 would have passed throughout.
+
+---
+
+## Phase 50 — Instrument
+
+Three directions were drawn in phase 45 and the question sat open for five
+phases. The answer was Instrument, with a good follow-up: *"but we can make
+them all different options as layouts. maybe mix and match features?"* — which
+is right, and is why Quiet and Broadsheet are recorded as presets over shared
+switches rather than as three screens. The guardrail is in §16: a matrix of
+toggles in place of a default is the incumbent's answer, and the default is
+what the app is.
+
+### What was built
+
+**The deck.** Who speaks next with the reason printed beside it, the cast as
+one segmented control, and a row saying what each subsystem is holding. It
+collapses when the ops drawer opens — the same rule the cast strip followed,
+because the whole stack has to fit above a keyboard at 390px.
+
+**The cast as segments.** The cards carried a portrait nobody has supplied yet
+and cost 70px of height where height is scarcest. A name in a segment carries
+the same decision. The cards survive on the desktop rail, which has room for a
+portrait and a last line — the one thing a phone cannot give them.
+
+**The speaker's spine.** A 3px rail down each turn instead of a hairline
+running right from the name. A rule between two turns reads as a divider; a
+rail reads as belonging to one, which is what a speaker is. The turn being
+streamed takes red, and nothing else in the log does.
+
+**A hue per subsystem, and the two-pencil rule amended a second time.** Guides
+keep the blue pencil, memory takes the green that until now lit only a
+connection dot in Settings, media takes a brass. Red is deliberately absent
+from the readout — it stays the colour of *now*. `test/surfaces.test.ts`
+asserts the hues are far enough apart to read as different systems and that
+none of them is the red pencil.
+
+**Two figures the scene never carried.** `summaryCount`, which was reachable
+only by opening the summaries sheet — a request that fetches the whole set to
+learn one number. And `contextSize`, without which `lastPromptTokens` is a
+figure with no denominator: it had been a bare number in the status bar since
+phase 43, and is a gauge now, green until 90% of the window and red past it.
+
+### Deliberately deferred
+
+- **Quiet and Broadsheet as presets.** The switches they differ on are named in
+  §16 — readout row, cast display, scene dek, attribution style — but nothing
+  reads them yet. Instrument is hard-coded, which is honest for a default and
+  dishonest for a preset system, and the next phase is the one that makes it a
+  preset rather than a state of affairs.
+- **The desktop deck is partial.** The readout row is there above the cast rail;
+  the mock's per-subsystem groups, each with a line of their own content, are
+  not.
+
+### Surprises
+
+**The redundant separator only appeared once both were on screen.** The
+attribution rule running from the name to the right edge had been correct for
+forty-nine phases; the moment the turn gained a rail it became a second
+divider on the same block. The span survives — it is what the swipe counter
+sits at the end of and what the hover actions are painted over — it just no
+longer draws a line. Neither element was wrong on its own, which is the whole
+difficulty of changing a layout rather than adding to one.
+
+**The probe said the deck was missing when it was on screen.** Reading the
+drive output rather than the screenshot, `deckText: null` looked like a
+rendering failure; the regex was case-sensitive and the labels are uppercased
+by CSS. A minute spent looking at the picture instead of the log settled it.

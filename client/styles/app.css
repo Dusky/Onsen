@@ -35,6 +35,11 @@
   --color-blue-text: var(--onsen-color-blue-text);
 
   --color-green: var(--onsen-color-green);
+  --color-green-text: var(--onsen-color-green-text);
+  --color-green-text-muted: var(--onsen-color-green-text-muted);
+  --color-amber: var(--onsen-color-amber);
+  --color-amber-text: var(--onsen-color-amber-text);
+  --color-amber-text-muted: var(--onsen-color-amber-text-muted);
 
   --font-prose: var(--onsen-font-prose);
   --font-mono: var(--onsen-font-mono);
@@ -131,6 +136,29 @@
     box-shadow: var(--onsen-shadow-card);
     padding: var(--onsen-card-padding);
     border-radius: var(--onsen-radius);
+  }
+
+  /*
+   * The speaker's spine (§20 phase 50, Instrument).
+   *
+   * The log used to separate turns with a hairline running to the right edge
+   * under the name. That reads as a divider — a thing between two turns —
+   * where a rail down the left reads as a thing belonging to one, which is
+   * what a speaker is. It also gives the log the one place it can say who is
+   * live without recolouring the prose: `data-live` takes the red pencil, and
+   * nothing else in the log does.
+   */
+  .turn[data-rail] {
+    padding-left: 13px;
+    border-left: 3px solid var(--onsen-color-rule-strong);
+  }
+
+  .turn[data-rail="user"] {
+    border-left-color: var(--onsen-color-rule);
+  }
+
+  .turn[data-live="true"] {
+    border-left-color: var(--onsen-color-red);
   }
 
   /* A docked surface — the composer stack, a footer bar. Same rule. */

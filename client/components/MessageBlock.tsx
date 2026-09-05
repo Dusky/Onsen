@@ -298,6 +298,11 @@ export function MessageBlock({
     <article
       {...swipe}
       className="turn group select-none"
+      // Instrument's spine (§20 phase 50): a rail belonging to the turn rather
+      // than a rule between two of them. The user's is quieter than a
+      // character's — their line is the prompt, not the performance.
+      data-rail={isUser ? "user" : "character"}
+      data-live={streamingText === undefined ? undefined : "true"}
       // The whole block is the gesture target, so the affordance matches the
       // thing being acted on rather than a handle beside it.
       aria-label={`${speakerName}: ${text.slice(0, 80)}`}
@@ -328,12 +333,14 @@ export function MessageBlock({
         >
           {speakerName}
         </span>
-        {/* The rule runs to the right edge; the swipe counter sits at its end.
-            The hover actions are painted over the rule's end rather than laid
-            out beside it: in flow they reserve their width whether or not
-            anyone is hovering, and on a wide screen that leaves every rule
-            stopping short of the column for buttons nobody can see. */}
-        <span className="relative h-px flex-1 bg-rule">
+        {/* Instrument gave the turn a rail of its own (§20 phase 50), so the
+            rule that used to run from the name to the right edge would be a
+            second separator on the same block. The span stays — it is what the
+            swipe counter sits at the end of, and what the hover actions are
+            painted over rather than laid out beside, since in flow they would
+            reserve their width whether or not anyone is hovering — but it no
+            longer draws a line. */}
+        <span className="relative h-px flex-1">
           {hoverActions === undefined ? null : (
             <span className="absolute top-1/2 right-0 flex -translate-y-1/2 items-center gap-[7px] bg-bg pl-[10px] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
               {[
