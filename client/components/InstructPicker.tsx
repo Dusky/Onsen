@@ -115,7 +115,7 @@ export function InstructPicker({
           </button>
         ))}
       </div>
-      <p className="chrome mb-[10px] text-[9px] leading-[1.5] text-ink-dim">
+      <p className="explain mb-[10px]">
         {strings.instruct.hint}
       </p>
 
@@ -170,7 +170,7 @@ export function InstructPicker({
           {!open ? null : (
             <div className="mb-[10px] border border-rule p-[12px]">
               {selected.builtIn ? (
-                <p className="chrome mb-[10px] text-[9px] leading-[1.5] text-ink-dim">
+                <p className="explain mb-[10px]">
                   {strings.instruct.builtInLocked}
                 </p>
               ) : (
@@ -239,7 +239,7 @@ function Editor({
           />
         ))}
       </div>
-      <p className="chrome mb-[10px] text-[9px] leading-[1.5] text-ink-dim">
+      <p className="explain mb-[10px]">
         {strings.instruct.bosHint}
       </p>
 
@@ -258,7 +258,7 @@ function Editor({
           )
         }
       />
-      <p className="chrome mb-[10px] text-[9px] leading-[1.5] text-ink-dim">
+      <p className="explain mb-[10px]">
         {strings.instruct.stopHint}
       </p>
 
@@ -278,7 +278,7 @@ function Editor({
           {draft.systemInUser ? strings.lore.on : strings.lore.off}
         </span>
       </button>
-      <p className="chrome text-[9px] leading-[1.5] text-ink-dim">
+      <p className="explain">
         {strings.instruct.systemInUserHint}
       </p>
     </div>

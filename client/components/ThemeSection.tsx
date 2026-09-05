@@ -182,7 +182,7 @@ export function ThemeSection() {
   return (
     <div className="mb-[26px]">
       <p className="section-label mb-[4px]">{strings.settings.theme}</p>
-      <p className="chrome mb-[12px] text-[10px] leading-[1.6] text-ink-dim">
+      <p className="explain mb-[12px]">
         {strings.settings.themeHint}
       </p>
 
@@ -259,7 +259,7 @@ export function ThemeSection() {
       </div>
 
       {notice !== null ? (
-        <p className="chrome mb-[12px] text-[10px] leading-[1.6] text-red-text">{notice}</p>
+        <p className="explain explain-alert mb-[12px]">{notice}</p>
       ) : null}
       {report !== null ? (
         <p className="chrome mb-[12px] text-[10px] leading-[1.6] text-ink-muted">
@@ -274,7 +274,7 @@ export function ThemeSection() {
       {active === null ? null : (
         <>
           {active.isBuiltin ? (
-            <p className="chrome mb-[12px] text-[10px] leading-[1.6] text-ink-dim">
+            <p className="explain mb-[12px]">
               {strings.settings.themeBuiltin}
             </p>
           ) : null}

@@ -49,14 +49,14 @@ export function MemorySection({ sceneId }: { sceneId: string }) {
           </button>
         ))}
       </div>
-      <p className="chrome mb-[10px] text-[9.5px] leading-[1.5] text-ink-dim">
+      <p className="explain mb-[10px]">
         {strings.sceneSetup.memoryHint}
       </p>
 
       {enabled ? (
         <>
           {entities.length === 0 ? (
-            <p className="chrome mb-[10px] text-[9.5px] leading-[1.5] text-ink-dim">
+            <p className="explain mb-[10px]">
               {strings.sceneSetup.memoryEmpty}
             </p>
           ) : (
@@ -87,7 +87,7 @@ export function MemorySection({ sceneId }: { sceneId: string }) {
                     {entity.content}
                   </p>
                 )}
-                <p className="chrome mt-[4px] text-[9px] tracking-[0.06em] text-ink-dim uppercase">
+                <p className="meta mt-[4px]">
                   {/* Salience and how long it has been quiet, because one
                       without the other does not say what will be recalled. */}
                   {`${Math.round(entity.salience * 100)}% · ${strings.sceneSetup.memoryQuiet(entity.turnsSince)}`}
@@ -182,7 +182,7 @@ function MemoryEditor({
           className="field"
           defaultValue={entity.salience}
         />
-        <p className="chrome mt-[7px] mb-[16px] text-[10px] leading-[1.6] text-ink-dim">
+        <p className="explain mt-[7px] mb-[16px]">
           {strings.sceneSetup.memorySalienceHint}
         </p>
 

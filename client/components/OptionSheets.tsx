@@ -33,7 +33,7 @@ export function OptionGroupSheet({
       onClose={onClose}
     >
       <div className="pt-[6px] pb-[14px]">
-        <p className="chrome mb-[14px] text-[9.5px] leading-[1.5] text-ink-dim">
+        <p className="explain mb-[14px]">
           {group.description}
         </p>
 
@@ -76,7 +76,7 @@ export function OptionGroupSheet({
                   : option.fragment}
               </span>
             </span>
-            <span className="chrome flex-none text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+            <span className="meta flex-none">
               {option.tokenCount === 0 ? "—" : `${option.tokenCount} TOK`}
             </span>
           </button>
@@ -130,7 +130,7 @@ export function BanListSheet({
       onClose={onClose}
     >
       <div className="pt-[6px] pb-[14px]">
-        <p className="chrome mb-[14px] text-[9.5px] leading-[1.5] text-ink-dim">
+        <p className="explain mb-[14px]">
           {strings.sceneSetup.bansHint}
         </p>
 
@@ -177,7 +177,7 @@ export function BanListSheet({
           {analysing ? strings.sceneSetup.bansAnalysing : strings.sceneSetup.bansAnalyse}
         </button>
         {detail === null ? null : (
-          <p className="chrome mb-[14px] text-[9px] leading-[1.5] text-ink-dim">{detail}</p>
+          <p className="explain mb-[14px]">{detail}</p>
         )}
 
         {/* Proposals first, because they are the only rows that want a decision. */}

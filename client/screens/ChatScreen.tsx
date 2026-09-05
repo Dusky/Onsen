@@ -775,7 +775,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         return (
           <div className="pb-[2px]">
             <p className="section-label mb-[6px]">{strings.chat.opImpersonateTitle}</p>
-            <p className="chrome mb-[9px] text-[9px] leading-[1.5] text-ink-dim">
+            <p className="explain mb-[9px]">
               {strings.chat.opImpersonateHint}
             </p>
             <div className="flex gap-[6px]">
@@ -870,7 +870,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
               <span className="h-px flex-1 bg-rule" />
             </div>
             {active.director !== null && active.director.reason !== "" ? (
-              <p className="chrome mt-[5px] text-[9px] leading-[1.5] tracking-[0.06em] text-ink-dim uppercase">
+              <p className="meta mt-[5px] leading-[1.5]">
                 {active.director.reason}
               </p>
             ) : null}
@@ -915,7 +915,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       ) : null}
 
       {autopilotNote !== null && !autopilotActive ? (
-        <p className="chrome text-[9px] leading-[1.5] tracking-[0.06em] text-ink-dim uppercase">
+        <p className="meta leading-[1.5]">
           {autopilotNote}
         </p>
       ) : null}
@@ -1214,7 +1214,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         <Sheet title={strings.chat.setProfile} onClose={() => setProfilePickerOpen(false)}>
           {(profiles.data ?? []).length === 0 ? (
             <>
-              <p className="chrome py-[10px] text-[9px] leading-[1.5] tracking-[0.06em] text-ink-dim uppercase">
+              <p className="meta py-[10px] leading-[1.5]">
                 {strings.chat.noProfiles}
               </p>
               <button

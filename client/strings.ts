@@ -1084,6 +1084,19 @@ export const strings = {
 
   sceneSetup: {
     kicker: "Setup",
+    /*
+     * Group headings (phase 47). Setup was twenty field labels in one stack
+     * with nothing between them; these name the clusters that were already
+     * there in that order — nothing was moved to make them fit. Provisional
+     * like every other noun here.
+     */
+    groupScene: "Scene",
+    groupDirection: "Direction",
+    groupScenario: "Scenario",
+    groupMemory: "Memory",
+    groupModel: "Model",
+    groupOffScript: "Off script",
+    groupPlayback: "Playback",
     title: "Roleplay setup",
     author: "Author",
     authorNone: "No author — single character",

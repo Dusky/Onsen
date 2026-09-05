@@ -58,7 +58,7 @@ export function MarkSheet({
           required
           maxLength={120}
         />
-        <p className="chrome mb-[16px] text-[10px] leading-[1.6] text-ink-dim">
+        <p className="explain mb-[16px]">
           {strings.chat.checkpointsHint}
         </p>
         <button type="submit" className="btn btn-primary w-full">
@@ -87,7 +87,7 @@ export function CheckpointsSheet({
     <Sheet title={strings.chat.checkpoints} onClose={onClose}>
       <div className="pt-[8px] pb-[14px]">
         {marks.length === 0 ? (
-          <p className="chrome mb-[10px] text-[9.5px] leading-[1.5] text-ink-dim">
+          <p className="explain mb-[10px]">
             {strings.chat.checkpointsEmpty}
           </p>
         ) : (
@@ -132,7 +132,7 @@ export function CheckpointsSheet({
             </div>
           ))
         )}
-        <p className="chrome mt-[12px] text-[10px] leading-[1.6] text-ink-dim">
+        <p className="explain mt-[12px]">
           {strings.chat.checkpointsHint}
         </p>
       </div>

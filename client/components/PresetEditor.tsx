@@ -69,7 +69,7 @@ export function PresetEditor({ preset, onClose }: { preset: PresetDto; onClose()
   return (
     <Sheet title={preset.name} onClose={onClose}>
       <div className="pt-[8px] pb-[14px]">
-        <p className="chrome mb-[16px] text-[9.5px] leading-[1.5] text-ink-dim">
+        <p className="explain mb-[16px]">
           {strings.settings.generationHint}
         </p>
 
@@ -87,7 +87,7 @@ export function PresetEditor({ preset, onClose }: { preset: PresetDto; onClose()
               />
             ))}
             {group.hint === undefined ? null : (
-              <p className="chrome mt-[8px] text-[9px] leading-[1.5] text-ink-dim">{group.hint}</p>
+              <p className="explain mt-[8px]">{group.hint}</p>
             )}
           </div>
         ))}
@@ -126,7 +126,7 @@ export function PresetEditor({ preset, onClose }: { preset: PresetDto; onClose()
             onCommit={(value) => update.mutate({ id: preset.id, maxResponseTokens: value })}
           />
         </div>
-        <p className="chrome mb-[22px] text-[9px] leading-[1.5] text-ink-dim">
+        <p className="explain mb-[22px]">
           {strings.settings.budgetHint}
         </p>
 
@@ -142,7 +142,7 @@ export function PresetEditor({ preset, onClose }: { preset: PresetDto; onClose()
             update.mutate({ id: preset.id, prefill: value === "" ? null : value });
           }}
         />
-        <p className="chrome mb-[22px] text-[9px] leading-[1.5] text-ink-dim">
+        <p className="explain mb-[22px]">
           {strings.settings.prefillHint}
         </p>
 
@@ -159,7 +159,7 @@ export function PresetEditor({ preset, onClose }: { preset: PresetDto; onClose()
         >
           {strings.settings.reasoningParseInline}
         </button>
-        <p className="chrome mb-[16px] text-[9px] leading-[1.5] text-ink-dim">
+        <p className="explain mb-[16px]">
           {strings.settings.reasoningParseInlineHint}
         </p>
 
@@ -175,7 +175,7 @@ export function PresetEditor({ preset, onClose }: { preset: PresetDto; onClose()
             }
           />
         </div>
-        <p className="chrome mb-[16px] text-[9px] leading-[1.5] text-ink-dim">
+        <p className="explain mb-[16px]">
           {strings.settings.reasoningReinjectHint}
         </p>
 
@@ -221,7 +221,7 @@ export function PresetEditor({ preset, onClose }: { preset: PresetDto; onClose()
         >
           {strings.settings.exportPresetSt}
         </button>
-        <p className="chrome mt-[7px] text-[9px] leading-[1.5] text-ink-dim">
+        <p className="explain mt-[7px]">
           {strings.settings.exportPresetHint}
         </p>
       </div>

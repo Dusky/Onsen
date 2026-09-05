@@ -49,7 +49,7 @@ function Field({
         onChange={(event) => onChange(event.target.value)}
       />
       {hint === undefined ? null : (
-        <p className="chrome mt-[4px] text-[9px] leading-[1.5] text-ink-dim">{hint}</p>
+        <p className="explain mt-[4px]">{hint}</p>
       )}
     </div>
   );
@@ -103,12 +103,12 @@ export function DossierSheet({
       meta={strings.dossiers.count(dossiers.length)}
       onClose={onClose}
     >
-      <p className="chrome mb-[12px] text-[9.5px] leading-[1.5] text-ink-dim">
+      <p className="explain mb-[12px]">
         {strings.dossiers.hint}
       </p>
 
       {error === null ? null : (
-        <p className="chrome mb-[12px] text-[9.5px] leading-[1.5] text-red-text">{error}</p>
+        <p className="explain explain-alert mb-[12px]">{error}</p>
       )}
 
       {/* Who the scene keeps naming. The offer is the feature: a dossier the
@@ -154,13 +154,13 @@ export function DossierSheet({
             >
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[14px]">{dossier.name}</span>
-                <span className="chrome mt-[4px] block truncate text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+                <span className="meta mt-[4px] block truncate">
                   {dossier.promoted
                     ? strings.dossiers.promoted
                     : (dossier.role || strings.dossiers.noRole)}
                 </span>
               </span>
-              <span className="chrome flex-none text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+              <span className="meta flex-none">
                 {dossier.entry === null ? "" : strings.characters.tokens(dossier.entry.tokenCount)}
               </span>
             </button>
@@ -214,7 +214,7 @@ export function DossierSheet({
           <pre className="chrome overflow-x-auto border border-rule bg-bg-inset p-[10px] text-[9.5px] leading-[1.6] whitespace-pre-wrap text-ink-muted">
             {open_.injected === "" ? strings.dossiers.injectedEmpty : open_.injected}
           </pre>
-          <p className="chrome mt-[4px] mb-[14px] text-[9px] leading-[1.5] text-ink-dim">
+          <p className="explain mt-[4px] mb-[14px]">
             {strings.dossiers.buriedHint}
           </p>
 

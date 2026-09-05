@@ -237,6 +237,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
 
       <main className="min-h-0 flex-1 overflow-y-auto px-[22px] py-[16px]">
         <div className="mx-auto w-full max-w-[var(--onsen-prose-measure)]">
+          <p className="group-heading mb-[12px]">{strings.sceneSetup.groupScene}</p>
           <p className="section-label mb-[8px]">{strings.sceneSetup.title_}</p>
           <input
             className="field mb-[22px]"
@@ -268,7 +269,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               </button>
             ))}
           </div>
-          <p className="chrome mb-[22px] text-[9.5px] leading-[1.5] text-ink-dim">
+          <p className="explain mb-[22px]">
             {strings.sceneSetup.authorHint}
           </p>
 
@@ -300,6 +301,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
             ) : null}
           </div>
 
+          <p className="group-heading mb-[12px]">{strings.sceneSetup.groupDirection}</p>
           <p className="section-label mb-[8px]">{strings.sceneSetup.turnStrategy}</p>
           <div className="mb-[8px] flex flex-wrap gap-[6px]">
             {TURN_STRATEGIES.map((strategy) => (
@@ -314,11 +316,11 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
             ))}
           </div>
           {scene.turnStrategy === "mention" ? (
-            <p className="chrome mb-[22px] text-[9.5px] leading-[1.5] text-ink-dim">
+            <p className="explain mb-[22px]">
               {strings.sceneSetup.strategyMentionHint}
             </p>
           ) : scene.turnStrategy === "classifier" ? (
-            <p className="chrome mb-[16px] text-[9.5px] leading-[1.5] text-ink-dim">
+            <p className="explain mb-[16px]">
               {strings.sceneSetup.strategyClassifierHint}
             </p>
           ) : (
@@ -349,7 +351,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                   </button>
                 ))}
               </div>
-              <p className="chrome mb-[16px] text-[9.5px] leading-[1.5] text-ink-dim">
+              <p className="explain mb-[16px]">
                 {strings.sceneSetup.directorProfileHint}
               </p>
 
@@ -390,7 +392,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                         </div>
                         {/* The answer when it worked, the reason when it did not. */}
                         {run.status === "ok" ? null : run.detail === null ? null : (
-                          <p className="chrome mt-[4px] text-[9px] leading-[1.5] text-ink-dim">
+                          <p className="explain mt-[4px]">
                             {run.detail}
                           </p>
                         )}
@@ -417,11 +419,12 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               </button>
             ))}
           </div>
-          <p className="chrome mb-[22px] text-[9.5px] leading-[1.5] text-ink-dim">
+          <p className="explain mb-[22px]">
             {strings.sceneSetup.autoPassesHint}
           </p>
 
           {/* The scene's own framing (SPEC §2). */}
+          <p className="group-heading mb-[12px]">{strings.sceneSetup.groupScenario}</p>
           <p className="section-label mb-[8px]">{strings.sceneSetup.scenario}</p>
           <textarea
             rows={3}
@@ -434,7 +437,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               setup.mutate({ scenarioOverride: value === "" ? null : value });
             }}
           />
-          <p className="chrome mb-[22px] text-[9.5px] leading-[1.5] text-ink-dim">
+          <p className="explain mb-[22px]">
             {strings.sceneSetup.scenarioHint}
           </p>
 
@@ -443,13 +446,13 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               groups of four to six is thirty-odd switches on one screen. */}
           <div className="mb-[8px] flex items-baseline justify-between gap-[10px]">
             <p className="section-label">{strings.sceneSetup.options}</p>
-            <p className="chrome text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+            <p className="meta">
               {options.data === undefined
                 ? ""
                 : strings.sceneSetup.optionsCost(options.data.tokenCount)}
             </p>
           </div>
-          <p className="chrome mb-[10px] text-[9.5px] leading-[1.5] text-ink-dim">
+          <p className="explain mb-[10px]">
             {strings.sceneSetup.optionsHint}
           </p>
           {(options.data?.groups ?? []).map((group) => {
@@ -471,7 +474,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                       : chosen.map((option) => option.name).join(" · ")}
                   </span>
                 </span>
-                <span className="chrome flex-none text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+                <span className="meta flex-none">
                   {chosen.reduce((sum, option) => sum + option.tokenCount, 0)} TOK
                 </span>
               </button>
@@ -500,7 +503,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                     )}
               </span>
             </span>
-            <span className="chrome flex-none text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+            <span className="meta flex-none">
               {bans.data === undefined ? "" : `${bans.data.tokenCount} TOK`}
             </span>
           </button>
@@ -532,7 +535,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                 })()}
               </span>
             </span>
-            <span className="chrome flex-none text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+            <span className="meta flex-none">
               ›
             </span>
           </button>
@@ -554,7 +557,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               {strings.sceneSetup.optionsReset}
             </button>
           ) : (
-            <p className="chrome mt-[10px] text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+            <p className="meta mt-[10px]">
               {strings.sceneSetup.optionsDefaults}
             </p>
           )}
@@ -562,6 +565,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
 
           {/* Rolling summarisation (SPEC §11 layer 1). Every knob is per scene
               because how fast a story moves is a property of the story. */}
+          <p className="group-heading mb-[12px]">{strings.sceneSetup.groupMemory}</p>
           <p className="section-label mb-[8px]">{strings.sceneSetup.summarise}</p>
           <div className="mb-[8px] flex gap-[6px]">
             {[true, false].map((on) => (
@@ -575,7 +579,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               </button>
             ))}
           </div>
-          <p className="chrome mb-[18px] text-[9.5px] leading-[1.5] text-ink-dim">
+          <p className="explain mb-[18px]">
             {strings.sceneSetup.summariseHint}
           </p>
 
@@ -599,7 +603,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                   onCommit={(value) => setup.mutate({ summariseEveryWords: value })}
                 />
               </div>
-              <p className="chrome mb-[18px] text-[9.5px] leading-[1.5] text-ink-dim">
+              <p className="explain mb-[18px]">
                 {strings.sceneSetup.summariseEveryHint}
               </p>
 
@@ -621,10 +625,10 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                   onCommit={(value) => setup.mutate({ summariseFreeze: value })}
                 />
               </div>
-              <p className="chrome mb-[6px] text-[9.5px] leading-[1.5] text-ink-dim">
+              <p className="explain mb-[6px]">
                 {strings.sceneSetup.summariseThresholdHint}
               </p>
-              <p className="chrome mb-[18px] text-[9.5px] leading-[1.5] text-ink-dim">
+              <p className="explain mb-[18px]">
                 {strings.sceneSetup.summariseFreezeHint}
               </p>
 
@@ -641,7 +645,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                   </button>
                 ))}
               </div>
-              <p className="chrome mb-[22px] text-[9.5px] leading-[1.5] text-ink-dim">
+              <p className="explain mb-[22px]">
                 {strings.sceneSetup.summariseEvictHint}
               </p>
             </>
@@ -669,6 +673,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               default and enabled per scene, which the spec is explicit about —
               and here rather than in Settings because "may this story be driven
               from outside" is a question about the story. */}
+          <p className="group-heading mb-[12px]">{strings.sceneSetup.groupModel}</p>
           <p className="section-label mb-[8px]">{strings.settings.sceneApi}</p>
           <div className="mb-[8px] flex gap-[6px]">
             {[true, false].map((on) => (
@@ -682,14 +687,14 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               </button>
             ))}
           </div>
-          <p className="chrome mb-[8px] text-[9.5px] leading-[1.5] text-ink-dim">
+          <p className="explain mb-[8px]">
             {strings.settings.sceneApiHint}
           </p>
           {apiEnabled && apiModelId !== null ? (
             <>
               <p className="section-label mb-[6px]">{strings.settings.sceneApiModel}</p>
               <p className="mb-[4px] font-mono text-[12px] select-all">{apiModelId}</p>
-              <p className="chrome mb-[18px] text-[9.5px] leading-[1.5] text-ink-dim">
+              <p className="explain mb-[18px]">
                 {strings.settings.sceneApiModelHint}
               </p>
             </>
@@ -700,6 +705,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
           {/* Whether the author may step out of the scene (SPEC §7). Off by
               default, and the hint says why rather than what: the reader is
               choosing between a story and a collaborator. */}
+          <p className="group-heading mb-[12px]">{strings.sceneSetup.groupOffScript}</p>
           <p className="section-label mb-[8px]">{strings.sceneSetup.ooc}</p>
           <div className="mb-[8px] flex gap-[6px]">
             {[true, false].map((on) => (
@@ -713,7 +719,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               </button>
             ))}
           </div>
-          <p className="chrome mb-[18px] text-[9.5px] leading-[1.5] text-ink-dim">
+          <p className="explain mb-[18px]">
             {strings.sceneSetup.oocHint}
           </p>
 
@@ -729,7 +735,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                   onCommit={(value) => setup.mutate({ oocInterval: value })}
                 />
               </div>
-              <p className="chrome mb-[14px] text-[9.5px] leading-[1.5] text-ink-dim">
+              <p className="explain mb-[14px]">
                 {strings.sceneSetup.oocIntervalHint}
               </p>
 
@@ -748,7 +754,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                   </button>
                 ))}
               </div>
-              <p className="chrome mb-[22px] text-[9.5px] leading-[1.5] text-ink-dim">
+              <p className="explain mb-[22px]">
                 {strings.sceneSetup.oocInlineHint}
               </p>
             </>
@@ -759,6 +765,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
           {/* Autopilot (SPEC §6). The switch itself lives on the cast strip,
               where the next turn is decided; what lives here is the bound,
               because a number is scene configuration wherever its switch is. */}
+          <p className="group-heading mb-[12px]">{strings.sceneSetup.groupPlayback}</p>
           <p className="section-label mb-[8px]">{strings.sceneSetup.autopilot}</p>
           <div className="mb-[8px] flex gap-[10px]">
             <NumberField
@@ -770,7 +777,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               onCommit={(value) => setup.mutate({ autopilotMaxTurns: value })}
             />
           </div>
-          <p className="chrome mb-[22px] text-[9.5px] leading-[1.5] text-ink-dim">
+          <p className="explain mb-[22px]">
             {strings.sceneSetup.autopilotHint}
           </p>
 
@@ -814,7 +821,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
           {/* SPEC §8's sixth guide. It is the only one with nothing built in to
               ask, so its question is scene configuration and lives here; the
               other five are switched on per op in Settings. */}
-          <p className="section-label mb-[8px]">{strings.sceneSetup.customGuide}</p>
+          <p className="group-heading mb-[12px]">{strings.sceneSetup.customGuide}</p>
           <textarea
             rows={2}
             className="field mb-[8px] resize-none py-[10px]"
@@ -826,11 +833,11 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               setup.mutate({ customGuidePrompt: prompt === "" ? null : prompt });
             }}
           />
-          <p className="chrome mb-[22px] text-[9.5px] leading-[1.5] text-ink-dim">
+          <p className="explain mb-[22px]">
             {strings.sceneSetup.customGuideHint}
           </p>
 
-          <p className="section-label mb-[8px]">{strings.sceneSetup.cast}</p>
+          <p className="group-heading mb-[12px]">{strings.sceneSetup.cast}</p>
           {scene.cast.length === 0 ? (
             <p className="chrome mb-[10px] text-[10px] tracking-[0.12em] text-ink-dim uppercase">
               {strings.sceneSetup.castEmpty}
@@ -895,7 +902,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
             </button>
           </div>
           {authorExtract.isError || authorSuggestLore.isError ? (
-            <p className="chrome mb-[12px] text-[9.5px] leading-[1.5] text-red-text">
+            <p className="explain explain-alert mb-[12px]">
               {authorExtract.error?.message ?? authorSuggestLore.error?.message}
             </p>
           ) : null}
@@ -918,7 +925,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                   : (dossiers.data ?? []).map((row) => row.name).join(" · ")}
               </span>
             </span>
-            <span className="chrome flex-none text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+            <span className="meta flex-none">
               ›
             </span>
           </button>
@@ -926,8 +933,8 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
 
           {/* The data bank (SPEC §11, phase 30): documents recalled into the
               prompt by meaning. A row, because the list itself is a sheet. */}
-          <p className="section-label mb-[8px]">{strings.characters.documents}</p>
-          <p className="chrome mb-[10px] text-[9.5px] leading-[1.5] text-ink-dim">
+          <p className="group-heading mb-[12px]">{strings.characters.documents}</p>
+          <p className="explain mb-[10px]">
             {strings.characters.documentsHint}
           </p>
           <button
@@ -1103,7 +1110,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
           {loreProposals.map((proposal, index) => (
             <div key={index} className="border-b border-rule py-[10px]">
               <p className="text-[13.5px] font-medium">{proposal.title}</p>
-              <p className="chrome mt-[4px] text-[10px] leading-[1.6] text-ink-dim">
+              <p className="explain mt-[4px]">
                 {proposal.content}
               </p>
               <p className="chrome mt-[6px] text-[8.5px] tracking-[0.08em] text-ink-muted uppercase">

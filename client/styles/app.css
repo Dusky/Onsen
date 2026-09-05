@@ -151,6 +151,85 @@
     color: var(--onsen-color-text-muted);
   }
 
+  /*
+   * A group of fields, not one field (phase 47).
+   *
+   * `.section-label` was drawn as a group heading — "three groups, each a mono
+   * section label over hairline rows" — and then used as the field label, 167
+   * times. Settings ended up with thirty-one of them on one screen and no
+   * heading anywhere, so every level of the hierarchy was set identically.
+   * This is the level above: larger, brighter, and carrying a rule to the
+   * right edge — the same mark the log already puts beside a speaker's name,
+   * because a heading here is the same gesture as an attribution there.
+   */
+  .group-heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--onsen-font-mono);
+    font-size: var(--onsen-text-group-heading);
+    font-weight: 600;
+    letter-spacing: var(--onsen-tracking-group);
+    text-transform: uppercase;
+    color: var(--onsen-color-text-label);
+  }
+
+  .group-heading::after {
+    content: "";
+    flex: 1;
+    border-top: 1px solid var(--onsen-color-rule);
+  }
+
+  /*
+   * The app explaining itself in sentences (phase 47).
+   *
+   * The one place the app speaks in the serif. The two-voices rule says chrome
+   * is never set in Spectral, and already made an exception for the OOC voice
+   * on the grounds that it reads as "a person typing at you" rather than as a
+   * UI label. A help line under a field is the same thing: a sentence meant to
+   * be read, not a label meant to be scanned. Before this it was 10px mono —
+   * a size *larger* than the 9px label above it, in the same face and the same
+   * colour family, in 143 places.
+   *
+   * Mono names, Spectral speaks.
+   */
+  .explain {
+    font-family: var(--onsen-font-prose);
+    font-size: var(--onsen-text-explain);
+    line-height: 1.6;
+    color: var(--onsen-color-text-prose-muted);
+    text-wrap: pretty;
+  }
+
+  /* The same voice, when what it has to say is that something went wrong. */
+  .explain-alert {
+    color: var(--onsen-color-red-text);
+  }
+
+  /*
+   * The mono line under a title: what a thing is made of, how much it costs,
+   * when it last ran (phase 47).
+   *
+   * One role, one spelling. It was written twenty different ways — 9px at
+   * 0.06em, 0.08em, 0.12em, 8.5px at 0.1em — none of the differences meaning
+   * anything, all of them landing on the same grey. The design table has one
+   * entry for this ("cast card name", 9px / 0.08em); this is it.
+   */
+  .meta {
+    font-family: var(--onsen-font-mono);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--onsen-color-text-dim);
+  }
+
+  /* A number, not a label — so it is not tracked and not uppercased. */
+  .token-count {
+    font-family: var(--onsen-font-mono);
+    font-size: var(--onsen-text-token-count);
+    color: var(--onsen-color-text-dim);
+  }
+
   .screen-kicker {
     font-family: var(--onsen-font-mono);
     font-size: 10px;

@@ -87,6 +87,11 @@
   --onsen-text-prose-desktop: calc(17.5px * var(--onsen-prose-scale));
   --onsen-text-prose-excerpt: calc(14.5px * var(--onsen-prose-scale));
   --onsen-text-field: calc(15.5px * var(--onsen-prose-scale));
+  /*
+   * The app explaining itself in sentences (phase 47). Prose, because it is
+   * read rather than scanned, and scalable for the same reason.
+   */
+  --onsen-text-explain: calc(13.5px * var(--onsen-prose-scale));
 
   --onsen-leading-prose: 1.64;
 
@@ -95,6 +100,13 @@
   --onsen-text-header: 19px;
   --onsen-text-attribution: 10px;
   --onsen-text-section-label: 9px;
+  /*
+   * A group of fields, not one field (phase 47). Two steps above the field
+   * label — larger, brighter, and carrying a rule — because before this the
+   * two were set identically and a screen of twelve groups read as one list of
+   * two hundred labels.
+   */
+  --onsen-text-group-heading: 11px;
   --onsen-text-button: 9.5px;
   --onsen-text-token-count: 8.5px;
 
@@ -102,6 +114,7 @@
   --onsen-tracking-label: 0.18em;
   --onsen-tracking-kicker: 0.16em;
   --onsen-tracking-button: 0.12em;
+  --onsen-tracking-group: 0.18em;
 
   /*
    * Depth (SPEC §20 phase 45).

@@ -92,7 +92,7 @@ export function CastStrip({
             >
               {cued ? (
                 <span
-                  className="chrome absolute -top-[14px] left-0 text-[7.5px] tracking-[0.14em] uppercase"
+                  className="chrome absolute -top-[14px] left-0 text-[8.5px] tracking-[0.14em] uppercase"
                   style={{ color: "var(--onsen-color-red)" }}
                 >
                   {nextSpeaker!.source === "user"

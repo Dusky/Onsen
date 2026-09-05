@@ -140,7 +140,7 @@ export function OpsGrid({ ops, cue }: { ops: Op[]; cue?: string | undefined }) {
       {/* An op that is present but cannot run says why, once, rather than
           sitting greyed out with no explanation. */}
       {blocked === undefined ? null : (
-        <p className="chrome mt-[8px] text-[9px] leading-[1.5] tracking-[0.06em] text-ink-dim uppercase">
+        <p className="meta mt-[8px] leading-[1.5]">
           {blocked.unavailable}
         </p>
       )}
@@ -193,7 +193,7 @@ export function OpPrompt({
         placeholder={placeholder}
         className="field min-h-[62px] resize-none py-[10px]"
       />
-      <p className="chrome mt-[6px] text-[9px] leading-[1.5] text-ink-dim">{hint}</p>
+      <p className="explain mt-[6px]">{hint}</p>
       <div className="mt-[9px] flex gap-[6px]">
         <button type="submit" className="btn btn-primary flex-1">
           {submitLabel}

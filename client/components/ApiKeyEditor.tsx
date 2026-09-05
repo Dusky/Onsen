@@ -32,7 +32,7 @@ export function ApiKeyEditor({
     return (
       <Sheet title={strings.settings.apiKeyToken} onClose={onClose}>
         <div className="pt-[8px] pb-[14px]">
-          <p className="chrome mb-[12px] text-[10px] leading-[1.6] text-ink-dim">
+          <p className="explain mb-[12px]">
             {strings.settings.apiKeyTokenHint}
           </p>
           <p className="mb-[16px] font-mono text-[12px] leading-[1.7] break-all select-all">
@@ -81,7 +81,7 @@ export function ApiKeyEditor({
           </select>
 
           {error !== null ? (
-            <p className="chrome mb-[12px] text-[10px] leading-[1.6] text-red-text">{error}</p>
+            <p className="explain explain-alert mb-[12px]">{error}</p>
           ) : null}
           <button type="submit" className="btn btn-primary w-full">
             {strings.settings.addApiKey}
@@ -94,7 +94,7 @@ export function ApiKeyEditor({
   return (
     <Sheet title={apiKey.name} meta={apiKey.hint} onClose={onClose}>
       <div className="pt-[8px] pb-[14px]">
-        <p className="chrome mb-[16px] text-[10px] leading-[1.6] text-ink-dim">
+        <p className="explain mb-[16px]">
           {[
             apiKey.sceneTitle ?? strings.settings.apiKeyAllScenes,
             apiKey.uses === 0
@@ -140,7 +140,7 @@ export function ApiKeyEditor({
             character card before calling. */}
         <p className="section-label mt-[20px] mb-[8px]">{strings.settings.apiKeyRequests}</p>
         {apiKey.requests.length === 0 ? (
-          <p className="chrome text-[10px] leading-[1.6] text-ink-dim">
+          <p className="explain">
             {strings.settings.apiKeyNoRequests}
           </p>
         ) : (
@@ -160,7 +160,7 @@ export function ApiKeyEditor({
                 </span>
               </div>
               {request.warning !== null ? (
-                <p className="chrome mt-[3px] text-[9.5px] leading-[1.5] text-ink-dim">
+                <p className="explain mt-[3px]">
                   {strings.settings.apiKeyWarned}
                 </p>
               ) : null}

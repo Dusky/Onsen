@@ -46,7 +46,7 @@ export function MediaSettings() {
             </p>
 
             {mine.length === 0 ? (
-              <p className="chrome mb-[10px] text-[9.5px] leading-[1.5] text-ink-dim">
+              <p className="explain mb-[10px]">
                 {purpose === "image"
                   ? strings.media.noImageService
                   : strings.media.noSpeechService}
@@ -61,7 +61,7 @@ export function MediaSettings() {
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[15px] font-medium">{service.name}</span>
-                    <span className="chrome mt-[4px] block truncate text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+                    <span className="meta mt-[4px] block truncate">
                       {[service.kindLabel, service.model ?? null]
                         .filter((part): part is string => part !== null)
                         .join(" · ")}
@@ -177,7 +177,7 @@ function ServiceEditor({
                 </option>
               ))}
             </select>
-            <p className="chrome mt-[6px] mb-[14px] text-[10px] leading-[1.6] text-ink-dim">
+            <p className="explain mt-[6px] mb-[14px]">
               {chosen?.hint ?? ""}
             </p>
           </>
@@ -201,13 +201,13 @@ function ServiceEditor({
 
         <p className="section-label mb-[6px]">{strings.media.serviceModel}</p>
         <input name="model" className="field" defaultValue={service?.model ?? ""} />
-        <p className="chrome mt-[6px] mb-[14px] text-[10px] leading-[1.6] text-ink-dim">
+        <p className="explain mt-[6px] mb-[14px]">
           {strings.media.serviceModelHint}
         </p>
 
         <p className="section-label mb-[6px]">{strings.media.serviceKey}</p>
         <input name="apiKey" type="password" className="field" autoComplete="off" />
-        <p className="chrome mt-[6px] mb-[16px] text-[10px] leading-[1.6] text-ink-dim">
+        <p className="explain mt-[6px] mb-[16px]">
           {service?.hasApiKey === true
             ? strings.media.serviceKeyKept(service.apiKeyMask ?? "")
             : chosen?.needsKey === true

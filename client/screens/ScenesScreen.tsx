@@ -62,7 +62,7 @@ function SceneRow({ scene }: { scene: SceneDto }) {
     >
       <div className="flex items-baseline justify-between gap-[12px]">
         <span className="truncate text-[17px] font-medium">{scene.title}</span>
-        <span className="chrome flex-none text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+        <span className="meta flex-none">
           {relativeTime(scene.updatedAt)}
         </span>
       </div>
@@ -71,7 +71,7 @@ function SceneRow({ scene }: { scene: SceneDto }) {
       <p className="mt-[6px] line-clamp-1 text-[length:var(--onsen-text-prose-excerpt)] leading-[1.5] text-ink-prose-muted">
         {scene.lastLine ?? strings.scenes.emptyScene}
       </p>
-      <div className="chrome mt-[7px] flex items-baseline justify-between gap-[12px] text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+      <div className="meta mt-[7px] flex items-baseline justify-between gap-[12px]">
         <span className="truncate">{cast ?? strings.scenes.noCast}</span>
         <span className="flex-none">{strings.scenes.counts(scene.messageCount)}</span>
       </div>

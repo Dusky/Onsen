@@ -51,7 +51,7 @@ export function InstallPackSheet({
         ) : null}
 
         {plan.problem !== null ? (
-          <p className="chrome mb-[12px] text-[10px] leading-[1.6] text-red-text">{plan.problem}</p>
+          <p className="explain explain-alert mb-[12px]">{plan.problem}</p>
         ) : null}
 
         {result === null ? (
@@ -68,7 +68,7 @@ export function InstallPackSheet({
             {skips.length > 0 ? (
               <>
                 <p className="section-label mt-[18px] mb-[4px]">{strings.settings.packSkip}</p>
-                <p className="chrome mb-[8px] text-[10px] leading-[1.6] text-ink-dim">
+                <p className="explain mb-[8px]">
                   {strings.settings.packSkipHint}
                 </p>
                 {skips.map((item, index) => (
@@ -78,13 +78,13 @@ export function InstallPackSheet({
             ) : null}
 
             {plan.strayAssets > 0 ? (
-              <p className="chrome mt-[14px] text-[10px] leading-[1.6] text-ink-dim">
+              <p className="explain mt-[14px]">
                 {strings.settings.packStrays(plan.strayAssets)}
               </p>
             ) : null}
 
             {error !== null ? (
-              <p className="chrome mt-[12px] text-[10px] leading-[1.6] text-red-text">{error}</p>
+              <p className="explain explain-alert mt-[12px]">{error}</p>
             ) : null}
 
             <button
@@ -110,7 +110,7 @@ export function InstallPackSheet({
               {strings.settings.packInstalled(result.added, result.skipped)}
             </p>
             {result.warnings.map((warning) => (
-              <p key={warning} className="chrome mb-[6px] text-[10px] leading-[1.6] text-ink-dim">
+              <p key={warning} className="explain mb-[6px]">
                 {warning}
               </p>
             ))}
@@ -135,12 +135,12 @@ function PlanRow({
     <div className="border-b border-rule py-[9px]" style={{ opacity: dim ? 0.6 : 1 }}>
       <div className="flex items-baseline justify-between gap-[10px]">
         <span className="min-w-0 flex-1 truncate text-[14px]">{item.name}</span>
-        <span className="chrome flex-none text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+        <span className="meta flex-none">
           {strings.settings.packKind[item.kind] ?? item.kind}
         </span>
       </div>
       {item.detail !== "" ? (
-        <p className="chrome mt-[3px] text-[10px] leading-[1.5] text-ink-dim">{item.detail}</p>
+        <p className="explain mt-[3px]">{item.detail}</p>
       ) : null}
     </div>
   );
@@ -154,7 +154,7 @@ export function RemovePackSheet({ pack, onClose }: { pack: InstalledPackDto; onC
   return (
     <Sheet title={strings.settings.packRemoveTitle} meta={pack.name} onClose={onClose}>
       <div className="pt-[8px] pb-[14px]">
-        <p className="chrome mb-[12px] text-[10px] leading-[1.6] text-ink-dim">
+        <p className="explain mb-[12px]">
           {strings.settings.packRemoveHint}
         </p>
         {(preview.data?.rows ?? []).map((row, index) => (
@@ -245,7 +245,7 @@ export function ExportPackSheet({ onClose }: { onClose(): void }) {
         <textarea name="description" className="field mb-[18px] min-h-[56px]" />
 
         <p className="section-label mb-[4px]">{strings.settings.packContents}</p>
-        <p className="chrome mb-[12px] text-[10px] leading-[1.6] text-ink-dim">
+        <p className="explain mb-[12px]">
           {strings.settings.packContentsHint}
         </p>
 
@@ -282,10 +282,10 @@ export function ExportPackSheet({ onClose }: { onClose(): void }) {
         </label>
 
         {error !== null ? (
-          <p className="chrome mb-[12px] text-[10px] leading-[1.6] text-red-text">{error}</p>
+          <p className="explain explain-alert mb-[12px]">{error}</p>
         ) : null}
         {chosen === 0 && !banlist ? (
-          <p className="chrome mb-[12px] text-[10px] leading-[1.6] text-ink-dim">
+          <p className="explain mb-[12px]">
             {strings.settings.packEmpty}
           </p>
         ) : null}

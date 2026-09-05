@@ -118,7 +118,7 @@ export function TriggerEditor({
               spellCheck={false}
               required
             />
-            <p className="chrome mt-[7px] mb-[16px] text-[10px] leading-[1.6] text-ink-dim">
+            <p className="explain mt-[7px] mb-[16px]">
               {strings.settings.triggerAutomationIdHint}
             </p>
           </>
@@ -171,7 +171,7 @@ export function TriggerEditor({
         ) : null}
 
         {error !== null ? (
-          <p className="chrome mb-[12px] text-[10px] leading-[1.6] text-red-text">{error}</p>
+          <p className="explain explain-alert mb-[12px]">{error}</p>
         ) : null}
 
         <button type="submit" className="btn btn-primary w-full">
@@ -199,7 +199,7 @@ export function TriggerEditor({
       {trigger !== null ? (
         <div className="border-t border-rule pt-[14px] pb-[10px]">
           <p className="section-label mb-[4px]">{strings.settings.triggerRun}</p>
-          <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+          <p className="explain mb-[10px]">
             {strings.settings.triggerRunHint}
           </p>
           <select
@@ -223,12 +223,12 @@ export function TriggerEditor({
             {strings.settings.triggerRun}
           </button>
           {run.data !== undefined ? (
-            <p className="chrome mt-[10px] text-[10px] leading-[1.6] text-ink-dim">
+            <p className="explain mt-[10px]">
               {run.data.detail}
             </p>
           ) : null}
           {run.error !== null ? (
-            <p className="chrome mt-[10px] text-[10px] leading-[1.6] text-red-text">
+            <p className="explain explain-alert mt-[10px]">
               {run.error.message}
             </p>
           ) : null}

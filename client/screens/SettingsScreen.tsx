@@ -240,7 +240,7 @@ function ProviderEditor({
 
         <p className="section-label mb-[6px]">{strings.settings.providerKey}</p>
         <input name="apiKey" type="password" className="field" autoComplete="off" />
-        <p className="chrome mt-[6px] mb-[14px] text-[10px] leading-[1.6] text-ink-dim">
+        <p className="explain mt-[6px] mb-[14px]">
           {provider === null
             ? strings.settings.providerKeyNone
             : provider.hasApiKey
@@ -279,7 +279,7 @@ function ProviderEditor({
                 </button>
               ))}
             </div>
-            <p className="chrome mb-[14px] text-[10px] leading-[1.6] text-ink-dim">
+            <p className="explain mb-[14px]">
               {strings.settings.providerPrefillHint}
             </p>
           </>
@@ -302,7 +302,7 @@ function ProviderEditor({
         )}
 
         {error === null ? null : (
-          <p className="chrome mb-[10px] text-[9.5px] leading-[1.5] text-red-text">{error}</p>
+          <p className="explain explain-alert mb-[10px]">{error}</p>
         )}
 
         {/* §16: one round trip, so a bad key reads here rather than on the first
@@ -468,7 +468,7 @@ function ProfileEditor({
         </datalist>
 
         {error === null ? null : (
-          <p className="chrome mb-[10px] text-[9.5px] leading-[1.5] text-red-text">{error}</p>
+          <p className="explain explain-alert mb-[10px]">{error}</p>
         )}
 
         <div className="flex gap-[8px]">
@@ -534,7 +534,7 @@ function OpEditor({
   return (
     <Sheet title={task.label} onClose={onClose}>
       <div className="pt-[8px] pb-[14px]">
-        <p className="chrome mb-[16px] text-[9.5px] leading-[1.5] text-ink-dim">
+        <p className="explain mb-[16px]">
           {task.description}
         </p>
 
@@ -570,7 +570,7 @@ function OpEditor({
             >
               {strings.settings.opAutoTrigger}
             </button>
-            <p className="chrome mb-[16px] text-[10px] leading-[1.6] text-ink-dim">
+            <p className="explain mb-[16px]">
               {task.effect === "replace"
                 ? strings.settings.opEffectReplace
                 : task.effect === "flag"
@@ -605,7 +605,7 @@ function OpEditor({
             </div>
           </>
         ) : (
-          <p className="chrome mb-[16px] text-[10px] leading-[1.6] text-ink-dim">
+          <p className="explain mb-[16px]">
             {strings.settings.opTurnOnly}
           </p>
         )}
@@ -622,7 +622,7 @@ function OpEditor({
               value={template}
               onChange={(event) => setTemplate(event.target.value)}
             />
-            <p className="chrome mt-[6px] text-[10px] leading-[1.6] text-ink-dim">
+            <p className="explain mt-[6px]">
               {strings.settings.opWordsHint(
                 task.variables.map((name) => `{{${name}}}`).join(" · "),
               )}
@@ -692,8 +692,8 @@ function UpdateGroup() {
   if (s.mode !== "git") {
     return (
       <>
-        <p className="section-label mb-[4px]">{strings.settings.update}</p>
-        <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+        <p className="group-heading mb-[12px]">{strings.settings.update}</p>
+        <p className="explain mb-[10px]">
           {strings.settings.updateNotGit}
         </p>
         <div className="mb-[26px]" />
@@ -715,8 +715,8 @@ function UpdateGroup() {
         : strings.settings.updateBehind(behind);
   return (
     <>
-      <p className="section-label mb-[4px]">{strings.settings.update}</p>
-      <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+      <p className="group-heading mb-[12px]">{strings.settings.update}</p>
+      <p className="explain mb-[10px]">
         {strings.settings.updateHint}
       </p>
       <Row>
@@ -728,7 +728,7 @@ function UpdateGroup() {
             <span className="block truncate text-[15px] font-medium">
               {strings.settings.updateInstall}
             </span>
-            <span className="chrome block truncate text-[9px] tracking-[0.06em] text-ink-dim uppercase">
+            <span className="meta block truncate">
               {[s.branch, s.commit?.slice(0, 7), s.dirty ? strings.settings.updateChanged : null]
                 .filter((part) => part !== null && part !== undefined && part !== "")
                 .join(" · ")}
@@ -773,18 +773,18 @@ function UpdateGroup() {
       </div>
       {/* Chrome, not rows: these are conditions, not things to tap. */}
       {s.dirty ? (
-        <p className="chrome mt-[10px] text-[10px] leading-[1.6] text-ink-dim">
+        <p className="explain mt-[10px]">
           {strings.settings.updateDirty}
         </p>
       ) : null}
       {s.error === null ? null : (
-        <p className="chrome mt-[10px] text-[9.5px] leading-[1.5] text-red-text">{s.error}</p>
+        <p className="explain explain-alert mt-[10px]">{s.error}</p>
       )}
       {refusal === null ? null : (
-        <p className="chrome mt-[10px] text-[9.5px] leading-[1.5] text-red-text">{refusal}</p>
+        <p className="explain explain-alert mt-[10px]">{refusal}</p>
       )}
       {s.restartRequired ? (
-        <p className="chrome mt-[10px] text-[10px] leading-[1.6] text-ink-dim">
+        <p className="explain mt-[10px]">
           {strings.settings.updateRestart}
         </p>
       ) : null}
@@ -813,8 +813,8 @@ function ReadingSection() {
 
   return (
     <>
-      <p className="section-label mb-[4px]">{strings.settings.reading}</p>
-      <p className="chrome mb-[16px] text-[10px] leading-[1.6] text-ink-dim">
+      <p className="group-heading mb-[12px]">{strings.settings.reading}</p>
+      <p className="explain mb-[16px]">
         {strings.settings.readingHint}
       </p>
 
@@ -836,7 +836,7 @@ function ReadingSection() {
           </button>
         ))}
       </div>
-      <p className="chrome mt-[7px] mb-[26px] text-[10px] leading-[1.6] text-ink-dim">
+      <p className="explain mt-[7px] mb-[26px]">
         {strings.settings.chimeHint}
       </p>
     </>
@@ -861,13 +861,13 @@ function ApiKeysSection() {
 
   return (
     <>
-      <p className="section-label mb-[4px]">{strings.settings.apiKeys}</p>
-      <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+      <p className="group-heading mb-[12px]">{strings.settings.apiKeys}</p>
+      <p className="explain mb-[10px]">
         {strings.settings.apiKeysHint}
       </p>
 
       {keys.length === 0 ? (
-        <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+        <p className="explain mb-[10px]">
           {strings.settings.apiKeyNone}
         </p>
       ) : null}
@@ -943,13 +943,13 @@ function WebhooksSection() {
 
   return (
     <>
-      <p className="section-label mb-[4px]">{strings.settings.webhooks}</p>
-      <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+      <p className="group-heading mb-[12px]">{strings.settings.webhooks}</p>
+      <p className="explain mb-[10px]">
         {strings.settings.webhooksHint}
       </p>
 
       {subscriptions.length === 0 ? (
-        <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+        <p className="explain mb-[10px]">
           {strings.settings.webhookNone}
         </p>
       ) : null}
@@ -1034,13 +1034,13 @@ function PacksSection() {
 
   return (
     <>
-      <p className="section-label mb-[4px]">{strings.settings.packs}</p>
-      <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+      <p className="group-heading mb-[12px]">{strings.settings.packs}</p>
+      <p className="explain mb-[10px]">
         {strings.settings.packsHint}
       </p>
 
       {installed.length === 0 ? (
-        <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+        <p className="explain mb-[10px]">
           {strings.settings.packNone}
         </p>
       ) : null}
@@ -1053,7 +1053,7 @@ function PacksSection() {
           >
             <span className="min-w-0 flex-1">
               <span className="block truncate text-[15px] font-medium">{pack.name}</span>
-              <span className="chrome block truncate text-[9px] tracking-[0.06em] text-ink-dim uppercase">
+              <span className="meta block truncate">
                 {[
                   strings.settings.packVersion(pack.version),
                   pack.author === "" ? null : strings.settings.packBy(pack.author),
@@ -1096,7 +1096,7 @@ function PacksSection() {
         {strings.settings.packExport}
       </button>
       {error !== null ? (
-        <p className="chrome mt-[10px] text-[10px] leading-[1.6] text-red-text">{error}</p>
+        <p className="explain explain-alert mt-[10px]">{error}</p>
       ) : null}
       <div className="mb-[26px]" />
 
@@ -1150,13 +1150,13 @@ function AutomationSection() {
 
   return (
     <>
-      <p className="section-label mb-[4px]">{strings.settings.automation}</p>
-      <p className="chrome mb-[16px] text-[10px] leading-[1.6] text-ink-dim">
+      <p className="group-heading mb-[12px]">{strings.settings.automation}</p>
+      <p className="explain mb-[16px]">
         {strings.settings.automationHint}
       </p>
 
-      <p className="section-label mb-[4px]">{strings.settings.scripts}</p>
-      <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+      <p className="group-heading mb-[12px]">{strings.settings.scripts}</p>
+      <p className="explain mb-[10px]">
         {strings.settings.scriptsHint}
       </p>
       {scriptList.map((script) => (
@@ -1173,7 +1173,7 @@ function AutomationSection() {
               >
                 {script.name}
               </span>
-              <span className="chrome block truncate text-[9px] tracking-[0.06em] text-ink-dim uppercase">
+              <span className="meta block truncate">
                 {[
                   strings.settings.stageLabel[script.applyTo],
                   strings.settings.scopeLabel[script.scope],
@@ -1195,8 +1195,8 @@ function AutomationSection() {
         {strings.settings.addScript}
       </button>
 
-      <p className="section-label mb-[4px]">{strings.settings.triggers}</p>
-      <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+      <p className="group-heading mb-[12px]">{strings.settings.triggers}</p>
+      <p className="explain mb-[10px]">
         {strings.settings.triggersHint}
       </p>
       {(triggers.data ?? []).map((trigger) => (
@@ -1213,7 +1213,7 @@ function AutomationSection() {
               >
                 {trigger.name}
               </span>
-              <span className="chrome block truncate text-[9px] tracking-[0.06em] text-ink-dim uppercase">
+              <span className="meta block truncate">
                 {[strings.settings.eventLabel[trigger.event], refLabel(trigger)]
                   .filter((part) => part !== undefined)
                   .join(" \u00b7 ")}
@@ -1250,12 +1250,12 @@ function EmbeddingsSection() {
 
   return (
     <>
-      <p className="section-label mb-[4px]">{strings.settings.embeddings}</p>
-      <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+      <p className="group-heading mb-[12px]">{strings.settings.embeddings}</p>
+      <p className="explain mb-[10px]">
         {strings.settings.embeddingsHint}
       </p>
       {config.data !== undefined && config.data.baseUrl === null ? (
-        <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+        <p className="explain mb-[10px]">
           {strings.settings.embeddingsLexical}
         </p>
       ) : null}
@@ -1298,7 +1298,7 @@ function EmbeddingsSection() {
             {strings.settings.embeddingsSave}
           </button>
           {saved ? (
-            <span className="chrome text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+            <span className="meta">
               {strings.settings.embeddingsSaved}
             </span>
           ) : null}
@@ -1429,15 +1429,15 @@ export function SettingsScreen() {
       <main className="min-h-0 flex-1 overflow-y-auto px-[22px] py-[16px]">
         <div className="mx-auto w-full max-w-[var(--onsen-list-measure)]">
           {matching.length === 0 ? (
-            <p className="chrome text-[10px] leading-[1.6] text-ink-dim">
+            <p className="explain">
               {strings.settings.categoryEmpty}
             </p>
           ) : null}
           {show("models") ? (
             <>
           {/* Providers */}
-          <p className="section-label mb-[4px]">{strings.settings.providers}</p>
-          <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+          <p className="group-heading mb-[12px]">{strings.settings.providers}</p>
+          <p className="explain mb-[10px]">
             {strings.settings.providersHint}
           </p>
           {providerList.map((provider) => (
@@ -1450,7 +1450,7 @@ export function SettingsScreen() {
                 {statusDot(provider.enabled && provider.baseUrl !== null)}
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[15px] font-medium">{provider.name}</span>
-                  <span className="chrome block truncate text-[9px] tracking-[0.06em] text-ink-dim uppercase">
+                  <span className="meta block truncate">
                     {[provider.model, kindLabel(provider.kind), provider.hasApiKey ? "keyed" : null]
                       .filter((part) => part !== null && part !== "")
                       .join(" · ")}
@@ -1469,8 +1469,8 @@ export function SettingsScreen() {
           </button>
 
           {/* Profiles */}
-          <p className="section-label mb-[4px]">{strings.settings.profiles}</p>
-          <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+          <p className="group-heading mb-[12px]">{strings.settings.profiles}</p>
+          <p className="explain mb-[10px]">
             {strings.settings.profilesHint}
           </p>
           {profileList.map((profile) => (
@@ -1482,7 +1482,7 @@ export function SettingsScreen() {
               >
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[15px] font-medium">{profile.name}</span>
-                  <span className="chrome block truncate text-[9px] tracking-[0.06em] text-ink-dim uppercase">
+                  <span className="meta block truncate">
                     {[byId.get(profile.providerId)?.name, profile.model]
                       .filter((part) => part !== undefined && part !== null && part !== "")
                       .join(" · ")}
@@ -1513,8 +1513,8 @@ export function SettingsScreen() {
           {show("generation") ? (
             <>
           {/* How the model is asked to write (SPEC §13). */}
-          <p className="section-label mb-[4px]">{strings.settings.generation}</p>
-          <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+          <p className="group-heading mb-[12px]">{strings.settings.generation}</p>
+          <p className="explain mb-[10px]">
             {strings.settings.generationHint}
           </p>
           {(presets.data ?? []).map((preset) => (
@@ -1526,7 +1526,7 @@ export function SettingsScreen() {
               >
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[15px] font-medium">{preset.name}</span>
-                  <span className="chrome block truncate text-[9px] tracking-[0.06em] text-ink-dim uppercase">
+                  <span className="meta block truncate">
                     {[
                       `${strings.settings.samplerTemperature} ${preset.samplerSettings.temperature ?? "—"}`,
                       preset.samplerSettings.dry_multiplier ? "DRY" : null,
@@ -1570,7 +1570,7 @@ export function SettingsScreen() {
               : strings.settings.importPreset}
           </button>
           {presetReport !== null ? (
-            <p className="chrome mt-[10px] text-[10px] leading-[1.6] text-ink-dim">{presetReport}</p>
+            <p className="explain mt-[10px]">{presetReport}</p>
           ) : null}
           <div className="mb-[26px]" />
 
@@ -1579,8 +1579,8 @@ export function SettingsScreen() {
           {show("tasks") ? (
             <>
           {/* Routing by operation — the interesting one. */}
-          <p className="section-label mb-[4px]">{strings.settings.routing}</p>
-          <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+          <p className="group-heading mb-[12px]">{strings.settings.routing}</p>
+          <p className="explain mb-[10px]">
             {strings.settings.routingHint}
           </p>
           {(tasks.data ?? []).map((task) => {
@@ -1605,7 +1605,7 @@ export function SettingsScreen() {
                     >
                       {task.label}
                     </span>
-                    <span className="chrome block truncate text-[9px] tracking-[0.06em] text-ink-dim uppercase">
+                    <span className="meta block truncate">
                       {[
                         task.enabled ? null : strings.settings.opDisabled,
                         task.promptTemplate === null
@@ -1642,7 +1642,7 @@ export function SettingsScreen() {
               nobody goes looking for under "embeddings". */}
           {show("media") ? (
             <>
-              <p className="section-label mb-[4px]">{strings.media.title}</p>
+              <p className="group-heading mb-[12px]">{strings.media.title}</p>
               <MediaSettings />
             </>
           ) : null}
@@ -1666,7 +1666,7 @@ export function SettingsScreen() {
             <button type="button" className="btn w-full" onClick={() => signOut.mutate(undefined)}>
               {strings.settings.signOut}
             </button>
-            <p className="chrome mt-[7px] text-[10px] leading-[1.6] text-ink-dim">
+            <p className="explain mt-[7px]">
               {strings.settings.signOutHint}
             </p>
           </div>

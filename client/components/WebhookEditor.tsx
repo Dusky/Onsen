@@ -47,7 +47,7 @@ export function WebhookEditor({
     return (
       <Sheet title={strings.settings.webhookSecret} onClose={onClose}>
         <div className="pt-[8px] pb-[14px]">
-          <p className="chrome mb-[12px] text-[10px] leading-[1.6] text-ink-dim">
+          <p className="explain mb-[12px]">
             {strings.settings.webhookSecretHint}
           </p>
           <p className="mb-[16px] font-mono text-[12px] leading-[1.7] break-all select-all">
@@ -110,7 +110,7 @@ export function WebhookEditor({
           spellCheck={false}
           required
         />
-        <p className="chrome mt-[7px] mb-[16px] text-[10px] leading-[1.6] text-ink-dim">
+        <p className="explain mt-[7px] mb-[16px]">
           {strings.settings.webhookUrlHint}
         </p>
 
@@ -145,7 +145,7 @@ export function WebhookEditor({
         )}
 
         {error !== null ? (
-          <p className="chrome mb-[12px] text-[10px] leading-[1.6] text-red-text">{error}</p>
+          <p className="explain explain-alert mb-[12px]">{error}</p>
         ) : null}
 
         <button
@@ -168,7 +168,7 @@ export function WebhookEditor({
             {test.isPending ? strings.settings.webhookTesting : strings.settings.webhookTest}
           </button>
           {test.data !== undefined ? (
-            <p className="chrome mt-[10px] text-[10px] leading-[1.6] text-ink-dim">
+            <p className="explain mt-[10px]">
               {test.data.ok
                 ? strings.settings.webhookTestOk(test.data.status)
                 : `${strings.settings.webhookTestFail} — ${test.data.detail ?? ""}`}
@@ -222,7 +222,7 @@ export function WebhookEditor({
             {strings.settings.webhookDeliveries}
           </p>
           {webhook.deliveries.length === 0 ? (
-            <p className="chrome text-[10px] leading-[1.6] text-ink-dim">
+            <p className="explain">
               {strings.settings.webhookNoDeliveries}
             </p>
           ) : (
@@ -244,7 +244,7 @@ export function WebhookEditor({
                   </span>
                 </div>
                 {delivery.detail !== null ? (
-                  <p className="chrome mt-[3px] truncate text-[9.5px] leading-[1.5] text-ink-dim">
+                  <p className="chrome mt-[3px] truncate text-[9.5px] text-ink-dim">
                     {delivery.detail}
                   </p>
                 ) : null}

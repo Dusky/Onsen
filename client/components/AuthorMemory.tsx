@@ -44,7 +44,7 @@ export function AuthorNotes({ authorId, authorName }: { authorId: string; author
       <p className="section-label mb-[8px]">{strings.authors.memoryNotes}</p>
 
       {entries.length === 0 ? (
-        <p className="chrome mb-[14px] text-[9.5px] leading-[1.5] text-ink-dim">
+        <p className="explain mb-[14px]">
           {strings.authors.memoryEmpty}
         </p>
       ) : (
@@ -56,7 +56,7 @@ export function AuthorNotes({ authorId, authorName }: { authorId: string; author
             </p>
             {/* §11's provenance, as a sentence: a badge saying AUTHOR would be
                 one more thing to decode on a screen that already has several. */}
-            <p className="chrome mt-[5px] text-[9px] tracking-[0.06em] text-ink-dim uppercase">
+            <p className="meta mt-[5px]">
               {[
                 entry.writtenByAuthor
                   ? strings.authors.memoryByAuthor(authorName)
@@ -80,7 +80,7 @@ export function AuthorNotes({ authorId, authorName }: { authorId: string; author
         disabled={bookId === null}
         onCommit={(next) => setBudget.mutate(next)}
       />
-      <p className="chrome mt-[7px] mb-[14px] text-[9.5px] leading-[1.5] text-ink-dim">
+      <p className="explain mt-[7px] mb-[14px]">
         {strings.authors.memoryBudgetHint}
       </p>
 
@@ -93,7 +93,7 @@ export function AuthorNotes({ authorId, authorName }: { authorId: string; author
           >
             {strings.authors.memoryOpenBook}
           </button>
-          <p className="chrome mt-[7px] mb-[14px] text-[9.5px] leading-[1.5] text-ink-dim">
+          <p className="explain mt-[7px] mb-[14px]">
             {strings.authors.memoryOpenBookHint}
           </p>
         </>
@@ -203,12 +203,12 @@ export function RememberThis({
               ? strings.sceneSetup.rememberThisWorking
               : strings.sceneSetup.rememberThis}
           </button>
-          <p className="chrome mt-[7px] text-[9.5px] leading-[1.5] text-ink-dim">
+          <p className="explain mt-[7px]">
             {said ?? strings.sceneSetup.rememberHint(authorName)}
           </p>
         </>
       ) : (
-        <p className="chrome text-[9.5px] leading-[1.5] text-ink-dim">
+        <p className="explain">
           {strings.sceneSetup.rememberOff(authorName)}
         </p>
       )}

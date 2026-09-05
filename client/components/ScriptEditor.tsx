@@ -95,7 +95,7 @@ export function ScriptEditor({
             </option>
           ))}
         </select>
-        <p className="chrome mt-[7px] mb-[16px] text-[10px] leading-[1.6] text-ink-dim">
+        <p className="explain mt-[7px] mb-[16px]">
           {strings.settings.stageHint[stage]}
         </p>
 
@@ -142,7 +142,7 @@ export function ScriptEditor({
           spellCheck={false}
           required
         />
-        <p className="chrome mt-[7px] mb-[16px] text-[10px] leading-[1.6] text-ink-dim">
+        <p className="explain mt-[7px] mb-[16px]">
           {strings.settings.scriptPatternHint}
         </p>
 
@@ -153,7 +153,7 @@ export function ScriptEditor({
           onChange={(event) => setReplacement(event.target.value)}
           spellCheck={false}
         />
-        <p className="chrome mt-[7px] mb-[16px] text-[10px] leading-[1.6] text-ink-dim">
+        <p className="explain mt-[7px] mb-[16px]">
           {strings.settings.scriptReplacementHint}
         </p>
 
@@ -164,12 +164,12 @@ export function ScriptEditor({
           onChange={(event) => setFlags(event.target.value)}
           spellCheck={false}
         />
-        <p className="chrome mt-[7px] mb-[18px] text-[10px] leading-[1.6] text-ink-dim">
+        <p className="explain mt-[7px] mb-[18px]">
           {strings.settings.scriptFlagsHint}
         </p>
 
         {error !== null ? (
-          <p className="chrome mb-[12px] text-[10px] leading-[1.6] text-red-text">{error}</p>
+          <p className="explain explain-alert mb-[12px]">{error}</p>
         ) : null}
 
         <button type="submit" className="btn btn-primary w-full">
@@ -196,7 +196,7 @@ export function ScriptEditor({
           whether to press it. */}
       <div className="border-t border-rule pt-[14px] pb-[10px]">
         <p className="section-label mb-[4px]">{strings.settings.scriptTest}</p>
-        <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+        <p className="explain mb-[10px]">
           {strings.settings.scriptTestHint}
         </p>
         <textarea
@@ -250,7 +250,7 @@ export function ScriptEditor({
           </div>
         ) : null}
         {test.error !== null ? (
-          <p className="chrome mt-[10px] text-[10px] leading-[1.6] text-red-text">
+          <p className="explain explain-alert mt-[10px]">
             {test.error.message}
           </p>
         ) : null}

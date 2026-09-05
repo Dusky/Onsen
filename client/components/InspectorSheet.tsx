@@ -51,7 +51,7 @@ export function InspectorSheet({
     >
       {/* The arithmetic, in one line, because that is the argument the whole
           sheet makes: what the window was, what was spent, what was left. */}
-      <p className="chrome mt-[10px] text-[9px] leading-[1.7] tracking-[0.06em] text-ink-dim uppercase">
+      <p className="meta mt-[10px] leading-[1.7]">
         {strings.chat.inspectorBudget(debug)} ·{" "}
         {debug.tokensAreEstimated ? strings.chat.inspectorEstimated : strings.chat.inspectorCounted}
       </p>
@@ -80,7 +80,7 @@ export function InspectorSheet({
             >
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[13px] font-medium">{block.label}</span>
-                <span className="chrome block truncate text-[9px] tracking-[0.06em] text-ink-dim uppercase">
+                <span className="meta block truncate">
                   {[block.source, placementOf(block), block.role]
                     .filter((part) => part !== "")
                     .join(" · ")}
@@ -99,7 +99,7 @@ export function InspectorSheet({
             {isOpen && block.id === "history" ? (
               <div className="mt-[8px]">
                 {history.map((message) => (
-                  <p key={message.id} className="chrome text-[10px] leading-[1.6] text-ink-dim">
+                  <p key={message.id} className="explain">
                     <span className="tracking-[0.06em] uppercase">
                       {message.characterId === null
                         ? message.authorType === "user"

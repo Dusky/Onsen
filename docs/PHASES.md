@@ -4099,3 +4099,95 @@ default: `resolveRoute` is written for scenes, which always have one.
 run tools, ask again with the results — so a test that scripts one round hangs
 on the second. Every tool test scripts call-then-answer, and the queue survives
 across `generate` calls, which is what makes that work.
+
+---
+
+## Phase 47 — Typography and hierarchy
+
+Phase 45 fixed the two things the criticism named — the tan palette and the
+flatness — and left the third untouched. Asked what was next, the honest answer
+came from counting rather than from taste:
+
+```
+≤10px:        395 elements     (9px ×145, 10px ×112, 9.5px ×88, 8.5px ×45, …)
+17px and up:   12 elements
+uppercase:    218 uses across 44 files
+font-weight:  30 font-medium + 3 font-semibold  ← in the entire client
+.section-label:  167 uses      .screen-title: 6
+```
+
+The first diagnosis — "the type table is the bug, it needs rewriting" — was
+**wrong, and was corrected before any code moved.** The table has a real serif
+ramp (26 / 19 / 17.5 / 17 / 15.5 / 14.5). The app simply never climbed it.
+
+The actual mechanism, found by reading `Field.tsx`: `.section-label` was drawn
+as a *group heading* — "three groups, each a mono section label over hairline
+rows" — and was then used as the *field label*. So there was no group heading
+anywhere in the app, and every level of the hierarchy was set in the same 9px
+uppercase mono. Help text under those labels sat at `text-[10px]` — **larger
+than the label above it**, same face, same colour family, 148 times over.
+
+This is the codebase's other recurring pathology, seen from a new angle: not
+"mechanism built, nothing drives it" but *one element pressed into four jobs
+because the phases that needed the other three never stopped to add them.*
+
+### What was built
+
+**Two roles that did not exist.** `.group-heading` (11px mono, 600, 0.18em,
+with a rule running to the right edge) and `.explain` (13.5px Spectral). Plus
+`.meta` and `.token-count`, which are not new roles — they are the one spelling
+for a role that had been written twenty ways, 9px at 0.06em and 0.08em and
+0.12em, 8.5px at 0.1em, none of the differences meaning anything.
+
+**The two-voices rule was amended, with the user's decision on the record.** The
+design says the app never sets chrome in Spectral and makes one exception for
+the OOC voice, because it reads as "a person typing at you". A help line is the
+same thing. Asked which way to go, the answer was to bend it: **mono names,
+Spectral speaks.** `DESIGN.md` carries the amendment inline so the next reader
+does not follow the superseded rule.
+
+**148 explanation paragraphs swept mechanically**, plus 47 metadata spellings
+collapsed, plus 16 group headings on Settings and 10 on scene setup. Small text
+went from 395 elements to 200.
+
+**`test/typography.test.ts`**, which is the actual deliverable. The defect was a
+*distribution*, and a distribution is invisible to every review that reads one
+file at a time. So the rules are counted, not trusted: nothing is both
+`.explain` and `.chrome`; no explanatory paragraph is set as chrome; nothing is
+below 8px outside the ops keys; and the small end of the app may not outgrow the
+readable end by more than 2:1.
+
+**A numbering defect from phase 46 fixed:** the assistant was written as §23,
+which was already Testing requirements. It is §25.
+
+### Deliberately deferred
+
+- **Scene setup's group names are invented.** Scene / Direction / Scenario /
+  Memory / Model / Off script / Playback name clusters that were already in that
+  order — nothing was moved to fit them — but the names are mine, not the
+  design's. `DESIGN.md` says every noun is provisional; these are more
+  provisional than most.
+- **The layout direction was still never picked.** Colour (Bottle) and depth
+  were chosen in phase 45; Quiet / Instrument / Broadsheet was never answered,
+  and this phase deliberately did not decide it by default.
+- **`--onsen-prose-scale` still has no control.** Explanations now scale with
+  it, so it drives more than it did — and it is still driven by nothing.
+
+### Surprises
+
+**The guard test found three violations on its first run**, in code the
+mechanical sweep had just been over: a paragraph in `WebhookEditor` that
+`truncate` had excluded from the sweep's filter, and a 7.5px caption in
+`CastStrip` that was below the design's own floor. The sweep and the test
+disagreed, and the test was right both times.
+
+**Light mode could not be checked the usual way.** Forcing `colorScheme:
+"light"` in Playwright changed nothing, because the install had an explicit
+theme saved and an explicit choice correctly beats the system preference — the
+phase-45 behaviour working exactly as designed, presenting as a broken test
+harness. The check had to go through the app's own theme picker.
+
+**The first size was wrong and only the screen said so.** Explanations at
+14.5px sat a half-pixel under the 15px row titles they explain, so the help text
+read as loud as the content. 13.5px separates them. Nothing but a screenshot
+would have caught that; the tests were green at both sizes.

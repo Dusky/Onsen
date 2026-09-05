@@ -532,7 +532,7 @@ export function CharactersScreen() {
                         </span>
                       </div>
                       {item.detail !== "" ? (
-                        <p className="chrome mt-[3px] text-[10px] leading-[1.5] text-ink-dim">
+                        <p className="explain mt-[3px]">
                           {item.detail}
                         </p>
                       ) : null}

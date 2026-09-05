@@ -63,12 +63,12 @@ function Row({ item }: { item: MigrationItemDto }) {
     >
       <div className="flex items-baseline justify-between gap-[10px]">
         <span className="min-w-0 flex-1 truncate text-[14px]">{item.name}</span>
-        <span className="chrome flex-none text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+        <span className="meta flex-none">
           {strings.settings.migrateKind[item.kind] ?? item.kind}
         </span>
       </div>
       {item.detail !== "" ? (
-        <p className="chrome mt-[3px] text-[10px] leading-[1.5] text-ink-dim">{item.detail}</p>
+        <p className="explain mt-[3px]">{item.detail}</p>
       ) : null}
     </div>
   );
@@ -107,8 +107,8 @@ export function MigrationSection() {
 
   return (
     <div className="mb-[26px]">
-      <p className="section-label mb-[8px]">{strings.settings.migrate}</p>
-      <p className="chrome mb-[12px] text-[10px] leading-[1.6] text-ink-dim">
+      <p className="group-heading mb-[12px]">{strings.settings.migrate}</p>
+      <p className="explain mb-[12px]">
         {strings.settings.migrateHint}
       </p>
 
@@ -145,7 +145,7 @@ export function MigrationSection() {
       </button>
 
       {error !== null ? (
-        <p className="chrome mt-[8px] text-[10px] leading-[1.6] text-red-text">{error}</p>
+        <p className="explain explain-alert mt-[8px]">{error}</p>
       ) : null}
       {report !== null ? <Report report={report} /> : null}
     </div>

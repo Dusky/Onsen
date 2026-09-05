@@ -52,14 +52,14 @@ function FieldRow({
       <div className="mb-[8px] flex items-baseline justify-between gap-[10px]">
         <span className="section-label">{label}</span>
         {tokens === undefined ? null : (
-          <span className="chrome text-[8.5px] text-ink-dim">
+          <span className="token-count">
             {strings.characters.tokens(tokens)}
           </span>
         )}
       </div>
       {children}
       {hint === undefined ? null : (
-        <p className="chrome mt-[7px] text-[9.5px] leading-[1.5] text-ink-dim">{hint}</p>
+        <p className="explain mt-[7px]">{hint}</p>
       )}
     </div>
   );
@@ -360,7 +360,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
               {/* Sprites (SPEC §12, DESIGN §295): a labelled image per expression,
                   which the VN stage draws when the author declares that label. */}
               <p className="section-label mb-[8px]">{strings.characters.sprites}</p>
-              <p className="chrome mb-[8px] text-[9px] leading-[1.5] text-ink-dim">
+              <p className="explain mb-[8px]">
                 {strings.characters.spritesHint}
               </p>
               <div className="mb-[8px] flex flex-wrap gap-[6px]">
@@ -569,13 +569,13 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
               {character.unmodelledFields.length > 0 ? (
                 <div className="mb-[18px] border border-rule px-[11px] py-[10px]">
                   <p className="section-label">{strings.characters.preserved}</p>
-                  <p className="chrome mt-[6px] text-[9px] leading-[1.6] text-ink-dim">
+                  <p className="explain mt-[6px]">
                     {character.unmodelledFields.join(", ")}
                   </p>
                 </div>
               ) : null}
 
-              <p className="chrome mb-[18px] text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+              <p className="meta mb-[18px]">
                 {strings.characters.format(character.format)}
               </p>
 

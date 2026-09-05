@@ -253,7 +253,7 @@ function Toggle({
         </span>
       </button>
       {hint === undefined ? null : (
-        <p className="chrome text-[9.5px] leading-[1.5] text-ink-dim">{hint}</p>
+        <p className="explain">{hint}</p>
       )}
     </div>
   );
@@ -295,7 +295,7 @@ function EntryEditor({
         >
           {strings.lore.editing}
         </p>
-        <p className="chrome text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+        <p className="meta">
           {strings.lore.tokens(draft.tokenCount)}
         </p>
       </div>
@@ -348,7 +348,7 @@ function EntryEditor({
                 onChange={(keys) => set("secondaryKeys", keys)}
               />
             </div>
-            <p className="chrome mb-[14px] text-[9.5px] leading-[1.5] text-ink-dim">
+            <p className="explain mb-[14px]">
               {strings.lore.secondaryKeysHint}
             </p>
             <Segments
@@ -435,7 +435,7 @@ function EntryEditor({
               }
               onChange={(from) => set("delayFrom", from)}
             />
-            <p className="chrome mb-[14px] text-[9.5px] leading-[1.5] text-ink-dim">
+            <p className="explain mb-[14px]">
               {strings.lore.timedHint}
             </p>
 
@@ -449,7 +449,7 @@ function EntryEditor({
                 set("inclusionGroup", event.target.value.trim() === "" ? null : event.target.value)
               }
             />
-            <p className="chrome mb-[14px] text-[9.5px] leading-[1.5] text-ink-dim">
+            <p className="explain mb-[14px]">
               {strings.lore.inclusionGroupHint}
             </p>
             {draft.inclusionGroup === null ? null : (
@@ -499,7 +499,7 @@ function EntryEditor({
                 );
               })}
             </div>
-            <p className="chrome mb-[14px] text-[9.5px] leading-[1.5] text-ink-dim">
+            <p className="explain mb-[14px]">
               {strings.lore.characterFilterHint}
             </p>
 
@@ -686,13 +686,13 @@ function EntryRow({
         <span className="block truncate text-[14px]">
           {entry.title === "" ? strings.lore.untitled : entry.title}
         </span>
-        <span className="chrome mt-[4px] block truncate text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+        <span className="meta mt-[4px] block truncate">
           {entry.enabled
             ? `${entry.keys.length === 0 ? strings.lore.noKeys : entry.keys.join(", ")} · ${strings.lore.activationLine(entry.isConstant, entry.scanDepth, book.scanDepth)}`
             : strings.lore.disabled}
         </span>
       </span>
-      <span className="chrome flex-none text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+      <span className="meta flex-none">
         {strings.lore.tokens(entry.tokenCount)}
       </span>
     </button>
@@ -836,7 +836,7 @@ export function LorebookEditorScreen({ bookId }: { bookId: string }) {
           >
             {strings.lore.exportBook}
           </button>
-          <p className="chrome mt-[7px] text-[9.5px] leading-[1.5] text-ink-dim">
+          <p className="explain mt-[7px]">
             {strings.lore.exportBookHint}
           </p>
 

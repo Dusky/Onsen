@@ -21,11 +21,11 @@ export function Field({ label, hint, aux, children }: FieldProps) {
         <label htmlFor={id} className="section-label">
           {label}
         </label>
-        {aux ? <span className="chrome text-[8.5px] text-ink-dim">{aux}</span> : null}
+        {aux ? <span className="token-count">{aux}</span> : null}
       </div>
       {children(id)}
       {hint ? (
-        <p className="chrome mt-[7px] text-[9.5px] leading-[1.5] text-ink-dim">{hint}</p>
+        <p className="explain mt-[7px]">{hint}</p>
       ) : null}
     </div>
   );

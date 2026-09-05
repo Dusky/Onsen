@@ -87,7 +87,7 @@ export function LoreSheet({
               className="min-w-0 flex-1 text-left"
             >
               <span className="block truncate text-[14px]">{book.name}</span>
-              <span className="chrome mt-[3px] block truncate text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+              <span className="meta mt-[3px] block truncate">
                 {strings.lore.entries(book.entryCount)}
                 {book.ownerAuthorName !== null
                   ? ` · ${strings.lore.ownedBy(book.ownerAuthorName)}`
@@ -119,7 +119,7 @@ export function LoreSheet({
             <div key={book.id} className="flex items-baseline gap-[10px] border-b border-rule py-[11px]">
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[14px]">{book.name}</span>
-                <span className="chrome mt-[3px] block text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+                <span className="meta mt-[3px] block">
                   {strings.lore.entries(book.entryCount)}
                 </span>
               </span>
@@ -160,7 +160,7 @@ export function LoreSheet({
               <span className="block truncate text-[13.5px]">
                 {row.title === "" ? strings.lore.untitled : row.title}
               </span>
-              <span className="chrome mt-[3px] block truncate text-[9px] tracking-[0.08em] text-ink-dim uppercase">
+              <span className="meta mt-[3px] block truncate">
                 {row.skipped !== null
                   ? strings.lore.testReason(row.skipped)
                   : row.constant

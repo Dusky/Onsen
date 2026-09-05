@@ -35,14 +35,14 @@ function Field({
       <div className="mb-[8px] flex items-baseline justify-between gap-[10px]">
         <span className="section-label">{label}</span>
         {tokens === undefined ? null : (
-          <span className="chrome text-[8.5px] text-ink-dim">
+          <span className="token-count">
             {strings.characters.tokens(tokens)}
           </span>
         )}
       </div>
       {children}
       {hint === undefined ? null : (
-        <p className="chrome mt-[7px] text-[9.5px] leading-[1.5] text-ink-dim">{hint}</p>
+        <p className="explain mt-[7px]">{hint}</p>
       )}
     </div>
   );
@@ -251,7 +251,7 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
               >
                 {strings.authors.oocVoice}
               </span>
-              <span className="chrome text-[8.5px] text-ink-dim">
+              <span className="token-count">
                 {strings.characters.tokens(tokens.oocVoice)}
               </span>
             </div>
@@ -300,7 +300,7 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
               <span className="section-label" style={{ color: "var(--onsen-color-red)" }}>
                 {strings.authors.boundaries}
               </span>
-              <span className="chrome text-[8.5px] text-ink-dim">
+              <span className="token-count">
                 {strings.characters.tokens(tokens.boundaries)}
               </span>
             </div>
@@ -309,7 +309,7 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
               rows={3}
               onCommit={(boundaries) => save({ boundaries: boundaries || null })}
             />
-            <p className="chrome mt-[7px] text-[9.5px] leading-[1.5] text-ink-dim">
+            <p className="explain mt-[7px]">
               {strings.authors.boundariesHint}
             </p>
           </div>
@@ -321,7 +321,7 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
           >
             <span className="min-w-0">
               <span className="section-label">{strings.authors.memory}</span>
-              <span className="chrome mt-[6px] block text-[9.5px] leading-[1.5] text-ink-dim">
+              <span className="explain mt-[6px] block">
                 {strings.authors.memoryHint}
               </span>
             </span>

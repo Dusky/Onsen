@@ -58,6 +58,19 @@ This is the identity. The app never sets its own chrome in the serif, and never 
 
 Archivo (sans) appears only in the annotation layer *around* the mocks on the design canvas. **It is not part of the product UI.** Do not use it.
 
+> **Amended in production (phase 47).** A second exception now stands beside the
+> OOC voice: the app's *explanations* — help lines under a field, empty states,
+> error sentences — are set in Spectral at 13.5px. The argument is the one this
+> section already makes for OOC: a sentence meant to be read is not a label
+> meant to be scanned. Mono keeps labels, state, numbers and buttons. The rule
+> is now **mono names, Spectral speaks**. See `SPEC.md` §16 for the four roles
+> and `test/typography.test.ts` for what enforces them.
+>
+> This bundle drew nine screens. The app has many more, and the type table
+> below has no entry for a heading over a *group* of fields — which is why the
+> nine-screen `section-label` ended up doing that job 167 times. Phase 47 added
+> that level; the table below is otherwise unchanged and still governs.
+
 ### 2. Two pencils
 
 Editorial marking metaphor. Two accents, no others.

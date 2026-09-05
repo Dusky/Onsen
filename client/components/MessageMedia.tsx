@@ -38,7 +38,7 @@ export function MessageMedia({
             key={asset.id}
             type="button"
             onClick={() => setInspecting(asset)}
-            className="chrome mb-[6px] block text-[9px] tracking-[0.08em] text-ink-dim uppercase"
+            className="meta mb-[6px] block"
           >
             {/* Hidden is not deleted, and the log has to be able to say so. */}
             {`${strings.media.hiddenNote} · ${strings.media.unhide}`}
@@ -65,7 +65,7 @@ export function MessageMedia({
               />
             </button>
             {asset.role === "attachment" && !asset.inPrompt ? (
-              <figcaption className="chrome mt-[5px] text-[9px] tracking-[0.06em] text-ink-dim uppercase">
+              <figcaption className="meta mt-[5px]">
                 {strings.media.quietNote}
               </figcaption>
             ) : null}
@@ -154,7 +154,7 @@ function MediaSheet({
 
         {/* Both switches, side by side, because the point is that they are two
             questions. Said once above them rather than twice beside them. */}
-        <p className="chrome mb-[10px] text-[10px] leading-[1.6] text-ink-dim">
+        <p className="explain mb-[10px]">
           {strings.media.switchesHint}
         </p>
         <button

@@ -2395,6 +2395,47 @@ toggle.
   block by block, with token costs, **what was evicted**, retrieved chunks and
   scores, and which lore entries fired and why. Reachable from any message.
 
+### Typography
+
+The design handoff gives a type table with a real serif ramp — 26 / 19 / 17.5 /
+17 / 15.5 / 14.5 — and drew nine screens using it. Everything built after those
+nine reached instead for the smallest generic element the vocabulary offered,
+because that is what the vocabulary offered. By phase 46 the client measured
+**395 elements at 10px or below against 12 at 17px or above**, `.section-label`
+had been used 167 times and `.screen-title` six, and Settings carried
+thirty-one 9px uppercase labels with no heading anywhere above them.
+
+Nothing was wrong with any one of those choices. The defect was the
+distribution, which is why no review caught it and why `test/typography.test.ts`
+now checks it by counting the whole tree.
+
+Four roles, and the rule that separates them is **mono names, Spectral speaks**:
+
+| Role | Face | Size | Use |
+| --- | --- | --- | --- |
+| Group heading | Plex Mono | 11px / 600 / 0.18em upper, + a rule to the right edge | A set of fields or rows. The level that did not exist. |
+| Field label | Plex Mono | 9px / 0.18em upper | One field. What `.section-label` had already become. |
+| Explanation | Spectral | 13.5px, prose-muted | The app explaining itself in sentences. |
+| Metadata | Plex Mono | 9px / 0.08em upper | What a thing is made of, costs, when it last ran. |
+
+The group heading's rule is not a new mark: it is the one the log already draws
+beside a speaker's name. A heading over rows is the same gesture as an
+attribution over prose.
+
+**The two-voices rule is amended, deliberately.** The design says the app never
+sets its own chrome in Spectral, and makes one exception for the OOC voice on
+the grounds that it reads as "a person typing at you" rather than as a UI
+label. A help line under a field is the same thing — a sentence meant to be
+read, not a label meant to be scanned — so explanations join that exception.
+Mono keeps everything it is good at: labels, state, numbers, buttons, anything
+scanned rather than read. What changed is that a 10px uppercase mono paragraph
+is no longer how the app talks, which it was in 148 places.
+
+Explanations scale with `--onsen-prose-scale`, because they are read; every
+mono role stays fixed, because chrome does not scale. Minimum sizes remain
+load-bearing: nothing is set below 8px except the ops-key caption, where the
+glyph above carries the meaning.
+
 ### Themes
 
 Every colour, and the four values that decide depth, are `--onsen-*` custom
@@ -2790,7 +2831,9 @@ Each phase ends in a working, usable application.
 45. **Themes** — every colour and the depth values editable, saved, exported
     and imported; shipped grounds to choose between. See §16.
 46. **The assistant** — a second model with tools that read and change the
-    install. Not a cast member. See §23.
+    install. Not a cast member. See §25.
+47. **Typography and hierarchy** — the group heading that was missing, and the
+    one place the app is allowed to speak in the serif. See §16.
 
 Settled while building phase 15.
 
@@ -2967,7 +3010,7 @@ correction unavailable when the whole exchange is wrong.
 
 ---
 
-## 23. The assistant
+## 25. The assistant
 
 A second model, with tools, that can read and change what is in this install:
 cast, roleplays, lore, personas, themes. It is what you ask to tag two hundred
