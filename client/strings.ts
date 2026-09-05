@@ -21,6 +21,7 @@ export const strings = {
     back: "Back",
     cancel: "Cancel",
     optional: "Optional",
+    delete: "Delete",
     /** What a row says when it has nothing to list. One word, everywhere. */
     none: "None",
     /** The confirm sheet's own title. The question itself is the body. */
@@ -478,7 +479,15 @@ export const strings = {
 
     profiles: "Profiles",
     addProfile: "Add a profile",
-    profileName: "Name",
+    preset: "Preset",
+    presetDefault: "Use the default",
+    presetMakeDefault: "Make it the default",
+    presetIsDefault: "Default",
+    addPreset: "New preset",
+    presetDeleteConfirm:
+      "Delete this preset? Roleplays and profiles using it fall back to the default one.",
+    presetDefaultUndeletable: "The default preset is what runs when nothing else is chosen.",
+        profileName: "Name",
     profileDefault: "Default",
     makeDefault: "Make default",
     lastProfile: "The only profile. Add another before removing this one.",

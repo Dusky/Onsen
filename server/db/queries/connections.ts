@@ -245,6 +245,39 @@ export function listPresets(db: Database): PresetRow[] {
   return db.query("SELECT * FROM presets ORDER BY id").all() as PresetRow[];
 }
 
+/**
+ * Which preset runs when a scene and its profile both name none (§20 phase 54).
+ *
+ * `is_default` was written once, by `insertDefaultPreset` at setup, and no
+ * route could move it. Combined with `presetId` having no control anywhere in
+ * the client, that meant a reader could import ten SillyTavern presets and run
+ * none of them: the one made at install was the only one that ever executed.
+ * Exactly one row holds the flag, so this clears the others in the same
+ * statement rather than trusting two calls to stay in step.
+ */
+export function setDefaultPreset(db: Database, id: number): void {
+  db.query("UPDATE presets SET is_default = CASE id WHEN $id THEN 1 ELSE 0 END").run({ id });
+}
+
+/** A new preset on the shipped defaults, for somebody starting from scratch. */
+export function createPreset(db: Database, name: string): PresetRow {
+  return insertPreset(db, {
+    name,
+    samplers: MODERN_SAMPLER_DEFAULTS,
+    contextSize: 32768,
+    maxResponseTokens: 1024,
+  });
+}
+
+/**
+ * Remove one. Safe by schema: `profiles.preset_id` and `scenes.preset_id` are
+ * both `ON DELETE SET NULL`, so what depends on this falls back to the default
+ * preset rather than breaking — which is what the confirmation says.
+ */
+export function deletePreset(db: Database, id: number): void {
+  db.query("DELETE FROM presets WHERE id = $id").run({ id });
+}
+
 /* ------------------------------------------------------------------ */
 /* Connection profiles                                                 */
 /* ------------------------------------------------------------------ */

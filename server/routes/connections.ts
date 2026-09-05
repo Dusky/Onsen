@@ -3,7 +3,9 @@ import type { AppContext, AppEnv } from "../context.ts";
 import { requireAuth } from "../middleware/session.ts";
 import {
   countConnectionProfiles,
+  createPreset,
   deleteConnectionProfile,
+  deletePreset,
   deleteProvider,
   findConnectionProfileByUlid,
   findPresetByUlid,
@@ -13,6 +15,7 @@ import {
   insertProvider,
   listConnectionProfiles,
   listPresets,
+  setDefaultPreset,
   listProviders,
   toConnectionProfileDto,
   toPresetDto,
@@ -111,6 +114,33 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
   });
 
   app.get("/presets", (c) => c.json(listPresets(ctx.db).map(toPresetDto)));
+
+  /**
+   * A new preset on the shipped defaults (§20 phase 54).
+   *
+   * There was no way to make one: presets could be imported, edited and
+   * exported, and the only one that ever ran was the row setup wrote.
+   */
+  app.post("/presets", async (c) => {
+    const body = (await readJson(c)) ?? {};
+    const name = text((body as Record<string, unknown>)["name"], 120) ?? "New preset";
+    return c.json(toPresetDto(createPreset(ctx.db, name)), 201);
+  });
+
+  /**
+   * Remove one. `profiles.preset_id` and `scenes.preset_id` are both
+   * `ON DELETE SET NULL`, so anything pointing here falls back to the default
+   * preset rather than breaking — which the confirmation says out loud.
+   */
+  app.delete("/presets/:id", (c) => {
+    const row = findPresetByUlid(ctx.db, c.req.param("id"));
+    if (row === null) return c.json(notFound("preset"), 404);
+    if (row.is_default === 1) {
+      return c.json(badRequest("The default preset is what runs when nothing else is chosen."), 400);
+    }
+    deletePreset(ctx.db, row.id);
+    return c.body(null, 204);
+  });
 
   /**
    * Import a SillyTavern chat-completion preset (SPEC §18, phase 28). The
@@ -227,6 +257,11 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
     const patch: PresetPatch = {};
     const name = text(body["name"], 120);
     if (name !== null) patch.name = name;
+
+    // The flag that decides which preset runs when a scene and its profile
+    // both name none. Written once at setup until phase 54, which meant an
+    // imported preset could never be the one in force.
+    if (body["isDefault"] === true) setDefaultPreset(ctx.db, row.id);
 
     if ("samplerSettings" in body) {
       // Validated with the same function the editor uses, so a value the form

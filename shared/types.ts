@@ -203,6 +203,12 @@ export interface ReasoningConfigDto {
 
 export interface UpdatePresetRequest {
   name?: string;
+  /**
+   * Make this the preset that runs when a scene and its profile name none
+   * (§20 phase 54). Only `true` means anything: exactly one row holds the flag
+   * and setting it here clears the others, so there is no way to ask for none.
+   */
+  isDefault?: boolean;
   samplerSettings?: SamplerSettings;
   contextSize?: number;
   maxResponseTokens?: number;

@@ -9,7 +9,8 @@ import {
 } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { Sheet } from "./Sheet.tsx";
-import { useUpdatePreset } from "../lib/queries.ts";
+import { useDeletePreset, useUpdatePreset } from "../lib/queries.ts";
+import { useConfirm } from "./ConfirmSheet.tsx";
 
 /**
  * The preset editor (SPEC §13, §16 "samplers with modern defaults").
@@ -52,6 +53,8 @@ const LABELS: Record<BoundedSampler, string> = {
 
 export function PresetEditor({ preset, onClose }: { preset: PresetDto; onClose(): void }) {
   const update = useUpdatePreset();
+  const remove = useDeletePreset();
+  const [confirmNode, confirm] = useConfirm();
   const [error, setError] = useState<string | null>(null);
   const samplers = preset.samplerSettings;
 
@@ -215,7 +218,38 @@ export function PresetEditor({ preset, onClose }: { preset: PresetDto; onClose()
         >
           {strings.settings.exportPresetSt}
         </button>
+
+        {/* §20 phase 54. `is_default` decides which preset runs when a scene
+            and its profile both name none, and it was written once at setup:
+            an imported preset could be edited and exported and never used. */}
+        {preset.isDefault ? null : (
+          <button
+            type="button"
+            className="btn mt-[22px] w-full"
+            onClick={() => update.mutate({ id: preset.id, isDefault: true })}
+          >
+            {strings.settings.presetMakeDefault}
+          </button>
+        )}
+
+        <button
+          type="button"
+          className="btn mt-[8px] w-full"
+          disabled={preset.isDefault}
+          onClick={() =>
+            confirm(
+              strings.settings.presetDeleteConfirm,
+              () => remove.mutate(preset.id, { onSuccess: onClose }),
+              { confirmLabel: strings.common.delete },
+            )
+          }
+        >
+          {preset.isDefault
+            ? strings.settings.presetDefaultUndeletable
+            : strings.common.delete}
+        </button>
       </div>
+      {confirmNode}
     </Sheet>
   );
 }

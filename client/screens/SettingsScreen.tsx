@@ -24,6 +24,7 @@ import {
   useCreateProvider,
   useDeleteProfile,
   useDeleteProvider,
+  useCreatePreset,
   useImportPreset,
   usePresets,
   useProviders,
@@ -376,6 +377,7 @@ function ProfileEditor({
   const create = useCreateProfile();
   const update = useUpdateProfile();
   const remove = useDeleteProfile();
+  const presets = usePresets().data ?? [];
   const [error, setError] = useState<string | null>(null);
   const [confirmNode, confirm] = useConfirm();
   const modelRef = useRef<HTMLInputElement>(null);
@@ -409,13 +411,18 @@ function ProfileEditor({
           const name = String(form.get("name") ?? "").trim();
           const providerId = String(form.get("providerId") ?? "");
           const model = String(form.get("model") ?? "").trim();
+          const presetRaw = String(form.get("presetId") ?? "");
+          const presetId = presetRaw === "" ? null : presetRaw;
           const done = { onSuccess: () => onClose(), onError: (e: Error) => setError(e.message) };
 
           if (profile === null) {
-            create.mutate({ name, providerId, model: model === "" ? null : model }, done);
+            create.mutate(
+              { name, providerId, model: model === "" ? null : model, presetId },
+              done,
+            );
           } else {
             update.mutate(
-              { id: profile.id, name, providerId, model: model === "" ? null : model },
+              { id: profile.id, name, providerId, model: model === "" ? null : model, presetId },
               done,
             );
           }
@@ -429,6 +436,23 @@ function ProfileEditor({
           {providers.map((provider) => (
             <option key={provider.id} value={provider.id}>
               {provider.name}
+            </option>
+          ))}
+        </select>
+
+        {/* §20 phase 54. A preset holds the samplers, the window and the
+            response reservation; until now nothing in the client could attach
+            one, so whichever row setup wrote was the only one that ever ran. */}
+        <p className="section-label mb-[6px]">{strings.settings.preset}</p>
+        <select
+          name="presetId"
+          className="field mb-[14px]"
+          defaultValue={profile?.presetId ?? ""}
+        >
+          <option value="">{strings.settings.presetDefault}</option>
+          {presets.map((preset) => (
+            <option key={preset.id} value={preset.id}>
+              {preset.name}
             </option>
           ))}
         </select>
@@ -1442,6 +1466,7 @@ export function SettingsScreen() {
   const profiles = useConnectionProfiles();
   const presets = usePresets();
   const importPreset = useImportPreset();
+  const createPreset = useCreatePreset();
   const [presetReport, setPresetReport] = useState<string | null>(null);
   const tasks = useTasks();
 
@@ -1598,7 +1623,14 @@ export function SettingsScreen() {
                 className="flex w-full items-baseline gap-[9px] text-left"
               >
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[15px] font-medium">{preset.name}</span>
+                  <span className="flex items-baseline gap-[8px]">
+                    <span className="truncate text-[15px] font-medium">{preset.name}</span>
+                    {preset.isDefault ? (
+                      <span className="meta flex-none" style={{ color: "var(--onsen-color-red)" }}>
+                        {strings.settings.presetIsDefault}
+                      </span>
+                    ) : null}
+                  </span>
                   <span className="meta block truncate">
                     {[
                       `${strings.settings.samplerTemperature} ${preset.samplerSettings.temperature ?? "—"}`,
@@ -1614,6 +1646,18 @@ export function SettingsScreen() {
               </button>
             </Row>
           ))}
+          <button
+            type="button"
+            className="btn mt-[12px] w-full"
+            disabled={createPreset.isPending}
+            onClick={() =>
+              createPreset.mutate(strings.settings.addPreset, {
+                onSuccess: (made) => setEditingPreset(made),
+              })
+            }
+          >
+            {strings.settings.addPreset}
+          </button>
           <input
             type="file"
             hidden

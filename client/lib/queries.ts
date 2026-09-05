@@ -169,6 +169,19 @@ export function useUpdatePreset() {
 }
 
 /** Import a SillyTavern chat-completion preset (SPEC §18, phase 28). */
+/** A new preset on the shipped defaults (§20 phase 54). */
+export function useCreatePreset() {
+  return useConnectionMutation((name: string) =>
+    api.post<PresetDto>("/connections/presets", { name }),
+  );
+}
+
+export function useDeletePreset() {
+  return useConnectionMutation((id: string) =>
+    api.delete<void>(`/connections/presets/${id}`),
+  );
+}
+
 export function useImportPreset() {
   const client = useQueryClient();
   return useMutation({
