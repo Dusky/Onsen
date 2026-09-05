@@ -13,7 +13,8 @@ import type {
   UpdateStatusDto,
 } from "@shared/types.ts";
 import { PROVIDER_KINDS, INJECTION_ROLES, type ProviderKind } from "@shared/types.ts";
-import { LAYOUT_PRESETS } from "@shared/types.ts";
+import { LAYOUT_PRESETS, READING_BOUNDS, READING_DEFAULTS } from "@shared/types.ts";
+import type { ReadingDto } from "@shared/types.ts";
 import type { LayoutDto, LayoutPreset } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
@@ -46,6 +47,7 @@ import {
   useWebhooks,
   useScenes,
   usePreferences,
+  useReading,
   useSetPreferences,
   useApiKeys,
   useSignOut,
@@ -934,6 +936,69 @@ function LayoutSection() {
   );
 }
 
+/**
+ * The reading surface (SPEC §16 §Density, §20 phase 55).
+ *
+ * A live sample sits under the sliders and is set in the real prose tokens, so
+ * moving one shows the result rather than describing it — the design's own
+ * instruction to explain by showing, and the reason there is no sentence here
+ * telling anyone what "line spacing" means.
+ *
+ * The properties are applied globally by `useReadingVariables`, so the sample
+ * needs no styling of its own: it is already the thing being changed.
+ */
+function ReadingControls() {
+  const reading = useReading();
+  const save = useSetPreferences();
+  const set = (patch: Partial<ReadingDto>) => save.mutate({ reading: { ...reading, ...patch } });
+
+  const sliders: { key: keyof ReadingDto; label: string; step: number }[] = [
+    { key: "scale", label: strings.settings.prose, step: 0.05 },
+    { key: "measure", label: strings.settings.proseMeasure, step: 20 },
+    { key: "leading", label: strings.settings.proseLeading, step: 0.05 },
+  ];
+
+  return (
+    <>
+      {sliders.map(({ key, label, step }) => {
+        const [min, max] = READING_BOUNDS[key];
+        return (
+          <label key={String(key)} className="row block">
+            <span className="flex items-baseline justify-between gap-[10px]">
+              <span className="section-label">{label}</span>
+              <span className="meta tabular-nums">
+                {key === "measure" ? `${reading[key]}px` : reading[key].toFixed(2)}
+              </span>
+            </span>
+            <input
+              type="range"
+              min={min}
+              max={max}
+              step={step}
+              value={reading[key]}
+              aria-label={label}
+              className="mt-[6px] w-full"
+              onChange={(event) => set({ [key]: Number(event.target.value) } as Partial<ReadingDto>)}
+            />
+          </label>
+        );
+      })}
+
+      <p className="mt-[10px] text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)]">
+        {strings.settings.proseSample}
+      </p>
+
+      <button
+        type="button"
+        className="btn mt-[10px] w-full"
+        onClick={() => set(READING_DEFAULTS)}
+      >
+        {strings.settings.proseReset}
+      </button>
+    </>
+  );
+}
+
 function ReadingSection() {
   const preferences = usePreferences();
   const save = useSetPreferences();
@@ -944,6 +1009,8 @@ function ReadingSection() {
       <p className="group-heading mb-[12px]">{strings.settings.reading}</p>
 
       <ThemeSection />
+
+      <ReadingControls />
 
       <LayoutSection />
 

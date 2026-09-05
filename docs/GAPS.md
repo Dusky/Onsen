@@ -72,6 +72,7 @@ the fix is pagination."*
 | Tag a chat | **missing** | `tags` is on `CharacterDto` only (`shared/types.ts:1955`) | close |
 | Folder a chat | **missing** | `folder` likewise (`shared/types.ts:1962`) | close |
 | Favourite anything | **missing** | `grep -rni favorite` → 0 | close — cheapest of the three |
+| `n of m` readout on a list | **have** (phase 55) | `strings.showing`; the scenes list reads `3 of 5` when filtered, `5` when not | — |
 | Pagination / windowing | **missing** | no `LIMIT` for list reads in `server/db/queries/history.ts`; ST ships *# Msg. to Load = 100* | close — 139 is the number that makes it real |
 | Character tags / folders / search | **have** | `CharacterFilterQuery`, server-side since phase 26 | — |
 | Character grid view | **have** | phase 26 | — |
@@ -113,7 +114,7 @@ Every message in the screenshot carries `#46 · 27.3s · 868t` in its gutter.
 
 | Capability | Onsen | Evidence | Verdict |
 | --- | --- | --- | --- |
-| Per-message id / elapsed / tokens / model | **partial** | The server measures TTFT (`server/generation/service.ts:745`), computes tokens/sec (`:1276`) and **writes them to the row** (`UPDATE messages SET generation_meta`, `:1283`) — and `generation_meta` is not on `MessageDto`. Measured, stored, discarded | close — and render it untapped, per §16 density rule 2 |
+| Per-message id / elapsed / tokens / model | **have** (phase 55) | `MessageDto.generation` carries the record; `MessageBlock` renders `#4 · 20ms · ~126t · 10/s` in the gutter, untapped. Model on hover. Was: measured since phase 4, on no DTO | — |
 | Timestamps | **have** | `createdAt` throughout | — |
 | Swipe counter | **have** | 54 hits for `siblings` | — |
 | Swipe / reroll / edit / branch / continue | **have** | ops registry `server/tasks/registry.ts:102-108` | — |
@@ -127,9 +128,9 @@ Every message in the screenshot carries `#46 · 27.3s · 868t` in its gutter.
 | --- | --- | --- | --- |
 | Themes, import/export, custom CSS | **have** | `server/routes/themes.ts`, 18 hits for `customCss` | — |
 | Settings search + categories | **have** | phase 43 — ten categories plus a filter. This is the answer to ST's sixty-controls-one-page problem, and §22 now says so | — |
-| Font scale / prose size | **partial** | `--onsen-prose-scale` is a hardcoded `1` at `tokens.css:113` with no setting behind it — deferred three phases running | close — phase 55 |
-| Chat width / measure | **missing** | `grep -rni chatWidth` → 0; measure is a constant | close with prose scale |
-| Row density | **missing** | rows are `py-[15px]`≈47px everywhere, touch and pointer alike | close — §16 density rule 4 |
+| Font scale / prose size | **have** (phase 55) | Set from `reading_scale` through `useReadingVariables` (`client/lib/viewport.ts`); `test/density.test.ts` asserts every prose token multiplies by it | — |
+| Chat width / measure | **have** (phase 55) | `reading_measure`, 520–1100px, default 720 (was a 620px constant). Line spacing too | — |
+| Row density | **have** (phase 55) | `.row` is 12px touch / 6px under `@media (pointer: fine)`; the hand-rolled list rows swept onto it. Measured 95px phone / 83px desktop on the same scene row | — |
 | Avatar shape, blur, shadow | **partial** | theme tokens carry radius/shadow; no direct control | low priority |
 | MovingUI (drag panels) | **rejected** | not a §21 clause, but a desktop-only affordance at odds with a layout that is one set of components unrolled (§16 layout direction) | — |
 | STscript | **rejected** | §21: *"A scripting language beyond regex + event triggers."* Onsen has both (`server/routes/scripts.ts`, `triggers.ts`) | — |
@@ -172,22 +173,19 @@ with the clause that says so. They are here so nobody re-proposes them as gaps.
 
 ---
 
-## What this says about phase 55
+## Progress
 
-Ranked by how early a first session hits it, which is the same ordering phase
-54 used:
+**Phase 55 (done)** closed the reading controls, row density and the
+per-message stats — the three rows marked *(phase 55)* above. Each was
+re-verified by re-running its evidence command, not by editing the row.
 
-1. **The reading controls and a row-density pass.** `--onsen-prose-scale` has
-   been deferred three phases; §16 §Density now makes it mandatory rather than
-   optional. Rows go 44px-touch / 28–32px-pointer. The persona list stops being
-   a sheet.
-2. **Numbers on.** Per-message id, elapsed, tokens and model rendered inline.
-   This is not new measurement — the server has been writing `generation_meta`
-   to every message since phase 4 and no DTO has ever carried it. Add the field,
-   render it, and put `n of m` on every list.
-3. **The prompt manager.** Reorder, enable/disable, per-block tokens, and the
-   data-model decision about user-authored blocks. The largest single item
-   here, and the one that most changes what the app is for.
+**Phase 56 is the prompt manager**: reorder, enable/disable, per-block token
+counts, and the data-model decision about user-authored blocks (the install
+carries five: `USER Consent`, `Output RULES`, `Prefill only and only for
+gemini`, `<DATA_history>`, `</history>`). The largest single item here, and the
+one that most changes what the app is for.
 
-Then: scene tags/folders/favourites with windowing; persona position, avatar
-and locking; mute-vs-bench; auto-swipe and auto-continue.
+Then, in rough order of how early a session hits them: scene tags / folders /
+favourites with windowing; the persona list becoming a screen with search, plus
+position, avatar and locking; mute-vs-bench; auto-swipe and auto-continue;
+example-message eviction and squash.

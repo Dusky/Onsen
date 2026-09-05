@@ -74,18 +74,8 @@ import type { TaskRunStatus } from "../../shared/types.ts";
 
 export type GenerationStatus = "pending" | "streaming" | "complete" | "cancelled" | "error";
 
-export interface GenerationMeta {
-  provider: string;
-  model: string;
-  /** Milliseconds from dispatch to the first token. */
-  ttftMs: number | null;
-  /** Estimated, because the estimator is the only tokenizer that ships (§3). */
-  completionTokens: number | null;
-  tokensPerSecond: number | null;
-  promptTokens: number;
-  tokensAreEstimated: boolean;
-  samplers: SamplerSettings;
-}
+export type { GenerationMeta } from "@shared/types.ts";
+import type { GenerationMeta } from "@shared/types.ts";
 
 /**
  * What the turn director settled on, announced before any prose arrives.

@@ -73,7 +73,7 @@ function SceneRow({ scene, onManage }: { scene: SceneDto; onManage(): void }) {
   const cast = castLine(scene);
   return (
     <div
-      className="group relative border-b border-rule"
+      className="group relative row"
       // An empty roleplay is still a roleplay, just quieter.
       style={{ opacity: empty ? 0.75 : 1 }}
     >
@@ -86,7 +86,7 @@ function SceneRow({ scene, onManage }: { scene: SceneDto; onManage(): void }) {
           event.preventDefault();
           onManage();
         }}
-        className="w-full py-[15px] text-left"
+        className="w-full text-left"
       >
         <div className="flex items-baseline justify-between gap-[12px]">
           <span className="truncate text-[17px] font-medium">{scene.title}</span>
@@ -94,10 +94,10 @@ function SceneRow({ scene, onManage }: { scene: SceneDto; onManage(): void }) {
         </div>
         {/* One line of the newest turn - what the row is actually for. Clamped
             rather than truncated, so a wide window gets the whole line. */}
-        <p className="mt-[6px] line-clamp-1 text-[length:var(--onsen-text-prose-excerpt)] leading-[1.5] text-ink-prose-muted">
+        <p className="mt-[3px] line-clamp-1 text-[length:var(--onsen-text-prose-excerpt)] leading-[1.5] text-ink-prose-muted">
           {scene.lastLine ?? strings.scenes.emptyScene}
         </p>
-        <div className="meta mt-[7px] flex items-baseline justify-between gap-[12px]">
+        <div className="meta mt-[3px] flex items-baseline justify-between gap-[12px]">
           <span className="truncate">{cast ?? strings.scenes.noCast}</span>
           <span className="flex-none">{strings.scenes.counts(scene.messageCount)}</span>
         </div>
@@ -186,7 +186,17 @@ export function ScenesScreen() {
         style={{ paddingTop: "calc(22px + env(safe-area-inset-top))" }}
       >
         <p className="screen-kicker">{strings.scenes.kicker}</p>
-        <h1 className="screen-title mt-[6px]">{strings.scenes.title}</h1>
+        <div className="mt-[6px] flex items-baseline justify-between gap-[12px]">
+          <h1 className="screen-title">{strings.scenes.title}</h1>
+          {/* How many of how many (§16 §Density rule 2). On the title row
+              rather than beside the sort buttons, where it was squeezed onto
+              the edge of "Longest" and read as part of it. */}
+          {nothing ? null : (
+            <span className="meta shrink-0 tabular-nums">
+              {strings.showing(shown.length, (scenes.data ?? []).length)}
+            </span>
+          )}
+        </div>
       </header>
 
       {/* Offered once there is enough here to lose something in. */}

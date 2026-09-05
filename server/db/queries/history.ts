@@ -5,6 +5,7 @@ import { runStage, scriptContext, type ScriptContext } from "../../scripts/runti
 import { originOfRequest, sceneChannel } from "../../sync/channel.ts";
 import type {
   CheckpointDto,
+  GenerationMeta,
   MessageAuthorType,
   MessageDto,
   MessageKind,
@@ -112,6 +113,13 @@ export interface MessageRow {
   edited_at: number | null;
   /** The expression the author declared for a spotlight turn (§12). */
   expression: string | null;
+  /**
+   * The generation record, as JSON (§20 phase 55). Written since phase 4 and
+   * not read back until now — every message read here is a `SELECT *`, so the
+   * column has been arriving in this object the whole time with nothing to
+   * receive it.
+   */
+  generation_meta: string | null;
 }
 
 /** A message row plus its position among its siblings — the swipe counter. */
@@ -154,6 +162,23 @@ export function speakerLookup(db: Database): SpeakerLookup {
   };
 }
 
+/**
+ * The stored generation record, or null.
+ *
+ * Never throws: rows predate the shape, an older build may have written
+ * something else, and a malformed record is a missing readout — not a chat that
+ * will not load.
+ */
+function parseGenerationMeta(raw: string | null): GenerationMeta | null {
+  if (raw === null || raw === "") return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return typeof parsed === "object" && parsed !== null ? (parsed as GenerationMeta) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function toMessageDto(
   row: MessageRowWithSiblings,
   sceneUlid: string,
@@ -186,6 +211,7 @@ export function toMessageDto(
     reasoning: row.reasoning,
     isHidden: row.is_hidden === 1,
     tokenCount: row.token_count,
+    generation: parseGenerationMeta(row.generation_meta),
     expression: row.expression,
     createdAt: row.created_at,
     editedAt: row.edited_at,

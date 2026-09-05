@@ -16,6 +16,13 @@ export const strings = {
     name: "Onsen",
   },
 
+  /**
+   * How many of how many, on any list that can exceed a screen (§16 §Density
+   * rule 2). Shared rather than per-screen so every list counts the same way.
+   */
+  showing: (shown: number, total: number): string =>
+    shown === total ? `${total}` : `${shown} of ${total}`,
+
   common: {
     continue: "Continue",
     back: "Back",
@@ -685,6 +692,13 @@ export const strings = {
     layoutAttribution: "Attribution",
     layoutAttributionStacked: "Above the text",
     layoutAttributionInline: "In the text",
+    /* The reading surface, which the reader sets (§20 phase 55). */
+    prose: "Text size",
+    proseMeasure: "Column width",
+    proseLeading: "Line spacing",
+    proseSample:
+      "She set the ledger down without closing it, and waited to see which of them would look first.",
+    proseReset: "Back to defaults",
     chime: "Chime when a reply lands",
     chimeOn: "On",
     chimeOff: "Off",
@@ -1115,6 +1129,13 @@ export const strings = {
     personaIsDefault: "Use this one by default",
     personaDeleteConfirm: "Delete this persona? Roleplays using it fall back to none.",
     personaAdd: "New persona",
+    /* The persona list became a screen in phase 55 (§16 §Density rule 3). */
+    personaKicker: "You",
+    /** The screen's own title; `personaEdit` stays the button that reaches it. */
+    personaTitle: "Personas",
+    personaSearch: "Search personas",
+    personaNoDescription: "No description",
+    personaEmpty: "No personas yet",
         personaNone: "Not set",
     cast: "Cast",
     castEmpty: "Nobody in the cast yet",

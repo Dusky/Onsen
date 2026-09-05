@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api.ts";
 import type { UpdateStatusDto } from "@shared/types.ts";
-import type { LayoutDto } from "@shared/types.ts";
-import { LAYOUT_PRESETS } from "@shared/types.ts";
+import type { LayoutDto, ReadingDto } from "@shared/types.ts";
+import { LAYOUT_PRESETS, READING_DEFAULTS } from "@shared/types.ts";
 import type {
   AppendMessageRequest,
   AuthorDto,
@@ -1941,6 +1941,8 @@ export function useTestWebhook() {
 export interface PreferencesDto {
   /** How the chat screen is laid out (§20 phase 52). */
   layout: LayoutDto;
+  /** The reading surface, which the reader sets (§20 phase 55). */
+  reading: ReadingDto;
   completionChime: boolean;
 }
 
@@ -1965,6 +1967,15 @@ export function useLayout(): LayoutDto {
   return (
     preferences.data?.layout ?? { preset: "instrument", ...LAYOUT_PRESETS.instrument }
   );
+}
+
+/**
+ * The reading surface, with the shipped defaults standing in until preferences
+ * arrive — same reasoning as `useLayout`: prose that resized one frame after
+ * paint would be worse than prose that is briefly the default.
+ */
+export function useReading(): ReadingDto {
+  return usePreferences().data?.reading ?? READING_DEFAULTS;
 }
 
 export function useSetPreferences() {

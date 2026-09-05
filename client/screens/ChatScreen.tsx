@@ -809,7 +809,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
 
   // One message, in every shape it can be: an aside, an edit, or a turn.
   // Shared by the plain and virtualized paths so they can never disagree.
-  const renderMessage = (message: MessageDto) =>
+  const renderMessage = (message: MessageDto, index: number) =>
     message.kind === "ooc" ? (
       <OocBlock
         key={message.id}
@@ -831,6 +831,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       <MessageBlock
         key={message.id}
         message={message}
+        ordinal={index + 1}
         speakerName={speakerFor(message, authorName)}
         attribution={layout.attribution}
         onReroll={() => void reroll(message)}
@@ -951,7 +952,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             <VirtualizedLog
               scrollRef={log}
               count={logMessages.length}
-              renderRow={(index) => renderMessage(logMessages[index]!)}
+              renderRow={(index) => renderMessage(logMessages[index]!, index)}
               tail={tail}
             />
           ) : (
@@ -1386,7 +1387,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
               type="button"
               disabled={segment.speakerType !== "character"}
               onClick={() => void recast(recasting, segment.ordinal, segment.speakerName)}
-              className="w-full border-b border-rule py-[13px] text-left disabled:opacity-40"
+              className="row w-full text-left disabled:opacity-40"
             >
               <span className="chrome text-[10.5px] text-ink-label">
                 {segment.speakerName ?? strings.chat.narrationPart}
@@ -1452,7 +1453,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                 setLeaf.mutate({ messageId: sibling.id });
                 setVersionsFor(null);
               }}
-              className="w-full border-b border-rule py-[13px] text-left"
+              className="row w-full text-left"
               style={{
                 borderTop:
                   sibling.id === versionsFor.id ? "2px solid var(--onsen-color-red)" : undefined,

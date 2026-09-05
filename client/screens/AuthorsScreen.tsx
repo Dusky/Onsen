@@ -121,7 +121,7 @@ export function AuthorsScreen() {
               key={author.id}
               type="button"
               onClick={() => navigate({ name: "author", authorId: author.id })}
-              className="w-full border-b border-rule py-[15px] text-left"
+              className="row w-full text-left"
             >
               <div className="flex items-baseline justify-between gap-[12px]">
                 <span className="truncate text-[17px] font-medium">{author.name}</span>

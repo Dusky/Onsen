@@ -3,8 +3,8 @@ import type { AppContext, AppEnv } from "../context.ts";
 import { requireAuth } from "../middleware/session.ts";
 import { applyUpdate, checkForUpdates, readUpdateStatus } from "../updates.ts";
 import { getSetting, setSetting } from "../db/queries/settings.ts";
-import { LAYOUT_PRESETS, presetOf } from "@shared/types.ts";
-import type { LayoutDto, LayoutPreset } from "@shared/types.ts";
+import { LAYOUT_PRESETS, READING_DEFAULTS, clampReading, presetOf } from "@shared/types.ts";
+import type { LayoutDto, LayoutPreset, ReadingDto } from "@shared/types.ts";
 
 /**
  * System endpoints (SPEC §17). The updater's logic lives in `server/updates.ts`;
@@ -20,13 +20,25 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
 
   // Local facts only — no network, so the settings screen can ask on load.
   /**
-   * Reading preferences (SPEC §5, §16).
+   * Reading preferences (SPEC §5, §16 §Density, §20 phase 55).
    *
    * Server-side because there is no browser storage in this app (HANDOFF
    * non-negotiable 8) — and because a preference that lived in one browser
    * would be the wrong shape for a §5 feature anyway: the point of head sync is
    * that the phone and the desktop are two views of one install.
+   *
+   * Stored per field and clamped on read as well as write, so a value written
+   * by an older build, or by hand, cannot render the app unusable — the failure
+   * mode of a bad font size is a screen you cannot navigate to fix it on.
    */
+  function reading(): ReadingDto {
+    return clampReading({
+      scale: Number(getSetting(ctx.db, "reading_scale") ?? READING_DEFAULTS.scale),
+      measure: Number(getSetting(ctx.db, "reading_measure") ?? READING_DEFAULTS.measure),
+      leading: Number(getSetting(ctx.db, "reading_leading") ?? READING_DEFAULTS.leading),
+    });
+  }
+
   /**
    * The chat layout (§20 phase 52).
    *
@@ -51,6 +63,7 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
     return {
       completionChime: getSetting(ctx.db, "completion_chime") === "1",
       layout: layout(),
+      reading: reading(),
     };
   }
 
@@ -94,6 +107,16 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
       if (patch["attribution"] === "stacked" || patch["attribution"] === "inline") {
         setSetting(ctx.db, "layout_attribution", patch["attribution"]);
       }
+    }
+
+    const wanted = body["reading"];
+    if (typeof wanted === "object" && wanted !== null) {
+      // Merged onto what is stored rather than onto the defaults, so a request
+      // carrying one slider does not reset the other two.
+      const next = clampReading({ ...reading(), ...(wanted as Record<string, unknown>) });
+      setSetting(ctx.db, "reading_scale", String(next.scale));
+      setSetting(ctx.db, "reading_measure", String(next.measure));
+      setSetting(ctx.db, "reading_leading", String(next.leading));
     }
 
     return c.json(preferences());

@@ -16,6 +16,8 @@ import { MessageMedia } from "./MessageMedia.tsx";
 
 interface MessageBlockProps {
   message: MessageDto;
+  /** Its place in the log, 1-based — the `#46` in the gutter (§20 phase 55). */
+  ordinal?: number;
   speakerName: string;
   /**
    * Where the name sits (§20 phase 52). `stacked` puts it on its own row above
@@ -273,8 +275,48 @@ export function OocBlock({
   );
 }
 
+/**
+ * What the turn cost, in the gutter and untapped (SPEC §16 §Density rule 2).
+ *
+ * The server has measured all of this on every generated message since phase 4;
+ * until phase 55 no DTO carried it, and the spec's own instruction to put it
+ * "behind a tap" is most of why nobody noticed. Rendered as `#46 · 1.2s · 868t
+ * · 41/s`, which is the shape the incumbent uses and the shape a reader
+ * comparing two models actually reads.
+ *
+ * Absent on user turns, imported history and anything written before phase 4 —
+ * so the ordinal renders alone rather than the row disappearing, because the
+ * message number is useful on its own when reporting a bad turn.
+ */
+function Stats({ message, ordinal }: { message: MessageDto; ordinal: number | undefined }) {
+  const meta = message.generation;
+  const parts: string[] = [];
+  if (ordinal !== undefined) parts.push(`#${ordinal}`);
+  if (meta !== null) {
+    // Milliseconds under a second: a fast local model reading `0.0s` says
+    // nothing, and "how long before it started" is the number people compare
+    // backends on.
+    if (meta.ttftMs !== null) {
+      parts.push(meta.ttftMs < 1000 ? `${Math.round(meta.ttftMs)}ms` : `${(meta.ttftMs / 1000).toFixed(1)}s`);
+    }
+    if (meta.completionTokens !== null) {
+      // A tilde where the count is the estimator's rather than the provider's
+      // (§3): the number is worth showing and worth not overstating.
+      parts.push(`${meta.tokensAreEstimated ? "~" : ""}${meta.completionTokens}t`);
+    }
+    if (meta.tokensPerSecond !== null) parts.push(`${Math.round(meta.tokensPerSecond)}/s`);
+  }
+  if (parts.length === 0) return null;
+  return (
+    <span className="meta shrink-0 tabular-nums" title={meta?.model ?? undefined}>
+      {parts.join(" \u00b7 ")}
+    </span>
+  );
+}
+
 export function MessageBlock({
   message,
+  ordinal,
   speakerName,
   attribution = "stacked",
   onReroll,
@@ -368,6 +410,7 @@ export function MessageBlock({
             </span>
           )}
         </span>
+        <Stats message={message} ordinal={ordinal} />
         {message.siblingCount > 1 ? (
           <button
             type="button"

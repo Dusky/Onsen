@@ -7,6 +7,7 @@ import { ChatScreen } from "./screens/ChatScreen.tsx";
 import { CharactersScreen } from "./screens/CharactersScreen.tsx";
 import { CharacterEditorScreen } from "./screens/CharacterEditorScreen.tsx";
 import { AuthorsScreen, AuthorEditorScreen } from "./screens/AuthorsScreen.tsx";
+import { PersonasScreen } from "./screens/PersonasScreen.tsx";
 import { SceneSetupScreen } from "./screens/SceneSetupScreen.tsx";
 import { SettingsScreen } from "./screens/SettingsScreen.tsx";
 import { LorebooksScreen } from "./screens/LorebooksScreen.tsx";
@@ -18,8 +19,8 @@ import { useIsDesktop } from "./lib/breakpoint.ts";
 import { Sidebar } from "./components/Sidebar.tsx";
 import { WritingElsewhere } from "./components/WritingElsewhere.tsx";
 import { setChimeWanted, unlockAudio } from "./lib/chime.ts";
-import { usePreferences } from "./lib/queries.ts";
-import { useViewportHeight } from "./lib/viewport.ts";
+import { usePreferences, useReading } from "./lib/queries.ts";
+import { useReadingVariables, useViewportHeight } from "./lib/viewport.ts";
 import type { BootstrapDto } from "@shared/types.ts";
 
 /**
@@ -101,6 +102,9 @@ export function App() {
 function Shell() {
   const isDesktop = useIsDesktop();
   const preferences = usePreferences();
+  // Here rather than in `App`, which renders the QueryClientProvider itself and
+  // so is above the cache a preference hook needs.
+  useReadingVariables(useReading());
 
   // §5's chime, and the autoplay policy that shapes it. A browser will not let
   // a page make a sound before the person has interacted with it, so the audio
@@ -157,6 +161,8 @@ function Routed() {
       return <CharacterEditorScreen characterId={route.characterId} />;
     case "authors":
       return <AuthorsScreen />;
+    case "personas":
+      return <PersonasScreen />;
     case "author":
       return <AuthorEditorScreen authorId={route.authorId} />;
     case "setup":

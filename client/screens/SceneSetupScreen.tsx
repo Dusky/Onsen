@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { strings } from "../strings.ts";
-import { PersonaEditor } from "../components/PersonaEditor.tsx";
 import { EmptyState } from "../components/EmptyState.tsx";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { BanListSheet, OptionGroupSheet } from "../components/OptionSheets.tsx";
@@ -173,7 +172,6 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
   const directorRuns = useTaskRuns("turn_classifier", query.data?.scene.turnStrategy === "classifier");
   const [picking, setPicking] = useState(false);
   /** The persona sheet (§20 phase 54): where they are chosen is where they are managed. */
-  const [personasOpen, setPersonasOpen] = useState(false);
   // Prompt options and the ban list (SPEC §13.5, §13.6).
   const options = useSceneOptions(sceneId);
   const setOption = useSetOption(sceneId);
@@ -300,7 +298,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                 {strings.sceneSetup.personaNone}
               </button>
             ) : (
-              <button type="button" className="btn" onClick={() => setPersonasOpen(true)}>
+              <button type="button" className="btn" onClick={() => navigate({ name: "personas" })}>
                 {strings.sceneSetup.personaEdit}
               </button>
             )}
@@ -1174,7 +1172,6 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
           ))}
         </Sheet>
       ) : null}
-      {personasOpen ? <PersonaEditor onClose={() => setPersonasOpen(false)} /> : null}
       {confirmNode}
     </div>
   );

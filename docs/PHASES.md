@@ -4757,3 +4757,70 @@ no uppercase, no tracking, sentence case, explanations gone. The incumbent's
 own themes agree on all four. The red = live / blue = author hues and Spectral
 for prose were never the objection either. This amendment is about spatial and
 informational density, and nothing else.
+
+## Phase 55 — Density
+
+The first phase built under the amended doctrine, and it mostly consists of
+switching on things that were already there.
+
+### What was built
+
+- **The reader owns the reading surface.** Scale, measure and leading are three
+  server-side settings (`reading_scale`, `reading_measure`, `reading_leading`,
+  through the same `getSetting`/`setSetting` path phase 52's layout uses),
+  applied to `documentElement` by `useReadingVariables` so a change lands on the
+  frame it is made rather than on the next reload. A live sample sits under the
+  sliders — the design's own instruction to explain by showing, which is why
+  there is no sentence next to them saying what "line spacing" means.
+  `--onsen-prose-scale` had been a hardcoded `1` for ten phases and was deferred
+  out of three of them.
+- **Denser defaults.** Prose 17px → 15.5px, measure 620px → 720px, leading 1.64
+  → 1.5. The handoff's figures are still reachable near the top of each range;
+  they are no longer the only option.
+- **Every message shows what it cost.** `#4 · 20ms · ~126t · 10/s` in the
+  gutter, untapped. The tilde marks a count from the estimator rather than the
+  provider.
+- **Rows scale with the input device.** `.row` is 12px under a thumb and 6px
+  under `@media (pointer: fine)`, and the list rows that hand-rolled their
+  padding were swept onto the class. A scene row measures 95px on a phone and
+  83px on a desktop.
+- **The persona list became a screen** at `/personas`, with search and a count.
+  Phase 54 put it in a sheet; at thirteen personas the sheet showed two.
+- **`test/density.test.ts`**: every prose token multiplies by the scale, the
+  three properties are set at runtime rather than frozen, a pointer query
+  exists, and no list row hand-rolls padding over the touch budget.
+
+### Surprises
+
+**The stats were never missing — they were being thrown away.** The server has
+measured TTFT, computed tokens/sec and run `UPDATE messages SET
+generation_meta` since phase 4. `MessageRow` never declared the column,
+`MessageDto` never carried it, and every message read is a `SELECT *` — so the
+record has been arriving in the row object for fifty phases with nothing to
+receive it. Wiring it up was a type, a mapper line and a render; no new
+measurement at all. The spec's own instruction to put these "behind a tap" is
+most of why nobody noticed.
+
+**A vendor pseudo-element voided a whole rule.** The range sliders came out
+browser-default blue — wrong in a warm theme, and wrong in this palette, where
+blue means the author's voice. `accent-color` fixed the fill and left the track
+the UA's white, so the track got styled explicitly — and combining
+`::-webkit-slider-runnable-track` with `::-moz-range-track` in one selector list
+made Chromium drop the entire rule, leaving thumbs floating on nothing. Split
+into two rules. A screenshot caught it; nothing else would have.
+
+**My own guard caught my own file.** Moving the persona editor into `screens/`
+brought its sheet-era `py-[14px]` with it, and `density.test.ts` failed on the
+commit that introduced it. That is the guard working on the first day it
+existed.
+
+**The count readout was in the wrong place first.** Putting `3 of 5` at the end
+of the sort row squeezed it against "Longest" on a phone, where it read as part
+of the button. It belongs on the title row, which is where the incumbent puts
+it too.
+
+### Deliberately deferred
+
+- **The prompt manager** — phase 56. Reorder, enable/disable, per-block tokens
+  and the data-model decision about user-authored blocks.
+- **Persona avatar, position and locking**, and the rest of `docs/GAPS.md`.

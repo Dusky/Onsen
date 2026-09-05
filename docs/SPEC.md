@@ -2370,7 +2370,10 @@ toggle.
   checkpoint, hide, delete, copy).
 - Swipe counter on messages with siblings.
 - Streaming indicator naming the speaking character; prominent stop button.
-- Per-message generation stats (model, TTFT, tokens/sec) behind a tap.
+- Per-message generation stats — id, TTFT, tokens, tokens/sec — in the gutter,
+  rendered untapped (§16 §Density rule 2; model on hover). Specced "behind a
+  tap" until phase 55, which is most of why it went unbuilt for fifty phases
+  while the server stored the record on every message.
 
 ### Other screens
 
@@ -2399,9 +2402,11 @@ toggle.
   the default rather than broken.
 - **Connection profiles** — provider, model, templates, test button, capability
   display, and the preset this profile generates with.
-- **Persona editor** — name, description, default, delete. A sheet over scene
-  setup rather than a screen: choosing who you are and editing who you are are
-  the same moment.
+- **Persona list** — name, description, default, delete, and search once there
+  are more than a handful. A screen at `/personas`, reached from scene setup:
+  phase 54 made it a sheet on the reasoning that choosing and editing are the
+  same moment, which is true of choosing one and false of managing twenty
+  (§16 §Density rule 3).
 - **Op settings** — per-op profile, prompt template, injection role,
   auto-trigger, visibility.
 - **Prompt inspector** — the exact assembled prompt for the last generation,
@@ -3091,6 +3096,11 @@ Each phase ends in a working, usable application.
     delete; a persona you can edit; lorebook bindings for all four scopes; an
     entry's insertion role and automation id; presets you can make and remove.
     Guarded by a field-level reachability test. See §16.
+55. **Density** — the first phase under §16 §Density. The reader gets the
+    reading surface (scale, measure, leading, server-side); every message shows
+    what it cost, from a record the server has written since phase 4 and no DTO
+    carried; rows tighten under a pointer; the persona list becomes a screen.
+    Guarded by `test/density.test.ts`. See §16.
 
 Settled while building phase 15.
 

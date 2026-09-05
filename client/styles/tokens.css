@@ -109,19 +109,29 @@
   /*
    * Prose is user-scalable and chrome is not, so only prose sizes multiply by
    * this. See the Reading section of Settings.
+   *
+   * Phase 55: the scale, the measure and the leading are all set from the
+   * reader's preferences at runtime (`useReadingVariables`), and the figures
+   * here are the defaults those three fall back to. They are denser than the
+   * handoff's, which were drawn for a phone at arm's length; the old sizes are
+   * still reachable near the top of each range.
+   *
+   * `test/density.test.ts` asserts every prose size multiplies by the scale. A
+   * size that forgets the factor is a reader control that silently does not
+   * reach part of the app.
    */
   --onsen-prose-scale: 1;
-  --onsen-text-prose: calc(17px * var(--onsen-prose-scale));
-  --onsen-text-prose-desktop: calc(17.5px * var(--onsen-prose-scale));
-  --onsen-text-prose-excerpt: calc(14.5px * var(--onsen-prose-scale));
-  --onsen-text-field: calc(15.5px * var(--onsen-prose-scale));
+  --onsen-text-prose: calc(15.5px * var(--onsen-prose-scale));
+  --onsen-text-prose-desktop: calc(16px * var(--onsen-prose-scale));
+  --onsen-text-prose-excerpt: calc(13.5px * var(--onsen-prose-scale));
+  --onsen-text-field: calc(14.5px * var(--onsen-prose-scale));
   /*
    * The app explaining itself in sentences (phase 47). Prose, because it is
    * read rather than scanned, and scalable for the same reason.
    */
-  --onsen-text-explain: calc(13.5px * var(--onsen-prose-scale));
+  --onsen-text-explain: calc(12.5px * var(--onsen-prose-scale));
 
-  --onsen-leading-prose: 1.64;
+  --onsen-leading-prose: 1.5;
 
   /*
    * Chrome sizes are fixed — they do not scale with the reader's prose size,
@@ -179,7 +189,7 @@
   --onsen-screen-padding: 22px;
   --onsen-screen-padding-desktop: 28px;
   --onsen-tap-target: 44px;
-  --onsen-prose-measure: 620px;
+  --onsen-prose-measure: 720px;
   /* Screens that are a list of rows rather than something to read. */
   --onsen-list-measure: 860px;
 }

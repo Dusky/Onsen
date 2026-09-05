@@ -32,3 +32,29 @@ export function useViewportHeight(): void {
     };
   }, []);
 }
+
+/**
+ * Publishing the reader's prose settings as custom properties (§20 phase 55).
+ *
+ * The three values are the only part of the type system the reader controls
+ * (SPEC §16 §Density), and they are applied here rather than baked into
+ * `tokens.css` so a change takes effect on the frame it is made — a font-size
+ * control you have to reload to see is a control nobody trusts.
+ *
+ * Set on `documentElement` for the same reason `--onsen-app-height` is: it is
+ * above every theme's `:root` block in the cascade, so a theme cannot pin the
+ * reader's size by accident.
+ */
+export function useReadingVariables(reading: {
+  scale: number;
+  measure: number;
+  leading: number;
+}): void {
+  const { scale, measure, leading } = reading;
+  useEffect(() => {
+    const root = document.documentElement.style;
+    root.setProperty("--onsen-prose-scale", String(scale));
+    root.setProperty("--onsen-prose-measure", `${measure}px`);
+    root.setProperty("--onsen-leading-prose", String(leading));
+  }, [scale, measure, leading]);
+}

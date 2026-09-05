@@ -337,13 +337,94 @@
     padding-bottom: 0;
   }
 
+  /*
+   * A row is 44px under a thumb and ~30px under a pointer (SPEC §16 §Density
+   * rule 4).
+   *
+   * This is a media query rather than a preference because it is not a matter
+   * of taste: a 44px row exists so a finger can hit it, and a mouse does not
+   * need the margin. The same list is often both — a phone and a desktop
+   * browser on one install — so the rule has to be per-device, not per-user.
+   */
   .row {
     border-bottom: 1px solid var(--onsen-color-rule);
     padding: 12px 0;
   }
 
+  @media (pointer: fine) {
+    .row {
+      padding: 6px 0;
+    }
+  }
+
   .hairline {
     border-bottom: 1px solid var(--onsen-color-rule);
+  }
+
+  /*
+   * Range inputs take the app's accent rather than the browser's.
+   *
+   * The default is the OS blue, which is wrong twice over here: it is not in
+   * any theme's palette, and blue already means the author's voice (§16), so a
+   * blue control reads as belonging to the author rather than to the reader.
+   * Red is what every other live control in the app uses.
+   */
+  input[type="range"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    /* Tall enough to grab with a thumb, tighter under a pointer — §16 rule 4.
+       A slider is dragged rather than tapped, so it can sit under the 44px
+       target without becoming hard to hit. */
+    height: 32px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  @media (pointer: fine) {
+    input[type="range"] {
+      height: 20px;
+    }
+  }
+
+  /*
+   * The track is drawn rather than left to the browser: `accent-color` alone
+   * colours the fill and the thumb and leaves the rest of the bar the UA's
+   * white, which on a dark ground is the brightest thing on the screen.
+   */
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 2px;
+    background: var(--onsen-color-rule-strong);
+  }
+
+  /* Separate rule, deliberately: a vendor pseudo-element the browser does not
+     know invalidates the whole selector list, so combining these two loses the
+     track everywhere rather than in one engine. */
+  input[type="range"]::-moz-range-track {
+    height: 2px;
+    background: var(--onsen-color-rule-strong);
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    margin-top: -7px;
+    border-radius: 50%;
+    background: var(--onsen-color-red);
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--onsen-color-red);
+  }
+
+  input[type="range"]:focus-visible::-webkit-slider-thumb {
+    outline: 2px solid var(--onsen-color-red);
+    outline-offset: 2px;
   }
 
   /*

@@ -38,7 +38,7 @@ function Row({ book }: { book: LorebookDto }) {
     <button
       type="button"
       onClick={() => navigate({ name: "lorebook", bookId: book.id })}
-      className="flex w-full items-baseline gap-[10px] border-b border-rule py-[13px] text-left"
+      className="row flex w-full items-baseline gap-[10px] text-left"
     >
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[15px] font-medium">{book.name}</span>

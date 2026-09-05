@@ -396,6 +396,28 @@ export interface AnnotationDto {
   createdAt: number;
 }
 
+/**
+ * What one generation cost and how fast it ran (SPEC §2, §16).
+ *
+ * The server has measured and stored this on every message since phase 4 and
+ * no DTO carried it until phase 55, so for fifty phases the app knew each
+ * turn's TTFT and threw it away. §16 §Density now says a number the reader
+ * could act on renders untapped — the original spec put these "behind a tap",
+ * which is most of why nobody noticed they were never wired up.
+ */
+export interface GenerationMeta {
+  provider: string;
+  model: string;
+  /** Milliseconds from dispatch to the first token. */
+  ttftMs: number | null;
+  /** Estimated, because the estimator is the only tokenizer that ships (§3). */
+  completionTokens: number | null;
+  tokensPerSecond: number | null;
+  promptTokens: number;
+  tokensAreEstimated: boolean;
+  samplers: SamplerSettings;
+}
+
 export interface MessageDto {
   id: string;
   sceneId: string;
@@ -416,6 +438,11 @@ export interface MessageDto {
   isHidden: boolean;
   /** Null when never counted, or invalidated by an edit. */
   tokenCount: number | null;
+  /**
+   * What this turn cost, for turns the app generated. Null on user turns, on
+   * imported history, and on anything written before phase 4 stored it.
+   */
+  generation: GenerationMeta | null;
   createdAt: number;
   editedAt: number | null;
 
@@ -1331,6 +1358,53 @@ export type AttributionStyle =
   | "stacked"
   /** Broadsheet: the name and the director's reason on one line with the text. */
   | "inline";
+
+/**
+ * The reading surface, which the reader owns rather than the designer
+ * (SPEC §16 §Density).
+ *
+ * The handoff drew 17px on a 620px column for "someone steering a scene with a
+ * thumb". The installs this replaces run wide, at font scales near 0.98, so the
+ * defaults below are denser than that and the old figures sit near the top of
+ * each range rather than at the centre of it.
+ *
+ * Server-side like every other preference: there is no browser storage in this
+ * app (HANDOFF non-negotiable 8), and a reading size that lived in one browser
+ * would disagree with itself across the phone and the desktop.
+ */
+export interface ReadingDto {
+  /** Multiplies every prose size. Chrome does not scale — a label is scanned. */
+  scale: number;
+  /** The reading column, in px. Also caps sheets and the composer. */
+  measure: number;
+  /** Line height for prose. */
+  leading: number;
+}
+
+export const READING_DEFAULTS: ReadingDto = { scale: 1, measure: 720, leading: 1.5 };
+
+/** Inclusive `[min, max]` per field. The old handoff values are all in range. */
+export const READING_BOUNDS: Record<keyof ReadingDto, readonly [number, number]> = {
+  scale: [0.8, 1.5],
+  measure: [520, 1100],
+  leading: [1.25, 2],
+};
+
+/**
+ * Clamp to the bounds, falling back per field rather than rejecting the lot: a
+ * settings screen that refuses the whole request because one slider is out of
+ * range is worse than one that pins the slider.
+ */
+export function clampReading(input: Partial<Record<keyof ReadingDto, unknown>>): ReadingDto {
+  const out = { ...READING_DEFAULTS };
+  for (const key of ["scale", "measure", "leading"] as const) {
+    const value = input[key];
+    if (typeof value !== "number" || !Number.isFinite(value)) continue;
+    const [min, max] = READING_BOUNDS[key];
+    out[key] = Math.min(max, Math.max(min, value));
+  }
+  return out;
+}
 
 export interface LayoutDto {
   /** Which named starting point this matches, or `custom` once it does not. */
