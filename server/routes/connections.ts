@@ -389,7 +389,14 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
         row?.api_key_encrypted == null ? null : decryptSecret(ctx.keyring, row.api_key_encrypted);
     }
 
-    const models = await fetchProviderModels({ baseUrl, apiKey });
+    // The kind was accepted and dropped on the floor until phase 49, which is
+    // why an Anthropic provider could never list its models.
+    const kind = text(body["kind"], 40);
+    const models = await fetchProviderModels({
+      baseUrl,
+      apiKey,
+      ...(kind === null || kind === "" ? {} : { kind }),
+    });
     if (models === null) {
       return c.json(
         { error: { code: "unreachable", message: "No models endpoint answered. Check the address." } },

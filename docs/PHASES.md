@@ -4276,3 +4276,62 @@ Anthropic wants `input` as an object, so a bad argument string cannot simply be
 passed through. Throwing would break every later turn rather than the one bad
 call, so unparseable arguments go up as `{ _raw: "…" }` — the turn survives and
 the model can see what it did.
+
+---
+
+## Phase 49 — Legibility, and a button that only looked broken
+
+Four reports, all from actually using the thing.
+
+### The fetch button
+
+**It was never broken. It worked perfectly and showed nothing.** Driving it:
+200 from the server, two models parsed, both present in the DOM — and
+`visible text mentioning stub: false`. The results went into a `<datalist>`,
+which renders nothing until the field is focused and typed into. On a phone it
+often renders nothing at all. So the button did its whole job invisibly.
+
+Fixed as a shared `ModelPicker`: the same call, with the answer as a list you
+can see and press, a count, and a filter past eight models because OpenRouter
+lists hundreds. **The same bug existed twice** — the provider editor and the
+profile editor each had their own copy of the datalist — and the setup wizard,
+where somebody meets this app for the first time and most needs the question
+"what do I put in the model box" answered, had no fetch at all.
+
+Also fixed underneath: the route accepted a `kind` and dropped it on the floor,
+so an Anthropic provider authenticated with a bearer token it does not use and
+got 401 on every candidate path, reported as "no models endpoint answered".
+
+### The two figures that were transcribed faithfully and were wrong
+
+**`#14120f` against `#16130f`.** Two points of lightness per channel between
+the page and every surface raised onto it. Every sheet, composer and footer in
+the app is `bg-raised`. The report was "a lot of dark on dark by default", and
+it was exactly right — for forty-odd phases nothing that was meant to sit on
+the page looked like it did.
+
+**Chrome sized for a phone.** The report was "for the site to be usable I have
+to zoom in on my browser like 130%", which is a statement about the default,
+not about the reader. 213 sizes went up a step, and the floor rose from 7px to
+9px.
+
+`test/surfaces.test.ts` now measures the steps between surfaces. This is the
+kind of defect that survives every screenshot review, because each screen looks
+deliberate on its own and the bug is a relationship between two hex values in
+one file.
+
+### Deliberately deferred
+
+- **A prose-size and interface-size control.** The right home for both is the
+  Reading section, and `--onsen-prose-scale` is still driven by nothing. Raising
+  the default was the fix for the report; a control is a separate feature.
+- **`.surface` on every screen.** Applied to Settings and scene setup, the two
+  long forms. The chat log is deliberately not a panel — it is the page.
+
+### Surprises
+
+**"Broken" meant "invisible", and the fix was not in the code that was blamed.**
+The first instinct was a failing request. The request had never failed. Nothing
+short of driving the button and asking the DOM whether a human could see the
+result would have found it, and a unit test asserting `models.length === 2`
+would have passed throughout.

@@ -112,19 +112,22 @@ describe("the hierarchy stays a hierarchy", () => {
   });
 
   /*
-   * "Minimum sizes are load-bearing" — the design allows 7px only on the
-   * ops-key caption, where the glyph above carries the meaning. Anywhere else
-   * it is a phase running out of room and shrinking its way out.
+   * "Minimum sizes are load-bearing", and the floor moved in phase 49.
+   *
+   * The design table's figures were drawn for a phone at reading distance. On
+   * a desktop browser they were small enough that the app was being used at
+   * 130% browser zoom — which is a report that the default is wrong, not that
+   * the reader is unusual. Everything at or below 11px went up a step, and the
+   * floor went with it: 9px, and the ops-key caption is no longer an exception
+   * because it no longer needs to be.
    */
-  test("nothing is set below 8px outside the ops keys", () => {
+  test("nothing is set below 9px", () => {
     const offending = classLists()
-      .filter(
-        (c) =>
-          c.file !== "components/OpsGrid.tsx" &&
-          c.classes.some((k) => {
-            const size = /^text-\[([\d.]+)px\]$/.exec(k);
-            return size !== null && Number(size[1]) < 8;
-          }),
+      .filter((c) =>
+        c.classes.some((k) => {
+          const size = /^text-\[([\d.]+)px\]$/.exec(k);
+          return size !== null && Number(size[1]) < 9;
+        }),
       )
       .map((c) => c.file);
     expect(offending).toEqual([]);

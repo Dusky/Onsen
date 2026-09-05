@@ -147,11 +147,11 @@ export function ApiKeyEditor({
           apiKey.requests.map((request, index) => (
             <div key={`${request.at}-${index}`} className="border-b border-rule py-[8px]">
               <div className="flex items-baseline justify-between gap-[10px]">
-                <span className="min-w-0 flex-1 truncate font-mono text-[11px]">
+                <span className="min-w-0 flex-1 truncate font-mono text-[12.5px]">
                   {request.model}
                 </span>
                 <span
-                  className="chrome flex-none text-[9.5px] tracking-[0.06em] uppercase"
+                  className="chrome flex-none text-[11px] tracking-[0.06em] uppercase"
                   style={
                     request.status >= 400 ? { color: "var(--onsen-color-red)" } : undefined
                   }

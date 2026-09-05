@@ -67,14 +67,14 @@ export function Reasoning({ text }: { text: string }) {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="chrome flex min-h-[28px] w-full items-center gap-[8px] text-left text-[8.5px] tracking-[0.12em] text-ink-dim uppercase"
+        className="chrome flex min-h-[28px] w-full items-center gap-[8px] text-left text-[10px] tracking-[0.12em] text-ink-dim uppercase"
       >
         <span aria-hidden>{open ? "⌃" : "⌄"}</span>
         {strings.chat.reasoning(trimmed.length)}
       </button>
       {open ? (
         <p
-          className="chrome mt-[7px] border-l pl-[11px] text-[10px] leading-[1.65] whitespace-pre-wrap text-ink-dim"
+          className="chrome mt-[7px] border-l pl-[11px] text-[11.5px] leading-[1.65] whitespace-pre-wrap text-ink-dim"
           style={{ borderColor: "var(--onsen-color-rule)" }}
         >
           {trimmed}
@@ -137,7 +137,7 @@ function Segment({
       }
     >
       {segment.speakerName === null ? null : (
-        <p className="chrome mb-[5px] text-[9px] tracking-[0.14em] text-ink-label uppercase">
+        <p className="chrome mb-[5px] text-[10.5px] tracking-[0.14em] text-ink-label uppercase">
           {segment.speakerName}
         </p>
       )}
@@ -166,7 +166,7 @@ function Annotation({
   const failed = annotation.status === "failed";
   return (
     <p
-      className="chrome mt-[7px] flex gap-[7px] text-[9px] leading-[1.55] tracking-[0.04em]"
+      className="chrome mt-[7px] flex gap-[7px] text-[10.5px] leading-[1.55] tracking-[0.04em]"
       style={{
         color: flagged ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)",
         opacity: annotation.status === "ok" ? 0.7 : 1,
@@ -232,7 +232,7 @@ export function OocBlock({
     >
       <div className="mb-[7px] flex items-baseline gap-[10px]">
         <span
-          className="chrome shrink-0 text-[9px] tracking-[0.18em] uppercase"
+          className="chrome shrink-0 text-[10.5px] tracking-[0.18em] uppercase"
           style={{ color: "var(--onsen-color-blue-text-muted)" }}
         >
           {strings.chat.oocLabel(speakerName)}
@@ -242,7 +242,7 @@ export function OocBlock({
           <button
             type="button"
             onClick={onOpenChannel}
-            className="chrome shrink-0 text-[8.5px] tracking-[0.12em] uppercase"
+            className="chrome shrink-0 text-[10px] tracking-[0.12em] uppercase"
             style={{ color: "var(--onsen-color-blue-text-muted)" }}
           >
             {strings.chat.oocOpenChannel}
@@ -323,7 +323,7 @@ export function MessageBlock({
     >
       <header className="mb-[10px] flex items-center gap-[10px]">
         <span
-          className="chrome shrink-0 text-[10px] font-semibold tracking-[0.18em] uppercase"
+          className="chrome shrink-0 text-[11.5px] font-semibold tracking-[0.18em] uppercase"
           style={{ color: isUser ? "var(--onsen-color-text-muted)" : "var(--onsen-color-text-label)" }}
         >
           {speakerName}
@@ -345,7 +345,7 @@ export function MessageBlock({
                   key={action.label}
                   type="button"
                   onClick={action.run}
-                  className="chrome text-[8px] tracking-[0.12em] text-ink-dim uppercase hover:text-ink-label"
+                  className="chrome text-[9.5px] tracking-[0.12em] text-ink-dim uppercase hover:text-ink-label"
                 >
                   {action.label}
                 </button>
@@ -357,7 +357,7 @@ export function MessageBlock({
           <button
             type="button"
             onClick={onOpenVersions}
-            className="chrome shrink-0 text-[9px] tracking-[0.08em] text-ink-dim"
+            className="chrome shrink-0 text-[10.5px] tracking-[0.08em] text-ink-dim"
           >
             {strings.chat.versionCounter(message.siblingIndex + 1, message.siblingCount)}
           </button>
@@ -403,12 +403,12 @@ export function MessageBlock({
             <Annotation key={note.id} annotation={note} onRevert={onRevert} />
           ))}
         {message.passesPending ? (
-          <p className="chrome mt-[6px] text-[9px] leading-[1.55] tracking-[0.04em] text-ink-dim uppercase">
+          <p className="chrome mt-[6px] text-[10.5px] leading-[1.55] tracking-[0.04em] text-ink-dim uppercase">
             {strings.chat.passesPending}
           </p>
         ) : null}
         {message.parseDegraded ? (
-          <p className="chrome mt-[8px] text-[8.5px] leading-[1.5] tracking-[0.06em] text-ink-dim uppercase">
+          <p className="chrome mt-[8px] text-[10px] leading-[1.5] tracking-[0.06em] text-ink-dim uppercase">
             {strings.chat.beatUnparsed}
           </p>
         ) : null}
@@ -417,7 +417,7 @@ export function MessageBlock({
             reads exactly like one it can, and the difference matters most when
             you are wondering why it did not react. */}
         {message.isHidden ? (
-          <p className="chrome mt-[8px] text-[8.5px] tracking-[0.1em] uppercase" style={{ color: "var(--onsen-color-blue-text)" }}>
+          <p className="chrome mt-[8px] text-[10px] tracking-[0.1em] uppercase" style={{ color: "var(--onsen-color-blue-text)" }}>
             {strings.chat.hiddenFromPrompt}
           </p>
         ) : null}
@@ -428,7 +428,7 @@ export function MessageBlock({
           <MessageMedia sceneId={message.sceneId} assets={message.media} />
         ) : null}
         {message.editedAt !== null ? (
-          <p className="chrome mt-[8px] text-[8.5px] tracking-[0.1em] text-ink-dim uppercase">
+          <p className="chrome mt-[8px] text-[10px] tracking-[0.1em] text-ink-dim uppercase">
             {strings.chat.edited}
           </p>
         ) : null}

@@ -93,7 +93,7 @@ export function LorebooksScreen() {
           {notice !== null ? <Notice>{notice}</Notice> : null}
 
           {books.data !== undefined && books.data.length === 0 ? (
-            <p className="chrome text-[10px] tracking-[0.14em] text-ink-dim uppercase">
+            <p className="chrome text-[11.5px] tracking-[0.14em] text-ink-dim uppercase">
               {strings.lore.empty}
             </p>
           ) : null}

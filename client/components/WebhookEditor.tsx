@@ -229,11 +229,11 @@ export function WebhookEditor({
             webhook.deliveries.map((delivery, index) => (
               <div key={`${delivery.at}-${index}`} className="border-b border-rule py-[8px]">
                 <div className="flex items-baseline justify-between gap-[10px]">
-                  <span className="chrome min-w-0 flex-1 truncate text-[9.5px] tracking-[0.06em] text-ink-dim uppercase">
+                  <span className="chrome min-w-0 flex-1 truncate text-[11px] tracking-[0.06em] text-ink-dim uppercase">
                     {strings.settings.eventName[delivery.event] ?? delivery.event}
                   </span>
                   <span
-                    className="chrome flex-none text-[9.5px] tracking-[0.06em] uppercase"
+                    className="chrome flex-none text-[11px] tracking-[0.06em] uppercase"
                     style={
                       delivery.status === "failed"
                         ? { color: "var(--onsen-color-red)" }
@@ -244,7 +244,7 @@ export function WebhookEditor({
                   </span>
                 </div>
                 {delivery.detail !== null ? (
-                  <p className="chrome mt-[3px] truncate text-[9.5px] text-ink-dim">
+                  <p className="chrome mt-[3px] truncate text-[11px] text-ink-dim">
                     {delivery.detail}
                   </p>
                 ) : null}

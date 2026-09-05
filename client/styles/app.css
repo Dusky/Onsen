@@ -217,7 +217,7 @@
    */
   .meta {
     font-family: var(--onsen-font-mono);
-    font-size: 9px;
+    font-size: 10.5px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--onsen-color-text-dim);
@@ -232,7 +232,7 @@
 
   .screen-kicker {
     font-family: var(--onsen-font-mono);
-    font-size: 10px;
+    font-size: 11.5px;
     letter-spacing: var(--onsen-tracking-kicker);
     text-transform: uppercase;
     color: var(--onsen-color-text-dim);
@@ -267,7 +267,7 @@
     min-height: var(--onsen-tap-target);
     padding: 0 16px;
     font-family: var(--onsen-font-mono);
-    font-size: 10px;
+    font-size: var(--onsen-text-button);
     font-weight: 500;
     letter-spacing: var(--onsen-tracking-button);
     text-transform: uppercase;
@@ -287,6 +287,36 @@
     background: var(--onsen-color-red);
     border-color: var(--onsen-color-red);
     color: #fdf6ef;
+  }
+
+  /*
+   * A group of rows, lifted off the page (phase 49).
+   *
+   * "Everything is a page being marked up" gave the app one ground and
+   * hairlines to divide it, and at twelve groups on a settings screen that
+   * stopped separating anything — the rows and the page were the same colour
+   * and the only thing between them was a 1px line. This is the step the
+   * design's own `bg-raised` was always for; it just had nowhere to be used.
+   *
+   * Radius, border width and shadow all come from the theme (phase 45), so a
+   * flat theme still gets a flat panel — a different surface, not a card.
+   */
+  .surface {
+    background: var(--onsen-color-bg-raised);
+    border: var(--onsen-border-width) solid var(--onsen-color-rule);
+    box-shadow: var(--onsen-shadow-panel);
+    padding: 14px 16px;
+  }
+
+  /* The last row in a surface has the edge below it; a rule there is a double. */
+  .surface > .row:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .row {
+    border-bottom: 1px solid var(--onsen-color-rule);
+    padding: 12px 0;
   }
 
   .hairline {

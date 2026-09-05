@@ -83,7 +83,7 @@ export function Sidebar() {
             type="button"
             onClick={() => navigate(item.route)}
             aria-current={isActive ? "page" : undefined}
-            className="chrome flex items-center gap-[10px] py-[13px] pr-[16px] pl-[16px] text-left text-[9.5px] tracking-[0.12em] uppercase"
+            className="chrome flex items-center gap-[10px] py-[13px] pr-[16px] pl-[16px] text-left text-[11px] tracking-[0.12em] uppercase"
             style={{
               color: isActive ? "var(--onsen-color-red)" : "var(--onsen-color-text-muted)",
               background: isActive ? "var(--onsen-color-bg-inset)" : "transparent",
@@ -92,7 +92,7 @@ export function Sidebar() {
           >
             <span className="min-w-0 flex-1 truncate">{item.label}</span>
             {item.count === undefined ? null : (
-              <span className="flex-none text-[9px] text-ink-dim">{item.count}</span>
+              <span className="flex-none text-[10.5px] text-ink-dim">{item.count}</span>
             )}
           </button>
         );
@@ -118,7 +118,7 @@ export function Sidebar() {
               >
                 {scene.title === "" ? strings.scenes.untitled : scene.title}
               </span>
-              <span className="chrome mt-[2px] block text-[8.5px] tracking-[0.08em] text-ink-dim uppercase">
+              <span className="chrome mt-[2px] block text-[10px] tracking-[0.08em] text-ink-dim uppercase">
                 {strings.scenes.counts(scene.messageCount)}
               </span>
             </button>

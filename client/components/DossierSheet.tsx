@@ -138,7 +138,7 @@ export function DossierSheet({
         <>
           <p className="section-label mb-[6px]">{strings.dossiers.written}</p>
           {dossiers.length === 0 ? (
-            <p className="chrome mb-[12px] text-[10px] tracking-[0.12em] text-ink-dim uppercase">
+            <p className="chrome mb-[12px] text-[11.5px] tracking-[0.12em] text-ink-dim uppercase">
               {strings.dossiers.empty}
             </p>
           ) : null}
@@ -211,7 +211,7 @@ export function DossierSheet({
               buried tier's absence is the point, and a hint claiming it is not
               the same as seeing it missing. */}
           <p className="section-label mt-[14px] mb-[5px]">{strings.dossiers.injected}</p>
-          <pre className="chrome overflow-x-auto border border-rule bg-bg-inset p-[10px] text-[9.5px] leading-[1.6] whitespace-pre-wrap text-ink-muted">
+          <pre className="chrome overflow-x-auto border border-rule bg-bg-inset p-[10px] text-[11px] leading-[1.6] whitespace-pre-wrap text-ink-muted">
             {open_.injected === "" ? strings.dossiers.injectedEmpty : open_.injected}
           </pre>
           <p className="explain mt-[4px] mb-[14px]">
@@ -220,7 +220,7 @@ export function DossierSheet({
 
           <div className="flex gap-[8px]">
             {open_.promoted ? (
-              <p className="chrome flex-1 py-[12px] text-[9px] tracking-[0.1em] text-ink-dim uppercase">
+              <p className="chrome flex-1 py-[12px] text-[10.5px] tracking-[0.1em] text-ink-dim uppercase">
                 {strings.dossiers.promoted}
               </p>
             ) : (

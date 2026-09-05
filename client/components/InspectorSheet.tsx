@@ -57,7 +57,7 @@ export function InspectorSheet({
       </p>
       {debug.headroom <= 0 ? (
         <p
-          className="chrome mt-[6px] text-[9px] leading-[1.5] tracking-[0.06em] uppercase"
+          className="chrome mt-[6px] text-[10.5px] leading-[1.5] tracking-[0.06em] uppercase"
           style={{ color: "var(--onsen-color-red)" }}
         >
           {strings.chat.inspectorNoHeadroom}
@@ -86,13 +86,13 @@ export function InspectorSheet({
                     .join(" · ")}
                 </span>
               </span>
-              <span className="chrome flex-none text-[9px] tracking-[0.06em] text-ink-muted uppercase">
+              <span className="chrome flex-none text-[10.5px] tracking-[0.06em] text-ink-muted uppercase">
                 {strings.chat.inspectorTokens(block.tokens)}
               </span>
             </button>
             {isOpen && block.content !== "" ? (
               // Mono: a prompt block is machinery with braces in it (§16).
-              <pre className="chrome mt-[8px] max-h-[240px] overflow-y-auto border border-rule bg-bg-sunken px-[10px] py-[8px] text-[11px] leading-[1.6] whitespace-pre-wrap">
+              <pre className="chrome mt-[8px] max-h-[240px] overflow-y-auto border border-rule bg-bg-sunken px-[10px] py-[8px] text-[12.5px] leading-[1.6] whitespace-pre-wrap">
                 {block.content}
               </pre>
             ) : null}
@@ -124,16 +124,16 @@ export function InspectorSheet({
           <p className="section-label mt-[16px] mb-[6px]">{strings.chat.inspectorEvicted}</p>
           {debug.evicted.map((item, index) => (
             <div key={index} className="flex items-baseline gap-[9px] border-b border-rule py-[8px]">
-              <span className="chrome min-w-0 flex-1 truncate text-[11px] text-ink-dim">
+              <span className="chrome min-w-0 flex-1 truncate text-[12.5px] text-ink-dim">
                 {item.label}
               </span>
               <span
-                className="chrome flex-none text-[9px] tracking-[0.06em] uppercase"
+                className="chrome flex-none text-[10.5px] tracking-[0.06em] uppercase"
                 style={{ color: "var(--onsen-color-red)" }}
               >
                 {strings.chat.inspectorEviction[item.reason]}
               </span>
-              <span className="chrome flex-none text-[9px] text-ink-muted uppercase">
+              <span className="chrome flex-none text-[10.5px] text-ink-muted uppercase">
                 {strings.chat.inspectorTokens(item.tokens)}
               </span>
             </div>
@@ -150,11 +150,11 @@ export function InspectorSheet({
               key={entry.entryId}
               className="flex items-baseline gap-[9px] border-b border-rule py-[8px]"
             >
-              <span className="chrome min-w-0 flex-1 truncate text-[11px] text-ink-dim">
+              <span className="chrome min-w-0 flex-1 truncate text-[12.5px] text-ink-dim">
                 {entry.title}
               </span>
               <span
-                className="chrome flex-none text-[9px] tracking-[0.06em] uppercase"
+                className="chrome flex-none text-[10.5px] tracking-[0.06em] uppercase"
                 style={{
                   color: entry.skipped === null ? "var(--onsen-color-text-muted)" : undefined,
                 }}
@@ -173,12 +173,12 @@ export function InspectorSheet({
       {/* The two quiet failure modes §3 and §18 insist on naming rather than
           hiding: an outlet nothing filled, a macro nobody implements. */}
       {debug.unresolvedOutlets.length > 0 ? (
-        <p className="chrome mt-[14px] text-[9px] leading-[1.5] text-ink-dim uppercase">
+        <p className="chrome mt-[14px] text-[10.5px] leading-[1.5] text-ink-dim uppercase">
           {strings.chat.inspectorOutlets(debug.unresolvedOutlets.join(", "))}
         </p>
       ) : null}
       {debug.unknownMacros.length > 0 ? (
-        <p className="chrome mt-[8px] text-[9px] leading-[1.5] text-ink-dim uppercase">
+        <p className="chrome mt-[8px] text-[10.5px] leading-[1.5] text-ink-dim uppercase">
           {strings.chat.inspectorMacros(debug.unknownMacros.join(", "))}
         </p>
       ) : null}

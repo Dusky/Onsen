@@ -13,17 +13,29 @@
 :root {
   color-scheme: dark;
 
-  /* Surfaces */
+  /*
+   * Surfaces (raised in phase 49).
+   *
+   * The handoff's dark surfaces were two points of lightness apart —
+   * `#14120f` ground against `#16130f` raised — which is a difference the eye
+   * does not find. Every sheet, composer and footer in the app is `bg-raised`,
+   * so nothing that was meant to sit *on* the page looked like it did: the
+   * report was "a lot of dark on dark", and it was correct.
+   *
+   * The ground is unchanged; the steps above it are real ones now, and the
+   * rules moved up with them so a hairline still reads on the raised surface
+   * rather than disappearing into it.
+   */
   --onsen-color-bg: #14120f;
-  --onsen-color-bg-sunken: #100e0b;
-  --onsen-color-bg-raised: #16130f;
-  --onsen-color-bg-inset: #1a1611;
-  --onsen-color-bg-input: #14120f;
+  --onsen-color-bg-sunken: #0f0d0a;
+  --onsen-color-bg-raised: #1d1a15;
+  --onsen-color-bg-inset: #262119;
+  --onsen-color-bg-input: #100e0b;
 
   /* Rules and borders */
-  --onsen-color-rule: #221e18;
-  --onsen-color-rule-strong: #2f2a22;
-  --onsen-color-border-quiet: #2a251e;
+  --onsen-color-rule: #2b2620;
+  --onsen-color-rule-strong: #3b352c;
+  --onsen-color-border-quiet: #332d25;
 
   /* Ink */
   --onsen-color-text: #e8e2d6;
@@ -95,20 +107,28 @@
 
   --onsen-leading-prose: 1.64;
 
-  /* Chrome sizes are fixed. */
+  /*
+   * Chrome sizes are fixed — they do not scale with the reader's prose size,
+   * because a label is scanned rather than read.
+   *
+   * Raised a step in phase 49. The design table's figures were drawn for a
+   * phone at reading distance; on a desktop browser they were small enough
+   * that the app was being used at 130% browser zoom, which is a report that
+   * the default is wrong, not that the reader is unusual.
+   */
   --onsen-text-title: 26px;
   --onsen-text-header: 19px;
-  --onsen-text-attribution: 10px;
-  --onsen-text-section-label: 9px;
+  --onsen-text-attribution: 11.5px;
+  --onsen-text-section-label: 10.5px;
   /*
    * A group of fields, not one field (phase 47). Two steps above the field
    * label — larger, brighter, and carrying a rule — because before this the
    * two were set identically and a screen of twelve groups read as one list of
    * two hundred labels.
    */
-  --onsen-text-group-heading: 11px;
-  --onsen-text-button: 9.5px;
-  --onsen-text-token-count: 8.5px;
+  --onsen-text-group-heading: 12.5px;
+  --onsen-text-button: 11px;
+  --onsen-text-token-count: 10px;
 
   --onsen-tracking-attribution: 0.18em;
   --onsen-tracking-label: 0.18em;
@@ -150,11 +170,11 @@
     color-scheme: light;
 
     --onsen-color-bg: #f4efe4;
-    --onsen-color-bg-raised: #efe9dc;
+    --onsen-color-bg-raised: #eae3d3;
     --onsen-color-bg-input: #fdfaf3;
     --onsen-color-bg-card: #f7f3ea;
     --onsen-color-bg-sunken: #ece6d8; /* derived */
-    --onsen-color-bg-inset: #e8e1d1; /* derived */
+    --onsen-color-bg-inset: #ded5c2; /* derived */
 
     --onsen-color-rule: #e2dacb;
     --onsen-color-rule-strong: #ddd4c3;
@@ -195,11 +215,11 @@
   color-scheme: light;
 
   --onsen-color-bg: #f4efe4;
-  --onsen-color-bg-raised: #efe9dc;
+  --onsen-color-bg-raised: #eae3d3;
   --onsen-color-bg-input: #fdfaf3;
   --onsen-color-bg-card: #f7f3ea;
   --onsen-color-bg-sunken: #ece6d8;
-  --onsen-color-bg-inset: #e8e1d1;
+  --onsen-color-bg-inset: #ded5c2;
 
   --onsen-color-rule: #e2dacb;
   --onsen-color-rule-strong: #ddd4c3;

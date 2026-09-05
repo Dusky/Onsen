@@ -107,7 +107,7 @@ export function ScenesScreen() {
       <main className="min-h-0 flex-1 overflow-y-auto px-[22px]">
         <div className="mx-auto w-full max-w-[var(--onsen-list-measure)]">
           {scenes.data?.length === 0 ? (
-            <p className="chrome mt-[24px] text-[10px] tracking-[0.14em] text-ink-dim uppercase">
+            <p className="chrome mt-[24px] text-[11.5px] tracking-[0.14em] text-ink-dim uppercase">
               {strings.scenes.empty}
             </p>
           ) : null}

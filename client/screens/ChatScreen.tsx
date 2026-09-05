@@ -864,7 +864,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         <article>
           <header className="mb-[10px]">
             <div className="flex items-center gap-[10px]">
-              <span className="chrome shrink-0 text-[10px] font-semibold tracking-[0.18em] text-ink-label uppercase">
+              <span className="chrome shrink-0 text-[11.5px] font-semibold tracking-[0.18em] text-ink-label uppercase">
                 {active.speaker}
               </span>
               <span className="h-px flex-1 bg-rule" />
@@ -885,7 +885,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       {active !== null && active.sceneId === sceneId && active.status === "error" ? (
         <p
           role="alert"
-          className="chrome border border-red-border bg-red-bg px-[11px] py-[9px] text-[10px] tracking-[0.06em] text-red-text uppercase"
+          className="chrome border border-red-border bg-red-bg px-[11px] py-[9px] text-[11.5px] tracking-[0.06em] text-red-text uppercase"
         >
           {active.error ?? strings.errors.generationFailed}
         </p>
@@ -894,7 +894,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       {autopilotActive || isGenerating ? (
         <div className="flex items-center gap-[10px]">
           <span className="h-[6px] w-[6px] flex-none" style={{ background: "var(--onsen-color-red)" }} />
-          <span className="chrome flex-1 text-[9.5px] tracking-[0.14em] text-ink-muted uppercase">
+          <span className="chrome flex-1 text-[11px] tracking-[0.14em] text-ink-muted uppercase">
             {autopilotActive
               ? apState !== null
                 ? `${strings.chat.autopilot} · ${strings.chat.autopilotCount(apState.turns, apState.maxTurns)}`
@@ -906,7 +906,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           <button
             type="button"
             onClick={() => (autopilotActive ? stopAutopilot.mutate() : void generation.cancel())}
-            className="chrome border border-red-border px-[10px] py-[6px] text-[9.5px] tracking-[0.14em] uppercase"
+            className="chrome border border-red-border px-[10px] py-[6px] text-[11px] tracking-[0.14em] uppercase"
             style={{ color: "var(--onsen-color-red)" }}
           >
             {autopilotActive ? strings.chat.autopilotTakeOver : strings.chat.stop}
@@ -924,7 +924,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         <button
           type="button"
           onClick={() => setMediaNote(null)}
-          className="chrome block text-left text-[9px] leading-[1.5] tracking-[0.06em] uppercase"
+          className="chrome block text-left text-[10.5px] leading-[1.5] tracking-[0.06em] uppercase"
           style={{ color: "var(--onsen-color-red)" }}
         >
           {mediaNote}
@@ -956,7 +956,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           ) : (
             <div className="mx-auto flex min-h-full w-full max-w-[var(--onsen-prose-measure)] flex-col justify-end gap-[26px]">
               {logMessages.length === 0 && !isGenerating ? (
-                <p className="chrome text-[10px] tracking-[0.14em] text-ink-dim uppercase">
+                <p className="chrome text-[11.5px] tracking-[0.14em] text-ink-dim uppercase">
                   {strings.scenes.emptyScene}
                 </p>
               ) : null}
@@ -977,7 +977,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             <div className="mx-auto flex w-full max-w-[var(--onsen-prose-measure)] items-center gap-[10px]">
               <p
                 role="alert"
-                className="chrome min-w-0 flex-1 truncate text-[9.5px] tracking-[0.06em] uppercase"
+                className="chrome min-w-0 flex-1 truncate text-[11px] tracking-[0.06em] uppercase"
                 style={{ color: "var(--onsen-color-red)" }}
               >
                 {generation.startError.message}
@@ -1013,7 +1013,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             onClick={() => setOpsPanel("steer")}
             className="flex-none border-t border-rule bg-bg-raised px-[16px] py-[8px] text-left"
           >
-            <span className="chrome mx-auto flex w-full max-w-[var(--onsen-prose-measure)] gap-[8px] text-[9px] leading-[1.5] tracking-[0.06em] uppercase">
+            <span className="chrome mx-auto flex w-full max-w-[var(--onsen-prose-measure)] gap-[8px] text-[10.5px] leading-[1.5] tracking-[0.06em] uppercase">
               <span style={{ color: "var(--onsen-color-red)" }}>{strings.chat.steerActive}</span>
               <span className="min-w-0 flex-1 truncate text-ink-dim">{steer}</span>
             </span>
@@ -1126,7 +1126,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           <button
             type="button"
             onClick={() => setMarksOpen(true)}
-            className="chrome flex-none border border-border-quiet px-[9px] py-[6px] text-[9px] tracking-[0.12em] text-ink-muted uppercase"
+            className="chrome flex-none border border-border-quiet px-[9px] py-[6px] text-[10.5px] tracking-[0.12em] text-ink-muted uppercase"
           >
             {`${strings.chat.checkpoints} · ${checkpoints.data?.length ?? 0}`}
           </button>
@@ -1134,7 +1134,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         <button
           type="button"
           onClick={() => navigate({ name: "setup", sceneId })}
-          className="chrome flex-none border border-border-quiet px-[9px] py-[6px] text-[9px] tracking-[0.12em] text-ink-muted uppercase"
+          className="chrome flex-none border border-border-quiet px-[9px] py-[6px] text-[10.5px] tracking-[0.12em] text-ink-muted uppercase"
         >
           {strings.chat.setup}
         </button>
@@ -1164,10 +1164,10 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           onClick={channel.accept}
           className="mx-[18px] mt-[10px] flex flex-none items-center justify-between gap-[10px] border border-blue-border bg-blue-bg px-[11px] py-[8px]"
         >
-          <span className="chrome truncate text-[9.5px] tracking-[0.12em] text-blue-text uppercase">
+          <span className="chrome truncate text-[11px] tracking-[0.12em] text-blue-text uppercase">
             {strings.chat.movedElsewhere}
           </span>
-          <span className="chrome flex-none text-[9.5px] tracking-[0.12em] text-blue-text uppercase">
+          <span className="chrome flex-none text-[11px] tracking-[0.12em] text-blue-text uppercase">
             {strings.chat.movedShow}
           </span>
         </button>
@@ -1344,7 +1344,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
               onClick={() => void recast(recasting, segment.ordinal, segment.speakerName)}
               className="w-full border-b border-rule py-[13px] text-left disabled:opacity-40"
             >
-              <span className="chrome text-[9px] tracking-[0.14em] text-ink-label uppercase">
+              <span className="chrome text-[10.5px] tracking-[0.14em] text-ink-label uppercase">
                 {segment.speakerName ?? strings.chat.narrationPart}
               </span>
               <p className="mt-[5px] line-clamp-2 text-[length:var(--onsen-text-prose-excerpt)] leading-[1.5] text-ink-prose-muted">
@@ -1414,7 +1414,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                   sibling.id === versionsFor.id ? "2px solid var(--onsen-color-red)" : undefined,
               }}
             >
-              <span className="chrome text-[9px] tracking-[0.12em] text-ink-dim uppercase">
+              <span className="chrome text-[10.5px] tracking-[0.12em] text-ink-dim uppercase">
                 {sibling.siblingIndex + 1} / {sibling.siblingCount}
               </span>
               <p className="mt-[6px] line-clamp-3 text-[length:var(--onsen-text-prose-excerpt)] leading-[1.5] text-ink-prose-muted">

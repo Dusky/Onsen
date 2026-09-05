@@ -69,7 +69,7 @@ function MarkerField({
       <span className="section-label mb-[4px] block">{label}</span>
       <input
         aria-label={label}
-        className="chrome w-full border border-rule-strong bg-bg-input px-[8px] py-[9px] text-[10px] text-ink"
+        className="chrome w-full border border-rule-strong bg-bg-input px-[8px] py-[9px] text-[11.5px] text-ink"
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
@@ -188,7 +188,7 @@ export function InstructPicker({
               {/* The only feedback there is. A near-miss template errors
                   nowhere, so seeing the actual string is the whole check. */}
               <p className="section-label mt-[10px] mb-[4px]">{strings.instruct.preview}</p>
-              <pre className="chrome overflow-x-auto border border-rule bg-bg-inset p-[10px] text-[9.5px] leading-[1.6] whitespace-pre-wrap text-ink-muted">
+              <pre className="chrome overflow-x-auto border border-rule bg-bg-inset p-[10px] text-[11px] leading-[1.6] whitespace-pre-wrap text-ink-muted">
                 {preview(selected)}
               </pre>
             </div>
@@ -246,7 +246,7 @@ function Editor({
       <p className="section-label mb-[4px]">{strings.instruct.stopSequences}</p>
       <input
         aria-label={strings.instruct.stopSequences}
-        className="chrome mb-[4px] w-full border border-rule-strong bg-bg-input px-[8px] py-[9px] text-[10px] text-ink"
+        className="chrome mb-[4px] w-full border border-rule-strong bg-bg-input px-[8px] py-[9px] text-[11.5px] text-ink"
         value={draft.stopSequences.join(", ")}
         onChange={(event) =>
           set(
@@ -270,7 +270,7 @@ function Editor({
       >
         <span className="section-label">{strings.instruct.systemInUser}</span>
         <span
-          className="chrome flex-none text-[9px] tracking-[0.12em] uppercase"
+          className="chrome flex-none text-[10.5px] tracking-[0.12em] uppercase"
           style={{
             color: draft.systemInUser ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)",
           }}

@@ -30,7 +30,6 @@ import {
   useUpdateProvider,
   useUpdateTask,
   useTestProvider,
-  useFetchModels,
   useApplyUpdate,
   useCheckUpdate,
   useUpdateStatus,
@@ -56,6 +55,7 @@ import { TriggerEditor } from "../components/TriggerEditor.tsx";
 import { ExportPackSheet, InstallPackSheet, RemovePackSheet } from "../components/PackSheets.tsx";
 import { WebhookEditor } from "../components/WebhookEditor.tsx";
 import { ApiKeyEditor } from "../components/ApiKeyEditor.tsx";
+import { ModelPicker } from "../components/ModelPicker.tsx";
 import { MediaSettings } from "../components/MediaSettings.tsx";
 import { MigrationSection } from "../components/MigrationSection.tsx";
 import { ThemeSection } from "../components/ThemeSection.tsx";
@@ -75,7 +75,7 @@ import { ThemeSection } from "../components/ThemeSection.tsx";
  */
 
 function Row({ children }: { children: React.ReactNode }) {
-  return <div className="border-b border-rule py-[12px]">{children}</div>;
+  return <div className="row">{children}</div>;
 }
 
 /**
@@ -119,31 +119,25 @@ function ProviderEditor({
   const update = useUpdateProvider();
   const remove = useDeleteProvider();
   const test = useTestProvider(provider?.id ?? "");
-  const fetchModels = useFetchModels();
   const [error, setError] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<string | null>(null);
-  const [modelOptions, setModelOptions] = useState<string[]>([]);
+  const modelRef = useRef<HTMLInputElement>(null);
+  const [chosenModel, setChosenModel] = useState(provider?.model ?? "");
   const [confirmNode, confirm] = useConfirm();
   const formRef = useRef<HTMLFormElement>(null);
 
   // The model list comes from the provider's own API (§16). The key crosses to
   // our server transiently for the call — never stored, never to a third party.
-  function onFetchModels() {
-    const form = formRef.current;
-    if (form === null) return;
-    const data = new FormData(form);
-    fetchModels.mutate(
-      {
-        kind: provider?.kind ?? String(data.get("kind") ?? ""),
-        baseUrl: String(data.get("baseUrl") ?? ""),
-        apiKey: String(data.get("apiKey") ?? ""),
-        ...(provider === null ? {} : { providerId: provider.id }),
-      },
-      {
-        onSuccess: ({ models }) => setModelOptions(models),
-        onError: (e: Error) => setError(e.message),
-      },
-    );
+  // Read at click time, not from state: this form is uncontrolled and is still
+  // being typed into.
+  function modelRequest() {
+    const data = new FormData(formRef.current ?? undefined);
+    return {
+      kind: provider?.kind ?? String(data.get("kind") ?? ""),
+      baseUrl: String(data.get("baseUrl") ?? ""),
+      apiKey: String(data.get("apiKey") ?? ""),
+      ...(provider === null ? {} : { providerId: provider.id }),
+    };
   }
 
   return (
@@ -216,27 +210,26 @@ function ProviderEditor({
         />
 
         <p className="section-label mb-[6px]">{strings.settings.providerModel}</p>
-        <div className="mb-[14px] flex gap-[6px]">
-          <input
-            name="model"
-            className="field flex-1"
-            list={`models-${provider?.id ?? "new"}`}
-            defaultValue={provider?.model ?? ""}
-          />
-          <button
-            type="button"
-            className="btn flex-none"
-            disabled={fetchModels.isPending}
-            onClick={onFetchModels}
+        <div className="mb-[14px]">
+          <ModelPicker
+            request={modelRequest}
+            selected={chosenModel}
+            onPick={(model) => {
+              // Written straight to the field, which is uncontrolled; the state
+              // is kept in step so the pick stays highlighted.
+              if (modelRef.current !== null) modelRef.current.value = model;
+              setChosenModel(model);
+            }}
           >
-            {fetchModels.isPending ? strings.settings.fetchingModels : strings.settings.fetchModels}
-          </button>
+            <input
+              ref={modelRef}
+              name="model"
+              className="field min-w-0 flex-1"
+              defaultValue={provider?.model ?? ""}
+              onChange={(event) => setChosenModel(event.target.value)}
+            />
+          </ModelPicker>
         </div>
-        <datalist id={`models-${provider?.id ?? "new"}`}>
-          {modelOptions.map((model) => (
-            <option key={model} value={model} />
-          ))}
-        </datalist>
 
         <p className="section-label mb-[6px]">{strings.settings.providerKey}</p>
         <input name="apiKey" type="password" className="field" autoComplete="off" />
@@ -328,7 +321,7 @@ function ProviderEditor({
               {test.isPending ? strings.settings.providerTesting : strings.settings.providerTest}
             </button>
             {testResult !== null ? (
-              <span className="chrome min-w-0 flex-1 truncate text-[8.5px] leading-[1.4] text-ink-dim">
+              <span className="chrome min-w-0 flex-1 truncate text-[10px] leading-[1.4] text-ink-dim">
                 {testResult}
               </span>
             ) : null}
@@ -381,32 +374,26 @@ function ProfileEditor({
   const create = useCreateProfile();
   const update = useUpdateProfile();
   const remove = useDeleteProfile();
-  const fetchModels = useFetchModels();
   const [error, setError] = useState<string | null>(null);
   const [confirmNode, confirm] = useConfirm();
-  const [modelOptions, setModelOptions] = useState<string[]>([]);
+  const modelRef = useRef<HTMLInputElement>(null);
+  const [chosenModel, setChosenModel] = useState(profile?.model ?? "");
   const formRef = useRef<HTMLFormElement>(null);
 
   // A profile's model list comes from the provider it points at — the profile
   // itself has no address, so the selected provider supplies both the URL and
   // the stored key (§16).
-  function onFetchModels() {
-    const form = formRef.current;
-    if (form === null) return;
-    const data = new FormData(form);
+  function modelRequest() {
+    const data = new FormData(formRef.current ?? undefined);
     const providerId = String(data.get("providerId") ?? "");
     const provider = providers.find((candidate) => candidate.id === providerId);
-    if (provider === undefined || provider.baseUrl === null) {
-      setError("This provider has no address to fetch models from.");
-      return;
-    }
-    fetchModels.mutate(
-      { baseUrl: provider.baseUrl, providerId: provider.id },
-      {
-        onSuccess: ({ models }) => setModelOptions(models),
-        onError: (e: Error) => setError(e.message),
-      },
-    );
+    // An empty address makes the picker say why, rather than calling and
+    // failing: the profile has no address of its own, only the provider's.
+    return {
+      kind: provider?.kind ?? "",
+      baseUrl: provider?.baseUrl ?? "",
+      ...(provider === undefined ? {} : { providerId: provider.id }),
+    };
   }
 
   return (
@@ -445,27 +432,25 @@ function ProfileEditor({
         </select>
 
         <p className="section-label mb-[6px]">{strings.settings.providerModel}</p>
-        <div className="mb-[14px] flex gap-[6px]">
-          <input
-            name="model"
-            className="field flex-1"
-            list={`profile-models-${profile?.id ?? "new"}`}
-            defaultValue={profile?.model ?? ""}
-          />
-          <button
-            type="button"
-            className="btn flex-none"
-            disabled={fetchModels.isPending}
-            onClick={onFetchModels}
+        <div className="mb-[14px]">
+          <ModelPicker
+            request={modelRequest}
+            selected={chosenModel}
+            emptyMessage={strings.settings.modelsNoProviderAddress}
+            onPick={(model) => {
+              if (modelRef.current !== null) modelRef.current.value = model;
+              setChosenModel(model);
+            }}
           >
-            {fetchModels.isPending ? strings.settings.fetchingModels : strings.settings.fetchModels}
-          </button>
+            <input
+              ref={modelRef}
+              name="model"
+              className="field min-w-0 flex-1"
+              defaultValue={profile?.model ?? ""}
+              onChange={(event) => setChosenModel(event.target.value)}
+            />
+          </ModelPicker>
         </div>
-        <datalist id={`profile-models-${profile?.id ?? "new"}`}>
-          {modelOptions.map((model) => (
-            <option key={model} value={model} />
-          ))}
-        </datalist>
 
         {error === null ? null : (
           <p className="explain explain-alert mb-[10px]">{error}</p>
@@ -737,7 +722,7 @@ function UpdateGroup() {
           {/* Red is attention — owed by "behind" alone, not by every state
               that is not an error. */}
           <span
-            className="chrome flex-none text-[9px] tracking-[0.06em] uppercase"
+            className="chrome flex-none text-[10.5px] tracking-[0.06em] uppercase"
             style={{ color: behind !== null && behind > 0 ? "var(--onsen-color-red)" : undefined }}
           >
             {state}
@@ -886,7 +871,7 @@ function ApiKeysSection() {
               >
                 {key.name}
               </span>
-              <span className="chrome block truncate text-[9px] tracking-[0.06em] text-ink-dim">
+              <span className="chrome block truncate text-[10.5px] tracking-[0.06em] text-ink-dim">
                 <span className="font-mono">{key.hint}…</span>
                 <span className="uppercase">
                   {[
@@ -970,7 +955,7 @@ function WebhooksSection() {
                 >
                   {webhook.name}
                 </span>
-                <span className="chrome block truncate text-[9px] tracking-[0.06em] text-ink-dim">
+                <span className="chrome block truncate text-[10.5px] tracking-[0.06em] text-ink-dim">
                   {/* The URL keeps its own case. Everything else in this
                       subtitle is chrome and is uppercased; a URL is not chrome,
                       and a path is case-sensitive. */}
@@ -1411,7 +1396,7 @@ export function SettingsScreen() {
               type="button"
               onClick={() => setCategory(entry.id)}
               aria-current={entry.id === active ? "page" : undefined}
-              className="chrome flex min-h-[44px] flex-none items-center px-[10px] text-[9.5px] tracking-[0.12em] uppercase"
+              className="chrome flex min-h-[44px] flex-none items-center px-[10px] text-[11px] tracking-[0.12em] uppercase"
               style={{
                 color:
                   entry.id === active
@@ -1426,8 +1411,11 @@ export function SettingsScreen() {
         </div>
       </div>
 
-      <main className="min-h-0 flex-1 overflow-y-auto px-[22px] py-[16px]">
-        <div className="mx-auto w-full max-w-[var(--onsen-list-measure)]">
+      <main className="min-h-0 flex-1 overflow-y-auto px-[16px] py-[16px]">
+        {/* On a raised surface rather than on the page (phase 49). Twelve
+            groups of hairline rows directly on the ground read as one
+            undifferentiated dark field. */}
+        <div className="surface mx-auto w-full max-w-[var(--onsen-list-measure)]">
           {matching.length === 0 ? (
             <p className="explain">
               {strings.settings.categoryEmpty}
@@ -1490,7 +1478,7 @@ export function SettingsScreen() {
                 </span>
                 {profile.isDefault ? (
                   <span
-                    className="chrome flex-none text-[8.5px] tracking-[0.12em] uppercase"
+                    className="chrome flex-none text-[10px] tracking-[0.12em] uppercase"
                     style={{ color: "var(--onsen-color-red)" }}
                   >
                     {strings.settings.profileDefault}
@@ -1616,7 +1604,7 @@ export function SettingsScreen() {
                         .join(" · ")}
                     </span>
                   </span>
-                  <span className="chrome flex-none text-[9px] tracking-[0.06em] text-ink-muted uppercase">
+                  <span className="chrome flex-none text-[10.5px] tracking-[0.06em] text-ink-muted uppercase">
                     {routed}
                   </span>
                   <span className="chrome flex-none self-center text-[12px] text-ink-dim">›</span>

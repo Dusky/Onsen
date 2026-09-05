@@ -75,7 +75,7 @@ export function Sheet({
           </p>
           {meta === undefined ? null : (
             <p
-              className="chrome text-[9px] tracking-[0.10em] uppercase"
+              className="chrome text-[10.5px] tracking-[0.10em] uppercase"
               style={{ color: `var(--onsen-color-${blue ? "blue-text-muted" : "text-dim"})` }}
             >
               {meta}
@@ -105,7 +105,7 @@ export function SheetAction({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="chrome flex w-full items-center border-b border-rule py-[15px] text-left text-[10px] tracking-[0.12em] uppercase disabled:opacity-40"
+      className="chrome flex w-full items-center border-b border-rule py-[15px] text-left text-[11.5px] tracking-[0.12em] uppercase disabled:opacity-40"
       style={{ color: destructive ? "var(--onsen-color-red)" : "var(--onsen-color-text-label)" }}
     >
       {label}

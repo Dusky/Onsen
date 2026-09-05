@@ -3,6 +3,7 @@ import { Screen } from "../components/Screen.tsx";
 import { Field } from "../components/Field.tsx";
 import { Notice } from "../components/Notice.tsx";
 import { strings } from "../strings.ts";
+import { ModelPicker } from "../components/ModelPicker.tsx";
 import { api, ApiRequestError } from "../lib/api.ts";
 import {
   MIN_PASSWORD_LENGTH,
@@ -185,18 +186,27 @@ export function SetupScreen({ onComplete }: { onComplete: () => void }) {
           )}
         </Field>
 
+        {/* The wizard is where somebody meets this app for the first time, and
+            "what do I put in the model box" is the question it most needs to
+            answer. It had no fetch at all until phase 49. */}
         <Field label={s.modelLabel} aux={strings.common.optional}>
           {(id) => (
-            <input
-              id={id}
-              className="field"
-              autoCapitalize="off"
-              autoCorrect="off"
-              spellCheck={false}
-              placeholder={s.modelPlaceholder}
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-            />
+            <ModelPicker
+              request={() => ({ kind, baseUrl: baseUrl.trim(), apiKey: apiKey.trim() })}
+              selected={model}
+              onPick={setModel}
+            >
+              <input
+                id={id}
+                className="field min-w-0 flex-1"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
+                placeholder={s.modelPlaceholder}
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+              />
+            </ModelPicker>
           )}
         </Field>
 

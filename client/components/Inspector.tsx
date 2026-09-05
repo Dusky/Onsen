@@ -47,7 +47,7 @@ export function Inspector({
             type="button"
             onClick={() => onTab(id)}
             aria-current={tab === id ? "true" : undefined}
-            className="chrome flex min-h-[44px] items-center px-[14px] text-[9px] tracking-[0.12em] uppercase"
+            className="chrome flex min-h-[44px] items-center px-[14px] text-[10.5px] tracking-[0.12em] uppercase"
             style={{
               color: tab === id ? "var(--onsen-color-text)" : "var(--onsen-color-text-dim)",
               borderBottom: `2px solid ${tab === id ? "var(--onsen-color-red)" : "transparent"}`,

@@ -92,7 +92,7 @@ export function PresetEditor({ preset, onClose }: { preset: PresetDto; onClose()
           </div>
         ))}
         {error === null ? null : (
-          <p role="alert" className="chrome mb-[10px] text-[9.5px] text-red-text">
+          <p role="alert" className="chrome mb-[10px] text-[11px] text-red-text">
             {error}
           </p>
         )}
@@ -272,10 +272,10 @@ function Slider({
   return (
     <div className="mb-[11px]">
       <div className="mb-[5px] flex items-baseline justify-between gap-[10px]">
-        <span className="chrome text-[9.5px] tracking-[0.08em] text-ink-muted uppercase">
+        <span className="chrome text-[11px] tracking-[0.08em] text-ink-muted uppercase">
           {label}
         </span>
-        <span className="chrome text-[9.5px] tracking-[0.06em] text-ink-label">
+        <span className="chrome text-[11px] tracking-[0.06em] text-ink-label">
           {shown === undefined ? strings.settings.samplerOff : shown}
         </span>
       </div>
@@ -342,7 +342,7 @@ function Whole({
           if (next !== value) onCommit(next);
         }}
       />
-      <span className="chrome mt-[5px] block text-[9px] tracking-[0.10em] text-ink-dim uppercase">
+      <span className="chrome mt-[5px] block text-[10.5px] tracking-[0.10em] text-ink-dim uppercase">
         {unit}
       </span>
     </label>

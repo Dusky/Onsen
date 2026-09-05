@@ -447,6 +447,16 @@ export const strings = {
     providerTestFail: "Failed",
     fetchModels: "Fetch",
     fetchingModels: "Fetching…",
+    /*
+     * Phase 49. The fetch used to fill a <datalist>, which shows nothing until
+     * you focus the field and start typing — so the button looked broken. The
+     * models are a visible list now, and these name it.
+     */
+    modelsFound: (n: number) => (n === 1 ? "1 model" : `${n} models`),
+    modelsFilter: "Filter models",
+    modelsNone: "That address answered, but listed no models.",
+    modelsAddressFirst: "Enter the address first.",
+    modelsNoProviderAddress: "This provider has no address to fetch models from.",
     providerDisabled: "Disabled",
     lastProvider: "The only provider. Add another before removing this one.",
 

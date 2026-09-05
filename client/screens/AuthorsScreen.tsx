@@ -103,7 +103,7 @@ export function AuthorsScreen() {
           </p>
 
           {authors.data?.length === 0 ? (
-            <p className="chrome text-[10px] tracking-[0.14em] text-ink-dim uppercase">
+            <p className="chrome text-[11.5px] tracking-[0.14em] text-ink-dim uppercase">
               {strings.authors.empty}
             </p>
           ) : null}
@@ -119,7 +119,7 @@ export function AuthorsScreen() {
                 <span className="truncate text-[17px] font-medium">{author.name}</span>
                 {author.isDefault ? (
                   <span
-                    className="chrome flex-none text-[8.5px] tracking-[0.12em] uppercase"
+                    className="chrome flex-none text-[10px] tracking-[0.12em] uppercase"
                     style={{ color: "var(--onsen-color-red)" }}
                   >
                     {strings.authors.isDefault}
@@ -169,7 +169,7 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
   if (author === undefined) {
     return (
       <div className="flex screen-height items-center justify-center">
-        <p className="chrome text-[9px] tracking-[0.18em] text-ink-dim uppercase">
+        <p className="chrome text-[10.5px] tracking-[0.18em] text-ink-dim uppercase">
           {strings.common.working}
         </p>
       </div>
@@ -271,7 +271,7 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
               style={{ borderLeft: "2px solid var(--onsen-color-blue)" }}
             >
               <p
-                className="chrome mb-[6px] text-[9px] tracking-[0.18em] uppercase"
+                className="chrome mb-[6px] text-[10.5px] tracking-[0.18em] uppercase"
                 style={{ color: "var(--onsen-color-blue)" }}
               >
                 {author.name} · OOC
@@ -391,7 +391,7 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
         <div className="mx-auto w-full max-w-[var(--onsen-list-measure)]">
           <div className="flex items-baseline justify-between">
             <span className="section-label">{strings.authors.cardTotal}</span>
-            <span className="chrome text-[9px] tracking-[0.06em] text-ink-label uppercase">
+            <span className="chrome text-[10.5px] tracking-[0.06em] text-ink-label uppercase">
               {strings.characters.shareOfContext(tokens.total, CONTEXT_WINDOW)}
             </span>
           </div>

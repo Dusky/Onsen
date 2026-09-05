@@ -59,7 +59,7 @@ export function App() {
   if (phase.status === "loading") {
     return (
       <div className="flex screen-height items-center justify-center">
-        <p className="chrome text-[9px] tracking-[0.18em] text-ink-dim uppercase">
+        <p className="chrome text-[10.5px] tracking-[0.18em] text-ink-dim uppercase">
           {strings.common.working}
         </p>
       </div>
@@ -69,7 +69,7 @@ export function App() {
   if (phase.status === "error") {
     return (
       <div className="flex screen-height items-center justify-center px-[22px]">
-        <p className="chrome text-center text-[10px] tracking-[0.06em] text-red-text uppercase">
+        <p className="chrome text-center text-[11.5px] tracking-[0.06em] text-red-text uppercase">
           {strings.errors.network}
         </p>
       </div>

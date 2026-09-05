@@ -70,7 +70,7 @@ export function LoreSheet({
     >
       <p className="section-label mb-[6px]">{strings.lore.sheetAttached}</p>
       {reaching.length === 0 ? (
-        <p className="chrome mb-[12px] text-[10px] tracking-[0.12em] text-ink-dim uppercase">
+        <p className="chrome mb-[12px] text-[11.5px] tracking-[0.12em] text-ink-dim uppercase">
           {strings.lore.sceneRowNone}
         </p>
       ) : null}
@@ -102,7 +102,7 @@ export function LoreSheet({
               <button
                 type="button"
                 onClick={() => onDetach(book.id, own.id)}
-                className="chrome flex-none text-[9px] tracking-[0.12em] uppercase"
+                className="chrome flex-none text-[10.5px] tracking-[0.12em] uppercase"
                 style={{ color: "var(--onsen-color-red)" }}
               >
                 {strings.lore.detach}
@@ -126,7 +126,7 @@ export function LoreSheet({
               <button
                 type="button"
                 onClick={() => onAttach(book.id)}
-                className="chrome flex-none text-[9px] tracking-[0.12em] text-ink-label uppercase"
+                className="chrome flex-none text-[10.5px] tracking-[0.12em] text-ink-label uppercase"
               >
                 {strings.lore.attach}
               </button>
@@ -139,7 +139,7 @@ export function LoreSheet({
           with the rule that stopped each one — the miss is the useful half. */}
       <p className="section-label mt-[16px] mb-[6px]">{strings.lore.testTitle}</p>
       {activation !== undefined && activation.length === 0 ? (
-        <p className="chrome mb-[10px] text-[10px] tracking-[0.12em] text-ink-dim uppercase">
+        <p className="chrome mb-[10px] text-[11.5px] tracking-[0.12em] text-ink-dim uppercase">
           {strings.lore.testEmpty}
         </p>
       ) : null}
@@ -148,7 +148,7 @@ export function LoreSheet({
         .map((row) => (
           <div key={row.entryId} className="flex items-baseline gap-[10px] border-b border-rule py-[9px]">
             <span
-              className="chrome w-[26px] flex-none text-[9px] tracking-[0.1em] uppercase"
+              className="chrome w-[26px] flex-none text-[10.5px] tracking-[0.1em] uppercase"
               style={{
                 color:
                   row.skipped === null ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)",

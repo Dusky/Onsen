@@ -69,7 +69,7 @@ function Tile({
           }}
         />
         <p className="mt-[7px] truncate text-[14px] font-medium">{character.name}</p>
-        <p className="chrome mt-[2px] truncate text-[8.5px] tracking-[0.06em] text-ink-dim uppercase">
+        <p className="chrome mt-[2px] truncate text-[10px] tracking-[0.06em] text-ink-dim uppercase">
           {[character.folder, strings.characters.tokens(character.tokens.total)]
             .filter((part) => part !== null && part !== "")
             .join(" · ")}
@@ -322,7 +322,7 @@ export function CharactersScreen() {
 
           {list.length === 0 && characters.data !== undefined ? (
             <>
-              <p className="chrome text-[10px] tracking-[0.14em] text-ink-dim uppercase">
+              <p className="chrome text-[11.5px] tracking-[0.14em] text-ink-dim uppercase">
                 {characters.data.length === 0 ? strings.characters.empty : strings.characters.noResults}
               </p>
               {characters.data.length === 0 ? (
@@ -377,7 +377,7 @@ export function CharactersScreen() {
       <footer className="flex-none border-t border-rule bg-bg-raised px-[22px] py-[12px]">
         {selecting ? (
           <div className="mx-auto w-full max-w-[var(--onsen-list-measure)]">
-            <p className="chrome mb-[8px] text-[9px] tracking-[0.12em] text-ink-dim uppercase">
+            <p className="chrome mb-[8px] text-[10.5px] tracking-[0.12em] text-ink-dim uppercase">
               {strings.characters.selected(selected.size)}
             </p>
             <div className="flex gap-[6px]">
@@ -527,7 +527,7 @@ export function CharactersScreen() {
                     >
                       <div className="flex items-baseline justify-between gap-[10px]">
                         <span className="min-w-0 flex-1 truncate text-[14px]">{item.name}</span>
-                        <span className="chrome flex-none text-[9px] tracking-[0.08em] text-ink-dim">
+                        <span className="chrome flex-none text-[10.5px] tracking-[0.08em] text-ink-dim">
                           {item.filename}
                         </span>
                       </div>

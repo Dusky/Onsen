@@ -233,7 +233,7 @@ export function ScriptEditor({
               {test.data.runs.map((run) => (
                 <p
                   key={run.scriptId}
-                  className="chrome text-[10px] leading-[1.7] text-ink-dim uppercase"
+                  className="chrome text-[11.5px] leading-[1.7] text-ink-dim uppercase"
                 >
                   {run.name} ·{" "}
                   {run.error !== null

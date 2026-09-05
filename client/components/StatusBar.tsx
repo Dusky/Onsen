@@ -31,7 +31,7 @@ export function StatusBar({
       style={{ background: "var(--onsen-color-bg-sunken)", minHeight: "26px" }}
     >
       <span
-        className="chrome flex items-center gap-[6px] text-[8.5px] tracking-[0.12em] uppercase"
+        className="chrome flex items-center gap-[6px] text-[10px] tracking-[0.12em] uppercase"
         style={{ color: profileName === null ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)" }}
       >
         <span
@@ -45,7 +45,7 @@ export function StatusBar({
       </span>
 
       {tokens === null ? null : (
-        <span className="chrome text-[8.5px] tracking-[0.12em] text-ink-dim uppercase">
+        <span className="chrome text-[10px] tracking-[0.12em] text-ink-dim uppercase">
           {strings.chat.barTokens(tokens)}
         </span>
       )}
@@ -55,10 +55,10 @@ export function StatusBar({
       {/* Keyboard hints only where there is a keyboard to hint at. */}
       {onOpenContext === undefined ? (
         <>
-          <span className="chrome text-[8.5px] tracking-[0.12em] text-ink-dim uppercase">
+          <span className="chrome text-[10px] tracking-[0.12em] text-ink-dim uppercase">
             {strings.chat.barSelect}
           </span>
-          <span className="chrome text-[8.5px] tracking-[0.12em] text-ink-dim uppercase">
+          <span className="chrome text-[10px] tracking-[0.12em] text-ink-dim uppercase">
             {strings.chat.barCommands}
           </span>
         </>
@@ -67,7 +67,7 @@ export function StatusBar({
         <button
           type="button"
           onClick={onOpenContext}
-          className="chrome -mr-[6px] flex min-h-[44px] items-center gap-[5px] px-[6px] text-[8.5px] tracking-[0.12em] uppercase"
+          className="chrome -mr-[6px] flex min-h-[44px] items-center gap-[5px] px-[6px] text-[10px] tracking-[0.12em] uppercase"
           style={{ color: "var(--onsen-color-text-label)" }}
         >
           {strings.chat.barContext}
@@ -76,7 +76,7 @@ export function StatusBar({
       )}
 
       <span
-        className="chrome text-[8.5px] tracking-[0.12em] uppercase"
+        className="chrome text-[10px] tracking-[0.12em] uppercase"
         style={{
           color: generating ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)",
         }}

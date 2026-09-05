@@ -74,11 +74,11 @@ export function MemorySection({ sceneId }: { sceneId: string }) {
                   {/* The reader's own mark, in the blue pencil: this is the app
                       saying what it will not do, not the story speaking. */}
                   {entity.userEdited ? (
-                    <span className="chrome flex-none text-[8.5px] tracking-[0.12em] text-blue-text uppercase">
+                    <span className="chrome flex-none text-[10px] tracking-[0.12em] text-blue-text uppercase">
                       {strings.sceneSetup.memoryYours}
                     </span>
                   ) : null}
-                  <span className="chrome flex-none text-[8.5px] tracking-[0.12em] text-ink-dim uppercase">
+                  <span className="chrome flex-none text-[10px] tracking-[0.12em] text-ink-dim uppercase">
                     {strings.sceneSetup.memoryKindLabel[entity.kind] ?? entity.kind}
                   </span>
                 </div>
@@ -200,7 +200,7 @@ function MemoryEditor({
 
         {/* Said before the button that causes it: saving is what makes this
             note the reader's, and the promise is that nothing overwrites it. */}
-        <p className="chrome mb-[12px] text-[10px] leading-[1.6] text-blue-text">
+        <p className="chrome mb-[12px] text-[11.5px] leading-[1.6] text-blue-text">
           {strings.sceneSetup.memoryYoursHint}
         </p>
 

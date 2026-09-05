@@ -11,6 +11,16 @@
 export interface ModelListRequest {
   baseUrl: string;
   apiKey: string | null;
+  /**
+   * Which provider this is, where the caller knows (§20 phase 49).
+   *
+   * It decides how the key is presented, not which paths are tried. Anthropic
+   * authenticates with `x-api-key` and a required version header rather than a
+   * bearer token, so before this every Anthropic provider's fetch came back
+   * 401 on every candidate and reported "no models endpoint answered" — which
+   * is true, and useless.
+   */
+  kind?: string;
 }
 
 function parseOpenAi(body: unknown): string[] {
@@ -48,9 +58,14 @@ const CANDIDATES: Candidate[] = [
 /** The model ids a provider serves, or null when none of the endpoints answer. */
 export async function fetchProviderModels(request: ModelListRequest): Promise<string[] | null> {
   const baseUrl = request.baseUrl.replace(/\/+$/, "");
-  const headers: Record<string, string> = {
-    ...(request.apiKey === null ? {} : { Authorization: `Bearer ${request.apiKey}` }),
-  };
+  const headers: Record<string, string> =
+    request.kind === "anthropic"
+      ? {
+          ...(request.apiKey === null ? {} : { "x-api-key": request.apiKey }),
+          // Required on every call to this API, listing endpoint included.
+          "anthropic-version": "2023-06-01",
+        }
+      : { ...(request.apiKey === null ? {} : { Authorization: `Bearer ${request.apiKey}` }) };
 
   for (const candidate of CANDIDATES) {
     try {

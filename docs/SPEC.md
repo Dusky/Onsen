@@ -2395,6 +2395,33 @@ toggle.
   block by block, with token costs, **what was evicted**, retrieved chunks and
   scores, and which lore entries fired and why. Reachable from any message.
 
+### Surfaces and size
+
+Two figures from the handoff were transcribed faithfully and were wrong for
+where the app ended up.
+
+**The dark surfaces did not step.** The page was `#14120f` and everything
+raised onto it was `#16130f` — two points of lightness per channel. Every
+sheet, composer and footer in the app is `bg-raised`, so nothing that was meant
+to sit *on* the page looked like it did. The ground is unchanged; the steps
+above it are real, and the rules moved up with them so a hairline still reads
+on a raised surface instead of vanishing into it.
+`test/surfaces.test.ts` measures the steps, because no screenshot review
+catches a relationship between two hex values in one file.
+
+**The chrome was sized for a phone.** The table's mono sizes assume a handset
+at reading distance; on a desktop browser they were small enough that the app
+was being used at 130% browser zoom. Everything at or below 11px went up a
+step and the floor rose from 7px to 9px. Chrome still does not scale with the
+reader's prose size — a label is scanned, not read — but the size it does not
+scale from is now the right one.
+
+A long form or a list of groups sits on a **`.surface`**: `bg-raised`, a
+hairline, and the theme's own radius, border width and shadow, so a flat theme
+still gets a flat panel rather than a card. Twelve groups of hairline rows
+directly on the ground read as one undifferentiated field, which is what
+"everything is a page being marked up" turns into at this size.
+
 ### Layout direction
 
 Three directions were drawn for the chat screen and **Instrument** was chosen.
@@ -2886,6 +2913,8 @@ Each phase ends in a working, usable application.
     one place the app is allowed to speak in the serif. See §16.
 48. **Tools on every provider** — the assistant works on whatever backend is
     configured, not only an OpenAI-shaped one. See §4 and §25.
+49. **Legibility** — the chrome sized for a desktop as well as a phone, and
+    surfaces far enough apart to see. See §16.
 
 Settled while building phase 15.
 
