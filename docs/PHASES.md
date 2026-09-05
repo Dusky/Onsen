@@ -4187,6 +4187,24 @@ theme saved and an explicit choice correctly beats the system preference — the
 phase-45 behaviour working exactly as designed, presenting as a broken test
 harness. The check had to go through the app's own theme picker.
 
+**The reachability guard had been checking four fewer routes files than it
+claimed**, found while answering "what's next" rather than while building.
+`endpoints()` silently skips any routes file it cannot find a mount for, and
+three of them — `authors.ts`, `generation.ts`, `api-keys.ts` — export two
+factories each, which the single-name import regex could not match. The fourth
+was `agent.ts`, invisible because phase 46 mounted it with an explanatory
+comment between the path and the factory and the scan could not read past it.
+
+The file also carried a comment promising a "mounted-ness test below" that had
+never been written — the project's signature pathology (a string promises it,
+nothing drives it) sitting inside the very test written to catch that
+pathology. That test exists now, and it is what found the other three.
+
+Repairing it reported eleven orphans, of which eight were real: the assistant's
+entire surface, unreachable exactly as phase 46 said it would be. They are now
+listed individually in `DELIBERATE`, so building the client deletes them rather
+than leaving a prefix that keeps excusing whatever lands there next.
+
 **The first size was wrong and only the screen said so.** Explanations at
 14.5px sat a half-pixel under the 15px row titles they explain, so the help text
 read as loud as the content. 13.5px separates them. Nothing but a screenshot

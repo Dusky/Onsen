@@ -41,26 +41,74 @@ const DELIBERATE = new Map<string, string>([
     "GET /webhooks/events",
     "Redundant with the shared WEBHOOK_EVENTS constant, which the editor uses instead.",
   ],
+  /*
+   * The assistant's whole surface, §25. Phase 46 shipped the server half and
+   * said so; the client is its own phase. These are listed one by one rather
+   * than excused by a prefix, so building that client deletes eight lines from
+   * here and nothing silently keeps passing.
+   *
+   * They were not reported as orphans until phase 47, because the mount scan
+   * above could not read past the comment on their `api.route` call.
+   */
+  ["GET /agent/tools", "§25: the assistant's client is its own phase."],
+  ["GET /agent/undo", "§25: the assistant's client is its own phase."],
+  ["GET /agent/threads", "§25: the assistant's client is its own phase."],
+  ["POST /agent/threads", "§25: the assistant's client is its own phase."],
+  ["GET /agent/threads/:threadId", "§25: the assistant's client is its own phase."],
+  ["PATCH /agent/threads/:threadId", "§25: the assistant's client is its own phase."],
+  ["DELETE /agent/threads/:threadId", "§25: the assistant's client is its own phase."],
+  [
+    "POST /agent/threads/:threadId/messages",
+    "§25: the assistant's client is its own phase.",
+  ],
 ]);
 
 interface Endpoint {
   method: string;
-  path: string;
+  /** Every prefix this file is mounted at. Reachable under any of them. */
+  paths: string[];
   file: string;
 }
 
-function mountPrefixes(): Map<string, string> {
+function mountPrefixes(): Map<string, string[]> {
   const app = readFileSync(join(ROOT, "server/app.ts"), "utf8");
   const byFactory = new Map<string, string>();
   // Both mount points: `api` is everything under /api, and `app` is §19's
   // outbound surface, which is deliberately mounted at the root.
-  for (const match of app.matchAll(/\b(?:api|app)\.route\(\s*\n?\s*"([^"]*)",\s*\n?\s*(\w+)\(/g)) {
+  // Comments and line breaks are skipped between the path and the factory: a
+  // mount worth explaining is the most likely one to be explained, and the
+  // agent's was — which made its eight endpoints invisible to this whole file
+  // until phase 47 went looking for why they were not reported as orphans.
+  const SKIP = String.raw`(?:\s|\/\/[^\n]*\n|\/\*[\s\S]*?\*\/)*`;
+  const mount = new RegExp(
+    String.raw`\b(?:api|app)\.route\(${SKIP}"([^"]*)",${SKIP}(\w+)\(`,
+    "g",
+  );
+  for (const match of app.matchAll(mount)) {
     byFactory.set(match[2]!, match[1]!);
   }
-  const byFile = new Map<string, string>();
-  for (const match of app.matchAll(/import \{ (\w+) \} from "\.\/routes\/([\w-]+)\.ts"/g)) {
-    const prefix = byFactory.get(match[1]!);
-    if (prefix !== undefined) byFile.set(match[2]!, prefix);
+  /*
+   * A routes file may export more than one factory, mounted at more than one
+   * prefix — authors.ts is /authors and /personas, generation.ts is
+   * /generations and /scenes, api-keys.ts is /api-keys and /scene-api. Matching
+   * a single import name skipped all three files outright; keeping a single
+   * prefix per file would be worse, silently filing half of each file's
+   * endpoints under the wrong path. So a file carries every prefix it is
+   * mounted at, and an endpoint counts as reachable under any of them.
+   *
+   * That is looser than tying each `app.get` to its enclosing factory, which
+   * would need a parser rather than a regex. It cannot produce a false alarm,
+   * only miss one — the right way round for a test nobody will read again
+   * until it fails.
+   */
+  const byFile = new Map<string, string[]>();
+  for (const match of app.matchAll(/import \{([^}]*)\} from "\.\/routes\/([\w-]+)\.ts"/g)) {
+    for (const name of match[1]!.split(",").map((part) => part.trim())) {
+      const prefix = byFactory.get(name);
+      if (prefix === undefined) continue;
+      const already = byFile.get(match[2]!) ?? [];
+      if (!already.includes(prefix)) byFile.set(match[2]!, [...already, prefix]);
+    }
   }
   return byFile;
 }
@@ -71,15 +119,16 @@ function endpoints(): Endpoint[] {
   for (const name of readdirSync(join(ROOT, "server/routes"))) {
     if (!name.endsWith(".ts")) continue;
     const base = name.replace(/\.ts$/, "");
-    const prefix = prefixes.get(base);
-    // A routes file nothing mounts is its own kind of dead code, and the
-    // mounted-ness test below is where that is reported.
-    if (prefix === undefined) continue;
+    const mounts = prefixes.get(base);
+    // A routes file nothing mounts is its own kind of dead code. It is skipped
+    // here and reported by "every routes file is mounted" below — which for a
+    // long time this comment claimed existed and did not.
+    if (mounts === undefined) continue;
     const text = readFileSync(join(ROOT, "server/routes", name), "utf8");
     for (const match of text.matchAll(/app\.(get|post|patch|put|delete)\(\s*"([^"]*)"/g)) {
       found.push({
         method: match[1]!.toUpperCase(),
-        path: `${prefix}${match[2]!}`.replace(/\/+/g, "/"),
+        paths: mounts.map((prefix) => `${prefix}${match[2]!}`.replace(/\/+/g, "/")),
         file: base,
       });
     }
@@ -121,6 +170,22 @@ describe("every endpoint has a caller", () => {
   const all = endpoints();
   const client = clientSource();
 
+  test("every routes file is mounted", () => {
+    /*
+     * The hole this file had until phase 47: `endpoints()` skips any routes
+     * file it cannot find a mount for, so a file that is never mounted — or
+     * one whose mount the scan simply fails to parse — leaves this suite
+     * quietly checking less than it says it does. Two of the three endpoint
+     * tests here are counts, and a count cannot notice what it never saw.
+     */
+    const mounted = mountPrefixes();
+    const unmounted = readdirSync(join(ROOT, "server/routes"))
+      .filter((name) => name.endsWith(".ts"))
+      .map((name) => name.replace(/\.ts$/, ""))
+      .filter((base) => !mounted.has(base));
+    expect(unmounted).toEqual([]);
+  });
+
   test("the scan found the API", () => {
     // A refactor that moves routes elsewhere must not turn this suite into a
     // test that passes by checking nothing.
@@ -129,9 +194,9 @@ describe("every endpoint has a caller", () => {
 
   test("nothing is built and unreachable", () => {
     const orphans = all
-      .filter((row) => !DELIBERATE.has(`${row.method} ${row.path}`))
-      .filter((row) => !pathPattern(row.path).test(client))
-      .map((row) => `${row.method} ${row.path}  (${row.file}.ts)`);
+      .filter((row) => !row.paths.some((path) => DELIBERATE.has(`${row.method} ${path}`)))
+      .filter((row) => !row.paths.some((path) => pathPattern(path).test(client)))
+      .map((row) => `${row.method} ${row.paths.join(" | ")}  (${row.file}.ts)`);
 
     // Checkpoints, hidden messages and preset export all sat here, each behind
     // a passing API test. If this list is not empty, either wire the endpoint
@@ -140,7 +205,7 @@ describe("every endpoint has a caller", () => {
   });
 
   test("the deliberate list has no stale entries", () => {
-    const live = new Set(all.map((row) => `${row.method} ${row.path}`));
+    const live = new Set(all.flatMap((row) => row.paths.map((path) => `${row.method} ${path}`)));
     // An allowlist that outlives its endpoint quietly excuses the next one that
     // takes the same path.
     expect([...DELIBERATE.keys()].filter((key) => !live.has(key))).toEqual([]);
