@@ -82,6 +82,16 @@ export interface NormalizedMessage {
   toolCalls?: ToolCall[];
   /** Which call this message answers. Set only on `tool`. */
   toolCallId?: string;
+  /**
+   * Whether that call failed (§20 phase 48). Set only on `tool`.
+   *
+   * Carried in the internal format even though only some providers have
+   * somewhere to put it — Anthropic marks a result `is_error`, OpenAI has no
+   * field and the failure is simply what the result says. An adapter that
+   * cannot express it drops it, which is the normal shape of every capability
+   * difference in §4.
+   */
+  isError?: boolean;
 }
 
 /* ------------------------------------------------------------------ */

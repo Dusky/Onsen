@@ -412,3 +412,196 @@ describe("listing models", () => {
     ]);
   });
 });
+
+/* ------------------------------------------------------------------ */
+/* Tools (SPEC §20 phase 48)                                           */
+/* ------------------------------------------------------------------ */
+
+function toolStart(index: number, id: string, name: string): string {
+  return `event: content_block_start\ndata: ${JSON.stringify({
+    type: "content_block_start",
+    index,
+    content_block: { type: "tool_use", id, name },
+  })}\n\n`;
+}
+
+function argsDelta(index: number, partial: string): string {
+  return `event: content_block_delta\ndata: ${JSON.stringify({
+    type: "content_block_delta",
+    index,
+    delta: { type: "input_json_delta", partial_json: partial },
+  })}\n\n`;
+}
+
+const TOOL_PROMPT: BuiltPrompt = {
+  ...PROMPT,
+  messages: [{ role: "user", content: "How many characters do I have?" }],
+  tools: [
+    {
+      name: "list_characters",
+      description: "Every character in this install, newest first.",
+      parameters: { type: "object", properties: { limit: { type: "number" } } },
+    },
+  ],
+};
+
+async function chunksFrom(adapter: ReturnType<typeof createAnthropicAdapter>, prompt: BuiltPrompt) {
+  const chunks = [];
+  for await (const chunk of adapter.generate(prompt, MODERN_SAMPLER_DEFAULTS, new AbortController().signal)) {
+    chunks.push(chunk);
+  }
+  return chunks;
+}
+
+describe("tools", () => {
+  test("this API can use them", () => {
+    expect(anthropicCapabilities("claude-opus-5").supportsTools).toBe(true);
+    // Unlike the samplers above, this does not vary by generation.
+    expect(anthropicCapabilities("claude-3-5-sonnet-20241022").supportsTools).toBe(true);
+  });
+
+  test("specs go up as input_schema, not as OpenAI's nested function", async () => {
+    const fake = fakeFetch(() => streamingResponse([MESSAGE_START, MESSAGE_STOP]));
+    await chunksFrom(createAnthropicAdapter({ baseUrl: "https://x", apiKey: "k", model: "claude-opus-5", fetch: fake.fetch }), TOOL_PROMPT);
+    expect(fake.calls[0]!.body["tools"]).toEqual([
+      {
+        name: "list_characters",
+        description: "Every character in this install, newest first.",
+        input_schema: { type: "object", properties: { limit: { type: "number" } } },
+      },
+    ]);
+    expect(fake.calls[0]!.body["function_call"]).toBeUndefined();
+  });
+
+  test("a call split across frames arrives whole", async () => {
+    const fake = fakeFetch(() =>
+      streamingResponse([
+        MESSAGE_START,
+        textDelta("Let me look."),
+        toolStart(1, "toolu_01", "list_characters"),
+        argsDelta(1, '{"li'),
+        argsDelta(1, 'mit":'),
+        argsDelta(1, " 5}"),
+        MESSAGE_STOP,
+      ]),
+    );
+    const chunks = await chunksFrom(
+      createAnthropicAdapter({ baseUrl: "https://x", apiKey: "k", model: "claude-opus-5", fetch: fake.fetch }),
+      TOOL_PROMPT,
+    );
+    expect(chunks.map((c) => c.text).join("")).toBe("Let me look.");
+    const calls = chunks.flatMap((c) => c.toolCalls ?? []);
+    // §4's promise: a complete call with arguments the caller can parse.
+    expect(calls).toEqual([{ id: "toolu_01", name: "list_characters", arguments: '{"limit": 5}' }]);
+    expect(JSON.parse(calls[0]!.arguments)).toEqual({ limit: 5 });
+  });
+
+  test("two calls in one turn stay separate", async () => {
+    const fake = fakeFetch(() =>
+      streamingResponse([
+        MESSAGE_START,
+        toolStart(0, "toolu_a", "list_characters"),
+        argsDelta(0, "{}"),
+        toolStart(1, "toolu_b", "list_scenes"),
+        argsDelta(1, "{}"),
+        MESSAGE_STOP,
+      ]),
+    );
+    const chunks = await chunksFrom(
+      createAnthropicAdapter({ baseUrl: "https://x", apiKey: "k", model: "claude-opus-5", fetch: fake.fetch }),
+      TOOL_PROMPT,
+    );
+    expect(chunks.flatMap((c) => c.toolCalls ?? []).map((c) => c.name)).toEqual([
+      "list_characters",
+      "list_scenes",
+    ]);
+  });
+
+  test("a stream that closes without message_stop still delivers the call", async () => {
+    // The exact bug phase 46 shipped on the OpenAI side.
+    const fake = fakeFetch(() =>
+      streamingResponse([MESSAGE_START, toolStart(0, "toolu_01", "list_scenes"), argsDelta(0, "{}")]),
+    );
+    const chunks = await chunksFrom(
+      createAnthropicAdapter({ baseUrl: "https://x", apiKey: "k", model: "claude-opus-5", fetch: fake.fetch }),
+      TOOL_PROMPT,
+    );
+    expect(chunks.flatMap((c) => c.toolCalls ?? [])).toHaveLength(1);
+  });
+});
+
+describe("tool results on the way back up", () => {
+  async function sentMessages(messages: BuiltPrompt["messages"]) {
+    const fake = fakeFetch(() => streamingResponse([MESSAGE_START, MESSAGE_STOP]));
+    await chunksFrom(
+      createAnthropicAdapter({ baseUrl: "https://x", apiKey: "k", model: "claude-opus-5", fetch: fake.fetch }),
+      { ...TOOL_PROMPT, messages, prefill: "" },
+    );
+    return fake.calls[0]!.body["messages"] as { role: string; content: unknown }[];
+  }
+
+  test("an assistant turn's calls become tool_use blocks with parsed input", async () => {
+    const sent = await sentMessages([
+      { role: "user", content: "How many?" },
+      {
+        role: "assistant",
+        content: "Looking.",
+        toolCalls: [{ id: "toolu_01", name: "list_characters", arguments: '{"limit":5}' }],
+      },
+    ]);
+    expect(sent[1]).toEqual({
+      role: "assistant",
+      content: [
+        { type: "text", text: "Looking." },
+        // An object here, not the JSON string every other layer holds.
+        { type: "tool_use", id: "toolu_01", name: "list_characters", input: { limit: 5 } },
+      ],
+    });
+  });
+
+  test("arguments that are not valid JSON are still sendable", async () => {
+    // A model that emitted broken JSON would otherwise make the whole thread
+    // unsendable — every later turn fails, not just the bad one.
+    const sent = await sentMessages([
+      { role: "assistant", content: "", toolCalls: [{ id: "t1", name: "x", arguments: "{oops" }] },
+    ]);
+    const blocks = sent[0]!.content as Record<string, unknown>[];
+    expect(blocks).toEqual([{ type: "tool_use", id: "t1", name: "x", input: { _raw: "{oops" } }]);
+  });
+
+  test("results come back as a user turn, and several fold into one message", async () => {
+    // Anthropic 400s on one message per result. This is the rule that is
+    // easiest to get wrong and hardest to see in a passing unit test.
+    const sent = await sentMessages([
+      {
+        role: "assistant",
+        content: "",
+        toolCalls: [
+          { id: "a", name: "list_characters", arguments: "{}" },
+          { id: "b", name: "list_scenes", arguments: "{}" },
+        ],
+      },
+      { role: "tool", content: "[]", toolCallId: "a" },
+      { role: "tool", content: "boom", toolCallId: "b", isError: true },
+      { role: "user", content: "Thanks." },
+    ]);
+    expect(sent).toHaveLength(3);
+    expect(sent[1]).toEqual({
+      role: "user",
+      content: [
+        { type: "tool_result", tool_use_id: "a", content: "[]" },
+        { type: "tool_result", tool_use_id: "b", content: "boom", is_error: true },
+      ],
+    });
+    expect(sent[2]).toEqual({ role: "user", content: "Thanks." });
+  });
+
+  test("a thread ending on tool results still sends them", async () => {
+    const sent = await sentMessages([
+      { role: "assistant", content: "", toolCalls: [{ id: "a", name: "n", arguments: "{}" }] },
+      { role: "tool", content: "done", toolCallId: "a" },
+    ]);
+    expect(sent).toHaveLength(2);
+    expect((sent[1]!.content as unknown[])[0]).toMatchObject({ type: "tool_result", tool_use_id: "a" });
+  });
+});

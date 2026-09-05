@@ -1,5 +1,10 @@
 import type { SamplerSettings } from "../../shared/types.ts";
-import type { BuiltPrompt, ProviderCapabilities } from "../prompt/index.ts";
+import type {
+  BuiltPrompt,
+  NormalizedMessage,
+  ProviderCapabilities,
+  ToolCall,
+} from "../prompt/index.ts";
 import { parseSseStream } from "./sse.ts";
 import { AdapterError, type Adapter, type AdapterConfig, type ModelInfo, type TokenChunk } from "./types.ts";
 
@@ -125,13 +130,13 @@ export function anthropicCapabilities(model: string, rules = anthropicModelRules
     supportsGrammar: false,
     emitsReasoning: true,
     supportsPromptCaching: true,
-    // Anthropic's tool blocks are a different wire shape from OpenAI's — content
-  // blocks with `tool_use` and `input_json_delta`, not a `tool_calls` array —
-  // and that is not wired yet (§20 phase 46). Declaring false is the honest
-  // answer: this codebase has been bitten five times by a capability that was
-  // announced and not built.
-  supportsTools: false,
-  supportsVision: true,
+    // A different wire shape from OpenAI's — content blocks with `tool_use` and
+    // `input_json_delta` rather than a `tool_calls` array, and results carried
+    // back as a user turn rather than a role of their own — translated in this
+    // adapter since §20 phase 48. Tools have been available here since Claude
+    // 3, so this does not vary by model the way the samplers above do.
+    supportsTools: true,
+    supportsVision: true,
     tokenizer: null,
   };
 }
@@ -145,9 +150,99 @@ export const ANTHROPIC_CAPABILITIES: ProviderCapabilities = anthropicCapabilitie
 
 interface StreamEvent {
   type?: string;
-  delta?: { type?: string; text?: string; thinking?: string };
+  /** Which content block this frame belongs to. Tool calls arrive interleaved. */
+  index?: number;
+  content_block?: { type?: string; id?: string; name?: string };
+  delta?: { type?: string; text?: string; thinking?: string; partial_json?: string };
   error?: { type?: string; message?: string };
   message?: { usage?: { input_tokens?: number } };
+}
+
+/** A block of content in a message being sent up. */
+type Block = Record<string, unknown>;
+
+/**
+ * The conversation as this API wants it (§20 phase 48).
+ *
+ * Three things differ from the OpenAI shape the rest of the app is written
+ * around, and all three are handled here rather than leaking outward:
+ *
+ *  1. A call the model made is a `tool_use` block inside the assistant turn,
+ *     and its arguments are a parsed object rather than the JSON string every
+ *     other layer holds. A model that emitted malformed JSON would be
+ *     unsendable, so an unparseable argument string is passed as an object
+ *     with the raw text under `_raw` instead of throwing — the turn survives
+ *     and the model can see what it did.
+ *  2. There is no `tool` role. Results come back as a **user** turn.
+ *  3. Every result for one assistant turn must be in a *single* user message.
+ *     Emitting one message per result is a 400, which is why consecutive tool
+ *     messages are folded together here.
+ */
+export function anthropicMessages(
+  messages: readonly NormalizedMessage[],
+): { role: string; content: unknown }[] {
+  const out: { role: string; content: unknown }[] = [];
+  let pendingResults: Block[] = [];
+
+  const flushResults = (): void => {
+    if (pendingResults.length === 0) return;
+    out.push({ role: "user", content: pendingResults });
+    pendingResults = [];
+  };
+
+  for (const message of messages) {
+    if (message.role === "tool") {
+      pendingResults.push({
+        type: "tool_result",
+        ...(message.toolCallId === undefined ? {} : { tool_use_id: message.toolCallId }),
+        content: message.content,
+        ...(message.isError === true ? { is_error: true } : {}),
+      });
+      continue;
+    }
+    flushResults();
+
+    const calls = message.toolCalls ?? [];
+    const images = message.images ?? [];
+    if (calls.length === 0 && images.length === 0) {
+      out.push({ role: message.role, content: message.content });
+      continue;
+    }
+
+    const blocks: Block[] = [
+      // The image comes first: the API's own guidance is that a question about
+      // a picture reads better after it (§20 phase 41).
+      ...images.map((image) => ({
+        type: "image",
+        source: { type: "base64", media_type: image.mime, data: image.base64 },
+      })),
+      ...(message.content === "" ? [] : [{ type: "text", text: message.content }]),
+      ...calls.map((call) => ({
+        type: "tool_use",
+        id: call.id,
+        name: call.name,
+        input: parseArguments(call.arguments),
+      })),
+    ];
+    out.push({ role: message.role, content: blocks });
+  }
+
+  flushResults();
+  return out;
+}
+
+/** Arguments as an object, never as a throw. See `anthropicMessages` note 1. */
+function parseArguments(raw: string): Record<string, unknown> {
+  if (raw.trim() === "") return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  } catch {
+    /* Falls through to the raw form below. */
+  }
+  return { _raw: raw };
 }
 
 interface ErrorBody {
@@ -216,22 +311,7 @@ export function createAnthropicAdapter(config: AdapterConfig): Adapter {
       settings: SamplerSettings,
       signal: AbortSignal,
     ): AsyncIterable<TokenChunk> {
-      const messages: { role: string; content: unknown }[] = prompt.messages.map((message) => ({
-        role: message.role,
-        // Anthropic's blocks rather than OpenAI's parts (§20 phase 41), and the
-        // image comes first: the API's own guidance is that a question about a
-        // picture reads better after it.
-        content:
-          message.images === undefined || message.images.length === 0
-            ? message.content
-            : [
-                ...message.images.map((image) => ({
-                  type: "image",
-                  source: { type: "base64", media_type: image.mime, data: image.base64 },
-                })),
-                { type: "text", text: message.content },
-              ],
-      }));
+      const messages = anthropicMessages(prompt.messages);
 
       if (capabilities.supportsPrefill && prompt.prefill !== undefined && prompt.prefill !== "") {
         messages.push({ role: "assistant", content: prompt.prefill });
@@ -253,6 +333,16 @@ export function createAnthropicAdapter(config: AdapterConfig): Adapter {
         ...samplerFields(settings),
       };
       if (prompt.system !== undefined && prompt.system !== "") body["system"] = prompt.system;
+      if (prompt.tools !== undefined && prompt.tools.length > 0) {
+        // `input_schema`, not OpenAI's nested `function.parameters`. The schema
+        // itself is the same JSON Schema object, which is why the tool
+        // definitions in server/agent/tools.ts need no per-provider variant.
+        body["tools"] = prompt.tools.map((tool) => ({
+          name: tool.name,
+          description: tool.description,
+          input_schema: tool.parameters,
+        }));
+      }
       if (rules.thinking === "adaptive") {
         // `display` has to be asked for. Its default omits the text, which on a
         // thinking model looks to the reader like a long silence before the
@@ -290,6 +380,20 @@ export function createAnthropicAdapter(config: AdapterConfig): Adapter {
         throw new AdapterError("The provider returned no response body.");
       }
 
+      /*
+       * Tool calls arrive as their own content blocks, keyed by index: a
+       * `content_block_start` names the call, then `input_json_delta` frames
+       * carry its arguments a few characters at a time. They are reassembled
+       * here and emitted whole, because §4's contract says a caller gets a
+       * complete call with parseable arguments — the same promise the OpenAI
+       * adapter keeps, by different means.
+       */
+      const building = new Map<number, ToolCall>();
+      const flush = (): TokenChunk[] =>
+        building.size === 0
+          ? []
+          : [{ text: "", toolCalls: [...building.values()].filter((call) => call.name !== "") }];
+
       for await (const event of parseSseStream(response.body, signal)) {
         if (signal.aborted) return;
 
@@ -308,8 +412,30 @@ export function createAnthropicAdapter(config: AdapterConfig): Adapter {
             retryable: frame.error?.type === "overloaded_error",
           });
         }
-        if (frame.type === "message_stop") return;
+        if (frame.type === "message_stop") {
+          yield* flush();
+          return;
+        }
+
+        if (frame.type === "content_block_start") {
+          if (frame.content_block?.type === "tool_use" && frame.index !== undefined) {
+            building.set(frame.index, {
+              id: frame.content_block.id ?? "",
+              name: frame.content_block.name ?? "",
+              arguments: "",
+            });
+          }
+          continue;
+        }
         if (frame.type !== "content_block_delta") continue;
+
+        if (frame.delta?.type === "input_json_delta" && frame.index !== undefined) {
+          const call = building.get(frame.index);
+          if (call !== undefined && typeof frame.delta.partial_json === "string") {
+            call.arguments += frame.delta.partial_json;
+          }
+          continue;
+        }
 
         // Two delta types matter. `thinking_delta` is this API's equivalent of
         // the `reasoning_content` field the OpenAI-shaped providers use, and it
@@ -322,6 +448,11 @@ export function createAnthropicAdapter(config: AdapterConfig): Adapter {
           if (delta.text !== "") yield { text: delta.text };
         }
       }
+
+      // A provider that closes the stream instead of sending `message_stop`
+      // would otherwise swallow the whole call. Phase 46 shipped this bug on
+      // the OpenAI side and it cost an afternoon; it is not repeated here.
+      yield* flush();
     },
 
     async listModels(): Promise<ModelInfo[]> {

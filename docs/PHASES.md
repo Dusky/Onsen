@@ -4209,3 +4209,70 @@ than leaving a prefix that keeps excusing whatever lands there next.
 14.5px sat a half-pixel under the 15px row titles they explain, so the help text
 read as loud as the content. 13.5px separates them. Nothing but a screenshot
 would have caught that; the tests were green at both sizes.
+
+---
+
+## Phase 48 — Tools on every provider
+
+Phase 46 built the assistant and shipped it working on one provider out of
+three. Asked what was next, the answer given was: *"we need to be platform
+agnostic when it comes to tools."* That is right, and the gap was worse than a
+missing feature — the assistant would refuse outright on an Anthropic profile
+and tell you to go change your settings.
+
+### What was built
+
+**Anthropic tool calling**, which is a genuinely different wire shape rather
+than a renamed field. Definitions go up as `input_schema`. A call comes back as
+a `tool_use` content block with its arguments dribbling in as
+`input_json_delta`. A call sent back up carries its arguments **parsed**, not as
+the JSON string every other layer holds. And results are not a role — they are
+`tool_result` blocks inside a *user* turn, with every result for one assistant
+turn in a **single** message or the API 400s.
+
+**`test/adapter-tools-conformance.test.ts`**, which is the actual deliverable.
+Each provider's dialect is its own; what must not vary is the contract — one
+complete call, with an id, a name, and arguments the caller can parse. The suite
+asserts that against every adapter declaring the capability, and **fails if an
+adapter declares `supportsTools` without being listed in it**. A per-provider
+test file is precisely how the gap stayed invisible: each one passed on its own
+terms.
+
+**`isError` now reaches the model.** It had been stored on every tool message
+since phase 46 and read by nothing. Anthropic has a field for it; OpenAI does
+not, and drops it. That is the ordinary shape of a capability difference.
+
+**The refusal names the shape, not a vendor.** It used to say "point it at an
+OpenAI-compatible profile". It now says a plain text-completion endpoint has
+nowhere to put a tool call, which is the true reason and stays true when the
+next adapter lands.
+
+### Settled while building
+
+- **The layout direction is Instrument** (see §16). Quiet and Broadsheet become
+  presets over the same switches rather than separate screens.
+
+### Deliberately deferred
+
+- **Gemini.** Its tool format differs again (`functionDeclarations`, and parts
+  rather than blocks). The conformance suite is built so that adding it is a
+  row in a table plus an adapter — and so that shipping it *without* the row
+  fails the build.
+- **Parallel tool calls on Anthropic.** Two calls in one turn are parsed and
+  tested; whether to run them concurrently is the agent loop's question, not the
+  adapter's, and it still runs them in order.
+
+### Surprises
+
+**The honest `supportsTools: false` was load-bearing in the wrong direction.**
+Phase 46's comment said declaring false beat announcing a capability that was
+not built — which was right at the time and became the thing that hid the gap.
+Honesty about a hole does not fill it, and nothing in the suite distinguished
+"declared false because it cannot" from "declared false because nobody wrote
+it yet". The conformance test now forces that distinction.
+
+**A model emitting malformed JSON would have made a whole thread unsendable.**
+Anthropic wants `input` as an object, so a bad argument string cannot simply be
+passed through. Throwing would break every later turn rather than the one bad
+call, so unparseable arguments go up as `{ _raw: "…" }` — the turn survives and
+the model can see what it did.

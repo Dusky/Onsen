@@ -4,7 +4,7 @@ A self-hosted, mobile-first AI roleplay frontend. Group scenes are the primary
 case: one AI **author** with its own personality plays the whole cast, like a GM
 running a table, while you direct.
 
-> **Status: phase 47 — feature complete, less the deferred phase 42.**
+> **Status: phase 48 — feature complete, less the deferred phase 42.**
 > Set it up, **point it at your SillyTavern folder and move in** — cards, chats,
 > group chats, personas, world info, instruct templates and regex scripts all
 > come across, with your swipes intact as branches — give the AI an author

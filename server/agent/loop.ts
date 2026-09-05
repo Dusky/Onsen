@@ -80,6 +80,8 @@ function historyOf(ctx: AppContext, thread: AgentThreadRow): NormalizedMessage[]
         role: "tool" as const,
         content: row.content,
         ...(row.tool_call_id === null ? {} : { toolCallId: row.tool_call_id }),
+        // Stored since phase 46 and, until phase 48, never sent anywhere.
+        ...(row.is_error === 1 ? { isError: true } : {}),
       };
     }
     const calls = row.tool_calls === null ? undefined : (JSON.parse(row.tool_calls) as ToolCall[]);
@@ -186,13 +188,17 @@ export async function runAgentTurn(
     model: route.model,
   });
   if (!adapter.capabilities.supportsTools) {
-    // Text completion has no structured place to put a call. Saying so beats
-    // sending tools that will be ignored and then wondering why nothing ran.
+    // A text-completion endpoint has no structured place to put a call. Saying
+    // so beats sending tools that will be ignored and then wondering why
+    // nothing ran. Named rather than pointed at one provider (§20 phase 48):
+    // the chat providers all do tools now, and it is the completion shape that
+    // cannot, not any particular company.
     await emit({
       type: "error",
       message:
         `${route.providerName} cannot use tools, so the assistant has nothing to work with. ` +
-        `Point it at an OpenAI-compatible profile in Settings.`,
+        `Point it at a chat provider in Settings — a plain text-completion ` +
+        `endpoint has nowhere to put a tool call.`,
     });
     return;
   }

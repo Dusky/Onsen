@@ -2395,6 +2395,27 @@ toggle.
   block by block, with token costs, **what was evicted**, retrieved chunks and
   scores, and which lore entries fired and why. Reachable from any message.
 
+### Layout direction
+
+Three directions were drawn for the chat screen and **Instrument** was chosen.
+Its bet is that the machine's state is the second half of the product, so it
+stays on screen rather than behind a tap: who speaks next and why, the cast as
+pills, and a standing row of readouts — guides live, memory kept, media, context
+used against the window.
+
+What it costs is the thing to watch: the composer stack is tall, and above an
+open keyboard at 390px that is the scarcest space in the app. §16's progressive
+disclosure rule still governs — the readout is a row, not a panel.
+
+The two directions not chosen are not discarded. **Quiet** (everything but the
+prose collapses into one line above the input) and **Broadsheet** (a standing
+dek under the title, attribution set inline with its reason) differ from
+Instrument in a handful of separable choices, not in their components, so they
+become presets over the same switches rather than three codebases — the shape
+§16's themes already use, where built-ins are starting points and every value
+underneath stays editable. What must not happen is the incumbent's answer: a
+matrix of toggles in place of a default. The default is what the app is.
+
 ### Typography
 
 The design handoff gives a type table with a real serif ramp — 26 / 19 / 17.5 /
@@ -2738,6 +2759,35 @@ continue it from a terminal, and both stay in sync.
 
 ---
 
+## 19b. Tool calling across providers
+
+A provider that can call tools must be able to call them here. `supportsTools`
+is a capability like any other in §4, but unlike the samplers it is not a knob
+that degrades gracefully — the assistant (§25) either works on your backend or
+refuses outright, so a provider left unimplemented is a third of the install
+that does not have the feature at all.
+
+Each adapter owns its own wire shape, and they are genuinely different:
+
+| | OpenAI-compatible | Anthropic |
+| --- | --- | --- |
+| Definitions | `tools[].function.parameters` | `tools[].input_schema` |
+| A call | `delta.tool_calls[]` fragments, keyed by index | `tool_use` content block + `input_json_delta` |
+| Arguments | JSON string, streamed in pieces | JSON string, streamed in pieces, sent back **parsed** |
+| A result | a message with `role: "tool"` | a `tool_result` block inside a **user** turn |
+| Several results | one message each | all in **one** user message, or a 400 |
+| A failed result | just what the text says | `is_error: true` |
+
+What must not vary is the contract: one complete call, with an id, a name, and
+arguments the caller can parse, emitted whole rather than as fragments.
+`test/adapter-tools-conformance.test.ts` asserts that against every adapter
+declaring the capability, and fails if one declares it without being listed —
+so the next adapter cannot ship tools that are only nearly the same.
+
+Text completion declares `false` and means it: there is no structured place in
+a raw completion to put a call. The agent's refusal names the shape rather than
+a vendor.
+
 ## 20. Build order
 
 Each phase ends in a working, usable application.
@@ -2834,6 +2884,8 @@ Each phase ends in a working, usable application.
     install. Not a cast member. See §25.
 47. **Typography and hierarchy** — the group heading that was missing, and the
     one place the app is allowed to speak in the serif. See §16.
+48. **Tools on every provider** — the assistant works on whatever backend is
+    configured, not only an OpenAI-shaped one. See §4 and §25.
 
 Settled while building phase 15.
 
