@@ -58,9 +58,6 @@ export function MarkSheet({
           required
           maxLength={120}
         />
-        <p className="explain mb-[16px]">
-          {strings.chat.checkpointsHint}
-        </p>
         <button type="submit" className="btn btn-primary w-full">
           {strings.chat.checkpointSave}
         </button>
@@ -132,9 +129,6 @@ export function CheckpointsSheet({
             </div>
           ))
         )}
-        <p className="explain mt-[12px]">
-          {strings.chat.checkpointsHint}
-        </p>
       </div>
       {confirmNode}
     </Sheet>

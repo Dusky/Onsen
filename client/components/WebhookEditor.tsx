@@ -110,9 +110,6 @@ export function WebhookEditor({
           spellCheck={false}
           required
         />
-        <p className="explain mt-[7px] mb-[16px]">
-          {strings.settings.webhookUrlHint}
-        </p>
 
         <p className="section-label mb-[8px]">{strings.settings.webhookEvents}</p>
         {WEBHOOK_EVENTS.map((event) => (
@@ -229,11 +226,11 @@ export function WebhookEditor({
             webhook.deliveries.map((delivery, index) => (
               <div key={`${delivery.at}-${index}`} className="border-b border-rule py-[8px]">
                 <div className="flex items-baseline justify-between gap-[10px]">
-                  <span className="chrome min-w-0 flex-1 truncate text-[11px] tracking-[0.06em] text-ink-dim uppercase">
+                  <span className="chrome min-w-0 flex-1 truncate text-[11px] text-ink-dim">
                     {strings.settings.eventName[delivery.event] ?? delivery.event}
                   </span>
                   <span
-                    className="chrome flex-none text-[11px] tracking-[0.06em] uppercase"
+                    className="chrome flex-none text-[11px]"
                     style={
                       delivery.status === "failed"
                         ? { color: "var(--onsen-color-red)" }

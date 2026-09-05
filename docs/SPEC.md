@@ -2423,6 +2423,47 @@ already the brightest thing on it.
 fails on the old shape: chrome, tracked, uppercased, dim and small, carrying a
 string whose name ends in `empty`.
 
+### Voice
+
+Two habits with one cause, both removed in phase 53.
+
+**Labels were decorative.** Every label was mono, uppercase and letter-spaced —
+164 of them at nine different tracking values. The chosen chat direction had
+said otherwise in a comment from the start: *"Labels are readable, not
+decorative: 11px, sentence case, no tracking."* Its mockup, Quiet's and
+Broadsheet's use **no uppercase and no letter-spacing between them**; the only
+mockup that does is the one drawn of what shipped. Phase 50 built Instrument's
+layout and kept the old labels. There is now **one** tracking token, set to
+zero and kept only so a theme can put tracking back, and no uppercase anywhere:
+the ops keys are capitals in the data, being proofreading marks rather than
+labels.
+
+**The app explained itself.** 178 explanatory strings, 15,276 characters, at
+165 render sites — with 29 em-dash asides, 31 rule-of-three lists, and 8
+openers of the form *"A lorebook is world info the author can draw on —
+places, history, who knows what."* Phases 47 and 51 made this worse, promoting
+explanations to Spectral at reading size and then writing a teaching paragraph
+for every empty screen. Both were executed carefully and pointed the wrong way.
+
+> **An explanation earns its place only if its absence would cause a mistake
+> that cannot be undone.**
+
+Under that rule, 178 became **37**: confirmations, the secrets shown once, and
+the machine settings whose label genuinely cannot carry them — DRY, XTC,
+prefill, regex flags, instruct markers, summary eviction. Everything else was
+**deleted rather than rewritten**, because the register was not the problem;
+the presence was. A screen full of the app describing itself leaves no room for
+the thing the reader came for, which is what "feels shallow" was describing.
+
+Where something must be conveyed, the design's own settings surface shows how:
+one line of fact (*"Every value below is live. The app is the preview."*), a
+swatch labelled `live · now`, and a one-line code sample in place of a
+paragraph about custom CSS. Show the value, not a description of it.
+
+`test/voice.test.ts` holds both: no uppercase utility, one tracking token, a
+ceiling on explanatory strings, and no definition of a noun aimed at somebody
+already looking at the thing.
+
 ### Surfaces and size
 
 Two figures from the handoff were transcribed faithfully and were wrong for
@@ -2998,6 +3039,8 @@ Each phase ends in a working, usable application.
     carries the action that ends it. See §16.
 52. **Layout presets** — Quiet and Broadsheet become four switches over
     Instrument rather than three screens. See §16.
+53. **Voice** — labels stop shouting and the app stops explaining itself.
+    See §16.
 
 Settled while building phase 15.
 

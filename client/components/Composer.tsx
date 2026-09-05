@@ -174,7 +174,7 @@ export function Composer({
           // The label follows the state: a button that says "close" to the eye
           // and "ops" to a screen reader is two different buttons.
           aria-label={opsOpen ? strings.chat.opsClose : strings.chat.ops}
-          className="chrome flex h-[46px] w-[46px] flex-none items-center justify-center border text-[10.5px] tracking-[0.10em] uppercase"
+          className="chrome flex h-[46px] w-[46px] flex-none items-center justify-center border text-[10.5px]"
           style={{
             borderColor: opsOpen ? "var(--onsen-color-red)" : "var(--onsen-color-border-quiet)",
             color: opsOpen ? "var(--onsen-color-red)" : "var(--onsen-color-text-muted)",
@@ -192,7 +192,7 @@ export function Composer({
           aria-label={strings.chat.send}
           className="btn btn-primary flex h-[46px] w-[46px] flex-none flex-col items-center justify-center gap-[1px] px-0"
         >
-          <span className="text-[10.5px] leading-none font-semibold tracking-[0.06em]">
+          <span className="text-[10.5px] leading-none font-semibold">
             {speakerInitials}
           </span>
           <span className="text-[12px] leading-none">↑</span>
@@ -204,7 +204,7 @@ export function Composer({
         type="button"
         onClick={onGenerate}
         disabled={disabled}
-        className="chrome mt-[10px] w-full border border-border-quiet py-[11px] text-[11px] tracking-[0.14em] text-ink-muted uppercase disabled:opacity-40"
+        className="chrome mt-[10px] w-full border border-border-quiet py-[11px] text-[11px] text-ink-muted disabled:opacity-40"
       >
         {strings.chat.continueWithout}
       </button>

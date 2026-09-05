@@ -57,7 +57,7 @@ function Sprite({
             : { backgroundImage: `url(${image})` }),
         }}
       />
-      <p className="chrome mt-[5px] max-w-[92px] truncate text-[10.5px] tracking-[0.08em] text-ink-label uppercase">
+      <p className="chrome mt-[5px] max-w-[92px] truncate text-[10.5px] text-ink-label">
         {member.name}
       </p>
     </div>

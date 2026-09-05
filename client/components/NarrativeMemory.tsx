@@ -49,9 +49,6 @@ export function MemorySection({ sceneId }: { sceneId: string }) {
           </button>
         ))}
       </div>
-      <p className="explain mb-[10px]">
-        {strings.sceneSetup.memoryHint}
-      </p>
 
       {enabled ? (
         <>
@@ -74,11 +71,11 @@ export function MemorySection({ sceneId }: { sceneId: string }) {
                   {/* The reader's own mark, in the blue pencil: this is the app
                       saying what it will not do, not the story speaking. */}
                   {entity.userEdited ? (
-                    <span className="chrome flex-none text-[10px] tracking-[0.12em] text-blue-text uppercase">
+                    <span className="chrome flex-none text-[10px] text-blue-text">
                       {strings.sceneSetup.memoryYours}
                     </span>
                   ) : null}
-                  <span className="chrome flex-none text-[10px] tracking-[0.12em] text-ink-dim uppercase">
+                  <span className="chrome flex-none text-[10px] text-ink-dim">
                     {strings.sceneSetup.memoryKindLabel[entity.kind] ?? entity.kind}
                   </span>
                 </div>
@@ -182,9 +179,6 @@ function MemoryEditor({
           className="field"
           defaultValue={entity.salience}
         />
-        <p className="explain mt-[7px] mb-[16px]">
-          {strings.sceneSetup.memorySalienceHint}
-        </p>
 
         {entity.links.length > 0 ? (
           <>

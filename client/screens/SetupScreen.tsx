@@ -74,10 +74,6 @@ export function SetupScreen({ onComplete }: { onComplete: () => void }) {
   return (
     <Screen kicker={s.kicker} title={s.title}>
       <form onSubmit={submit} noValidate>
-        <p className="mb-[24px] text-[var(--onsen-text-prose-excerpt)] leading-[1.55] text-ink-prose-muted">
-          {s.intro}
-        </p>
-
         {error ? <Notice>{error}</Notice> : null}
 
         <h2 className="section-label mb-[14px] border-b border-rule pb-[8px]">
@@ -172,7 +168,7 @@ export function SetupScreen({ onComplete }: { onComplete: () => void }) {
           )}
         </Field>
 
-        <Field label={s.apiKeyLabel} aux={strings.common.optional} hint={s.apiKeyHint}>
+        <Field label={s.apiKeyLabel} aux={strings.common.optional}>
           {(id) => (
             <input
               id={id}
@@ -210,7 +206,7 @@ export function SetupScreen({ onComplete }: { onComplete: () => void }) {
           )}
         </Field>
 
-        <Field label={s.profileNameLabel} aux={strings.common.optional} hint={s.profileNameHint}>
+        <Field label={s.profileNameLabel} aux={strings.common.optional}>
           {(id) => (
             <input
               id={id}

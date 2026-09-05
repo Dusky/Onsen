@@ -146,11 +146,19 @@
   --onsen-text-button: 11px;
   --onsen-text-token-count: 10px;
 
-  --onsen-tracking-attribution: 0.18em;
-  --onsen-tracking-label: 0.18em;
-  --onsen-tracking-kicker: 0.16em;
-  --onsen-tracking-button: 0.12em;
-  --onsen-tracking-group: 0.18em;
+  /*
+   * One tracking value, and it is none (§20 phase 53).
+   *
+   * The chosen chat direction says it outright — "Labels are readable, not
+   * decorative: 11px, sentence case, no tracking" — and the three direction
+   * mockups use no uppercase and no letter-spacing between them. The only
+   * mockup that does is the one of what shipped, which is the thing that was
+   * being criticised.
+   *
+   * Kept as a token rather than deleted so a theme can put tracking back: it
+   * is a look, and this app lets a theme have its own.
+   */
+  --onsen-tracking-label: 0em;
 
   /*
    * Depth (SPEC §20 phase 45).

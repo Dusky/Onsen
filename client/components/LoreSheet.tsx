@@ -102,7 +102,7 @@ export function LoreSheet({
               <button
                 type="button"
                 onClick={() => onDetach(book.id, own.id)}
-                className="chrome flex-none text-[10.5px] tracking-[0.12em] uppercase"
+                className="chrome flex-none text-[10.5px]"
                 style={{ color: "var(--onsen-color-red)" }}
               >
                 {strings.lore.detach}
@@ -126,7 +126,7 @@ export function LoreSheet({
               <button
                 type="button"
                 onClick={() => onAttach(book.id)}
-                className="chrome flex-none text-[10.5px] tracking-[0.12em] text-ink-label uppercase"
+                className="chrome flex-none text-[10.5px] text-ink-label"
               >
                 {strings.lore.attach}
               </button>
@@ -148,7 +148,7 @@ export function LoreSheet({
         .map((row) => (
           <div key={row.entryId} className="flex items-baseline gap-[10px] border-b border-rule py-[9px]">
             <span
-              className="chrome w-[26px] flex-none text-[10.5px] tracking-[0.1em] uppercase"
+              className="chrome w-[26px] flex-none text-[10.5px]"
               style={{
                 color:
                   row.skipped === null ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)",

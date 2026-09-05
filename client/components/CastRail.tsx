@@ -172,7 +172,7 @@ export function CastRail({
                     <span className="min-w-0 flex-1 truncate text-[13.5px]">{member.name}</span>
                     {status === null ? null : (
                       <span
-                        className="chrome flex-none text-[9.5px] tracking-[0.12em] uppercase"
+                        className="chrome flex-none text-[9.5px]"
                         style={{
                           color: cued || writing
                             ? "var(--onsen-color-red)"
@@ -188,7 +188,7 @@ export function CastRail({
                       phone this is one line under the whole strip; here it
                       belongs to the character it explains. */}
                   {cued && nextSpeaker !== null && nextSpeaker.reason !== "" ? (
-                    <span className="chrome mt-[4px] block text-[10px] leading-[1.5] text-ink-dim uppercase">
+                    <span className="chrome mt-[4px] block text-[10px] leading-[1.5] text-ink-dim">
                       {nextSpeaker.reason}
                     </span>
                   ) : null}
@@ -220,13 +220,13 @@ export function CastRail({
       >
         <span className="flex items-baseline gap-[8px]">
           <span
-            className="chrome min-w-0 flex-1 text-[10.5px] tracking-[0.12em] uppercase"
+            className="chrome min-w-0 flex-1 text-[10.5px]"
             style={blueText}
           >
             {strings.chat.guides}
           </span>
           <span
-            className="chrome flex-none text-[10.5px] tracking-[0.1em] uppercase"
+            className="chrome flex-none text-[10.5px]"
             style={blueMuted}
           >
             {guidesCost} TOK

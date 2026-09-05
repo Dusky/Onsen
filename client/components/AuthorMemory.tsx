@@ -80,9 +80,6 @@ export function AuthorNotes({ authorId, authorName }: { authorId: string; author
         disabled={bookId === null}
         onCommit={(next) => setBudget.mutate(next)}
       />
-      <p className="explain mt-[7px] mb-[14px]">
-        {strings.authors.memoryBudgetHint}
-      </p>
 
       {bookId === null ? null : (
         <>
@@ -93,9 +90,6 @@ export function AuthorNotes({ authorId, authorName }: { authorId: string; author
           >
             {strings.authors.memoryOpenBook}
           </button>
-          <p className="explain mt-[7px] mb-[14px]">
-            {strings.authors.memoryOpenBookHint}
-          </p>
         </>
       )}
 

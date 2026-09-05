@@ -14,7 +14,7 @@ function FieldRow({ name, value }: { name: string; value: unknown }) {
   const text = typeof value === "string" ? value : Array.isArray(value) ? value.join(", ") : "";
   return (
     <div className="flex items-baseline gap-[8px]">
-      <span className="chrome flex-none text-[10px] tracking-[0.1em] text-ink-dim uppercase">
+      <span className="chrome flex-none text-[10px] text-ink-dim">
         {name}
       </span>
       <span className="min-w-0 flex-1 truncate text-[12px]">{text}</span>
@@ -45,15 +45,15 @@ function TrackerBlock({ tracker, sceneId }: { tracker: TrackerDto; sceneId: stri
   return (
     <div className="border-b border-rule py-[8px]">
       <div className="flex items-baseline gap-[8px]">
-        <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium uppercase tracking-[0.06em]">
+        <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium">
           {title}
         </span>
-        <span className="chrome flex-none text-[10px] text-ink-muted uppercase">
+        <span className="chrome flex-none text-[10px] text-ink-muted">
           {tracker.tokenCount} TOK{tracker.isPinned ? " · PINNED" : ""}
         </span>
         <button
           type="button"
-          className="chrome flex-none text-[10px] uppercase"
+          className="chrome flex-none text-[10px]"
           onClick={() => {
             setEditing(!editing);
             setDraft(tracker.content);
@@ -63,7 +63,7 @@ function TrackerBlock({ tracker, sceneId }: { tracker: TrackerDto; sceneId: stri
         </button>
         <button
           type="button"
-          className="chrome flex-none text-[10px] uppercase"
+          className="chrome flex-none text-[10px]"
           style={{ color: "var(--onsen-color-red)" }}
           onClick={() => flush.mutate(tracker.kind)}
         >
@@ -128,10 +128,10 @@ export function TrackerPanel({ sceneId }: { sceneId: string }) {
           onClick={() => setOpen(!open)}
           className="flex w-full items-baseline gap-[8px] py-[2px] text-left"
         >
-          <span className="chrome text-[10.5px] tracking-[0.14em] text-ink-label uppercase">
+          <span className="chrome text-[10.5px] text-ink-label">
             {strings.chat.trackers}
           </span>
-          <span className="chrome flex-none text-[10px] text-ink-muted uppercase">
+          <span className="chrome flex-none text-[10px] text-ink-muted">
             {strings.chat.guidesTotal(total)}
           </span>
           <span className="flex-1" />
@@ -145,7 +145,7 @@ export function TrackerPanel({ sceneId }: { sceneId: string }) {
             ))}
             <button
               type="button"
-              className="chrome mt-[8px] text-[10px] tracking-[0.1em] text-ink-dim uppercase"
+              className="chrome mt-[8px] text-[10px] text-ink-dim"
               disabled={rebuild.isPending}
               onClick={() => rebuild.mutate()}
             >

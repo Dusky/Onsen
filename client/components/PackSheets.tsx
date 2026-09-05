@@ -40,7 +40,7 @@ export function InstallPackSheet({
     <Sheet title={plan.manifest.name} meta={plan.manifest.version} onClose={onClose}>
       <div className="pt-[8px] pb-[14px]">
         {plan.manifest.author !== "" ? (
-          <p className="chrome mb-[8px] text-[11.5px] tracking-[0.08em] text-ink-dim uppercase">
+          <p className="chrome mb-[8px] text-[11.5px] text-ink-dim">
             {strings.settings.packBy(plan.manifest.author)}
           </p>
         ) : null}
@@ -245,14 +245,11 @@ export function ExportPackSheet({ onClose }: { onClose(): void }) {
         <textarea name="description" className="field mb-[18px] min-h-[56px]" />
 
         <p className="section-label mb-[4px]">{strings.settings.packContents}</p>
-        <p className="explain mb-[12px]">
-          {strings.settings.packContentsHint}
-        </p>
 
         {lists.map((list) =>
           list.rows.length === 0 ? null : (
             <div key={list.kind} className="mb-[16px]">
-              <p className="chrome mb-[6px] text-[10.5px] tracking-[0.12em] text-ink-dim uppercase">
+              <p className="chrome mb-[6px] text-[10.5px] text-ink-dim">
                 {strings.settings.packKind[list.kind] ?? list.kind}
               </p>
               {list.rows.map((row) => (

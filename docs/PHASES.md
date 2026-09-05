@@ -4518,3 +4518,92 @@ sentence: two sentences, not one joined by a dash.
 uppercases the text and the regex did not. `deckText: null` and
 `rows drawn: undefined` both looked like rendering bugs and were reading
 mistakes. The screenshot settled both in seconds.
+
+---
+
+## Phase 53 — Voice
+
+*"in actual use, the app feels very shallow and incomplete. the typography
+still sucks, every single feature feels incomplete. the AI explanations every
+cringe me tf out."*
+
+All three are fair, and I put two of them there.
+
+### The typography answer was in the file I built from
+
+`Instrument.dc.html` — the direction that was chosen — carries this comment:
+
+```css
+/* Labels are readable, not decorative: 11px, sentence case, no tracking. */
+```
+
+| Mockup | uppercase | letter-spacing |
+| --- | --- | --- |
+| `Instrument` (chosen) | **0** | **0** |
+| `Main` (Quiet) | **0** | 1 |
+| `Broadsheet` | **0** | **0** |
+| `Now` — *what ships today* | 18 | 19 |
+
+The three directions all abandoned uppercase-tracked-mono. It survives in
+exactly one mockup: the one drawn of the thing being criticised. **Phase 50
+built Instrument's layout and kept the old label treatment** — 164 uppercase
+elements and 155 letter-spacing declarations at nine different values — and
+then phase 47 and phase 49 tuned that treatment twice without ever asking
+whether it should exist.
+
+### The copy was the same disease
+
+178 explanatory strings, 15,276 characters, 165 render sites. Counted: **29**
+em-dash asides, **31** rule-of-three comma lists, **8** definitional openers.
+The design's own settings surface has *one* sentence on the whole screen and
+explains by showing — a swatch labelled `live · now`, a one-line code sample
+where a paragraph about custom CSS would go.
+
+**Phases 47 and 51 made it worse.** 47 promoted explanations to Spectral at
+reading size; 51 wrote a teaching paragraph for every empty screen and called
+it the app's one chance to teach. Both were carefully done and pointed the
+wrong way. The register was never the problem — the presence was.
+
+### What was built
+
+- **One tracking token, set to zero**, kept only so a theme can put tracking
+  back. Zero uppercase utilities anywhere: the ops keys are capitals in the
+  data, being proofreading marks rather than labels.
+- **178 → 37 explanatory strings**, under one rule: *an explanation earns its
+  place only if its absence would cause a mistake that cannot be undone.*
+  Survivors are confirmations, the secrets shown once, and the machine settings
+  whose label genuinely cannot carry them. Everything else **deleted, not
+  rewritten** — 85 strings and 11,014 characters.
+- **`test/voice.test.ts`**: no uppercase, one tracking token, a ceiling on
+  explanatory strings, and no definition of a noun aimed at somebody already
+  looking at the thing.
+
+### Deliberately deferred
+
+- **The other two complaints.** "Every feature feels incomplete" is a separate,
+  measurable thing: the server is consistently one notch deeper than the
+  client. `DELETE /scenes/:id` has zero client callers; `useUpdatePersona` is
+  exported and called by nothing, so a persona's `description` — the field that
+  reaches the prompt — is unreachable; three of four lorebook binding scopes
+  are display-only; lore's `insertionRole` has zero client hits while the
+  prompt builder consumes it. That is phases 54 and 55, with a field-level
+  reachability guard.
+
+### Surprises
+
+**Two guards failed, and both were right to.** `typography.test.ts` caught "an
+explanatory sentence dressed as a label" by looking for mono + small + dim + a
+reading line-height — and it worked *because a real label was also uppercase
+and tracked*, which excluded it. Removing the uppercase removed the signal the
+heuristic depended on, and it began flagging the director's reason and a
+parse-failure notice, both machine output and correctly mono. The check was
+deleted rather than patched: the rule it approximated is now enforced directly.
+`empty-states.test.ts` asserted `body: string` was required, which phase 51 had
+made true and phase 53 made wrong.
+
+**The first ceiling measured the wrong thing.** `.explain` renders both the app
+explaining itself and the app reporting state — "Nothing installed", "No key",
+"Nothing matches that" — and only the first is governed by the rule. Counting
+render sites put the number at 107 and looked like failure; counting
+explanatory *strings* put it at 37 and was the truth. A metric that punishes
+status lines would have pushed the next phase to delete the wrong things.

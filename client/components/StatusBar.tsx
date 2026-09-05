@@ -40,7 +40,7 @@ export function StatusBar({
       style={{ background: "var(--onsen-color-bg-sunken)", minHeight: "26px" }}
     >
       <span
-        className="chrome flex items-center gap-[6px] text-[10px] tracking-[0.12em] uppercase"
+        className="chrome flex items-center gap-[6px] text-[10px]"
         style={{ color: profileName === null ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)" }}
       >
         <span
@@ -54,14 +54,14 @@ export function StatusBar({
       </span>
 
       {tokens === null ? null : contextSize === null || contextSize <= 0 ? (
-        <span className="chrome text-[10.5px] tracking-[0.12em] text-ink-dim uppercase">
+        <span className="chrome text-[10.5px] text-ink-dim">
           {strings.chat.barTokens(tokens)}
         </span>
       ) : (
         // The fill takes the memory hue rather than the red pencil: this is a
         // gauge, and red here would read as an alarm at 8% full.
         <span className="flex min-w-0 items-center gap-[7px]">
-          <span className="chrome text-[10.5px] tracking-[0.14em] text-ink-dim uppercase">
+          <span className="chrome text-[10.5px] text-ink-dim">
             {strings.chat.ctxLabel}
           </span>
           <span
@@ -79,7 +79,7 @@ export function StatusBar({
               }}
             />
           </span>
-          <span className="chrome text-[10.5px] tracking-[0.06em] text-ink-dim tabular-nums">
+          <span className="chrome text-[10.5px] text-ink-dim tabular-nums">
             {strings.chat.ctxOf(tokens, contextSize)}
           </span>
         </span>
@@ -90,10 +90,10 @@ export function StatusBar({
       {/* Keyboard hints only where there is a keyboard to hint at. */}
       {onOpenContext === undefined ? (
         <>
-          <span className="chrome text-[10px] tracking-[0.12em] text-ink-dim uppercase">
+          <span className="chrome text-[10px] text-ink-dim">
             {strings.chat.barSelect}
           </span>
-          <span className="chrome text-[10px] tracking-[0.12em] text-ink-dim uppercase">
+          <span className="chrome text-[10px] text-ink-dim">
             {strings.chat.barCommands}
           </span>
         </>
@@ -102,7 +102,7 @@ export function StatusBar({
         <button
           type="button"
           onClick={onOpenContext}
-          className="chrome -mr-[6px] flex min-h-[44px] items-center gap-[5px] px-[6px] text-[10px] tracking-[0.12em] uppercase"
+          className="chrome -mr-[6px] flex min-h-[44px] items-center gap-[5px] px-[6px] text-[10px]"
           style={{ color: "var(--onsen-color-text-label)" }}
         >
           {strings.chat.barContext}
@@ -111,7 +111,7 @@ export function StatusBar({
       )}
 
       <span
-        className="chrome text-[10px] tracking-[0.12em] uppercase"
+        className="chrome text-[10px]"
         style={{
           color: generating ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)",
         }}

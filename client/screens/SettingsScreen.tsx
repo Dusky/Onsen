@@ -703,9 +703,6 @@ function UpdateGroup() {
   return (
     <>
       <p className="group-heading mb-[12px]">{strings.settings.update}</p>
-      <p className="explain mb-[10px]">
-        {strings.settings.updateHint}
-      </p>
       <Row>
         <div className="flex items-baseline gap-[9px]">
           <span className="min-w-0 flex-1">
@@ -724,7 +721,7 @@ function UpdateGroup() {
           {/* Red is attention — owed by "behind" alone, not by every state
               that is not an error. */}
           <span
-            className="chrome flex-none text-[10.5px] tracking-[0.06em] uppercase"
+            className="chrome flex-none text-[10.5px]"
             style={{ color: behind !== null && behind > 0 ? "var(--onsen-color-red)" : undefined }}
           >
             {state}
@@ -851,7 +848,6 @@ function LayoutSection() {
   return (
     <>
       <p className="section-label mb-[6px]">{strings.settings.layout}</p>
-      <p className="explain mb-[10px]">{strings.settings.layoutHint}</p>
 
       <div className="mb-[8px] flex gap-[6px]">
         {(["instrument", "quiet", "broadsheet"] as const).map((preset) => (
@@ -879,7 +875,6 @@ function LayoutSection() {
           { value: "off", label: strings.lore.off },
         ]}
         onPick={(next) => set({ readouts: next === "on" })}
-        hint={strings.settings.layoutReadoutsHint}
       />
 
       <Segmented
@@ -900,7 +895,6 @@ function LayoutSection() {
           { value: "off", label: strings.lore.off },
         ]}
         onPick={(next) => set({ dek: next === "on" })}
-        hint={strings.settings.layoutDekHint}
       />
 
       <Segmented
@@ -924,9 +918,6 @@ function ReadingSection() {
   return (
     <>
       <p className="group-heading mb-[12px]">{strings.settings.reading}</p>
-      <p className="explain mb-[16px]">
-        {strings.settings.readingHint}
-      </p>
 
       <ThemeSection />
 
@@ -948,9 +939,6 @@ function ReadingSection() {
           </button>
         ))}
       </div>
-      <p className="explain mt-[7px] mb-[26px]">
-        {strings.settings.chimeHint}
-      </p>
     </>
   );
 }
@@ -974,9 +962,6 @@ function ApiKeysSection() {
   return (
     <>
       <p className="group-heading mb-[12px]">{strings.settings.apiKeys}</p>
-      <p className="explain mb-[10px]">
-        {strings.settings.apiKeysHint}
-      </p>
 
       {keys.length === 0 ? (
         <p className="explain mb-[10px]">
@@ -998,9 +983,9 @@ function ApiKeysSection() {
               >
                 {key.name}
               </span>
-              <span className="chrome block truncate text-[10.5px] tracking-[0.06em] text-ink-dim">
+              <span className="chrome block truncate text-[10.5px] text-ink-dim">
                 <span className="font-mono">{key.hint}…</span>
-                <span className="uppercase">
+                <span className="">
                   {[
                     key.sceneTitle,
                     key.revoked ? strings.settings.apiKeyRevoked : null,
@@ -1056,9 +1041,6 @@ function WebhooksSection() {
   return (
     <>
       <p className="group-heading mb-[12px]">{strings.settings.webhooks}</p>
-      <p className="explain mb-[10px]">
-        {strings.settings.webhooksHint}
-      </p>
 
       {subscriptions.length === 0 ? (
         <p className="explain mb-[10px]">
@@ -1082,12 +1064,12 @@ function WebhooksSection() {
                 >
                   {webhook.name}
                 </span>
-                <span className="chrome block truncate text-[10.5px] tracking-[0.06em] text-ink-dim">
+                <span className="chrome block truncate text-[10.5px] text-ink-dim">
                   {/* The URL keeps its own case. Everything else in this
                       subtitle is chrome and is uppercased; a URL is not chrome,
                       and a path is case-sensitive. */}
                   <span>{webhook.url}</span>
-                  <span className="uppercase">
+                  <span className="">
                     {[
                       webhook.enabled
                         ? null
@@ -1147,9 +1129,6 @@ function PacksSection() {
   return (
     <>
       <p className="group-heading mb-[12px]">{strings.settings.packs}</p>
-      <p className="explain mb-[10px]">
-        {strings.settings.packsHint}
-      </p>
 
       {installed.length === 0 ? (
         <p className="explain mb-[10px]">
@@ -1263,14 +1242,8 @@ function AutomationSection() {
   return (
     <>
       <p className="group-heading mb-[12px]">{strings.settings.automation}</p>
-      <p className="explain mb-[16px]">
-        {strings.settings.automationHint}
-      </p>
 
       <p className="group-heading mb-[12px]">{strings.settings.scripts}</p>
-      <p className="explain mb-[10px]">
-        {strings.settings.scriptsHint}
-      </p>
       {scriptList.map((script) => (
         <Row key={script.id}>
           <button
@@ -1308,9 +1281,6 @@ function AutomationSection() {
       </button>
 
       <p className="group-heading mb-[12px]">{strings.settings.triggers}</p>
-      <p className="explain mb-[10px]">
-        {strings.settings.triggersHint}
-      </p>
       {(triggers.data ?? []).map((trigger) => (
         <Row key={trigger.id}>
           <button
@@ -1363,9 +1333,6 @@ function EmbeddingsSection() {
   return (
     <>
       <p className="group-heading mb-[12px]">{strings.settings.embeddings}</p>
-      <p className="explain mb-[10px]">
-        {strings.settings.embeddingsHint}
-      </p>
       {config.data !== undefined && config.data.baseUrl === null ? (
         <p className="explain mb-[10px]">
           {strings.settings.embeddingsLexical}
@@ -1523,7 +1490,7 @@ export function SettingsScreen() {
               type="button"
               onClick={() => setCategory(entry.id)}
               aria-current={entry.id === active ? "page" : undefined}
-              className="chrome flex min-h-[44px] flex-none items-center px-[10px] text-[11px] tracking-[0.12em] uppercase"
+              className="chrome flex min-h-[44px] flex-none items-center px-[10px] text-[11px]"
               style={{
                 color:
                   entry.id === active
@@ -1552,9 +1519,6 @@ export function SettingsScreen() {
             <>
           {/* Providers */}
           <p className="group-heading mb-[12px]">{strings.settings.providers}</p>
-          <p className="explain mb-[10px]">
-            {strings.settings.providersHint}
-          </p>
           {providerList.map((provider) => (
             <Row key={provider.id}>
               <button
@@ -1585,9 +1549,6 @@ export function SettingsScreen() {
 
           {/* Profiles */}
           <p className="group-heading mb-[12px]">{strings.settings.profiles}</p>
-          <p className="explain mb-[10px]">
-            {strings.settings.profilesHint}
-          </p>
           {profileList.map((profile) => (
             <Row key={profile.id}>
               <button
@@ -1605,7 +1566,7 @@ export function SettingsScreen() {
                 </span>
                 {profile.isDefault ? (
                   <span
-                    className="chrome flex-none text-[10px] tracking-[0.12em] uppercase"
+                    className="chrome flex-none text-[10px]"
                     style={{ color: "var(--onsen-color-red)" }}
                   >
                     {strings.settings.profileDefault}
@@ -1629,9 +1590,6 @@ export function SettingsScreen() {
             <>
           {/* How the model is asked to write (SPEC §13). */}
           <p className="group-heading mb-[12px]">{strings.settings.generation}</p>
-          <p className="explain mb-[10px]">
-            {strings.settings.generationHint}
-          </p>
           {(presets.data ?? []).map((preset) => (
             <Row key={preset.id}>
               <button
@@ -1695,9 +1653,6 @@ export function SettingsScreen() {
             <>
           {/* Routing by operation — the interesting one. */}
           <p className="group-heading mb-[12px]">{strings.settings.routing}</p>
-          <p className="explain mb-[10px]">
-            {strings.settings.routingHint}
-          </p>
           {(tasks.data ?? []).map((task) => {
             const routed =
               task.runs === "turn"
@@ -1731,7 +1686,7 @@ export function SettingsScreen() {
                         .join(" · ")}
                     </span>
                   </span>
-                  <span className="chrome flex-none text-[10.5px] tracking-[0.06em] text-ink-muted uppercase">
+                  <span className="chrome flex-none text-[10.5px] text-ink-muted">
                     {routed}
                   </span>
                   <span className="chrome flex-none self-center text-[12px] text-ink-dim">›</span>
@@ -1781,9 +1736,6 @@ export function SettingsScreen() {
             <button type="button" className="btn w-full" onClick={() => signOut.mutate(undefined)}>
               {strings.settings.signOut}
             </button>
-            <p className="explain mt-[7px]">
-              {strings.settings.signOutHint}
-            </p>
           </div>
         </div>
       </main>

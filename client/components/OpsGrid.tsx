@@ -69,7 +69,7 @@ export function OpsRow({ ops, hint }: { ops: Op[]; hint?: string | undefined }) 
             onClick={op.onPress}
             disabled={disabled}
             title={why}
-            className="chrome flex items-center gap-[6px] border border-border-quiet px-[9px] py-[6px] text-[10px] tracking-[0.1em] uppercase disabled:opacity-40"
+            className="chrome flex items-center gap-[6px] border border-border-quiet px-[9px] py-[6px] text-[10px] disabled:opacity-40"
             style={blue === undefined ? undefined : { borderColor: blue.border }}
           >
             <span
@@ -88,7 +88,7 @@ export function OpsRow({ ops, hint }: { ops: Op[]; hint?: string | undefined }) 
         );
       })}
       {hint === undefined ? null : (
-        <span className="chrome ml-auto text-[10px] tracking-[0.1em] text-ink-dim uppercase">
+        <span className="chrome ml-auto text-[10px] text-ink-dim">
           {hint}
         </span>
       )}
@@ -103,7 +103,7 @@ export function OpsGrid({ ops, cue }: { ops: Op[]; cue?: string | undefined }) {
       {/* The cast strip collapses to make room for the grid, so who is cued has
           to be said in one line instead (design handoff). */}
       {cue === undefined ? null : (
-        <p className="chrome mb-[9px] text-[10.5px] tracking-[0.12em] text-ink-dim uppercase">{cue}</p>
+        <p className="chrome mb-[9px] text-[10.5px] text-ink-dim">{cue}</p>
       )}
 
       <div className="grid grid-cols-3 gap-[6px]">
@@ -128,7 +128,7 @@ export function OpsGrid({ ops, cue }: { ops: Op[]; cue?: string | undefined }) {
                 {op.glyph}
               </span>
               <span
-                className="text-[9px] leading-none tracking-[0.10em] text-ink-muted uppercase"
+                className="text-[9px] leading-none text-ink-muted"
                 style={blue === undefined ? undefined : { color: blue.label }}
               >
                 {op.label}
@@ -166,7 +166,7 @@ export function OpPrompt({
   onClear,
 }: {
   title: string;
-  hint: string;
+  hint?: string | undefined;
   placeholder: string;
   initial?: string;
   submitLabel: string;

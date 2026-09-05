@@ -69,9 +69,6 @@ export function PresetEditor({ preset, onClose }: { preset: PresetDto; onClose()
   return (
     <Sheet title={preset.name} onClose={onClose}>
       <div className="pt-[8px] pb-[14px]">
-        <p className="explain mb-[16px]">
-          {strings.settings.generationHint}
-        </p>
 
         <p className="section-label mb-[10px]">{strings.settings.samplers}</p>
         {GROUPS.map((group, at) => (
@@ -126,9 +123,6 @@ export function PresetEditor({ preset, onClose }: { preset: PresetDto; onClose()
             onCommit={(value) => update.mutate({ id: preset.id, maxResponseTokens: value })}
           />
         </div>
-        <p className="explain mb-[22px]">
-          {strings.settings.budgetHint}
-        </p>
 
         <p className="section-label mb-[8px]">{strings.settings.prefill}</p>
         <textarea
@@ -221,9 +215,6 @@ export function PresetEditor({ preset, onClose }: { preset: PresetDto; onClose()
         >
           {strings.settings.exportPresetSt}
         </button>
-        <p className="explain mt-[7px]">
-          {strings.settings.exportPresetHint}
-        </p>
       </div>
     </Sheet>
   );
@@ -272,10 +263,10 @@ function Slider({
   return (
     <div className="mb-[11px]">
       <div className="mb-[5px] flex items-baseline justify-between gap-[10px]">
-        <span className="chrome text-[11px] tracking-[0.08em] text-ink-muted uppercase">
+        <span className="chrome text-[11px] text-ink-muted">
           {label}
         </span>
-        <span className="chrome text-[11px] tracking-[0.06em] text-ink-label">
+        <span className="chrome text-[11px] text-ink-label">
           {shown === undefined ? strings.settings.samplerOff : shown}
         </span>
       </div>
@@ -342,7 +333,7 @@ function Whole({
           if (next !== value) onCommit(next);
         }}
       />
-      <span className="chrome mt-[5px] block text-[10.5px] tracking-[0.10em] text-ink-dim uppercase">
+      <span className="chrome mt-[5px] block text-[10.5px] text-ink-dim">
         {unit}
       </span>
     </label>

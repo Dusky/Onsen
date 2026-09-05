@@ -83,7 +83,7 @@ export function Sidebar() {
             type="button"
             onClick={() => navigate(item.route)}
             aria-current={isActive ? "page" : undefined}
-            className="chrome flex items-center gap-[10px] py-[13px] pr-[16px] pl-[16px] text-left text-[11px] tracking-[0.12em] uppercase"
+            className="chrome flex items-center gap-[10px] py-[13px] pr-[16px] pl-[16px] text-left text-[11px]"
             style={{
               color: isActive ? "var(--onsen-color-red)" : "var(--onsen-color-text-muted)",
               background: isActive ? "var(--onsen-color-bg-inset)" : "transparent",
@@ -118,7 +118,7 @@ export function Sidebar() {
               >
                 {scene.title === "" ? strings.scenes.untitled : scene.title}
               </span>
-              <span className="chrome mt-[2px] block text-[10px] tracking-[0.08em] text-ink-dim uppercase">
+              <span className="chrome mt-[2px] block text-[10px] text-ink-dim">
                 {strings.scenes.counts(scene.messageCount)}
               </span>
             </button>

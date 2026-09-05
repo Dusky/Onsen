@@ -113,7 +113,7 @@ function KeyChips({
           type="button"
           onClick={() => onChange(keys.filter((other) => other !== key))}
           aria-label={`${label}: ${key}`}
-          className="chrome flex items-center gap-[6px] border border-rule-strong px-[8px] py-[6px] text-[11px] tracking-[0.08em] text-ink-label uppercase"
+          className="chrome flex items-center gap-[6px] border border-rule-strong px-[8px] py-[6px] text-[11px] text-ink-label"
         >
           {key}
           <span className="text-ink-dim">×</span>
@@ -137,13 +137,13 @@ function KeyChips({
               setAdding(false);
             }
           }}
-          className="chrome w-[130px] border border-rule-strong bg-bg-input px-[8px] py-[6px] text-[11px] tracking-[0.08em] text-ink uppercase"
+          className="chrome w-[130px] border border-rule-strong bg-bg-input px-[8px] py-[6px] text-[11px] text-ink"
         />
       ) : (
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="chrome border border-dashed border-rule-strong px-[8px] py-[6px] text-[11px] tracking-[0.08em] text-ink-dim uppercase"
+          className="chrome border border-dashed border-rule-strong px-[8px] py-[6px] text-[11px] text-ink-dim"
         >
           {strings.lore.addKey}
         </button>
@@ -187,7 +187,7 @@ function NumberInput({
           onChange(Math.min(max, Math.max(min, next)));
         }}
       />
-      <span className="chrome mt-[5px] block text-[10.5px] tracking-[0.10em] text-ink-dim uppercase">
+      <span className="chrome mt-[5px] block text-[10.5px] text-ink-dim">
         {unit}
       </span>
     </label>
@@ -247,7 +247,7 @@ function Toggle({
       >
         <span className="section-label">{label}</span>
         <span
-          className="chrome flex-none text-[10.5px] tracking-[0.12em] uppercase"
+          className="chrome flex-none text-[10.5px]"
           style={{ color: value ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)" }}
         >
           {value ? strings.lore.on : strings.lore.off}
@@ -291,7 +291,7 @@ function EntryEditor({
     <section className="mb-[18px] border border-red-border bg-bg-raised">
       <div className="flex items-baseline justify-between gap-[10px] border-b border-red-border px-[14px] py-[10px]">
         <p
-          className="chrome text-[10.5px] tracking-[0.16em] uppercase"
+          className="chrome text-[10.5px]"
           style={{ color: "var(--onsen-color-red)" }}
         >
           {strings.lore.editing}
@@ -333,7 +333,7 @@ function EntryEditor({
         <button
           type="button"
           onClick={() => setAdvanced(!advanced)}
-          className="chrome mb-[14px] text-[11px] tracking-[0.14em] text-ink-muted uppercase"
+          className="chrome mb-[14px] text-[11px] text-ink-muted"
         >
           {strings.lore.advanced} {advanced ? "▴" : "▾"}
         </button>
@@ -568,11 +568,11 @@ function EntryEditor({
 
       {/* The design's footer row: the activation rule, the priority, and SAVE. */}
       <div className="flex items-center gap-[10px] border-t border-red-border px-[14px] py-[10px]">
-        <span className="chrome min-w-0 flex-1 truncate text-[10.5px] tracking-[0.1em] text-ink-dim uppercase">
+        <span className="chrome min-w-0 flex-1 truncate text-[10.5px] text-ink-dim">
           {strings.lore.activationLine(draft.isConstant, draft.scanDepth, book.scanDepth)}
         </span>
         <label className="flex flex-none items-center gap-[6px]">
-          <span className="chrome text-[10.5px] tracking-[0.1em] text-ink-dim uppercase">
+          <span className="chrome text-[10.5px] text-ink-dim">
             {strings.lore.priority}
           </span>
           <input
@@ -628,7 +628,7 @@ function EntryEditor({
       <div className="flex items-center gap-[10px] border-t border-rule px-[14px] py-[8px]">
         <button
           type="button"
-          className="chrome flex-1 text-[10.5px] tracking-[0.12em] text-ink-muted uppercase"
+          className="chrome flex-1 text-[10.5px] text-ink-muted"
           disabled={revise.isPending}
           onClick={() =>
             revise.mutate(undefined, {
@@ -643,7 +643,7 @@ function EntryEditor({
         <button
           type="button"
           onClick={onClose}
-          className="chrome text-[10.5px] tracking-[0.12em] text-ink-dim uppercase"
+          className="chrome text-[10.5px] text-ink-dim"
         >
           {strings.lore.close}
         </button>
@@ -655,7 +655,7 @@ function EntryEditor({
               confirmLabel: strings.lore.deleteEntry,
             })
           }
-          className="chrome text-[10.5px] tracking-[0.12em] uppercase"
+          className="chrome text-[10.5px]"
           style={{ color: "var(--onsen-color-red)" }}
         >
           {strings.lore.deleteEntry}
@@ -714,7 +714,7 @@ export function LorebookEditorScreen({ bookId }: { bookId: string }) {
   if (book === undefined) {
     return (
       <div className="flex screen-height items-center justify-center">
-        <p className="chrome text-[10.5px] tracking-[0.18em] text-ink-dim uppercase">
+        <p className="chrome text-[10.5px] text-ink-dim">
           {strings.common.working}
         </p>
       </div>
@@ -804,7 +804,6 @@ export function LorebookEditorScreen({ bookId }: { bookId: string }) {
           {entries.length === 0 ? (
             <EmptyState
               title={strings.lore.entriesEmpty}
-              body={strings.lore.entriesEmptyBody}
               actions={[
                 {
                   label: strings.lore.addEntry,
@@ -845,13 +844,10 @@ export function LorebookEditorScreen({ bookId }: { bookId: string }) {
           >
             {strings.lore.exportBook}
           </button>
-          <p className="explain mt-[7px]">
-            {strings.lore.exportBookHint}
-          </p>
 
           <button
             type="button"
-            className="chrome mt-[18px] mb-[8px] block text-[10.5px] tracking-[0.12em] uppercase"
+            className="chrome mt-[18px] mb-[8px] block text-[10.5px]"
             style={{ color: "var(--onsen-color-red)" }}
             onClick={() =>
               confirmBook(
@@ -873,7 +869,7 @@ export function LorebookEditorScreen({ bookId }: { bookId: string }) {
         className="flex-none border-t border-rule bg-bg-raised px-[22px] pt-[12px]"
         style={{ paddingBottom: "calc(10px + env(safe-area-inset-bottom))" }}
       >
-        <p className="chrome mx-auto w-full max-w-[var(--onsen-prose-measure)] text-[10.5px] tracking-[0.12em] text-ink-dim uppercase">
+        <p className="chrome mx-auto w-full max-w-[var(--onsen-prose-measure)] text-[10.5px] text-ink-dim">
           {strings.lore.bookTotal(total, entries.length)}
         </p>
       </footer>

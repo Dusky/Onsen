@@ -49,12 +49,22 @@ describe("empty screens", () => {
     });
   }
 
-  test("the component says what a thing is for, not only that it is missing", () => {
-    // `body` is required by the type, so this checks the shape survives: an
-    // empty state that is only a title is the old one-liner with more markup.
+  test("names what is missing and offers the way out", () => {
+    /*
+     * `title` and `actions`, not a paragraph. Phase 51 wrote a teaching body
+     * for every empty screen; phase 53 deleted them, because an empty screen
+     * that explains the concept is the app talking about itself — which was
+     * the single thing about this app that read as machine-written. `body`
+     * survives as optional and is used almost nowhere.
+     */
     const source = read("components/EmptyState.tsx");
     expect(source).toContain("title: string;");
-    expect(source).toContain("body: string;");
+    expect(source).toContain("body?: string;");
+  });
+
+  test("almost no empty screen still carries a body", () => {
+    const bodies = tsxFiles().filter((file) => /\bbody=\{/.test(read(file)));
+    expect({ files: bodies, count: bodies.length }).toMatchObject({ count: 0 });
   });
 
   test("no screen still whispers an empty state in tracked uppercase mono", () => {

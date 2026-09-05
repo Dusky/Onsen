@@ -175,7 +175,6 @@
     font-family: var(--onsen-font-mono);
     font-size: var(--onsen-text-section-label);
     letter-spacing: var(--onsen-tracking-label);
-    text-transform: uppercase;
     color: var(--onsen-color-text-muted);
   }
 
@@ -197,8 +196,7 @@
     font-family: var(--onsen-font-mono);
     font-size: var(--onsen-text-group-heading);
     font-weight: 600;
-    letter-spacing: var(--onsen-tracking-group);
-    text-transform: uppercase;
+    letter-spacing: var(--onsen-tracking-label);
     color: var(--onsen-color-text-label);
   }
 
@@ -247,7 +245,6 @@
     font-family: var(--onsen-font-mono);
     font-size: 10.5px;
     letter-spacing: 0.08em;
-    text-transform: uppercase;
     color: var(--onsen-color-text-dim);
   }
 
@@ -261,8 +258,7 @@
   .screen-kicker {
     font-family: var(--onsen-font-mono);
     font-size: 11.5px;
-    letter-spacing: var(--onsen-tracking-kicker);
-    text-transform: uppercase;
+    letter-spacing: var(--onsen-tracking-label);
     color: var(--onsen-color-text-dim);
   }
 
@@ -297,8 +293,7 @@
     font-family: var(--onsen-font-mono);
     font-size: var(--onsen-text-button);
     font-weight: 500;
-    letter-spacing: var(--onsen-tracking-button);
-    text-transform: uppercase;
+    letter-spacing: var(--onsen-tracking-label);
     border: var(--onsen-border-width) solid var(--onsen-color-rule-strong);
     background: transparent;
     color: var(--onsen-color-text-label);

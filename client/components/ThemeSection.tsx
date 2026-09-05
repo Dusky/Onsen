@@ -182,9 +182,6 @@ export function ThemeSection() {
   return (
     <div className="mb-[26px]">
       <p className="section-label mb-[4px]">{strings.settings.theme}</p>
-      <p className="explain mb-[12px]">
-        {strings.settings.themeHint}
-      </p>
 
       <div className="mb-[14px] flex flex-wrap gap-[6px]">
         {list.map((theme) => (

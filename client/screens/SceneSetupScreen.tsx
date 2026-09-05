@@ -115,7 +115,7 @@ function NumberField({
           if (next !== value) onCommit(next);
         }}
       />
-      <span className="chrome mt-[5px] block text-[10.5px] tracking-[0.10em] text-ink-dim uppercase">
+      <span className="chrome mt-[5px] block text-[10.5px] text-ink-dim">
         {unit}
       </span>
     </label>
@@ -202,7 +202,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
   if (scene === undefined) {
     return (
       <div className="flex screen-height items-center justify-center">
-        <p className="chrome text-[10.5px] tracking-[0.18em] text-ink-dim uppercase">
+        <p className="chrome text-[10.5px] text-ink-dim">
           {strings.common.working}
         </p>
       </div>
@@ -270,9 +270,6 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               </button>
             ))}
           </div>
-          <p className="explain mb-[22px]">
-            {strings.sceneSetup.authorHint}
-          </p>
 
           <p className="section-label mb-[8px]">{strings.sceneSetup.persona}</p>
           <div className="mb-[22px] flex flex-wrap gap-[6px]">
@@ -316,17 +313,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               </button>
             ))}
           </div>
-          {scene.turnStrategy === "mention" ? (
-            <p className="explain mb-[22px]">
-              {strings.sceneSetup.strategyMentionHint}
-            </p>
-          ) : scene.turnStrategy === "classifier" ? (
-            <p className="explain mb-[16px]">
-              {strings.sceneSetup.strategyClassifierHint}
-            </p>
-          ) : (
-            <div className="mb-[22px]" />
-          )}
+          <div className="mb-[22px]" />
 
           {/* The classifier is a one-line question, so it wants a small model —
               which is the whole reason it can be routed separately (SPEC §6). */}
@@ -352,9 +339,6 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                   </button>
                 ))}
               </div>
-              <p className="explain mb-[16px]">
-                {strings.sceneSetup.directorProfileHint}
-              </p>
 
               <p className="section-label mb-[8px]">{strings.sceneSetup.directorRuns}</p>
               {(() => {
@@ -374,7 +358,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                       <div key={run.id} className="border-b border-rule py-[9px]">
                         <div className="flex items-baseline gap-[8px]">
                           <span
-                            className="chrome text-[10.5px] tracking-[0.12em] uppercase"
+                            className="chrome text-[10.5px]"
                             style={{
                               color:
                                 run.status === "ok"
@@ -384,10 +368,10 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                           >
                             {strings.sceneSetup.directorRunStatus(run.status)}
                           </span>
-                          <span className="chrome flex-1 truncate text-[10.5px] tracking-[0.06em] text-ink-dim">
+                          <span className="chrome flex-1 truncate text-[10.5px] text-ink-dim">
                             {run.model ?? ""}
                           </span>
-                          <span className="chrome text-[10.5px] tracking-[0.06em] text-ink-dim">
+                          <span className="chrome text-[10.5px] text-ink-dim">
                             {strings.sceneSetup.directorRunTiming(run.durationMs)}
                           </span>
                         </div>
@@ -420,9 +404,6 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               </button>
             ))}
           </div>
-          <p className="explain mb-[22px]">
-            {strings.sceneSetup.autoPassesHint}
-          </p>
 
           {/* The scene's own framing (SPEC §2). */}
           <p className="group-heading mb-[12px]">{strings.sceneSetup.groupScenario}</p>
@@ -438,9 +419,6 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               setup.mutate({ scenarioOverride: value === "" ? null : value });
             }}
           />
-          <p className="explain mb-[22px]">
-            {strings.sceneSetup.scenarioHint}
-          </p>
 
           {/* Prompt option groups (SPEC §13.5). One row per group showing what
               is chosen; the options themselves are a sheet, because seven
@@ -453,9 +431,6 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                 : strings.sceneSetup.optionsCost(options.data.tokenCount)}
             </p>
           </div>
-          <p className="explain mb-[10px]">
-            {strings.sceneSetup.optionsHint}
-          </p>
           {(options.data?.groups ?? []).map((group) => {
             const chosen = group.options.filter((option) => option.selected);
             return (
@@ -466,7 +441,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                 className="flex w-full items-baseline gap-[9px] border-b border-rule py-[12px] text-left"
               >
                 <span className="min-w-0 flex-1">
-                  <span className="chrome block text-[11px] tracking-[0.1em] text-ink-muted uppercase">
+                  <span className="chrome block text-[11px] text-ink-muted">
                     {group.name}
                   </span>
                   <span className="mt-[4px] block truncate text-[13.5px]">
@@ -490,7 +465,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
             className="flex w-full items-baseline gap-[9px] border-b border-rule py-[12px] text-left"
           >
             <span className="min-w-0 flex-1">
-              <span className="chrome block text-[11px] tracking-[0.1em] text-ink-muted uppercase">
+              <span className="chrome block text-[11px] text-ink-muted">
                 {strings.sceneSetup.bans}
               </span>
               <span className="mt-[4px] block truncate text-[13.5px]">
@@ -518,7 +493,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
             className="flex w-full items-baseline gap-[9px] border-b border-rule py-[12px] text-left"
           >
             <span className="min-w-0 flex-1">
-              <span className="chrome block text-[11px] tracking-[0.1em] text-ink-muted uppercase">
+              <span className="chrome block text-[11px] text-ink-muted">
                 {strings.lore.sceneRow}
               </span>
               <span className="mt-[4px] block truncate text-[13.5px]">
@@ -580,9 +555,6 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               </button>
             ))}
           </div>
-          <p className="explain mb-[18px]">
-            {strings.sceneSetup.summariseHint}
-          </p>
 
           {scene.summarise ? (
             <>
@@ -604,9 +576,6 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                   onCommit={(value) => setup.mutate({ summariseEveryWords: value })}
                 />
               </div>
-              <p className="explain mb-[18px]">
-                {strings.sceneSetup.summariseEveryHint}
-              </p>
 
               <div className="mb-[8px] flex gap-[10px]">
                 <NumberField
@@ -626,9 +595,6 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                   onCommit={(value) => setup.mutate({ summariseFreeze: value })}
                 />
               </div>
-              <p className="explain mb-[6px]">
-                {strings.sceneSetup.summariseThresholdHint}
-              </p>
               <p className="explain mb-[18px]">
                 {strings.sceneSetup.summariseFreezeHint}
               </p>
@@ -688,16 +654,10 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               </button>
             ))}
           </div>
-          <p className="explain mb-[8px]">
-            {strings.settings.sceneApiHint}
-          </p>
           {apiEnabled && apiModelId !== null ? (
             <>
               <p className="section-label mb-[6px]">{strings.settings.sceneApiModel}</p>
               <p className="mb-[4px] font-mono text-[12px] select-all">{apiModelId}</p>
-              <p className="explain mb-[18px]">
-                {strings.settings.sceneApiModelHint}
-              </p>
             </>
           ) : (
             <div className="mb-[10px]" />
@@ -720,9 +680,6 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               </button>
             ))}
           </div>
-          <p className="explain mb-[18px]">
-            {strings.sceneSetup.oocHint}
-          </p>
 
           {scene.oocEnabled ? (
             <>
@@ -736,9 +693,6 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                   onCommit={(value) => setup.mutate({ oocInterval: value })}
                 />
               </div>
-              <p className="explain mb-[14px]">
-                {strings.sceneSetup.oocIntervalHint}
-              </p>
 
               {/* Where the aside lives: inline in the log, or only in the
                   channel (§7). Inline is the designed first appearance. */}
@@ -755,9 +709,6 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                   </button>
                 ))}
               </div>
-              <p className="explain mb-[22px]">
-                {strings.sceneSetup.oocInlineHint}
-              </p>
             </>
           ) : (
             <div className="mb-[4px]" />
@@ -778,9 +729,6 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               onCommit={(value) => setup.mutate({ autopilotMaxTurns: value })}
             />
           </div>
-          <p className="explain mb-[22px]">
-            {strings.sceneSetup.autopilotHint}
-          </p>
 
           {/* Visual novel staging (SPEC §12): sprites above the log, and a
               background to put behind them. */}
@@ -834,15 +782,11 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               setup.mutate({ customGuidePrompt: prompt === "" ? null : prompt });
             }}
           />
-          <p className="explain mb-[22px]">
-            {strings.sceneSetup.customGuideHint}
-          </p>
 
           <p className="group-heading mb-[12px]">{strings.sceneSetup.cast}</p>
           {scene.cast.length === 0 ? (
             <EmptyState
               title={strings.sceneSetup.castEmpty}
-              body={strings.sceneSetup.castEmptyBody}
               actions={[{ label: strings.sceneSetup.addToCast, onClick: () => setPicking(true) }]}
             />
           ) : null}
@@ -858,12 +802,12 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                       : { background: "var(--onsen-stripe)" }
                   }
                 />
-                <p className="chrome mt-[5px] truncate text-[10.5px] tracking-[0.08em] text-ink-label uppercase">
+                <p className="chrome mt-[5px] truncate text-[10.5px] text-ink-label">
                   {member.name}
                 </p>
                 <button
                   type="button"
-                  className="chrome mt-[2px] text-[10px] tracking-[0.1em] uppercase"
+                  className="chrome mt-[2px] text-[10px]"
                   style={{ color: "var(--onsen-color-red)" }}
                   onClick={() => removeFromCast.mutate(member.characterId)}
                 >
@@ -919,13 +863,11 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
             className="flex w-full items-baseline gap-[9px] border-b border-rule py-[12px] text-left"
           >
             <span className="min-w-0 flex-1">
-              <span className="chrome block text-[11px] tracking-[0.1em] text-ink-muted uppercase">
+              <span className="chrome block text-[11px] text-ink-muted">
                 {strings.dossiers.open}
               </span>
               <span className="mt-[4px] block truncate text-[13.5px]">
-                {(dossiers.data ?? []).length === 0
-                  ? strings.dossiers.openHint
-                  : (dossiers.data ?? []).map((row) => row.name).join(" · ")}
+                {(dossiers.data ?? []).map((row) => row.name).join(" · ") || strings.common.none}
               </span>
             </span>
             <span className="meta flex-none">
@@ -937,9 +879,6 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
           {/* The data bank (SPEC §11, phase 30): documents recalled into the
               prompt by meaning. A row, because the list itself is a sheet. */}
           <p className="group-heading mb-[12px]">{strings.characters.documents}</p>
-          <p className="explain mb-[10px]">
-            {strings.characters.documentsHint}
-          </p>
           <button
             type="button"
             className="btn mb-[24px] w-full"
@@ -1116,7 +1055,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               <p className="explain mt-[4px]">
                 {proposal.content}
               </p>
-              <p className="chrome mt-[6px] text-[10px] tracking-[0.08em] text-ink-muted uppercase">
+              <p className="chrome mt-[6px] text-[10px] text-ink-muted">
                 {proposal.keys.join(" · ")}
               </p>
             </div>
@@ -1129,19 +1068,19 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
         <Sheet title={strings.characters.documents} onClose={() => setDocumentsOpen(false)}>
           <div className="pt-[8px] pb-[12px]">
             {(documents.data ?? []).length === 0 ? (
-              <p className="chrome mb-[10px] text-[10.5px] tracking-[0.12em] text-ink-dim uppercase">
+              <p className="chrome mb-[10px] text-[10.5px] text-ink-dim">
                 {strings.characters.noDocuments}
               </p>
             ) : (
               (documents.data ?? []).map((document) => (
                 <div key={document.id} className="flex items-baseline gap-[8px] border-b border-rule py-[9px]">
                   <span className="min-w-0 flex-1 truncate text-[13.5px]">{document.title}</span>
-                  <span className="chrome flex-none text-[10.5px] text-ink-muted uppercase">
+                  <span className="chrome flex-none text-[10.5px] text-ink-muted">
                     {document.chunkCount}
                   </span>
                   <button
                     type="button"
-                    className="chrome flex-none text-[10.5px] uppercase"
+                    className="chrome flex-none text-[10.5px]"
                     style={{ color: "var(--onsen-color-red)" }}
                     onClick={() => removeDocument.mutate(document.id)}
                   >
@@ -1220,7 +1159,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[15px] font-medium">{character.name}</span>
-                <span className="chrome block text-[10px] tracking-[0.06em] text-ink-dim uppercase">
+                <span className="chrome block text-[10px] text-ink-dim">
                   {strings.characters.tokens(character.tokens.total)}
                 </span>
               </span>

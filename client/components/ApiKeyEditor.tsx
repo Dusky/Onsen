@@ -151,7 +151,7 @@ export function ApiKeyEditor({
                   {request.model}
                 </span>
                 <span
-                  className="chrome flex-none text-[11px] tracking-[0.06em] uppercase"
+                  className="chrome flex-none text-[11px]"
                   style={
                     request.status >= 400 ? { color: "var(--onsen-color-red)" } : undefined
                   }

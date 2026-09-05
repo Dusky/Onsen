@@ -33,10 +33,6 @@ export function MediaSettings() {
 
   return (
     <>
-      <p className="mb-[18px] text-[length:var(--onsen-text-prose-excerpt)] leading-[1.55] text-ink-prose-muted">
-        {strings.media.explainer}
-      </p>
-
       {(["image", "speech"] as const).map((purpose) => {
         const mine = all.filter((service) => service.purpose === purpose);
         return (
@@ -70,14 +66,14 @@ export function MediaSettings() {
                   {/* The one in use is marked in red: it is what happens now. */}
                   {service.isDefault ? (
                     <span
-                      className="chrome flex-none text-[10px] tracking-[0.12em] uppercase"
+                      className="chrome flex-none text-[10px]"
                       style={{ color: "var(--onsen-color-red)" }}
                     >
                       {strings.media.serviceIsDefault}
                     </span>
                   ) : null}
                   {service.enabled ? null : (
-                    <span className="chrome flex-none text-[10px] tracking-[0.12em] text-ink-dim uppercase">
+                    <span className="chrome flex-none text-[10px] text-ink-dim">
                       {strings.media.serviceOff}
                     </span>
                   )}
@@ -201,9 +197,6 @@ function ServiceEditor({
 
         <p className="section-label mb-[6px]">{strings.media.serviceModel}</p>
         <input name="model" className="field" defaultValue={service?.model ?? ""} />
-        <p className="explain mt-[6px] mb-[14px]">
-          {strings.media.serviceModelHint}
-        </p>
 
         <p className="section-label mb-[6px]">{strings.media.serviceKey}</p>
         <input name="apiKey" type="password" className="field" autoComplete="off" />

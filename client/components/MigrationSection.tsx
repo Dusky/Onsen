@@ -108,9 +108,6 @@ export function MigrationSection() {
   return (
     <div className="mb-[26px]">
       <p className="group-heading mb-[12px]">{strings.settings.migrate}</p>
-      <p className="explain mb-[12px]">
-        {strings.settings.migrateHint}
-      </p>
 
       <input
         ref={folder}

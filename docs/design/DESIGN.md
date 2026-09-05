@@ -194,6 +194,16 @@ Light mode is fully specified for the chat screen and the VN stage (frame 2a-3 i
 | Ops key caption | Plex Mono | 7–8px | 400 | — | 0.10em, uppercase |
 | Tab bar | Plex Mono | 9.5px | 400 | — | 0.12em, uppercase |
 
+> **Amended in production (phase 53).** Every "uppercase" and every
+> letter-spacing figure in the table above is superseded: labels are **sentence
+> case with no tracking**. This is not a departure from the design — it is the
+> instruction in `Instrument.dc.html`, the chat direction that was chosen:
+> *"Labels are readable, not decorative: 11px, sentence case, no tracking."*
+> The Instrument, Quiet and Broadsheet mockups use no uppercase and no
+> letter-spacing between them; only the mockup drawn of what shipped does. The
+> sizes and faces in the table still stand. See `SPEC.md` §16 and
+> `test/voice.test.ts`.
+
 Apply `text-wrap: pretty` to all prose paragraphs.
 
 **Minimum sizes are load-bearing.** Mono captions go as small as 7px *only* on the ops-key second line, where the glyph above carries the meaning and the caption is a reminder. Never set body prose below 15px. The user reads this for hours.

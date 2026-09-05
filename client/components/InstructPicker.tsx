@@ -270,7 +270,7 @@ function Editor({
       >
         <span className="section-label">{strings.instruct.systemInUser}</span>
         <span
-          className="chrome flex-none text-[10.5px] tracking-[0.12em] uppercase"
+          className="chrome flex-none text-[10.5px]"
           style={{
             color: draft.systemInUser ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)",
           }}

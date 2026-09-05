@@ -70,7 +70,7 @@ function Readout({
       style={{ borderLeft: `2px solid var(--onsen-color-${hue})` }}
     >
       <span
-        className="chrome text-[10.5px] tracking-[0.14em] uppercase"
+        className="chrome text-[10.5px]"
         style={{ color: `var(--onsen-color-${hue}-text-muted)` }}
       >
         {label}
@@ -120,15 +120,13 @@ export function Deck({
   const reason =
     canBeat && scope === "beat"
       ? strings.chat.scopeBeatHint(inPlay.map((member) => member.name).join(", "))
-      : scope === "auto"
-        ? strings.chat.scopeAutoHint
-        : nextSpeaker === null
-          ? ""
-          : decidesOnSend
-            ? nextSpeaker.reason
-            : nextSpeaker.source === "user"
-              ? strings.chat.yourPickOverrides
-              : nextSpeaker.reason;
+      : nextSpeaker === null
+        ? ""
+        : decidesOnSend
+          ? nextSpeaker.reason
+          : nextSpeaker.source === "user"
+            ? strings.chat.yourPickOverrides
+            : nextSpeaker.reason;
 
   return (
     <div className="flex flex-col gap-[10px]">
@@ -141,7 +139,7 @@ export function Deck({
           hidden={castDisplay === "line"}
         >
           <span
-            className="chrome text-[10.5px] tracking-[0.14em] uppercase"
+            className="chrome text-[10.5px]"
             style={{ color: "var(--onsen-color-red-text)" }}
           >
             {strings.chat.speakingNext}

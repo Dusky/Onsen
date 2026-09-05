@@ -30,11 +30,11 @@ export function WritingElsewhere() {
       onClick={() => navigate({ name: "chat", sceneId: active.sceneId })}
       className="mx-[18px] mt-[10px] flex flex-none items-center justify-between gap-[10px] border border-red-border bg-red-bg px-[11px] py-[8px]"
     >
-      <span className="chrome truncate text-[11px] tracking-[0.12em] text-red-text uppercase">
+      <span className="chrome truncate text-[11px] text-red-text">
         {strings.scenes.stillWriting(active.sceneTitle)}
       </span>
       <span
-        className="chrome flex-none text-[11px] tracking-[0.12em] uppercase"
+        className="chrome flex-none text-[11px]"
         style={{ color: "var(--onsen-color-red)" }}
       >
         {strings.scenes.open}

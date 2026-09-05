@@ -90,7 +90,7 @@ export function GuidesBody({
                 className="chrome flex min-h-[44px] w-full items-center justify-between gap-[10px] py-[12px] text-left disabled:opacity-100"
               >
                 <span
-                  className="text-[11.5px] tracking-[0.12em] uppercase"
+                  className="text-[11.5px]"
                   style={{
                     color:
                       guide === null
@@ -106,7 +106,7 @@ export function GuidesBody({
                   ) : null}
                 </span>
                 <span
-                  className="flex items-center gap-[8px] text-[10.5px] tracking-[0.10em] uppercase"
+                  className="flex items-center gap-[8px] text-[10.5px]"
                   style={{ color: "var(--onsen-color-blue-text-muted)" }}
                 >
                   {working === kind

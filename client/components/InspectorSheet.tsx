@@ -57,7 +57,7 @@ export function InspectorSheet({
       </p>
       {debug.headroom <= 0 ? (
         <p
-          className="chrome mt-[6px] text-[10.5px] leading-[1.5] tracking-[0.06em] uppercase"
+          className="chrome mt-[6px] text-[10.5px] leading-[1.5]"
           style={{ color: "var(--onsen-color-red)" }}
         >
           {strings.chat.inspectorNoHeadroom}
@@ -86,7 +86,7 @@ export function InspectorSheet({
                     .join(" · ")}
                 </span>
               </span>
-              <span className="chrome flex-none text-[10.5px] tracking-[0.06em] text-ink-muted uppercase">
+              <span className="chrome flex-none text-[10.5px] text-ink-muted">
                 {strings.chat.inspectorTokens(block.tokens)}
               </span>
             </button>
@@ -100,7 +100,7 @@ export function InspectorSheet({
               <div className="mt-[8px]">
                 {history.map((message) => (
                   <p key={message.id} className="explain">
-                    <span className="tracking-[0.06em] uppercase">
+                    <span className="">
                       {message.characterId === null
                         ? message.authorType === "user"
                           ? strings.chat.youLabel
@@ -128,12 +128,12 @@ export function InspectorSheet({
                 {item.label}
               </span>
               <span
-                className="chrome flex-none text-[10.5px] tracking-[0.06em] uppercase"
+                className="chrome flex-none text-[10.5px]"
                 style={{ color: "var(--onsen-color-red)" }}
               >
                 {strings.chat.inspectorEviction[item.reason]}
               </span>
-              <span className="chrome flex-none text-[10.5px] text-ink-muted uppercase">
+              <span className="chrome flex-none text-[10.5px] text-ink-muted">
                 {strings.chat.inspectorTokens(item.tokens)}
               </span>
             </div>
@@ -154,7 +154,7 @@ export function InspectorSheet({
                 {entry.title}
               </span>
               <span
-                className="chrome flex-none text-[10.5px] tracking-[0.06em] uppercase"
+                className="chrome flex-none text-[10.5px]"
                 style={{
                   color: entry.skipped === null ? "var(--onsen-color-text-muted)" : undefined,
                 }}
@@ -173,12 +173,12 @@ export function InspectorSheet({
       {/* The two quiet failure modes §3 and §18 insist on naming rather than
           hiding: an outlet nothing filled, a macro nobody implements. */}
       {debug.unresolvedOutlets.length > 0 ? (
-        <p className="chrome mt-[14px] text-[10.5px] leading-[1.5] text-ink-dim uppercase">
+        <p className="chrome mt-[14px] text-[10.5px] leading-[1.5] text-ink-dim">
           {strings.chat.inspectorOutlets(debug.unresolvedOutlets.join(", "))}
         </p>
       ) : null}
       {debug.unknownMacros.length > 0 ? (
-        <p className="chrome mt-[8px] text-[10.5px] leading-[1.5] text-ink-dim uppercase">
+        <p className="chrome mt-[8px] text-[10.5px] leading-[1.5] text-ink-dim">
           {strings.chat.inspectorMacros(debug.unknownMacros.join(", "))}
         </p>
       ) : null}

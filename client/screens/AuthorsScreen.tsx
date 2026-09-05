@@ -99,14 +99,9 @@ export function AuthorsScreen() {
 
       <main className="min-h-0 flex-1 overflow-y-auto px-[22px] py-[14px]">
         <div className="mx-auto w-full max-w-[var(--onsen-list-measure)]">
-          <p className="mb-[22px] text-[length:var(--onsen-text-prose-excerpt)] leading-[1.55] text-ink-prose-muted">
-            {strings.authors.explainer}
-          </p>
-
           {authors.data?.length === 0 ? (
             <EmptyState
               title={strings.authors.empty}
-              body={strings.authors.emptyBody}
               actions={[
                 {
                   label: strings.authors.create,
@@ -132,7 +127,7 @@ export function AuthorsScreen() {
                 <span className="truncate text-[17px] font-medium">{author.name}</span>
                 {author.isDefault ? (
                   <span
-                    className="chrome flex-none text-[10px] tracking-[0.12em] uppercase"
+                    className="chrome flex-none text-[10px]"
                     style={{ color: "var(--onsen-color-red)" }}
                   >
                     {strings.authors.isDefault}
@@ -184,7 +179,7 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
   if (author === undefined) {
     return (
       <div className="flex screen-height items-center justify-center">
-        <p className="chrome text-[10.5px] tracking-[0.18em] text-ink-dim uppercase">
+        <p className="chrome text-[10.5px] text-ink-dim">
           {strings.common.working}
         </p>
       </div>
@@ -223,7 +218,6 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
           <Field
             label={strings.authors.personality}
             tokens={tokens.personality}
-            hint={strings.authors.personalityHint}
           >
             <TextField
               value={author.personality ?? ""}
@@ -235,7 +229,6 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
           <Field
             label={strings.authors.writingStyle}
             tokens={tokens.writingStyle}
-            hint={strings.authors.writingStyleHint}
           >
             <TextField
               value={author.writingStyle ?? ""}
@@ -247,7 +240,6 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
           <Field
             label={strings.authors.directingStyle}
             tokens={tokens.directingStyle}
-            hint={strings.authors.directingStyleHint}
           >
             <TextField
               value={author.directingStyle ?? ""}
@@ -286,7 +278,7 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
               style={{ borderLeft: "2px solid var(--onsen-color-blue)" }}
             >
               <p
-                className="chrome mb-[6px] text-[10.5px] tracking-[0.18em] uppercase"
+                className="chrome mb-[6px] text-[10.5px]"
                 style={{ color: "var(--onsen-color-blue)" }}
               >
                 {author.name} · OOC
@@ -324,9 +316,6 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
               rows={3}
               onCommit={(boundaries) => save({ boundaries: boundaries || null })}
             />
-            <p className="explain mt-[7px]">
-              {strings.authors.boundariesHint}
-            </p>
           </div>
 
           <button
@@ -336,9 +325,6 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
           >
             <span className="min-w-0">
               <span className="section-label">{strings.authors.memory}</span>
-              <span className="explain mt-[6px] block">
-                {strings.authors.memoryHint}
-              </span>
             </span>
             {/* A square toggle, not a pill (design handoff). */}
             <span
@@ -406,7 +392,7 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
         <div className="mx-auto w-full max-w-[var(--onsen-list-measure)]">
           <div className="flex items-baseline justify-between">
             <span className="section-label">{strings.authors.cardTotal}</span>
-            <span className="chrome text-[10.5px] tracking-[0.06em] text-ink-label uppercase">
+            <span className="chrome text-[10.5px] text-ink-label">
               {strings.characters.shareOfContext(tokens.total, CONTEXT_WINDOW)}
             </span>
           </div>

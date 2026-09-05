@@ -21,6 +21,8 @@ export const strings = {
     back: "Back",
     cancel: "Cancel",
     optional: "Optional",
+    /** What a row says when it has nothing to list. One word, everywhere. */
+    none: "None",
     /** The confirm sheet's own title. The question itself is the body. */
     areYouSure: "Are you sure",
     /** The default answer, where a caller has no better verb to name. */
@@ -31,8 +33,6 @@ export const strings = {
   setup: {
     kicker: "First run",
     title: "Set up this install",
-    intro:
-      "This is a single-user, self-hosted install. Choose a password, then point it at one model to start with — you can add more connections later.",
 
     passwordSection: "Password",
     passwordLabel: "Password",
@@ -50,11 +50,9 @@ export const strings = {
     baseUrlPlaceholderOpenAi: "https://api.openai.com/v1",
     baseUrlPlaceholderLocal: "http://localhost:8080",
     apiKeyLabel: "API key",
-    apiKeyHint: "Stored encrypted. It is never sent back to this browser.",
     modelLabel: "Model",
     modelPlaceholder: "Model identifier",
     profileNameLabel: "Profile name",
-    profileNameHint: "A connection profile is provider, model and settings in one switchable bundle.",
 
     submit: "Finish setup",
     submitting: "Setting up…",
@@ -84,14 +82,7 @@ export const strings = {
     kicker: "Onsen",
     title: "Roleplays",
     empty: "No roleplays yet",
-    emptyBody:
-      "A roleplay is one continuing story: an author, a cast, and everything " +
-      "said so far. History is a tree, so you can branch at any line and keep " +
-      "both versions.",
     emptyScene: "Nothing written yet",
-    emptySceneBody:
-      "Say something, or direct the scene — an instruction rather than a line " +
-      "works too. Reply without me starts the story without you in it.",
     create: "New roleplay",
     untitled: "Untitled",
     stillWriting: (title: string) => `Still writing in ${title}`,
@@ -231,8 +222,6 @@ export const strings = {
     checkpointSave: "Mark it",
     checkpoints: "Marked places",
     checkpointsEmpty: "Nothing marked yet.",
-    checkpointsHint:
-      "A branch is where the story went. A mark is a place you chose to be able to come back to — going back to one leaves every branch where it is.",
     checkpointGo: "Go back to it",
     checkpointForget: "Forget this mark",
     checkpointForgetConfirm: (name: string) =>
@@ -252,7 +241,6 @@ export const strings = {
     /** Turn scope (SPEC §3.5). */
     scope: "This turn",
     scopeAuto: "Let it decide",
-    scopeAutoHint: "The director chooses one voice or the room when you send",
     /** Before the director has answered — with a classifier, that takes a moment. */
     choosing: "Choosing who speaks",
     chooseInitials: "?",
@@ -288,16 +276,13 @@ export const strings = {
     opNudge: "Nudge",
     opNudgeKey: "N",
     opNudgeTitle: "Direct this turn",
-    opNudgeHint: "One instruction, this turn only. Never becomes a message.",
     opNudgePlaceholder: "Slow the pacing down here…",
     opGuidedSwipe: "Guided swipe",
     opGuidedSwipeKey: "S",
     opGuidedSwipeTitle: "Write it again, differently",
-    opGuidedSwipeHint: "Rerolls the last turn with direction. The original is kept.",
     opImpersonate: "As me",
     opImpersonateKey: "I",
     opImpersonateTitle: "Write my turn for me",
-    opImpersonateHint: "Lands in the composer. Nothing is sent until you send it.",
     opImpersonatePlaceholder: "count the barrels, keep quiet…",
     opImpersonateFirst: "I did",
     opImpersonateSecond: "You do",
@@ -306,7 +291,6 @@ export const strings = {
     opSteer: "Steer",
     opSteerKey: "D",
     opSteerTitle: "Steer the whole scene",
-    opSteerHint: "Applied to every turn until you clear it.",
     opSteerPlaceholder: "Keep everyone cold and hungry…",
     opSteerClear: "Clear",
     opNoReply: "No reply",
@@ -318,7 +302,8 @@ export const strings = {
     opGuides: "Guides",
     opGuidesKey: "G",
     guides: "Guides · injected now",
-    guidesEmpty: "No guides yet. Writing one reads the scene so far and takes a note on it.",
+    guidesCustomHint: "Set a question in this roleplay's setup first.",
+        guidesEmpty: "No guides yet. Writing one reads the scene so far and takes a note on it.",
     guidesNone: "None",
     guidesTotal: (n: number) => `${n} TOK`,
 
@@ -347,7 +332,6 @@ export const strings = {
     guidesFlushConfirm: (label: string) => `Stop injecting ${label}? Every version of it goes.`,
     guidesFlushAllConfirm: "Stop injecting every guide? Every version of them goes.",
     guidesDone: "Done",
-    guidesCustomHint: "Needs a question first, which is set in this roleplay's setup.",
 
     /** The memory half of the blue sheet (SPEC §11, §16 "memory panel"). */
     tabGuides: "Guides",
@@ -377,7 +361,6 @@ export const strings = {
     opExpand: "Write it longer",
     opCorrect: "Rewrite this…",
     opCorrectTitle: "What should change?",
-    opCorrectHint: "Everything that was working is kept.",
     opCorrectPlaceholder: "she should refuse…",
     opApply: "Go",
     steerActive: "Steer",
@@ -459,12 +442,9 @@ export const strings = {
       migrate: "Moving in",
     } as Record<string, string>,
     categoryEmpty: "Nothing here matches that.",
-    signOutHint:
-      "Locks this browser. Everything stays on the server; you will need the password again.",
 
     /** Connections group (design handoff, screen 3i). */
     providers: "Providers",
-    providersHint: "Where the models are. One box or twenty.",
     addProvider: "Add a provider",
     providerName: "Name",
     providerKind: "Kind",
@@ -497,7 +477,6 @@ export const strings = {
     lastProvider: "The only provider. Add another before removing this one.",
 
     profiles: "Profiles",
-    profilesHint: "A provider, a model and a preset under one name. What an operation is routed at.",
     addProfile: "Add a profile",
     profileName: "Name",
     profileDefault: "Default",
@@ -506,8 +485,6 @@ export const strings = {
 
     /** Routing by operation — the headline of this screen (design handoff). */
     routing: "Routing by operation",
-    routingHint:
-      "Bookkeeping on a cheap local model, prose on an expensive one. Each operation goes where you send it.",
     routingSame: "Scene's own",
     opEnabled: "On",
     opDisabled: "Off",
@@ -519,8 +496,6 @@ export const strings = {
 
     /** The preset editor (SPEC §13, §16). */
     generation: "Generation",
-    generationHint:
-      "How the model is asked to write. These ship on modern values — high repetition penalty with low temperature actively degrades current models.",
     presetKicker: "Preset",
     samplers: "Samplers",
     samplersReset: "Back to defaults",
@@ -545,8 +520,6 @@ export const strings = {
     exportPresetLabel: "Save a copy",
     exportPresetOwn: "Save this preset",
     exportPresetSt: "Save for SillyTavern",
-    exportPresetHint:
-      "The SillyTavern file carries the samplers and the sizes. Prompt blocks live in option groups here, not on the preset, so they do not go with it — the file says so where it is missing them.",
     importingPreset: "Importing…",
     presetImported: (name: string) => `Imported ${name}.`,
     presetReport: (report: {
@@ -567,16 +540,11 @@ export const strings = {
     contextSizeUnit: "tokens",
     maxResponseTokens: "Reserved for the reply",
     maxResponseTokensUnit: "tokens",
-    budgetHint:
-      "The window is what the prompt is built to fit. What is reserved for the reply comes off it before anything is placed.",
 
     /** Regex scripts and event triggers (SPEC §14, phase 33). */
     automation: "Automation",
-    automationHint:
-      "Find-and-replace over what you write and what the model writes, and named actions that run at set moments.",
 
     scripts: "Regex scripts",
-    scriptsHint: "Ordered. Each one sees the last one's output.",
     addScript: "Add a script",
     scriptName: "Name",
     scriptPattern: "Find",
@@ -623,16 +591,13 @@ export const strings = {
     scriptTestUnknown: (names: string) => `Left alone: ${names}`,
 
     triggers: "Triggers",
-    triggersHint: "Run something at a set moment. Lore entries can fire one by name.",
     addTrigger: "Add a trigger",
     triggerName: "Name",
     triggerEvent: "When",
     triggerAction: "What runs",
     triggerActionRef: "Which one",
     triggerAutomationId: "Automation id",
-    triggerAutomationIdHint: "The id on the lore entry that should fire this.",
     triggerRun: "Run it now",
-    triggerRunHint: "Pick a roleplay to run it against.",
     triggerDelete: "Delete",
     triggerDeleteConfirm: "This trigger is deleted. The script or guide it ran is untouched.",
     eventLabel: {
@@ -650,8 +615,6 @@ export const strings = {
 
     /** The outbound OpenAI-compatible API (SPEC §19, phase 37). */
     apiKeys: "Use a roleplay as a model",
-    apiKeysHint:
-      "Point any OpenAI-compatible client at this app and a roleplay answers like a model. Turn it on per roleplay in that roleplay's setup, then make a key here.",
     addApiKey: "Make a key",
     apiKeyName: "What is it for",
     apiKeyScope: "Which roleplay",
@@ -673,21 +636,14 @@ export const strings = {
     apiKeyWarned: "Client sent its own character card",
 
     sceneApi: "Answer as a model",
-    sceneApiHint:
-      "Lets an outside client drive this roleplay. Off unless you say otherwise. You still need a key, made in Settings.",
     sceneApiOn: "On",
     sceneApiOff: "Off",
     sceneApiModel: "Model id",
-    sceneApiModelHint: "What your client puts in its model field.",
 
     /** Reading preferences (SPEC §5, phase 36). */
     reading: "Reading",
     /* The layout presets (§20 phase 52). */
     layout: "Layout",
-    layoutHint:
-      "How the chat screen is arranged. Three starting points, and the four " +
-      "switches underneath them — change one and you are on your own layout, " +
-      "which is fine.",
     layoutPresets: {
       instrument: "Instrument",
       quiet: "Quiet",
@@ -702,30 +658,22 @@ export const strings = {
       custom: "Your own mix of the switches below.",
     } as Record<string, string>,
     layoutReadouts: "Readout row",
-    layoutReadoutsHint: "Guides, memory and media, each with its own colour.",
     layoutCast: "Cast control",
     layoutCastSegments: "Segments",
     layoutCastLine: "One line",
     layoutDek: "Scene line under the title",
-    layoutDekHint: "Shows the roleplay's scenario, when it has one.",
     layoutAttribution: "Attribution",
     layoutAttributionStacked: "Above the text",
     layoutAttributionInline: "In the text",
-    readingHint: "How the app behaves while you are looking at something else.",
     chime: "Chime when a reply lands",
-    chimeHint:
-      "Only when this tab is in the background. Your browser will not let it make a sound until you have clicked something.",
     chimeOn: "On",
     chimeOff: "Off",
 
     /** Outbound webhooks (SPEC §15, phase 35). */
     webhooks: "Webhooks",
-    webhooksHint:
-      "Post what happens in a roleplay to a URL you run. Signed, so your receiver can tell it came from here.",
     addWebhook: "Add a subscription",
     webhookName: "Name",
     webhookUrl: "Where to post",
-    webhookUrlHint: "http or https. A local address is fine — that is usually where the receiver is.",
     webhookEvents: "What to send",
     webhookScope: "Which roleplay",
     webhookAllScenes: "All of them",
@@ -762,8 +710,6 @@ export const strings = {
 
     /** Packs (SPEC §15 tier 2, phase 34). */
     packs: "Packs",
-    packsHint:
-      "A bundle of characters, lore, presets and settings in one file. Nothing in one runs; it is all data.",
     packInstall: "Install a pack",
     packInstalling: "Reading…",
     packExport: "Make a pack",
@@ -791,7 +737,6 @@ export const strings = {
     packAuthor: "Author",
     packDescription: "What it is",
     packContents: "What goes in",
-    packContentsHint: "Only what you tick. A pack is something to share, not a backup.",
     packBanlist: "The ban list",
     packEmpty: "Tick something to put in it.",
     packMake: "Make it",
@@ -809,10 +754,6 @@ export const strings = {
     /** Moving in from SillyTavern (SPEC §20 phase 44). */
     /** Themes (SPEC §20 phase 45). */
     theme: "Theme",
-    themeHint:
-      "Every value is a CSS custom property, and the app is its own preview. Shipped themes " +
-      "are read-only \u2014 duplicate one to make it yours. Themes live on the server, so the " +
-      "phone and the desktop agree.",
     themeDuplicate: "Duplicate",
     themeDelete: "Delete",
     themeExport: "Export",
@@ -830,10 +771,6 @@ export const strings = {
       `${n} value${n === 1 ? "" : "s"} were refused for holding something other than a colour or a length.`,
 
     migrate: "Move in from SillyTavern",
-    migrateHint:
-      "Pick your SillyTavern data folder \u2014 the one holding characters, chats and settings.json. " +
-      "Cards, conversations, personas, world info, instruct templates and regex scripts come across. " +
-      "Only the files it can read are uploaded, and it says what happened to each one.",
     migrateChoose: "Choose the folder",
     migrateWorking: "Reading the folder\u2026",
     migrateEmpty: "Nothing in that folder looked like a SillyTavern install.",
@@ -853,8 +790,6 @@ export const strings = {
 
     /** The data bank's embeddings provider (SPEC §11, phase 30). */
     embeddings: "Embeddings",
-    embeddingsHint:
-      "The model that embeds the data bank's documents. Leave empty and retrieval falls back to keyword matching.",
     embeddingsBaseUrl: "Address",
     embeddingsModel: "Model",
     embeddingsKey: "API key",
@@ -865,8 +800,6 @@ export const strings = {
     /** Self-update for a git-checkout deployment (SPEC §17). */
     update: "Update",
     updateInstall: "This install",
-    updateHint:
-      "A checkout can pull its own commits and rebuild. Restart the server afterwards to run them.",
     updateUpToDate: "Up to date",
     updateBehind: (n: number) => `${n} ${n === 1 ? "commit" : "commits"} behind`,
     updateAhead: (n: number) => `${n} ahead`,
@@ -924,10 +857,6 @@ export const strings = {
     kicker: "Library",
     title: "Cast",
     empty: "No characters yet",
-    emptyBody:
-      "Characters are the cast a roleplay draws from. Import a card you already " +
-      "have — PNG, CharX or JSON, from SillyTavern or anywhere else — or load " +
-      "the sample scene to see how one is put together.",
     loadDemo: "Load the demo cast",
     search: "Search",
     searchPlaceholder: "Search name, description, notes",
@@ -993,14 +922,12 @@ export const strings = {
 
     /** Sprites and expressions (SPEC §12, phase 29). */
     sprites: "Sprites",
-    spritesHint: "One image per expression label. The stage falls back to the avatar, then the placeholder.",
     spriteLabel: "Label",
     spriteLabelPrompt: "Expression label, e.g. joy or worried",
     addSprite: "Add sprite",
 
     /** The data bank (SPEC §11, phase 30). */
     documents: "Data bank",
-    documentsHint: "Text the model can recall by meaning. Chunked and embedded, recalled into the prompt when the scene touches on it.",
     addDocument: "Add a document",
     documentTitle: "Title",
     documentText: "Text",
@@ -1021,7 +948,6 @@ export const strings = {
     personality: "Personality",
     scenario: "Scenario",
     speech: "Speech",
-    speechHint: "Speech tics, vocabulary, rhythm. Sent only when this character is speaking.",
     mentionKeywords: "Also answers to",
     mentionKeywordsHint:
       "Comma separated. In a scene set to \u201cBy mention\u201d, any of these in the last message hands them the turn \u2014 their name always does.",
@@ -1029,7 +955,6 @@ export const strings = {
     firstMessage: "First message",
     alternateGreetings: "Alternate greetings",
     groupGreetings: "Group greetings",
-    groupGreetingsHint: "Used only when this character opens a scene with others.",
     addGreeting: "Add greeting",
     removeGreeting: "Remove",
     depthPrompt: "Depth note",
@@ -1057,8 +982,6 @@ export const strings = {
   media: {
     kicker: "Pictures and voices",
     title: "Pictures and voices",
-    explainer:
-      "Draw a scene, hear a line read aloud, or show the author a picture. Each needs a service of its own — a local one is fine, and nothing here is on unless you set it up.",
 
     imageSection: "What draws",
     speechSection: "What speaks",
@@ -1071,7 +994,6 @@ export const strings = {
     serviceKind: "Kind",
     serviceUrl: "Address",
     serviceModel: "Model",
-    serviceModelHint: "Leave empty to use whatever the service has loaded.",
     serviceKey: "API key",
     serviceKeyKept: (mask: string) => `Stored: ${mask}. Leave empty to keep it.`,
     serviceKeyNotNeeded: "Usually blank for a local service.",
@@ -1109,39 +1031,25 @@ export const strings = {
     remove: "Delete",
     removeConfirm: "Delete this picture? It is gone from every branch.",
     /* Said once, where the distinction first bites. */
-    switchesHint:
-      "Hiding it here and keeping it from the author are separate. A picture can be one, both or neither.",
   },
 
   authors: {
     kicker: "Writing partner",
     listTitle: "Authors",
     empty: "No writing partner yet",
-    emptyBody:
-      "An author is the voice that plays your whole cast — its personality and " +
-      "writing style become the system prompt, and characters are roles it " +
-      "takes. Without one, a roleplay runs a single character on its own.",
     create: "New author",
     /** The defining bet, said plainly on the screen that introduces it. */
-    explainer:
-      "An author is the AI's own identity: one writing partner who plays every character in a scene, rather than a separate bot per character.",
 
     name: "Name",
     personality: "Personality",
-    personalityHint: "Who this partner is as a collaborator.",
     writingStyle: "Writing style",
-    writingStyleHint: "Prose style, tense, point of view, paragraph length.",
     directingStyle: "Directing style",
-    directingStyleHint: "Pacing, how much it escalates, how it handles silence.",
     oocVoice: "Out-of-character voice",
     boundaries: "Boundaries",
-    boundariesHint: "What it steers toward, and away from.",
 
     sampleVoice: "How this sounds",
     sampleVoiceEmpty: "Write an out-of-character voice to see it here.",
     memory: "Remember across roleplays",
-    memoryHint:
-      "Off by default. An author that quietly accumulates notes about you is a different thing, so this stays a choice.",
     memoryNotes: "What it remembers",
     memoryEmpty: "Nothing yet. Ask it to remember something from inside a roleplay.",
     /** §11's provenance, said as a sentence rather than a badge nobody decodes. */
@@ -1149,11 +1057,7 @@ export const strings = {
     memoryByYou: "You wrote this",
     memoryInScene: (title: string) => `in ${title}`,
     memoryBudget: "Token budget",
-    memoryBudgetHint:
-      "The most these notes may add to a prompt. They fire on keywords like any other lore, so only the relevant ones show up.",
     memoryOpenBook: "Open as a lorebook",
-    memoryOpenBookHint:
-      "These notes are an ordinary lorebook. Edit, disable or rewrite any of them there.",
     memoryWipe: "Forget everything",
     memoryWipeConfirm: (name: string) =>
       `Delete every note ${name} has written? The roleplays they came from are untouched.`,
@@ -1183,15 +1087,10 @@ export const strings = {
     title: "Roleplay setup",
     author: "Author",
     authorNone: "No author — single character",
-    authorHint: "With an author, one partner plays the whole cast.",
     persona: "You",
     personaNone: "Not set",
     cast: "Cast",
     castEmpty: "Nobody in the cast yet",
-    castEmptyBody:
-      "The cast is who the author is allowed to play. Add one and the roleplay " +
-      "runs a single character; add several and the turn director decides who " +
-      "speaks, or you cue them yourself.",
     addToCast: "Add character",
     remove: "Remove",
     title_: "Title",
@@ -1201,10 +1100,6 @@ export const strings = {
     strategyRoundRobin: "Round robin",
     strategyMention: "By mention",
     strategyClassifier: "Let a model decide",
-    strategyMentionHint:
-      "Whoever the last message names — by their name, or a keyword set on their card. Nobody named, round robin.",
-    strategyClassifierHint:
-      "A model reads the last few turns and picks, in its own words. It runs when you send.",
 
     /** The run log (SPEC §7): a side call's failures are swallowed by design. */
     directorRuns: "Recent decisions",
@@ -1229,8 +1124,6 @@ export const strings = {
 
     /** The post-generation pipeline (SPEC §7.5). */
     autoPasses: "Read every turn back",
-    autoPassesHint:
-      "After each reply, the passes you have switched on read it and leave a note. They never delay the turn.",
     autoPassesOn: "On",
     autoPassesOff: "Off",
 
@@ -1245,8 +1138,6 @@ export const strings = {
      * either label being imperfect.
      */
     memory: "Keep track of who and what",
-    memoryHint:
-      "Notes people, places and what they did, and brings back the ones this moment needs. Costs a small model call after each reply.",
     memoryOn: "On",
     memoryOff: "Off",
     memoryEmpty: "Nothing noted yet.",
@@ -1258,9 +1149,8 @@ export const strings = {
     memoryKind: "Kind",
     memoryContent: "What to remember",
     memorySalience: "How much it matters",
-    memorySalienceHint: "0 to 1. Higher survives longer without being mentioned.",
-    memoryYours: "Yours",
-    memoryYoursHint: "You wrote this, so the extractor leaves it alone.",
+    memoryYoursHint: "Yours, so the extractor leaves it alone.",
+        memoryYours: "Yours",
     memoryQuiet: (n: number) => (n === 0 ? "Just now" : `${n} ${n === 1 ? "turn" : "turns"} ago`),
 
     /* §11's author memory, asked for here because this is the roleplay there is
@@ -1284,22 +1174,14 @@ export const strings = {
       fact: "Fact",
     } as Record<string, string>,
 
-    oocHint:
-      "Lets the author break off to ask you something \u2014 a check, a flag, a question about where this is going. A collaborator rather than a narrator. You can always ask it something yourself.",
     oocInterval: "Not more often than",
     oocIntervalUnit: "messages apart",
-    oocIntervalHint:
-      "The earliest it may speak up again, not a schedule it has to keep. It usually will not.",
     oocInline: "Where asides live",
     oocInlineOn: "In the log and the channel",
     oocInlineOff: "Only in the channel",
-    oocInlineHint:
-      "Inline is the note in the margin of the story; the channel is where a note becomes a conversation. Hide the margin note if it feels like duplication.",
 
     /** Autopilot (SPEC §6). The switch is on the cast strip; the cap lives here. */
     autopilot: "Autopilot",
-    autopilotHint:
-      "The scene keeps writing after a reply, up to a bound you set, and hands itself back the moment it turns to face you.",
     autopilotMaxTurns: "Turns per run",
     autopilotMaxTurnsUnit: "turns",
 
@@ -1310,20 +1192,14 @@ export const strings = {
     background: "Set a background",
 
     customGuide: "Custom guide",
-    customGuideHint:
-      "One question, asked of the story after every turn. The answer rides on every prompt until you flush it. Leave it empty and the custom guide stays off.",
     customGuidePlaceholder: "What does the crew believe about the captain?",
 
     /** This scene's own framing, in place of the card's (SPEC §2). */
     scenario: "Scenario",
-    scenarioHint:
-      "Replaces the scenario written on the card. A card's scenario was written for a scene nobody had had yet; this one is about the scene you are actually in.",
     scenarioPlaceholder: "A relay station on the ridge, three days into a shortage…",
 
     /** Prompt option groups (SPEC §13.5). */
     options: "How it writes",
-    optionsHint:
-      "Small rules the prompt carries, rather than one long instruction. Groups marked one-of pick exactly one — choosing another swaps it.",
     optionsCost: (n: number) => `${n} TOK on every turn`,
     optionsNone: "None",
     optionsDefaults: "Shipped defaults",
@@ -1336,8 +1212,6 @@ export const strings = {
 
     /** The ban list (SPEC §13.6). */
     bans: "Banned phrasings",
-    bansHint:
-      "Phrases the prompt asks it to avoid, and the slop scan flags when they appear anyway. Kept as data because the same list feeds the prompt, the samplers and the pass.",
     bansCount: (enforced: number, proposed: number) =>
       proposed === 0 ? `${enforced} in force` : `${enforced} in force · ${proposed} proposed`,
     bansAdd: "Ban a phrase",
@@ -1358,19 +1232,14 @@ export const strings = {
 
     /** Rolling summarisation, all per scene (SPEC §11). */
     summarise: "Remember what happened",
-    summariseHint:
-      "Old turns are condensed into a paragraph the prompt carries instead of the turns. A long scene stops fitting otherwise.",
     summariseOn: "On",
     summariseOff: "Off",
     summariseEveryMessages: "Summarise every",
     summariseEveryMessagesUnit: "turns",
     summariseEveryWords: "or every",
     summariseEveryWordsUnit: "words",
-    summariseEveryHint: "Whichever comes first. Twenty short exchanges and twenty long ones are very different amounts of story.",
     summariseThreshold: "Keep the last",
     summariseThresholdUnit: "turns in full",
-    summariseThresholdHint:
-      "Recent turns are shown as written, never as a summary. Nothing inside this window is condensed or replaced.",
     summariseEvict: "Drop the turns it covers",
     summariseEvictOn: "Drop them",
     summariseEvictOff: "Keep both",
@@ -1384,8 +1253,6 @@ export const strings = {
     /** Where the classifier runs (SPEC §6). */
     directorProfile: "Where the director runs",
     directorProfileSame: "Same as the scene",
-    directorProfileHint:
-      "A one-line question, so it wants a small fast model. Left alone it uses the scene's own, which works and costs more.",
   },
 
   ooc: {
@@ -1415,7 +1282,6 @@ export const strings = {
     role: "Role, and where they are usually found",
     voice: "Voice",
     canonLock: "Established in play",
-    canonLockHint: "Facts later turns must not contradict.",
     knowledgePublic: "Known publicly",
     knowledgePrivate: "Knows, but does not volunteer",
     knowledgeBuried: "Hiding",
@@ -1424,7 +1290,6 @@ export const strings = {
     standing: "With you",
     injected: "What the prompt gets",
     injectedEmpty: "Nothing yet \u2014 fill a field above.",
-    buriedHint: "Everything except what they are hiding.",
     save: "Save",
     promote: "Make a character",
     promoteConfirm: (name: string) =>
@@ -1433,7 +1298,6 @@ export const strings = {
     delete: "Delete",
     deleteConfirm: (name: string) => `Delete ${name}\u2019s dossier? Its lore entry goes too.`,
     open: "Dossiers",
-    openHint: "Characters the story invented, and the sheets that keep them consistent.",
   },
 
   lore: {
@@ -1447,20 +1311,12 @@ export const strings = {
      * attention and nothing else to compete with.
      */
     empty: "No lorebooks yet",
-    emptyBody:
-      "A lorebook is world info the author can draw on — places, history, who " +
-      "knows what. Entries fire on keywords in the scene, so only what is " +
-      "relevant reaches the prompt.",
     /*
      * The entry list inside a book used `lore.empty` — "No lorebooks yet",
      * inside a lorebook. Nobody noticed until phase 51 rewrote that string
      * into something that could only be about the list of books.
      */
     entriesEmpty: "No entries yet",
-    entriesEmptyBody:
-      "An entry is a fact and the words that summon it. Give it keys — a place, " +
-      "a name, a phrase — and it joins the prompt only on the turns where one of " +
-      "them appears, so a large book still costs almost nothing.",
     create: "New lorebook",
     import: "Import world info",
     importing: "Reading world info\u2026",
@@ -1470,8 +1326,6 @@ export const strings = {
     unbound: "Not attached to anything",
     /* §10: import and export both, and unknown fields survive either way. */
     exportBook: "Save as world info",
-    exportBookHint:
-      "A SillyTavern world info file. Anything it arrived with that this app does not use is written back out with it.",
     /**
      * §11: the one book whose author is what attaches it, in the slot the
      * other bindings use, and parallel to managedNote's "Written by the app":
@@ -1513,7 +1367,6 @@ export const strings = {
     activationLine: (constant: boolean, depth: number | null, bookDepth: number) =>
       `${constant ? "ALWAYS IN" : "KEY MATCH"} · DEPTH ${depth ?? bookDepth}`,
     priority: "Priority",
-    priorityHint: "Lower goes in first, and survives the budget longest.",
     tokens: (n: number) => `${n} TOK`,
     bookTotal: (tokens: number, entries: number) =>
       `BOOK TOTAL · ${tokens.toLocaleString()} TOK · ${entries} ${
@@ -1594,8 +1447,8 @@ export const strings = {
     testFired: "In",
     testSkipped: "Out",
     testMatched: (key: string) => `MATCHED \u201c${key}\u201d`,
-    testConstant: "ALWAYS IN",
-    testSticky: "STICKY",
+    testConstant: "Always in",
+    testSticky: "Sticky",
     testRound: (n: number) => `ROUND ${n}`,
     testReason: (reason: string) => reason.replace(/_/g, " ").toUpperCase(),
     open: "Open",

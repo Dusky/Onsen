@@ -96,7 +96,6 @@ export function LorebooksScreen() {
           {books.data !== undefined && books.data.length === 0 ? (
             <EmptyState
               title={strings.lore.empty}
-              body={strings.lore.emptyBody}
               actions={[
                 {
                   label: strings.lore.create,

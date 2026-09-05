@@ -154,9 +154,6 @@ function MediaSheet({
 
         {/* Both switches, side by side, because the point is that they are two
             questions. Said once above them rather than twice beside them. */}
-        <p className="explain mb-[10px]">
-          {strings.media.switchesHint}
-        </p>
         <button
           type="button"
           className="btn mb-[8px] w-full"

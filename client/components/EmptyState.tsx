@@ -23,8 +23,12 @@ export function EmptyState({
 }: {
   /** What is missing, as a statement. Not "empty" — nobody calls it that. */
   title: string;
-  /** What it would be for. One or two sentences, never a label. */
-  body: string;
+  /**
+   * Rarely. An empty screen names what is missing and offers the action; a
+   * paragraph explaining the concept is the app talking about itself, which
+   * phase 53 took out of the whole app (§16).
+   */
+  body?: string;
   /** The first is primary. Omitted where the screen genuinely has no action. */
   actions?: { label: string; onClick(): void; disabled?: boolean }[];
   /** Anything else the screen wants under the actions. */
@@ -33,7 +37,7 @@ export function EmptyState({
   return (
     <div className="surface my-[18px] px-[20px] py-[22px]">
       <p className="text-[19px] leading-[1.35] font-medium tracking-[-0.01em]">{title}</p>
-      <p className="explain mt-[8px] max-w-[46ch]">{body}</p>
+      {body === undefined ? null : <p className="explain mt-[8px] max-w-[46ch]">{body}</p>}
       {actions === undefined || actions.length === 0 ? null : (
         <div className="mt-[16px] flex flex-wrap gap-[8px]">
           {actions.map((action, index) => (

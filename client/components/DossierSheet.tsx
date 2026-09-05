@@ -214,13 +214,10 @@ export function DossierSheet({
           <pre className="chrome overflow-x-auto border border-rule bg-bg-inset p-[10px] text-[11px] leading-[1.6] whitespace-pre-wrap text-ink-muted">
             {open_.injected === "" ? strings.dossiers.injectedEmpty : open_.injected}
           </pre>
-          <p className="explain mt-[4px] mb-[14px]">
-            {strings.dossiers.buriedHint}
-          </p>
 
           <div className="flex gap-[8px]">
             {open_.promoted ? (
-              <p className="chrome flex-1 py-[12px] text-[10.5px] tracking-[0.1em] text-ink-dim uppercase">
+              <p className="chrome flex-1 py-[12px] text-[10.5px] text-ink-dim">
                 {strings.dossiers.promoted}
               </p>
             ) : (
@@ -307,7 +304,6 @@ function DossierForm({
       />
       <Field
         label={strings.dossiers.canonLock}
-        hint={strings.dossiers.canonLockHint}
         value={draft.canonLock}
         onChange={(value) => set("canonLock", value)}
       />

@@ -89,27 +89,20 @@ describe("mono names, Spectral speaks", () => {
 
 describe("the hierarchy stays a hierarchy", () => {
   /*
-   * The shape that started it: mono, a size at or under 10px, a reading
-   * line-height, and a muted colour — an explanatory sentence dressed as a
-   * label. There were 148 of these. Any new one belongs in `.explain`.
+   * Phase 53 removed the check that used to sit here.
+   *
+   * It caught "an explanatory sentence dressed as a label" by looking for mono
+   * + small + dim + a reading line-height, and it worked because a real label
+   * was also uppercase and tracked, which excluded it. Phase 53 took the
+   * uppercase and the tracking out of the whole app, so the heuristic lost the
+   * signal it depended on and started flagging the director's reason and a
+   * parse-failure notice — both machine output, correctly mono, neither of them
+   * the app explaining itself.
+   *
+   * The rule it was approximating is enforced directly in `voice.test.ts`
+   * instead: prose lives in `.explain`, `.explain` is never `.chrome`, and
+   * there is a ceiling on how many of them the app may have.
    */
-  test("no explanatory paragraph is set as chrome", () => {
-    const offending = classLists()
-      .filter(
-        (c) =>
-          c.classes.includes("chrome") &&
-          c.classes.some((k) => /^leading-\[1\.[56]\]$/.test(k)) &&
-          c.classes.some((k) => {
-            const size = /^text-\[([\d.]+)px\]$/.exec(k);
-            return size !== null && Number(size[1]) <= 10;
-          }) &&
-          c.classes.some((k) => k === "text-ink-dim" || k === "text-red-text") &&
-          !c.classes.includes("uppercase") &&
-          !c.classes.some((k) => k.startsWith("tracking-")),
-      )
-      .map((c) => c.file);
-    expect(offending).toEqual([]);
-  });
 
   /*
    * "Minimum sizes are load-bearing", and the floor moved in phase 49.

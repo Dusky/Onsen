@@ -142,7 +142,7 @@ function GreetingList({
           />
           <button
             type="button"
-            className="chrome mt-[6px] text-[10.5px] tracking-[0.12em] uppercase"
+            className="chrome mt-[6px] text-[10.5px]"
             style={{ color: "var(--onsen-color-red)" }}
             onClick={() => onChange(items.filter((_, at) => at !== index))}
           >
@@ -181,7 +181,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
   if (character === undefined) {
     return (
       <div className="flex screen-height items-center justify-center">
-        <p className="chrome text-[10.5px] tracking-[0.18em] text-ink-dim uppercase">
+        <p className="chrome text-[10.5px] text-ink-dim">
           {strings.common.working}
         </p>
       </div>
@@ -228,7 +228,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
               key={entry.key}
               type="button"
               onClick={() => setTab(entry.key)}
-              className="chrome -mb-px pb-[9px] text-[11px] tracking-[0.12em] uppercase"
+              className="chrome -mb-px pb-[9px] text-[11px]"
               style={{
                 color:
                   tab === entry.key
@@ -297,7 +297,6 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
               <FieldRow
                 label={strings.characters.speech}
                 tokens={tokens.voiceNotes}
-                hint={strings.characters.speechHint}
               >
                 <TextField
                   value={character.voiceNotes ?? ""}
@@ -345,7 +344,6 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
 
               <FieldRow
                 label={strings.characters.groupGreetings}
-                hint={strings.characters.groupGreetingsHint}
               >
                 <GreetingList
                   items={character.groupGreetings}
@@ -360,16 +358,13 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
               {/* Sprites (SPEC §12, DESIGN §295): a labelled image per expression,
                   which the VN stage draws when the author declares that label. */}
               <p className="section-label mb-[8px]">{strings.characters.sprites}</p>
-              <p className="explain mb-[8px]">
-                {strings.characters.spritesHint}
-              </p>
               <div className="mb-[8px] flex flex-wrap gap-[6px]">
                 {(sprites.data?.expressions ?? []).map((expression) => (
                   <button
                     key={expression.id}
                     type="button"
                     onClick={() => removeSprite.mutate(expression.id)}
-                    className="chrome border px-[10px] py-[6px] text-[10.5px] tracking-[0.08em] uppercase"
+                    className="chrome border px-[10px] py-[6px] text-[10.5px]"
                     style={{ borderColor: "var(--onsen-color-border-quiet)", color: "var(--onsen-color-text-muted)" }}
                   >
                     {expression.label} ×
@@ -484,7 +479,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                     onClick={() =>
                       save({ tags: character.tags.filter((tag) => tag !== existing) })
                     }
-                    className="chrome border px-[10px] py-[6px] text-[10.5px] tracking-[0.08em] uppercase"
+                    className="chrome border px-[10px] py-[6px] text-[10.5px]"
                     style={{
                       borderColor: "var(--onsen-color-border-quiet)",
                       color: "var(--onsen-color-text-muted)",
@@ -629,7 +624,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
         <div className="mx-auto w-full max-w-[var(--onsen-prose-measure)]">
           <div className="flex items-baseline justify-between">
             <span className="section-label">{strings.characters.cardTotal}</span>
-            <span className="chrome text-[10.5px] tracking-[0.06em] text-ink-label uppercase">
+            <span className="chrome text-[10.5px] text-ink-label">
               {strings.characters.shareOfContext(tokens.total, CONTEXT_WINDOW)}
             </span>
           </div>
@@ -675,7 +670,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
 
       {versionsOpen ? (
         <Sheet title={strings.characters.versions} onClose={() => setVersionsOpen(false)}>          {(versions.data ?? []).length === 0 ? (
-            <p className="chrome py-[10px] text-[10.5px] tracking-[0.12em] text-ink-dim uppercase">
+            <p className="chrome py-[10px] text-[10.5px] text-ink-dim">
               {strings.characters.noVersions}
             </p>
           ) : (

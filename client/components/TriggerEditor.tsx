@@ -118,9 +118,6 @@ export function TriggerEditor({
               spellCheck={false}
               required
             />
-            <p className="explain mt-[7px] mb-[16px]">
-              {strings.settings.triggerAutomationIdHint}
-            </p>
           </>
         ) : null}
 
@@ -199,9 +196,6 @@ export function TriggerEditor({
       {trigger !== null ? (
         <div className="border-t border-rule pt-[14px] pb-[10px]">
           <p className="section-label mb-[4px]">{strings.settings.triggerRun}</p>
-          <p className="explain mb-[10px]">
-            {strings.settings.triggerRunHint}
-          </p>
           <select
             className="field"
             value={runIn}

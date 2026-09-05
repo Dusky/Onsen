@@ -130,9 +130,6 @@ export function BanListSheet({
       onClose={onClose}
     >
       <div className="pt-[6px] pb-[14px]">
-        <p className="explain mb-[14px]">
-          {strings.sceneSetup.bansHint}
-        </p>
 
         <form
           className="mb-[10px]"
@@ -231,7 +228,7 @@ function BanRow({
       <div className="border-b border-rule py-[11px]">
         <div className="flex items-baseline gap-[10px]">
           <span className="min-w-0 flex-1 text-[13.5px]">{row.phrase}</span>
-          <span className="chrome flex-none text-[10px] tracking-[0.1em] text-ink-dim uppercase">
+          <span className="chrome flex-none text-[10px] text-ink-dim">
             {strings.sceneSetup.bansHits(row.hits)}
           </span>
         </div>
@@ -273,7 +270,7 @@ function BanRow({
         >
           {row.phrase}
         </span>
-        <span className="chrome flex-none text-[10px] tracking-[0.1em] text-ink-dim uppercase">
+        <span className="chrome flex-none text-[10px] text-ink-dim">
           {marks.join(" · ")}
         </span>
       </button>

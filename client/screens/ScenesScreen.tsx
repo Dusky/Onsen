@@ -118,7 +118,6 @@ export function ScenesScreen() {
           {scenes.data?.length === 0 ? (
             <EmptyState
               title={strings.scenes.empty}
-              body={strings.scenes.emptyBody}
               actions={[{ label: strings.scenes.create, onClick: startScene }]}
             />
           ) : null}
