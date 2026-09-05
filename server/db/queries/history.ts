@@ -322,6 +322,57 @@ export function insertScene(db: Database, input: NewScene): SceneRow {
     }) as SceneRow;
 }
 
+/**
+ * A new scene with the same setup and none of the story (§20 phase 54).
+ *
+ * Every column except the identity, the history and the timestamps — so the
+ * author, cast, persona, profile, preset, turn strategy, summarisation,
+ * autopilot, OOC and VN settings all carry over. Written as a column copy
+ * rather than a field list because the alternative is a list that silently
+ * stops being complete the next time a column is added: a scene setting that
+ * quietly failed to carry over is worse than one that obviously did not.
+ */
+export function copySceneSetup(db: Database, source: SceneRow, title: string): SceneRow {
+  const columns = (
+    db.query("SELECT name FROM pragma_table_info('scenes')").all() as { name: string }[]
+  )
+    .map((row) => row.name)
+    .filter(
+      (name) =>
+        ![
+          "id",
+          "ulid",
+          "title",
+          "active_leaf_id",
+          "created_at",
+          "updated_at",
+          // The outbound API slug is unique per scene (§19).
+          "api_slug",
+          "api_enabled",
+        ].includes(name),
+    );
+
+  const now = Date.now();
+  const made = db
+    .query(
+      `INSERT INTO scenes (ulid, title, created_at, updated_at${columns.map((c) => `, ${c}`).join("")})
+       SELECT $ulid, $title, $now, $now${columns.map((c) => `, ${c}`).join("")}
+         FROM scenes WHERE id = $id
+       RETURNING *`,
+    )
+    .get({ ulid: ulid(), title, now, id: source.id }) as SceneRow;
+
+  // `created_at` is NOT NULL, and `joined_after_message_id` deliberately is
+  // not copied: it points into a history the new scene does not have.
+  db.query(
+    `INSERT INTO scene_members (scene_id, character_id, display_order, is_active, created_at)
+     SELECT $target, character_id, display_order, is_active, $now
+       FROM scene_members WHERE scene_id = $source`,
+  ).run({ target: made.id, source: source.id, now });
+
+  return made;
+}
+
 export function findScene(db: Database, sceneUlid: string): SceneRow | null {
   return (db.query("SELECT * FROM scenes WHERE ulid = $ulid").get({ ulid: sceneUlid }) ??
     null) as SceneRow | null;

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type {
+  LoreBindingScope,
   LoreDelayFrom,
   LoreEntryDto,
   LoreGroupSelection,
@@ -8,17 +9,22 @@ import type {
   LorebookDto,
   UpdateLoreEntryRequest,
 } from "@shared/types.ts";
-import { LORE_POSITIONS } from "@shared/types.ts";
+import { INJECTION_ROLES, LORE_BINDING_SCOPES, LORE_POSITIONS } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { EmptyState } from "../components/EmptyState.tsx";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { navigate } from "../lib/router.ts";
+import { bindingLabel } from "./LorebooksScreen.tsx";
 import {
+  useBindLorebook,
   useCharacters,
   useCreateLoreEntry,
   useDeleteLoreEntry,
   useDeleteLorebook,
   useLorebook,
+  usePersonas,
+  useScenes,
+  useUnbindLorebook,
   useUpdateLoreEntry,
   useReviseLore,
   useUpdateLorebook,
@@ -377,6 +383,39 @@ function EntryEditor({
               onChange={(on) => set("isConstant", on)}
             />
 
+            {/* §20 phase 54. `insertionRole` decides which role the injected
+                text lands in — `server/prompt/blocks.ts` has consumed it since
+                phase 21 and nothing could set it. An imported book arrives
+                carrying a value the editor could not show. */}
+            <Segments
+              label={strings.lore.insertionRole}
+              options={INJECTION_ROLES}
+              value={draft.insertionRole}
+              render={(role) =>
+                role === "system"
+                  ? strings.lore.roleSystem
+                  : role === "user"
+                    ? strings.lore.roleUser
+                    : strings.lore.roleAssistant
+              }
+              onChange={(role) => set("insertionRole", role)}
+            />
+
+            {/* The other end of a loop that was already firing: a trigger can
+                name an automation id (§14) and no screen could put one on an
+                entry. */}
+            <p className="section-label mb-[6px]">{strings.lore.automationId}</p>
+            <input
+              className="field mb-[14px]"
+              value={draft.automationId ?? ""}
+              aria-label={strings.lore.automationId}
+              placeholder={strings.lore.automationIdPlaceholder}
+              spellCheck={false}
+              onChange={(event) =>
+                set("automationId", event.target.value.trim() === "" ? null : event.target.value)
+              }
+            />
+
             <div className="mb-[14px] flex gap-[10px]">
               <NumberInput
                 label={strings.lore.probability}
@@ -598,6 +637,8 @@ function EntryEditor({
               keys: draft.keys,
               secondaryKeys: draft.secondaryKeys,
               secondaryLogic: draft.secondaryLogic,
+              insertionRole: draft.insertionRole,
+              automationId: draft.automationId,
               caseSensitive: draft.caseSensitive,
               matchWholeWords: draft.matchWholeWords,
               probability: draft.probability,
@@ -700,6 +741,149 @@ function EntryRow({
   );
 }
 
+/**
+ * What this book is attached to, and the only place that can change it
+ * (SPEC §10, §16).
+ *
+ * Until phase 54 exactly one scope could be created anywhere in the app: a
+ * roleplay's lore sheet attached books to itself. A book bound globally or
+ * carried by a character was visible everywhere and removable nowhere, and
+ * `LoreSheet` says as much — it declines to detach those because they are
+ * "attached somewhere else". This is the somewhere else.
+ *
+ * A book the app writes keeps its bindings on display and out of reach: a
+ * dossier book detached from its author would render into nothing, with
+ * nothing to say so.
+ */
+function Bindings({ book }: { book: LorebookDto }) {
+  const scenes = useScenes();
+  const characters = useCharacters();
+  const personas = usePersonas();
+  const bind = useBindLorebook();
+  const unbind = useUnbindLorebook();
+  const [scope, setScope] = useState<LoreBindingScope>("global");
+  const [targetId, setTargetId] = useState("");
+
+  if (book.ownerAuthorName !== null) {
+    return (
+      <div className="mb-[18px]">
+        <p className="section-label mb-[6px]">{strings.lore.bindings}</p>
+        <p className="explain">{strings.lore.ownedBy(book.ownerAuthorName)}</p>
+      </div>
+    );
+  }
+
+  const taken = new Set(
+    book.bindings.map((binding) => `${binding.scope}:${binding.targetId ?? ""}`),
+  );
+  const candidates: { id: string; name: string }[] =
+    scope === "scene"
+      ? (scenes.data ?? []).map((scene) => ({ id: scene.id, name: scene.title }))
+      : scope === "character"
+        ? (characters.data ?? []).map((character) => ({
+            id: character.id,
+            name: character.name,
+          }))
+        : scope === "persona"
+          ? (personas.data ?? []).map((persona) => ({ id: persona.id, name: persona.name }))
+          : [];
+  const offered = candidates.filter((row) => !taken.has(`${scope}:${row.id}`));
+  const chosen = offered.some((row) => row.id === targetId) ? targetId : (offered[0]?.id ?? "");
+  const canAttach =
+    scope === "global" ? !taken.has("global:") : chosen !== "";
+
+  function attach() {
+    if (!canAttach) return;
+    bind.mutate(
+      scope === "global" ? { bookId: book.id, scope } : { bookId: book.id, scope, targetId: chosen },
+    );
+    setTargetId("");
+  }
+
+  return (
+    <div className="mb-[18px]">
+      <p className="section-label mb-[6px]">{strings.lore.bindings}</p>
+
+      {book.bindings.length === 0 ? (
+        <p className="explain mb-[10px]">{strings.lore.unbound}</p>
+      ) : (
+        book.bindings.map((binding) => (
+          <div
+            key={binding.id}
+            className="flex items-baseline gap-[10px] border-b border-rule py-[10px]"
+          >
+            <span className="min-w-0 flex-1 truncate text-[14px]">{bindingLabel(binding)}</span>
+            {book.managed ? (
+              <span className="meta flex-none">{strings.lore.managedNote}</span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => unbind.mutate({ bookId: book.id, bindingId: binding.id })}
+                className="chrome flex-none text-[10.5px]"
+                style={{ color: "var(--onsen-color-red)" }}
+              >
+                {strings.lore.detach}
+              </button>
+            )}
+          </div>
+        ))
+      )}
+
+      {book.managed ? null : (
+        <div className="mt-[12px]">
+          <Segments
+            label={strings.lore.attachTo}
+            options={LORE_BINDING_SCOPES}
+            value={scope}
+            render={(option) => {
+              switch (option) {
+                case "global":
+                  return strings.lore.scopeGlobal;
+                case "scene":
+                  return strings.lore.scopeScene;
+                case "character":
+                  return strings.lore.scopeCharacter;
+                case "persona":
+                  return strings.lore.scopePersona;
+              }
+            }}
+            onChange={(next) => {
+              setScope(next);
+              setTargetId("");
+            }}
+          />
+          <div className="flex gap-[8px]">
+            {scope === "global" ? null : (
+              <select
+                className="field min-w-0 flex-1"
+                aria-label={strings.lore.attachTo}
+                value={chosen}
+                disabled={offered.length === 0}
+                onChange={(event) => setTargetId(event.target.value)}
+              >
+                {offered.length === 0 ? <option value="">{strings.lore.nothingToAttach}</option> : null}
+                {offered.map((row) => (
+                  <option key={row.id} value={row.id}>
+                    {row.name}
+                  </option>
+                ))}
+              </select>
+            )}
+            <button
+              type="button"
+              className="btn flex-none"
+              disabled={!canAttach || bind.isPending}
+              onClick={attach}
+            >
+              {strings.lore.attach}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function LorebookEditorScreen({ bookId }: { bookId: string }) {
   const query = useLorebook(bookId);
   const updateBook = useUpdateLorebook(bookId);
@@ -785,6 +969,8 @@ export function LorebookEditorScreen({ bookId }: { bookId: string }) {
               }
             />
           </div>
+
+          <Bindings book={book} />
 
           {open === null ? null : (
             <EntryEditor

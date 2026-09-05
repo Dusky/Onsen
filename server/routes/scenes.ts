@@ -19,6 +19,7 @@ import {
   listCheckpoints,
   listScenes,
   messageDto,
+  copySceneSetup,
   sceneDto,
   setActiveLeaf,
   siblingsOf,
@@ -389,6 +390,20 @@ export function sceneRoutes(
     }
 
     return c.json(sceneDto(ctx.db, updateScene(ctx.db, row.id, patch)));
+  });
+
+  /**
+   * Start another with this one's setup and none of its story (§20 phase 54).
+   *
+   * Deliberately not a duplicate. Copying the history is not what anyone wants
+   * from a row in a list; copying the author, cast, persona, profile, preset
+   * and every option is.
+   */
+  app.post("/:sceneId/like", (c) => {
+    const row = scene(c.req.param("sceneId"));
+    if (row === null) return c.json(notFound("scene"), 404);
+    const made = copySceneSetup(ctx.db, row, row.title);
+    return c.json(sceneDto(ctx.db, made), 201);
   });
 
   app.delete("/:sceneId", (c) => {

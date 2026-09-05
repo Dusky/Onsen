@@ -521,3 +521,82 @@ describe("checkpoints", () => {
     ).toBe(404);
   });
 });
+
+/**
+ * Starting another like this one (SPEC §20 phase 54).
+ *
+ * Deliberately not a duplicate: copying the history is not what anyone wants
+ * from a row in a list. The setup carries, the story does not — and the setup
+ * is copied column-by-column from the table itself rather than from a field
+ * list, because a list silently stops being complete the next time a column is
+ * added, and a scene setting that quietly failed to carry over is worse than
+ * one that obviously did not.
+ */
+describe("start another like this", () => {
+  test("carries the setup and none of the story", async () => {
+    const t = await signedIn();
+    const source = await newScene(t, "Ridge station");
+
+    // Something on the setup, and something in the history.
+    await send(t, "PATCH", `/api/scenes/${source.id}`, {
+      turnStrategy: "round_robin",
+      autopilotEnabled: true,
+      summarise: true,
+    });
+    await post(t, source, "Something said.");
+
+    const made = await send<SceneDto>(t, "POST", `/api/scenes/${source.id}/like`);
+    expect(made.status).toBe(201);
+    expect(made.body.id).not.toBe(source.id);
+
+    // The setup came across.
+    expect(made.body).toMatchObject({
+      title: "Ridge station",
+      turnStrategy: "round_robin",
+      autopilotEnabled: true,
+      summarise: true,
+    });
+
+    // The story did not.
+    expect(made.body.messageCount).toBe(0);
+    expect(made.body.activeLeafId).toBeNull();
+
+    // And the original is untouched.
+    const after = await send<SceneWithHistoryDto>(t, "GET", `/api/scenes/${source.id}`);
+    expect(after.body.messages).toHaveLength(1);
+  });
+
+  test("carries the cast", async () => {
+    const t = await signedIn();
+    const source = await newScene(t);
+    const card = await send<{ id: string }>(t, "POST", "/api/characters", {
+      name: "Sister Bell",
+    });
+    await send(t, "PUT", `/api/scenes/${source.id}/cast/${card.body.id}`);
+
+    const made = await send<SceneDto>(t, "POST", `/api/scenes/${source.id}/like`);
+    expect(made.body.cast.map((member) => member.name)).toEqual(["Sister Bell"]);
+  });
+
+  test("a scene that is not there is a 404, not a copy of nothing", async () => {
+    const t = await signedIn();
+    const made = await send(t, "POST", "/api/scenes/01JQQQQQQQQQQQQQQQQQQQQQQQ/like");
+    expect(made.status).toBe(404);
+  });
+});
+
+/** `DELETE /scenes/:id` existed from phase 2 and had no caller until phase 54. */
+describe("deleting a roleplay", () => {
+  test("takes the whole tree with it", async () => {
+    const t = await signedIn();
+    const scene = await newScene(t);
+    await post(t, scene, "Something said.");
+
+    const gone = await send(t, "DELETE", `/api/scenes/${scene.id}`);
+    expect(gone.status).toBe(204);
+
+    const after = await send(t, "GET", `/api/scenes/${scene.id}`);
+    expect(after.status).toBe(404);
+    expect((await send<SceneDto[]>(t, "GET", "/api/scenes")).body).toEqual([]);
+  });
+});

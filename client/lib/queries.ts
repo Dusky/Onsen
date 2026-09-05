@@ -324,6 +324,45 @@ export function useScenes() {
   return useQuery({ queryKey: keys.scenes, queryFn: () => api.get<SceneDto[]>("/scenes") });
 }
 
+/**
+ * Delete one (§20 phase 54).
+ *
+ * `DELETE /scenes/:id` has existed since phase 2 and had no caller: a roleplay
+ * could be started and never removed. The history tree goes with it, which is
+ * what the confirmation says.
+ */
+export function useDeleteScene() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/scenes/${id}`),
+    onSuccess: () => void client.invalidateQueries({ queryKey: keys.scenes }),
+  });
+}
+
+/** Rename one from the list, without opening it and going to setup. */
+export function useRenameScene() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, title }: { id: string; title: string }) =>
+      api.patch<SceneDto>(`/scenes/${id}`, { title }),
+    onSuccess: () => void client.invalidateQueries({ queryKey: keys.scenes }),
+  });
+}
+
+/**
+ * Start another with the same setup and none of the story (§20 phase 54).
+ *
+ * Not a duplicate: copying the history is not what anyone wants from a row in
+ * a list. Copying the author, cast, persona, profile, preset and options is.
+ */
+export function useStartLikeScene() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post<SceneDto>(`/scenes/${id}/like`),
+    onSuccess: () => void client.invalidateQueries({ queryKey: keys.scenes }),
+  });
+}
+
 export function useScene(sceneId: string) {
   return useQuery({
     queryKey: keys.scene(sceneId),
@@ -960,6 +999,25 @@ export function useCreatePersona() {
   return useMutation({
     mutationFn: (body: { name?: string }) => api.post<PersonaDto>("/personas", body),
     onSuccess: () => void client.invalidateQueries({ queryKey: authorKeys.personas }),
+  });
+}
+
+/**
+ * Remove one (§20 phase 54).
+ *
+ * There was no hook and no screen: a persona could be made from scene setup
+ * and never edited or removed, and its `description` — the field that reaches
+ * the prompt — had nowhere to be typed at all.
+ */
+export function useDeletePersona() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/personas/${id}`),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: authorKeys.personas });
+      // A scene pointing at it falls back, so the scene list is stale too.
+      void client.invalidateQueries({ queryKey: keys.scenes });
+    },
   });
 }
 

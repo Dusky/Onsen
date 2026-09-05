@@ -122,10 +122,13 @@ mode.
 ### Persona
 
 Who the *user* is. Multiple personas, selectable per scene, each optionally
-bound to its own lorebook. *[gap: per-persona lorebook]*
+bound to its own lorebook — through `lorebook_bindings` with `scope =
+'persona'`, not a column on the row, because a book can reach several personas
+and a persona several books. Bound and unbound from the lorebook editor
+(§20 phase 54).
 
 ```
-id, name, avatar_path, description, lorebook_id, is_default
+id, name, avatar_path, description, is_default
 ```
 
 ### Character
@@ -2371,7 +2374,10 @@ toggle.
 
 ### Other screens
 
-- **Scenes list** — recent first, cast avatars, last message preview.
+- **Scenes list** — recent first, cast avatars, last message preview. Search
+  across title, cast and last line, sort by recency / title / length, and a
+  per-row menu: rename, start another like this (the setup copied, no history),
+  delete.
 - **Scene setup** — author, cast, persona, connection profile, preset, scenario
   override, turn strategy, lorebooks, guides, trackers, OOC, VN toggle.
 - **Author editor** — personality, writing style, directing style, OOC voice,
@@ -2380,15 +2386,22 @@ toggle.
 - **Character editor** — all fields, voice notes, depth prompt, token costs,
   expression pack, avatar crop.
 - **Lorebook editor** — entry list, key editor, timed effects, inclusion groups,
-  character filter, and an activation test tool that shows what would fire
-  against the current scene.
+  character filter, insertion role, automation id, the book's bindings for all
+  four scopes (global, roleplay, character, persona — attachable and
+  detachable here, and only here), and an activation test tool that shows what
+  would fire against the current scene.
 - **Data bank** — document list, scope, chunk preview, retrieval test.
 - **Memory panel** — summaries (editable), entities and relations with salience,
   retrieval trace, wipe controls.
 - **Preset editor** — samplers with modern defaults, drag-to-reorder prompt
-  blocks, reasoning config.
+  blocks, reasoning config, make-default and delete. New presets start from the
+  shipped defaults; deleting one leaves the scenes and profiles that used it on
+  the default rather than broken.
 - **Connection profiles** — provider, model, templates, test button, capability
-  display.
+  display, and the preset this profile generates with.
+- **Persona editor** — name, description, default, delete. A sheet over scene
+  setup rather than a screen: choosing who you are and editing who you are are
+  the same moment.
 - **Op settings** — per-op profile, prompt template, injection role,
   auto-trigger, visibility.
 - **Prompt inspector** — the exact assembled prompt for the last generation,
@@ -3041,6 +3054,11 @@ Each phase ends in a working, usable application.
     Instrument rather than three screens. See §16.
 53. **Voice** — labels stop shouting and the app stops explaining itself.
     See §16.
+54. **Depth** — the five things a first session hits that the server could
+    already do and no screen could ask for: a roleplay you can rename, copy and
+    delete; a persona you can edit; lorebook bindings for all four scopes; an
+    entry's insertion role and automation id; presets you can make and remove.
+    Guarded by a field-level reachability test. See §16.
 
 Settled while building phase 15.
 

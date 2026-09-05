@@ -4607,3 +4607,89 @@ explaining itself and the app reporting state — "Nothing installed", "No key",
 render sites put the number at 107 and looked like failure; counting
 explanatory *strings* put it at 37 and was the truth. A metric that punishes
 status lines would have pushed the next phase to delete the wrong things.
+
+## Phase 54 — Depth
+
+The second of the three complaints: *"every single feature feels incomplete."*
+Asked which parts, the answer was all four — library screens, chat surface,
+editors, setup and settings.
+
+That reads like a mood. It is one measurable pattern: **the server is
+consistently one notch deeper than the client.** The endpoint exists, the DTO
+field exists, the capability is wired end to end — and the UI reaches only the
+first level of it. Five of those, all hit in a first session, four needing no
+server work at all.
+
+### What was built
+
+- **A roleplay row does more than open.** Search across title, cast and last
+  line; sort by recency, title or length; and a per-row menu with rename,
+  *start another like this*, and delete. `DELETE /scenes/:id` had existed since
+  phase 2 with no caller anywhere in the client. The copy is not "duplicate":
+  copying the story is not what anyone wants, copying the setup is, so
+  `POST /scenes/:id/like` clones the row and its cast and no messages. It
+  copies by reading `pragma_table_info('scenes')` rather than naming columns,
+  because a phase that adds a scene setting should not have to remember to add
+  it here too.
+- **A persona is a thing you can edit.** Server CRUD has been complete since
+  phase 8; `useUpdatePersona` was exported and called by nothing, so
+  `description` — the field that actually reaches the prompt — could be written
+  by an importer and by no human. A sheet over scene setup: name, description,
+  default, delete.
+- **Lorebook bindings, all four scopes.** Only one place in the app created a
+  binding, and it hard-coded `scope: "scene"`. A book bound globally or carried
+  by a character was visible everywhere and removable nowhere — `LoreSheet`
+  declines to detach those with a comment saying they are "attached somewhere
+  else". This is the somewhere else.
+- **Two lore-entry fields.** `insertionRole`, consumed by the prompt builder
+  since phase 21 with zero client hits, and `automationId`, which triggers
+  could already fire on and no screen could set.
+- **Presets you can make and remove**, and a preset a connection profile can be
+  given. `is_default` was written once at install and had no route to move it.
+
+### The guard
+
+`test/reachable-fields.test.ts`, the field-level analogue of
+`test/reachable.test.ts`: every field on every `*Request` type in
+`shared/types.ts` must be named somewhere in `client/`, with a `DELIBERATE` map
+carrying a reason per exception and a staleness check so an excuse cannot
+outlive the field it excuses.
+
+**On its first run it found 8 orphans, and five of them were the same field.**
+`presetId` appeared in five request types — a preset could be imported, edited
+and exported, and attached to nothing. That is the shape of this whole phase in
+one number: not five scattered oversights but one missing control, counted five
+times.
+
+### Deliberately deferred
+
+- **Palette commands for library management.** `CommandPalette` is rendered in
+  exactly one place, `ChatScreen`, so `new-roleplay` / `rename-roleplay` /
+  `delete-roleplay` would have been three commands reachable only from inside a
+  roleplay. The plan called for them; putting them there would have been worse
+  than not having them. Either the palette becomes app-wide or these stay out.
+- **Three tier-2 fields** are in `DELIBERATE` for phase 55:
+  `UpdateLorebookRequest.recursionDepth`, `UpdateCharacterRequest.depthPromptRole`
+  and `UpdateCharacterRequest.characterVersion`.
+
+### Surprises
+
+**The manage affordance shipped invisible on the device the app is built for.**
+The first version faded the row's "…" in on hover, matching the message log.
+There is no hover on a phone, so the only route to rename or delete was a
+long-press nobody is ever told about — a control you cannot see is not a
+control. It is now always visible, 44px, and brightens rather than appears.
+
+**The entry editor drew two new fields and saved neither.** `insertionRole` and
+`automationId` got their controls, typechecked clean, and the full suite stayed
+green — the editor's `onSave` builds an explicit payload of twenty-odd fields
+and the two new ones simply were not in it. Nothing in the type system objects,
+because `UpdateLoreEntryRequest` is a `Partial`: an omitted field is a legal
+request. Only driving it in a browser and reading the row back caught it, which
+is the same lesson phase 47 wrote down about typography and the same reason the
+verification step is a real browser rather than a test.
+
+**`scene_members` does not have the columns you would guess.** The cast copy
+was written from memory and had to be corrected against `0006_group_scenes.sql`:
+`created_at` is `NOT NULL` and `joined_after_message_id` must *not* be carried,
+since a member of a fresh scene joined at the start by definition.

@@ -1476,6 +1476,14 @@ export type LorePosition =
   | "outlet";
 export type LoreBindingScope = "global" | "scene" | "character" | "persona";
 
+/** In the order the editor offers them: widest reach first. */
+export const LORE_BINDING_SCOPES: readonly LoreBindingScope[] = [
+  "global",
+  "scene",
+  "character",
+  "persona",
+];
+
 export const LORE_POSITIONS: readonly LorePosition[] = [
   "before_character",
   "after_character",
