@@ -393,5 +393,12 @@ function renderText(
   prefill: string | undefined,
 ): string {
   const template = ctx.instruct ?? findInstructTemplate("plain")!;
-  return renderInstruct(template, system, messages, prefill);
+  // Text completion has no tool role (§20 phase 46) and the roleplay builder
+  // never emits one, so narrowing here is a type-level fact rather than a
+  // filter that could silently drop a turn.
+  const renderable = messages.filter(
+    (message): message is NormalizedMessage & { role: "system" | "user" | "assistant" } =>
+      message.role !== "tool",
+  );
+  return renderInstruct(template, system, renderable, prefill);
 }

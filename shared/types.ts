@@ -644,6 +644,36 @@ export interface PackListDto {
  * without the prefix — so a theme stays small and one written today still works
  * after a token is added tomorrow.
  */
+/* ------------------------------------------------------------------ */
+/* The agent (SPEC §20 phase 46)                                       */
+/* ------------------------------------------------------------------ */
+
+export interface AgentThreadDto {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface AgentMessageDto {
+  id: string;
+  role: "user" | "assistant" | "tool";
+  content: string;
+  /** Calls this assistant turn asked for. Empty on every other role. */
+  toolCalls: { name: string; arguments: string }[];
+  /** Whether a tool result reported failure. */
+  isError: boolean;
+  createdAt: number;
+}
+
+/** A change the agent made, and what the thing looked like before it. */
+export interface AgentUndoDto {
+  id: string;
+  kind: string;
+  subjectId: string;
+  at: number;
+}
+
 export interface ThemeDto {
   id: string;
   name: string;

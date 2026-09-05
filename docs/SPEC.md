@@ -2789,6 +2789,8 @@ Each phase ends in a working, usable application.
     were already built; what was missing was accepting their files. See §9.
 45. **Themes** — every colour and the depth values editable, saved, exported
     and imported; shipped grounds to choose between. See §16.
+46. **The assistant** — a second model with tools that read and change the
+    install. Not a cast member. See §23.
 
 Settled while building phase 15.
 
@@ -2961,3 +2963,55 @@ Resolved in phase 9: a beat swipe rerolls the whole exchange *and* recast fixes
 one part — they are different things to want, and having both is what makes the
 distinction legible. Disabling swipe on beats would have made the one blunt
 correction unavailable when the whole exchange is wrong.
+
+
+---
+
+## 23. The assistant
+
+A second model, with tools, that can read and change what is in this install:
+cast, roleplays, lore, personas, themes. It is what you ask to tag two hundred
+imported cards, or to build a lorebook out of a finished scene.
+
+**It is not a cast member, and §22's rule still stands.** That rule is about who
+writes the story — an independent agent voicing a character is what produces
+merged personalities and speaker lotteries. This one never writes prose into a
+scene. It is an assistant for the person running the app, and it lives on its
+own screen.
+
+- **Tool calling is a provider capability**, `supportsTools`. OpenAI-compatible
+  endpoints have it. Text completion does not and cannot: a raw completion
+  endpoint has no structured place to put a call or an id to answer it with, so
+  the assistant says so and names the fix rather than sending tools that will be
+  silently ignored.
+- **Streaming tool calls are reassembled in the adapter.** They arrive in
+  fragments keyed by index, with the arguments spread across frames. A caller
+  gets whole calls with parseable arguments; nobody else should have to know
+  that.
+- **A failed tool is a result, not an exception.** Bad JSON arguments, an
+  unknown tool, a row that does not exist — all go back to the model as
+  something it can read and correct. Killing the turn on the first mistake is
+  how a two-step job becomes a dead end.
+- **Reads are wide and writes are real.** This is single-user software on a
+  private network; an assistant that could only suggest would be a worse version
+  of the guided ops that already exist. Destructive calls snapshot the thing
+  first, which is an undo, not a permission gate.
+- **Content is not instruction.** Anything read out of a card, a roleplay or a
+  lorebook is the user's material or a stranger's — never a directive. This is
+  not a safety rail: a downloaded lorebook that could redirect the assistant is
+  the feature failing to work, not the user being protected from themselves.
+
+### Settled while building phase 46
+
+- **`tool` is a message role, not a prompt role.** A prompt block can never be
+  one, so the roleplay builder cannot emit one by accident and `PromptBlock`
+  keeps saying exactly what it always said.
+- **The system prompt is rebuilt every turn** rather than stored on the thread,
+  so adding a tool never leaves an old conversation describing a set that no
+  longer exists.
+- **Low temperature, nothing else.** The samplers §13 argues for in a scene are
+  wrong here: this call picks a tool and writes JSON, and a preset's DRY or XTC
+  would actively damage both.
+- **Everything is persisted as it happens.** A dropped connection loses the rest
+  of the answer, never the work already done — which for something that has
+  already changed the library is the difference between a record and a lie.

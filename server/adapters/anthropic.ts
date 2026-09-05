@@ -125,7 +125,13 @@ export function anthropicCapabilities(model: string, rules = anthropicModelRules
     supportsGrammar: false,
     emitsReasoning: true,
     supportsPromptCaching: true,
-    supportsVision: true,
+    // Anthropic's tool blocks are a different wire shape from OpenAI's — content
+  // blocks with `tool_use` and `input_json_delta`, not a `tool_calls` array —
+  // and that is not wired yet (§20 phase 46). Declaring false is the honest
+  // answer: this codebase has been bitten five times by a capability that was
+  // announced and not built.
+  supportsTools: false,
+  supportsVision: true,
     tokenizer: null,
   };
 }

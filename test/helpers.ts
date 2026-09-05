@@ -106,6 +106,9 @@ seedBuiltinThemes(db);
   const { app, triggers, memory } = createServer(ctx, {
     webhookSender,
     serveClient: false,
+    // The agent builds its own adapter rather than borrowing the generation
+    // service's, so it needs the fixture handed to it separately (§46).
+    ...adapterOption,
     generationService: generation,
     taskRunner: tasks,
     passPipeline: passes,
@@ -190,6 +193,8 @@ type ScriptItem =
   | { text: string }
   /** Reasoning in a field of its own, as DeepSeek and OpenRouter send it (§13). */
   | { reasoning: string }
+  /** Tool calls, whole, as an adapter reassembles them (§20 phase 46). */
+  | { toolCalls: { id: string; name: string; arguments: string }[] }
   | { end: true }
   | { error: Error };
 
@@ -244,6 +249,12 @@ export class ScriptedAdapter implements Adapter {
 
   push(text: string): void {
     this.queue.push({ text });
+    this.flush();
+  }
+
+  /** Ask for tools, the way a provider hands them back at the end (§46). */
+  pushToolCalls(calls: { id: string; name: string; arguments: string }[]): void {
+    this.queue.push({ toolCalls: calls });
     this.flush();
   }
 
@@ -337,6 +348,7 @@ export class ScriptedAdapter implements Adapter {
       }
       if ("text" in item) yield { text: item.text };
       else if ("reasoning" in item) yield { text: "", reasoning: item.reasoning };
+      else if ("toolCalls" in item) yield { text: "", toolCalls: item.toolCalls };
       else if ("end" in item) return;
       else throw item.error;
     }

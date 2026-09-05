@@ -1,5 +1,5 @@
 import type { SamplerSettings } from "../../shared/types.ts";
-import type { BuiltPrompt, ProviderCapabilities } from "../prompt/index.ts";
+import type { BuiltPrompt, ProviderCapabilities, ToolCall } from "../prompt/index.ts";
 
 /**
  * The adapter contract (SPEC §4). One internal message format; adapters
@@ -10,6 +10,15 @@ import type { BuiltPrompt, ProviderCapabilities } from "../prompt/index.ts";
 export interface TokenChunk {
   /** Text to append to the generation buffer. */
   text: string;
+  /**
+   * Tool calls the model asked for, complete (§20 phase 46).
+   *
+   * Emitted once, at the end of the stream, rather than as the fragments the
+   * wire actually carries. A caller wants a whole call with parseable
+   * arguments; reassembling partial argument deltas is the adapter's job and
+   * nobody else's.
+   */
+  toolCalls?: ToolCall[];
   /**
    * Reasoning the provider handed back in a field of its own (SPEC §13).
    *

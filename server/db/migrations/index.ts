@@ -39,6 +39,7 @@ import mediaVisibility from "./0038_media_visibility.sql" with { type: "text" };
 import mentionKeywords from "./0039_mention_keywords.sql" with { type: "text" };
 import importProvenance from "./0040_import_provenance.sql" with { type: "text" };
 import themes from "./0041_themes.sql" with { type: "text" };
+import agent from "./0042_agent.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -95,4 +96,5 @@ export const migrations: readonly Migration[] = [
   { version: 39, name: "mention_keywords", sql: mentionKeywords },
   { version: 40, name: "import_provenance", sql: importProvenance },
   { version: 41, name: "themes", sql: themes },
+  { version: 42, name: "agent", sql: agent },
 ];

@@ -38,6 +38,9 @@ export const OPENAI_COMPATIBLE_CAPABILITIES: ProviderCapabilities = {
   supportsPromptCaching: true,
   // The chat-completions content-part shape carries images, and every
   // OpenAI-compatible server accepts the field whether its model looks or not.
+  // Every OpenAI-shaped endpoint takes `tools`; a server whose model cannot
+  // call one simply never emits a call (§20 phase 46).
+  supportsTools: true,
   supportsVision: true,
   tokenizer: null,
 };
@@ -55,6 +58,17 @@ interface ChatCompletionChunk {
       content?: string | null;
       reasoning_content?: string | null;
       reasoning?: string | null;
+      /**
+       * Tool calls arrive in fragments keyed by `index` (§20 phase 46): the id
+       * and name land in the first frame for a call, and the arguments dribble
+       * in across later ones. Reassembled here, so a caller only ever sees a
+       * whole call.
+       */
+      tool_calls?: {
+        index?: number;
+        id?: string;
+        function?: { name?: string; arguments?: string };
+      }[];
     };
   }[];
   error?: { message?: string };
@@ -138,6 +152,18 @@ export function createOpenAiAdapter(config: AdapterConfig): Adapter {
         ...(prompt.system === undefined ? [] : [{ role: "system", content: prompt.system }]),
         ...prompt.messages.map((message) => ({
           role: message.role,
+          // A tool result names the call it answers; an assistant turn that
+          // made calls carries them back so the model can see what it did.
+          ...(message.toolCallId === undefined ? {} : { tool_call_id: message.toolCallId }),
+          ...(message.toolCalls === undefined
+            ? {}
+            : {
+                tool_calls: message.toolCalls.map((call) => ({
+                  id: call.id,
+                  type: "function",
+                  function: { name: call.name, arguments: call.arguments },
+                })),
+              }),
           // A plain string unless the message carries pictures (§20 phase 41).
           // Sending the content-part array unconditionally would work on OpenAI
           // and break several local servers that only implement the string.
@@ -174,6 +200,18 @@ export function createOpenAiAdapter(config: AdapterConfig): Adapter {
             model: config.model,
             messages,
             stream: true,
+            ...(prompt.tools === undefined || prompt.tools.length === 0
+              ? {}
+              : {
+                  tools: prompt.tools.map((tool) => ({
+                    type: "function",
+                    function: {
+                      name: tool.name,
+                      description: tool.description,
+                      parameters: tool.parameters,
+                    },
+                  })),
+                }),
             ...samplerFields(settings),
           }),
         });
@@ -199,9 +237,19 @@ export function createOpenAiAdapter(config: AdapterConfig): Adapter {
         throw new AdapterError("The provider returned no response body.");
       }
 
+      // Fragments by index, flushed as whole calls when the stream ends.
+      const building = new Map<number, { id: string; name: string; arguments: string }>();
+      const flush = (): TokenChunk[] =>
+        building.size === 0
+          ? []
+          : [{ text: "", toolCalls: [...building.values()].filter((c) => c.name !== "") }];
+
       for await (const event of parseSseStream(response.body, signal)) {
         if (signal.aborted) return;
-        if (event.data === "[DONE]") return;
+        if (event.data === "[DONE]") {
+          for (const chunk of flush()) yield chunk;
+          return;
+        }
 
         let chunk: ChatCompletionChunk;
         try {
@@ -223,9 +271,24 @@ export function createOpenAiAdapter(config: AdapterConfig): Adapter {
         // reasoning-only frames before the first word of prose.
         const thought = delta?.reasoning_content ?? delta?.reasoning;
         if (typeof thought === "string" && thought !== "") yield { text: "", reasoning: thought };
+        for (const fragment of delta?.tool_calls ?? []) {
+          const index = fragment.index ?? 0;
+          const call = building.get(index) ?? { id: "", name: "", arguments: "" };
+          if (fragment.id !== undefined) call.id = fragment.id;
+          if (fragment.function?.name !== undefined) call.name = fragment.function.name;
+          if (fragment.function?.arguments !== undefined) {
+            call.arguments += fragment.function.arguments;
+          }
+          building.set(index, call);
+        }
+
         const text = delta?.content;
         if (typeof text === "string" && text !== "") yield { text };
       }
+
+      // Not every provider sends [DONE]; some just close. Flushing here as
+      // well is what stops a tool call being lost to a polite disconnect.
+      for (const chunk of flush()) yield chunk;
     },
 
     async listModels(): Promise<ModelInfo[]> {

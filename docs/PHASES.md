@@ -4039,3 +4039,63 @@ reads HTML now.
 - **Importing SillyTavern themes.** Phase 44 reads a whole install and ST keeps
   themes under `themes/*.json`; mapping its key names onto these tokens is a
   natural follow-on and was not part of this.
+
+
+---
+
+## Phase 46 — The assistant
+
+Asked whether a second agent with tools over the whole app was possible and
+whether it was a good idea. Possible: yes, and most of the surface was already
+there. Good idea: yes for the drudgery — §9 already calls managing hundreds of
+cards "a significant unsolved problem" — and the first answer given was too
+cautious about it. This is single-user software on a private network, and an
+assistant that could only propose would be a worse version of the guided ops
+that already existed.
+
+### What was built
+
+**Tool calling in the adapter layer**, which did not exist at all: a
+`supportsTools` capability, `ToolSpec` and `ToolCall`, a `tool` message role,
+and `tools` on `BuiltPrompt`. The OpenAI adapter sends them and reassembles the
+streamed fragments — they arrive keyed by index with the arguments spread across
+frames — into whole calls, flushed both on `[DONE]` and on a stream that simply
+closes.
+
+**Migration 0042** — threads and their messages, because the useful asks are
+long and losing them on reload would make it a toy.
+
+**Twenty tools** over cast, roleplays, lore, personas and themes, hand-written
+rather than generated off the routes: the model chooses on the description, and
+"the roleplays in this install, newest first" beats "GET /scenes".
+
+**An undo.** Destructive calls snapshot the DTO first. Before this,
+`character_versions` was the only edit history anywhere in the app.
+
+### Deliberately deferred
+
+- **Anthropic tool calling.** Its wire shape is content blocks with `tool_use`,
+  not a `tool_calls` array. `supportsTools` is **false** there rather than
+  claimed — this project has been bitten five times by a capability that was
+  announced and not built, and a sixth would have been self-inflicted.
+- **The client.** The server half is complete and tested; there is no UI yet.
+
+### Surprises
+
+**The SSE writes were not awaited, and it looked completely fine.** `void
+stream.writeSSE(...)` races the stream closing when the turn ends, so every
+answer came back as an empty body with a 200 and the right content-type. The
+first debugging pass blamed the test harness.
+
+**The loop called the real `createAdapter` directly**, so no test double could
+reach it and it was quietly talking to the harness's llama.cpp profile — which
+cannot use tools, which is why it then refused. Two bugs stacked into one
+confusing symptom. It takes the same injected factory as the task runner now.
+
+**A thread with no profile threw** instead of falling back to the install's
+default: `resolveRoute` is written for scenes, which always have one.
+
+**The scripted adapter had to learn a whole turn.** A turn is a loop — answer,
+run tools, ask again with the results — so a test that scripts one round hangs
+on the second. Every tool test scripts call-then-answer, and the queue survives
+across `generate` calls, which is what makes that work.

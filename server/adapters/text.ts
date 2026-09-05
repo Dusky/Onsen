@@ -54,6 +54,9 @@ export const TEXT_COMPLETION_CAPABILITIES: ProviderCapabilities = {
   supportsPromptCaching: false,
   // A raw completion endpoint takes a string. There is nowhere to put a
   // picture, which is a fact about the format rather than a limitation.
+  // A raw completion endpoint has no structured place to put a call, and no
+  // id to answer it with. Not a gap that can be papered over (§20 phase 46).
+  supportsTools: false,
   supportsVision: false,
   tokenizer: null,
 };

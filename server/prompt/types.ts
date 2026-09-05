@@ -43,6 +43,16 @@ export type {
 export type PromptRole = "system" | "user" | "assistant";
 
 /**
+ * What a message on the wire may be.
+ *
+ * `tool` carries a tool's result back to the model (§20 phase 46) and is
+ * deliberately *not* a `PromptRole`: a prompt block can never be one, so the
+ * roleplay builder cannot accidentally emit one and the block type keeps
+ * saying exactly what it always said.
+ */
+export type MessageRole = PromptRole | "tool";
+
+/**
  * A picture travelling with a message, as bytes rather than a link (§20 phase
  * 41). Providers all take base64; none of them will fetch a URL from a server
  * they cannot reach, which is every self-hosted install.
@@ -53,7 +63,7 @@ export interface PromptImage {
 }
 
 export interface NormalizedMessage {
-  role: PromptRole;
+  role: MessageRole;
   content: string;
   /** Speaker label, where the provider supports one. */
   name?: string;
@@ -65,6 +75,43 @@ export interface NormalizedMessage {
    * not spent on an image it already has words for.
    */
   images?: PromptImage[];
+  /**
+   * Tool calls this assistant turn made (§20 phase 46), sent back so the model
+   * can see what it already did. Set only on `assistant`.
+   */
+  toolCalls?: ToolCall[];
+  /** Which call this message answers. Set only on `tool`. */
+  toolCallId?: string;
+}
+
+/* ------------------------------------------------------------------ */
+/* Tools (SPEC §20 phase 46)                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A tool offered to a model.
+ *
+ * `parameters` is a JSON Schema object, which is what every provider that
+ * supports tools takes — OpenAI verbatim, Anthropic under `input_schema`.
+ */
+export interface ToolSpec {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+}
+
+/**
+ * One call the model asked for.
+ *
+ * `arguments` is the raw JSON string rather than a parsed object: models emit
+ * malformed JSON often enough that parsing belongs where the failure can be
+ * reported back to the model as a tool result, not in the adapter where it
+ * would kill the stream.
+ */
+export interface ToolCall {
+  id: string;
+  name: string;
+  arguments: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -105,6 +152,15 @@ export interface ProviderCapabilities {
    * than sending bytes that will be silently ignored.
    */
   supportsVision: boolean;
+  /**
+   * Whether this provider can be handed tools and asked to call them
+   * (§20 phase 46).
+   *
+   * False for text completion, and not a gap that can be papered over: a raw
+   * completion endpoint has no structured place to put a call or an id to
+   * answer it with. The agent says so rather than pretending.
+   */
+  supportsTools: boolean;
   tokenizer: TokenizerId | null;
 }
 
@@ -554,6 +610,8 @@ export const DEFAULT_BLOCK_ORDER: readonly PromptBlockId[] = [
 export interface BuiltPrompt {
   system?: string;
   messages: NormalizedMessage[];
+  /** Offered to the model where its capabilities allow (§20 phase 46). */
+  tools?: ToolSpec[];
   prefill?: string;
   /** Text-completion mode only. */
   rawText?: string;

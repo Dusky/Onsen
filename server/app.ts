@@ -9,6 +9,7 @@ import { sceneRoutes } from "./routes/scenes.ts";
 import { characterRoutes } from "./routes/characters.ts";
 import { migrateRoutes } from "./routes/migrate.ts";
 import { themeRoutes } from "./routes/themes.ts";
+import { agentRoutes } from "./routes/agent.ts";
 import { authorRoutes, personaRoutes } from "./routes/authors.ts";
 import { generationRoutes, sceneGenerationRoutes } from "./routes/generation.ts";
 import { GenerationService } from "./generation/service.ts";
@@ -200,6 +201,12 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   api.route("/webhooks", webhookRoutes(ctx, webhooks));
   api.route("/migrate", migrateRoutes(ctx));
   api.route("/themes", themeRoutes(ctx));
+  api.route(
+    "/agent",
+    // The same injection point the task runner and the generation service use,
+    // so a test can hand the agent a scripted model like everything else.
+    agentRoutes(ctx, options.createAdapter),
+  );
   api.route("/api-keys", apiKeyRoutes(ctx));
   api.route("/scene-api", sceneApiRoutes(ctx));
   api.route("/memory", memoryRoutes(ctx, memory, authorMemory));
