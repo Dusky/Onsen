@@ -17,6 +17,13 @@ import { MessageMedia } from "./MessageMedia.tsx";
 interface MessageBlockProps {
   message: MessageDto;
   speakerName: string;
+  /**
+   * Where the name sits (§20 phase 52). `stacked` puts it on its own row above
+   * the prose; Broadsheet's `inline` sets it as the opening of the paragraph,
+   * with the director's reason beside it, so the log reads as a printed page
+   * rather than as a transcript.
+   */
+  attribution?: "stacked" | "inline";
   onReroll(): void;
   onOpenVersions(): void;
   onLongPress(): void;
@@ -269,6 +276,7 @@ export function OocBlock({
 export function MessageBlock({
   message,
   speakerName,
+  attribution = "stacked",
   onReroll,
   onOpenVersions,
   onLongPress,
@@ -326,7 +334,7 @@ export function MessageBlock({
           : undefined
       }
     >
-      <header className="mb-[10px] flex items-center gap-[10px]">
+      <header className="mb-[10px] flex items-center gap-[10px]" hidden={attribution === "inline"}>
         <span
           className="chrome shrink-0 text-[11.5px] font-semibold tracking-[0.18em] uppercase"
           style={{ color: isUser ? "var(--onsen-color-text-muted)" : "var(--onsen-color-text-label)" }}
@@ -379,7 +387,26 @@ export function MessageBlock({
         {/* A beat is rendered by its parts; every other message is its own text.
             While one is streaming there are no parts yet, so the raw output
             shows — labels and all — rather than the log going blank. */}
-        {segments === null ? (
+        {/* Broadsheet sets the name into the paragraph rather than above it,
+            which is what makes the log read as a page. Only on a whole
+            message: a beat's parts already name their own speakers, and a
+            second name at the top would be saying it twice. */}
+        {attribution === "inline" && segments === null ? (
+          <p className="mt-0 text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)] whitespace-pre-wrap">
+            <span
+              className="chrome text-[11.5px] font-semibold tracking-[0.18em] uppercase"
+              style={{
+                color: isUser
+                  ? "var(--onsen-color-text-muted)"
+                  : "var(--onsen-color-text-label)",
+              }}
+            >
+              {speakerName}
+            </span>
+            <span className="chrome text-[11.5px] text-ink-dim"> &middot; </span>
+            {text}
+          </p>
+        ) : segments === null ? (
           <Prose text={text} />
         ) : (
           segments.map((segment) => (

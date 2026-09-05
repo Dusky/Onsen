@@ -1293,6 +1293,72 @@ export interface UpdateTaskRequest {
 }
 
 /* ------------------------------------------------------------------ */
+/* ------------------------------------------------------------------ */
+/* Chat layout (SPEC §16, §20 phase 52)                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * How the chat screen is laid out.
+ *
+ * Three directions were drawn and Instrument was chosen (§16). The other two
+ * are not discarded: they differ from it in four separable choices, not in
+ * their components, so they are **presets over those switches** rather than
+ * three screens.
+ *
+ * The guardrail is in §16 and matters more than the feature: a matrix of
+ * toggles in place of a default is the incumbent's answer, and it is the thing
+ * this app is reacting against. Four switches, three named starting points,
+ * and Instrument is what the app is when nobody has touched anything.
+ */
+export type LayoutPreset = "instrument" | "quiet" | "broadsheet";
+
+/** The cast control above the composer. */
+export type CastDisplay =
+  /** Instrument: one segmented control of names, plus the room. */
+  | "segments"
+  /** Quiet and Broadsheet: a line of prose naming who answers, and a way to change it. */
+  | "line";
+
+/** Where a turn's attribution sits. */
+export type AttributionStyle =
+  /** The name on its own row above the prose. */
+  | "stacked"
+  /** Broadsheet: the name and the director's reason on one line with the text. */
+  | "inline";
+
+export interface LayoutDto {
+  /** Which named starting point this matches, or `custom` once it does not. */
+  preset: LayoutPreset | "custom";
+  /** The deck's row of subsystem readouts. */
+  readouts: boolean;
+  cast: CastDisplay;
+  /** Broadsheet's standing line under the title, from the scene's scenario. */
+  dek: boolean;
+  attribution: AttributionStyle;
+}
+
+/** The four switches each named direction sets. */
+export const LAYOUT_PRESETS: Record<LayoutPreset, Omit<LayoutDto, "preset">> = {
+  instrument: { readouts: true, cast: "segments", dek: false, attribution: "stacked" },
+  quiet: { readouts: false, cast: "line", dek: false, attribution: "stacked" },
+  broadsheet: { readouts: false, cast: "line", dek: true, attribution: "inline" },
+};
+
+/** Which preset a set of switches is, or `custom` when it is none of them. */
+export function presetOf(layout: Omit<LayoutDto, "preset">): LayoutDto["preset"] {
+  for (const [name, values] of Object.entries(LAYOUT_PRESETS)) {
+    if (
+      values.readouts === layout.readouts &&
+      values.cast === layout.cast &&
+      values.dek === layout.dek &&
+      values.attribution === layout.attribution
+    ) {
+      return name as LayoutPreset;
+    }
+  }
+  return "custom";
+}
+
 /* Persistent guides (SPEC §8)                                         */
 /* ------------------------------------------------------------------ */
 

@@ -409,6 +409,16 @@ export const strings = {
      * holding right now — a figure, not a setting.
      */
     speakingNext: "Speaking next",
+    /*
+     * Two sentences rather than one joined by a dash: the director's reasons
+     * are written as sentences and arrive capitalised, so "answers next —
+     * Named in the last message" reads as a mid-sentence capital. The reason
+     * is shown verbatim (§6), which means the sentence has to bend around it
+     * rather than the other way about.
+     */
+    answersNext: (name: string, reason: string) =>
+      reason === "" ? `${name} answers next.` : `${name} answers next. ${reason.replace(/\.$/, "")}.`,
+    changeSpeaker: "change",
     deckGuides: "Guides",
     deckMemory: "Memory",
     deckMedia: "Media",
@@ -476,7 +486,10 @@ export const strings = {
      * models are a visible list now, and these name it.
      */
     modelsFound: (n: number) => (n === 1 ? "1 model" : `${n} models`),
-    modelsFilter: "Filter models",
+    modelsFilter: "Search models",
+    modelsShowing: (shown: number, total: number) => `${shown} of ${total}`,
+    modelsMore: (n: number) => `${n} more — keep typing to narrow it`,
+    modelsNoMatch: "Nothing matches that.",
     modelsNone: "That address answered, but listed no models.",
     modelsAddressFirst: "Enter the address first.",
     modelsNoProviderAddress: "This provider has no address to fetch models from.",
@@ -669,6 +682,35 @@ export const strings = {
 
     /** Reading preferences (SPEC §5, phase 36). */
     reading: "Reading",
+    /* The layout presets (§20 phase 52). */
+    layout: "Layout",
+    layoutHint:
+      "How the chat screen is arranged. Three starting points, and the four " +
+      "switches underneath them — change one and you are on your own layout, " +
+      "which is fine.",
+    layoutPresets: {
+      instrument: "Instrument",
+      quiet: "Quiet",
+      broadsheet: "Broadsheet",
+      custom: "Yours",
+    } as Record<string, string>,
+    layoutPresetHint: {
+      instrument: "State stays on screen: who speaks next, and what each subsystem is holding.",
+      quiet: "Everything but the story gets out of the way. One line above the composer.",
+      broadsheet:
+        "The log as a printed page — a standing line under the title, names set into the prose.",
+      custom: "Your own mix of the switches below.",
+    } as Record<string, string>,
+    layoutReadouts: "Readout row",
+    layoutReadoutsHint: "Guides, memory and media, each with its own colour.",
+    layoutCast: "Cast control",
+    layoutCastSegments: "Segments",
+    layoutCastLine: "One line",
+    layoutDek: "Scene line under the title",
+    layoutDekHint: "Shows the roleplay's scenario, when it has one.",
+    layoutAttribution: "Attribution",
+    layoutAttributionStacked: "Above the text",
+    layoutAttributionInline: "In the text",
     readingHint: "How the app behaves while you are looking at something else.",
     chime: "Chime when a reply lands",
     chimeHint:

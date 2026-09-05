@@ -3,6 +3,8 @@ import type { AppContext, AppEnv } from "../context.ts";
 import { requireAuth } from "../middleware/session.ts";
 import { applyUpdate, checkForUpdates, readUpdateStatus } from "../updates.ts";
 import { getSetting, setSetting } from "../db/queries/settings.ts";
+import { LAYOUT_PRESETS, presetOf } from "@shared/types.ts";
+import type { LayoutDto, LayoutPreset } from "@shared/types.ts";
 
 /**
  * System endpoints (SPEC §17). The updater's logic lives in `server/updates.ts`;
@@ -25,9 +27,34 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
    * would be the wrong shape for a §5 feature anyway: the point of head sync is
    * that the phone and the desktop are two views of one install.
    */
-  app.get("/preferences", (c) =>
-    c.json({ completionChime: getSetting(ctx.db, "completion_chime") === "1" }),
-  );
+  /**
+   * The chat layout (§20 phase 52).
+   *
+   * Stored as four settings rather than one blob so a value added later
+   * defaults on its own, and read back through `presetOf` so the client is
+   * never told a preset name that disagrees with the switches under it.
+   */
+  function layout(): LayoutDto {
+    const values = {
+      readouts: getSetting(ctx.db, "layout_readouts") !== "0",
+      cast: getSetting(ctx.db, "layout_cast") === "line" ? ("line" as const) : ("segments" as const),
+      dek: getSetting(ctx.db, "layout_dek") === "1",
+      attribution:
+        getSetting(ctx.db, "layout_attribution") === "inline"
+          ? ("inline" as const)
+          : ("stacked" as const),
+    };
+    return { preset: presetOf(values), ...values };
+  }
+
+  function preferences() {
+    return {
+      completionChime: getSetting(ctx.db, "completion_chime") === "1",
+      layout: layout(),
+    };
+  }
+
+  app.get("/preferences", (c) => c.json(preferences()));
 
   app.patch("/preferences", async (c) => {
     let body: Record<string, unknown> = {};
@@ -40,7 +67,36 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
     if (typeof body["completionChime"] === "boolean") {
       setSetting(ctx.db, "completion_chime", body["completionChime"] ? "1" : "0");
     }
-    return c.json({ completionChime: getSetting(ctx.db, "completion_chime") === "1" });
+
+    const asked = body["layout"];
+    if (typeof asked === "object" && asked !== null) {
+      const patch = asked as Record<string, unknown>;
+      // A preset named on its own sets all four; individual switches sent
+      // alongside it win, which is what makes "start from Quiet, but keep the
+      // readouts" one request rather than two.
+      const named = patch["preset"];
+      if (typeof named === "string" && named in LAYOUT_PRESETS) {
+        const values = LAYOUT_PRESETS[named as LayoutPreset];
+        setSetting(ctx.db, "layout_readouts", values.readouts ? "1" : "0");
+        setSetting(ctx.db, "layout_cast", values.cast);
+        setSetting(ctx.db, "layout_dek", values.dek ? "1" : "0");
+        setSetting(ctx.db, "layout_attribution", values.attribution);
+      }
+      if (typeof patch["readouts"] === "boolean") {
+        setSetting(ctx.db, "layout_readouts", patch["readouts"] ? "1" : "0");
+      }
+      if (patch["cast"] === "segments" || patch["cast"] === "line") {
+        setSetting(ctx.db, "layout_cast", patch["cast"]);
+      }
+      if (typeof patch["dek"] === "boolean") {
+        setSetting(ctx.db, "layout_dek", patch["dek"] ? "1" : "0");
+      }
+      if (patch["attribution"] === "stacked" || patch["attribution"] === "inline") {
+        setSetting(ctx.db, "layout_attribution", patch["attribution"]);
+      }
+    }
+
+    return c.json(preferences());
   });
 
   app.get("/update", async (c) => c.json(await readUpdateStatus(repoDir)));

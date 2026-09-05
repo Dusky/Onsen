@@ -15,6 +15,11 @@ import { useFetchModels } from "../lib/queries.ts";
  * the wizard is where somebody meets this app for the first time, and it is the
  * screen that most needs to answer "what do I put in the model box".
  */
+/** Below this a list is short enough to read; above it, searching is the way. */
+const SEARCH_FROM = 8;
+/** How many rows are drawn at once. Narrowing the search is what reveals more. */
+const RENDER_CAP = 60;
+
 export function ModelPicker({
   request,
   onPick,
@@ -86,33 +91,66 @@ export function ModelPicker({
 
       {models !== null && models.length > 0 ? (
         <div className="mt-[10px] border border-rule bg-bg-raised p-[10px]">
-          <div className="mb-[8px] flex items-center justify-between gap-[10px]">
-            <span className="meta">{strings.settings.modelsFound(models.length)}</span>
-            {/* A provider like OpenRouter lists hundreds; without this the list
-                is a wall rather than a choice. */}
-            {models.length > 8 ? (
-              <input
-                value={filter}
-                onChange={(event) => setFilter(event.target.value)}
-                placeholder={strings.settings.modelsFilter}
-                aria-label={strings.settings.modelsFilter}
-                className="field h-[34px] min-h-[34px] max-w-[190px] flex-1 px-[8px] py-0 text-[13px]"
-              />
-            ) : null}
+          {/*
+           * OpenRouter and the larger aggregators serve several hundred models.
+           * A wrapped row of chips is a wall at that size, so this is a search
+           * over a list: one model per line, the field first because with three
+           * hundred of them typing is the only way anyone finds one.
+           */}
+          {models.length > SEARCH_FROM ? (
+            <input
+              value={filter}
+              onChange={(event) => setFilter(event.target.value)}
+              placeholder={strings.settings.modelsFilter}
+              aria-label={strings.settings.modelsFilter}
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              className="field mb-[8px] h-[38px] min-h-[38px] w-full px-[10px] py-0 text-[14px]"
+            />
+          ) : null}
+
+          <div className="mb-[7px] flex items-baseline justify-between gap-[10px]">
+            <span className="meta">
+              {shown.length === models.length
+                ? strings.settings.modelsFound(models.length)
+                : strings.settings.modelsShowing(shown.length, models.length)}
+            </span>
           </div>
-          <div className="flex max-h-[190px] flex-wrap gap-[5px] overflow-y-auto">
-            {shown.map((model) => (
-              <button
-                key={model}
-                type="button"
-                onClick={() => onPick(model)}
-                className={`btn min-h-[34px] px-[9px] ${model === selected ? "btn-primary" : ""}`}
-                style={{ textTransform: "none", letterSpacing: "0.02em" }}
-              >
-                {model}
-              </button>
-            ))}
-          </div>
+
+          {shown.length === 0 ? (
+            <p className="explain">{strings.settings.modelsNoMatch}</p>
+          ) : (
+            <div className="flex max-h-[240px] flex-col overflow-y-auto">
+              {shown.slice(0, RENDER_CAP).map((model) => (
+                <button
+                  key={model}
+                  type="button"
+                  onClick={() => onPick(model)}
+                  aria-pressed={model === selected}
+                  className="chrome flex min-h-[38px] items-center truncate border-b border-rule px-[8px] text-left text-[13px] last:border-b-0"
+                  style={
+                    model === selected
+                      ? {
+                          background: "var(--onsen-color-red-bg)",
+                          color: "var(--onsen-color-text-bright)",
+                        }
+                      : { color: "var(--onsen-color-text-label)" }
+                  }
+                >
+                  {model}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Rendering four hundred rows to show the first ten is waste, and a
+              list nobody can reach the bottom of is not a choice either. */}
+          {shown.length > RENDER_CAP ? (
+            <p className="explain mt-[7px]">
+              {strings.settings.modelsMore(shown.length - RENDER_CAP)}
+            </p>
+          ) : null}
         </div>
       ) : null}
     </div>

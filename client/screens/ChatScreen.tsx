@@ -57,6 +57,7 @@ import {
   useAutopilot,
   useUpdateScene,
   useConnectionProfiles,
+  useLayout,
   useInspector,
 } from "../lib/queries.ts";
 import type {
@@ -194,6 +195,9 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const [oocOpen, setOocOpen] = useState(false);
   const [oocAsked, setOocAsked] = useState(false);
   const siblings = useSiblings(sceneId, versionsFor?.id ?? null);
+
+  /** The chosen layout (§20 phase 52). Instrument until preferences arrive. */
+  const layout = useLayout();
 
   const log = useRef<HTMLDivElement>(null);
   // The cast becomes a rail and the ops flatten (design `4a`). Everything
@@ -834,6 +838,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         key={message.id}
         message={message}
         speakerName={speakerFor(message, authorName)}
+        attribution={layout.attribution}
         onReroll={() => void reroll(message)}
         onOpenVersions={() => setVersionsFor(message)}
         onLongPress={() => setActing(message)}
@@ -1030,7 +1035,12 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             so the whole composer stack still fits above an open keyboard —
             the same rule the cast strip followed, and the reason Instrument's
             cast is a segmented control rather than a row of cards. */}
-        {cast.length > 0 && !isGenerating && opsPanel === null && !isDesktop ? (
+        {/* Visible while it writes (§20 phase 52). It used to disappear the
+            moment generation started, which is exactly backwards for a layout
+            whose whole argument is that state stays on screen — and it made
+            the screen look frozen at the one moment it is busiest. Cueing who
+            speaks *next* while somebody is mid-turn is a real thing to want. */}
+        {cast.length > 0 && opsPanel === null && !isDesktop ? (
           <div className="flex-none border-t border-rule bg-bg-raised px-[16px] py-[10px]">
             <div className="mx-auto w-full max-w-[var(--onsen-prose-measure)]">
               <Deck
@@ -1042,6 +1052,8 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                 onScope={setScope}
                 strategy={strategy}
                 decidesOnSend={decidesOnSend}
+                readouts={layout.readouts}
+                castDisplay={layout.cast}
                 guides={scene.data?.guides ?? []}
                 summaryCount={scene.data?.scene.summaryCount ?? 0}
                 mediaOn={scene.data?.scene.vnModeEnabled ?? false}
@@ -1129,6 +1141,15 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         <div className="min-w-0 flex-1">
           <p className="screen-kicker">{strings.chat.kicker}</p>
           <h1 className="truncate text-[19px] font-medium tracking-[-0.01em]">{title}</h1>
+          {/* Broadsheet's standing dek (§20 phase 52). Not a new field: it is
+              the scene's own scenario, which until now was visible only in
+              setup and in the prompt. Clamped to two lines — it is a header,
+              not the scenario editor. */}
+          {layout.dek && (scene.data?.scene.scenarioOverride ?? "").trim() !== "" ? (
+            <p className="explain mt-[4px] line-clamp-2">
+              {scene.data!.scene.scenarioOverride}
+            </p>
+          ) : null}
         </div>
         {/* Design `4a` puts `PROMPT · n TOK` and `STAGE OFF` here beside SETUP.
             Both are chips onto screens that do not exist yet — the inspector is
@@ -1203,7 +1224,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                     systems reading as four things rather than as one list.
                     Above the cast, because it is scene-wide state and the
                     cards below it are per-character. */}
-                <div className="mb-[14px]">
+                <div className="mb-[14px]" hidden={!layout.readouts}>
                   <Readouts
                     guides={guides}
                     summaryCount={scene.data?.scene.summaryCount ?? 0}

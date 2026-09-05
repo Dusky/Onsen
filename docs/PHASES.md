@@ -4451,3 +4451,70 @@ uppercase mono.
 `lore.empty` — which now reads "No lorebooks yet", inside a lorebook. It had
 been wrong since the screen was built and was invisible while the string was
 vague enough to fit both jobs.
+
+---
+
+## Phase 52 — Layout presets
+
+*"but we can make them all different options as layouts. maybe mix and match
+features? i dunno"* — right, and phase 50 recorded it as the plan without
+building it. Instrument was hard-coded, which is honest for a default and
+dishonest as a preset system.
+
+### What was built
+
+**Four switches, three named starting points.** `readouts`, `cast`, `dek` and
+`attribution`; Instrument, Quiet and Broadsheet are sets of them. Stored as
+four settings rather than one blob so a switch added later defaults on its own,
+and read back through `presetOf` so the client is never told a preset name that
+disagrees with the values under it. Touching a switch moves the label to
+**Yours**; landing back on a preset's exact values names it again.
+
+**Quiet's one-line cast control** — the name that answers, the director's
+reason, and a `change` that cycles. **Broadsheet's dek**, which is not a new
+field: it is the scene's own `scenarioOverride`, until now visible only in setup
+and in the prompt. **Broadsheet's inline attribution**, the name set into the
+opening of the paragraph rather than on a row above it.
+
+**Two things fixed on the way, both from questions asked mid-build:**
+
+- *"can we click around the ui while replies are generated? its kinda not
+  clear."* You can — generation is server-owned, you can navigate away, close
+  the tab, come back. But the **deck disappeared the moment generation
+  started**, which is exactly backwards for a layout whose whole argument is
+  that state stays on screen, and it made the screen look frozen at its busiest
+  moment. It stays now. Cueing who speaks *next* while somebody is mid-turn is
+  a real thing to want.
+- *"the models list needs to support providers with hundreds of models."* It
+  was a wrapped row of chips with a filter past eight. Against a stub serving
+  400 OpenRouter-shaped ids that is a wall, so it is a search over a list now:
+  the field first, one model per row, a live `76 of 400` count, and a render cap
+  with "keep typing to narrow it" rather than four hundred rows drawn to show
+  ten.
+
+### Deliberately deferred
+
+- **The desktop deck's per-subsystem groups.** The readout row is there; the
+  mock's groups, each carrying a line of their own content, are not.
+- **Presets on the desktop rail.** `cast` and `readouts` are honoured there;
+  `dek` and `attribution` are read by the log and the header, which desktop
+  shares, so those work. The rail itself does not change shape between presets.
+
+### Surprises
+
+**Both controls printed the same thing.** Broadsheet showed "Speaking next /
+Named in the last message" as a header *and* "Mira Vance answers next" as a
+line — the header belongs to the segments, and the line already says both.
+Neither was wrong on its own; the pair only existed once a preset turned one
+off. The reason is computed once now and rendered by whichever control is on.
+
+**A capital letter in the wrong place, twice over.** Folding the reason into a
+sentence produced "answers next — Named in the last message", because §6 says
+the director's reason is shown *verbatim* and they are written as sentences. The
+sentence had to bend around the reason rather than the reason around the
+sentence: two sentences, not one joined by a dash.
+
+**Two probes reported failures that were not there**, both times because CSS
+uppercases the text and the regex did not. `deckText: null` and
+`rows drawn: undefined` both looked like rendering bugs and were reading
+mistakes. The screenshot settled both in seconds.

@@ -364,12 +364,88 @@ describe("the stream", () => {
 describe("the chime preference", () => {
   test("is off until asked for, and survives a reload because it is server-side", async () => {
     const t = await signedIn();
-    expect(await json<{ completionChime: boolean }>(t, "GET", "/api/system/preferences")).toEqual({
+    // toMatchObject, not toEqual: preferences is a growing payload and an
+    // exact match here fails every time a new one lands, which says nothing
+    // about the chime.
+    expect(await json(t, "GET", "/api/system/preferences")).toMatchObject({
       completionChime: false,
     });
     await json(t, "PATCH", "/api/system/preferences", { completionChime: true });
-    expect(await json<{ completionChime: boolean }>(t, "GET", "/api/system/preferences")).toEqual({
+    expect(await json(t, "GET", "/api/system/preferences")).toMatchObject({
       completionChime: true,
+    });
+  });
+});
+
+/**
+ * The chat layout (SPEC §16, §20 phase 52).
+ *
+ * Server-side for the same reason the chime is: there is no browser storage in
+ * this app, and a layout that lived in one browser would be the wrong shape
+ * anyway — the phone and the desktop are two views of one install.
+ */
+describe("the layout preference", () => {
+  test("is Instrument until somebody changes it", async () => {
+    const t = await signedIn();
+    expect(await json(t, "GET", "/api/system/preferences")).toMatchObject({
+      layout: {
+        preset: "instrument",
+        readouts: true,
+        cast: "segments",
+        dek: false,
+        attribution: "stacked",
+      },
+    });
+  });
+
+  test("a preset name sets all four switches", async () => {
+    const t = await signedIn();
+    await json(t, "PATCH", "/api/system/preferences", { layout: { preset: "broadsheet" } });
+    expect(await json(t, "GET", "/api/system/preferences")).toMatchObject({
+      layout: { preset: "broadsheet", readouts: false, cast: "line", dek: true, attribution: "inline" },
+    });
+  });
+
+  test("a switch sent alongside a preset wins", async () => {
+    // "Start from Quiet, but keep the readouts" is one request, not two.
+    const t = await signedIn();
+    await json(t, "PATCH", "/api/system/preferences", {
+      layout: { preset: "quiet", readouts: true },
+    });
+    expect(await json(t, "GET", "/api/system/preferences")).toMatchObject({
+      layout: { preset: "custom", readouts: true, cast: "line" },
+    });
+  });
+
+  test("changing one switch off a preset says so rather than lying about the name", async () => {
+    const t = await signedIn();
+    await json(t, "PATCH", "/api/system/preferences", { layout: { preset: "instrument" } });
+    await json(t, "PATCH", "/api/system/preferences", { layout: { dek: true } });
+    const after = await json<{ layout: { preset: string; dek: boolean } }>(
+      t,
+      "GET",
+      "/api/system/preferences",
+    );
+    expect(after.layout).toMatchObject({ preset: "custom", dek: true });
+  });
+
+  test("landing back on a preset's exact switches names it again", async () => {
+    const t = await signedIn();
+    await json(t, "PATCH", "/api/system/preferences", { layout: { preset: "instrument" } });
+    await json(t, "PATCH", "/api/system/preferences", { layout: { dek: true } });
+    await json(t, "PATCH", "/api/system/preferences", { layout: { dek: false } });
+    expect(await json(t, "GET", "/api/system/preferences")).toMatchObject({
+      layout: { preset: "instrument" },
+    });
+  });
+
+  test("nonsense is ignored rather than stored", async () => {
+    const t = await signedIn();
+    await json(t, "PATCH", "/api/system/preferences", {
+      layout: { preset: "wingding", cast: "hexagons", attribution: 7 },
+    });
+    expect(await json(t, "GET", "/api/system/preferences")).toMatchObject({
+      layout: { preset: "instrument", cast: "segments", attribution: "stacked" },
     });
   });
 });

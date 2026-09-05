@@ -13,6 +13,8 @@ import type {
   UpdateStatusDto,
 } from "@shared/types.ts";
 import { PROVIDER_KINDS, INJECTION_ROLES, type ProviderKind } from "@shared/types.ts";
+import { LAYOUT_PRESETS } from "@shared/types.ts";
+import type { LayoutDto, LayoutPreset } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { InstructPicker } from "../components/InstructPicker.tsx";
@@ -791,6 +793,129 @@ function UpdateGroup() {
  * Two of those three still belong to features that do not exist, so this is the
  * group with one thing in it rather than the group drawn with nothing behind it.
  */
+/**
+ * The chat layout (SPEC §16, §20 phase 52).
+ *
+ * Three named starting points and the four switches under them, in that order:
+ * a preset is where you begin, not a mode you are locked into. Touching a
+ * switch moves you to "Yours" rather than silently disagreeing with the name
+ * above it.
+ *
+ * Four switches is the whole surface, deliberately. §16's guardrail is that a
+ * matrix of toggles in place of a default is the incumbent's answer and the
+ * thing this app is reacting against.
+ */
+function LayoutSection() {
+  const preferences = usePreferences();
+  const save = useSetPreferences();
+  const layout = preferences.data?.layout ?? { preset: "instrument", ...LAYOUT_PRESETS.instrument };
+
+  function set(patch: Partial<Omit<LayoutDto, "preset">> | { preset: LayoutPreset }) {
+    save.mutate({ layout: patch } as never);
+  }
+
+  function Segmented<T extends string>({
+    label,
+    value,
+    options,
+    onPick,
+    hint,
+  }: {
+    label: string;
+    value: T;
+    options: { value: T; label: string }[];
+    onPick(next: T): void;
+    hint?: string;
+  }) {
+    return (
+      <div className="mb-[14px]">
+        <p className="section-label mb-[6px]">{label}</p>
+        <div className="flex gap-[6px]">
+          {options.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={option.value === value}
+              onClick={() => onPick(option.value)}
+              className={`btn flex-1 ${option.value === value ? "btn-primary" : ""}`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        {hint === undefined ? null : <p className="explain mt-[6px]">{hint}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <p className="section-label mb-[6px]">{strings.settings.layout}</p>
+      <p className="explain mb-[10px]">{strings.settings.layoutHint}</p>
+
+      <div className="mb-[8px] flex gap-[6px]">
+        {(["instrument", "quiet", "broadsheet"] as const).map((preset) => (
+          <button
+            key={preset}
+            type="button"
+            aria-pressed={layout.preset === preset}
+            onClick={() => set({ preset })}
+            className={`btn flex-1 ${layout.preset === preset ? "btn-primary" : ""}`}
+          >
+            {strings.settings.layoutPresets[preset]}
+          </button>
+        ))}
+      </div>
+      <p className="explain mb-[16px]">
+        {strings.settings.layoutPresetHint[layout.preset] ??
+          strings.settings.layoutPresetHint["custom"]}
+      </p>
+
+      <Segmented
+        label={strings.settings.layoutReadouts}
+        value={layout.readouts ? "on" : "off"}
+        options={[
+          { value: "on", label: strings.lore.on },
+          { value: "off", label: strings.lore.off },
+        ]}
+        onPick={(next) => set({ readouts: next === "on" })}
+        hint={strings.settings.layoutReadoutsHint}
+      />
+
+      <Segmented
+        label={strings.settings.layoutCast}
+        value={layout.cast}
+        options={[
+          { value: "segments", label: strings.settings.layoutCastSegments },
+          { value: "line", label: strings.settings.layoutCastLine },
+        ]}
+        onPick={(next) => set({ cast: next })}
+      />
+
+      <Segmented
+        label={strings.settings.layoutDek}
+        value={layout.dek ? "on" : "off"}
+        options={[
+          { value: "on", label: strings.lore.on },
+          { value: "off", label: strings.lore.off },
+        ]}
+        onPick={(next) => set({ dek: next === "on" })}
+        hint={strings.settings.layoutDekHint}
+      />
+
+      <Segmented
+        label={strings.settings.layoutAttribution}
+        value={layout.attribution}
+        options={[
+          { value: "stacked", label: strings.settings.layoutAttributionStacked },
+          { value: "inline", label: strings.settings.layoutAttributionInline },
+        ]}
+        onPick={(next) => set({ attribution: next })}
+      />
+    </>
+  );
+}
+
 function ReadingSection() {
   const preferences = usePreferences();
   const save = useSetPreferences();
@@ -804,6 +929,8 @@ function ReadingSection() {
       </p>
 
       <ThemeSection />
+
+      <LayoutSection />
 
       <p className="section-label mb-[6px]">{strings.settings.chime}</p>
       <div className="flex gap-[6px]">

@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api.ts";
 import type { UpdateStatusDto } from "@shared/types.ts";
+import type { LayoutDto } from "@shared/types.ts";
+import { LAYOUT_PRESETS } from "@shared/types.ts";
 import type {
   AppendMessageRequest,
   AuthorDto,
@@ -1866,6 +1868,8 @@ export function useTestWebhook() {
 /* ------------------------------------------------------------------ */
 
 export interface PreferencesDto {
+  /** How the chat screen is laid out (§20 phase 52). */
+  layout: LayoutDto;
   completionChime: boolean;
 }
 
@@ -1875,6 +1879,21 @@ export function usePreferences() {
     queryFn: () => api.get<PreferencesDto>("/system/preferences"),
     staleTime: 60_000,
   });
+}
+
+/**
+ * The chat layout, with Instrument standing in until preferences arrive
+ * (§20 phase 52).
+ *
+ * A default here rather than a loading state: the chat screen renders on the
+ * first frame and a layout that flips once the request lands would be worse
+ * than one that is briefly the default everyone starts on anyway.
+ */
+export function useLayout(): LayoutDto {
+  const preferences = usePreferences();
+  return (
+    preferences.data?.layout ?? { preset: "instrument", ...LAYOUT_PRESETS.instrument }
+  );
 }
 
 export function useSetPreferences() {

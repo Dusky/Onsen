@@ -2472,6 +2472,25 @@ become presets over the same switches rather than three codebases — the shape
 underneath stays editable. What must not happen is the incumbent's answer: a
 matrix of toggles in place of a default. The default is what the app is.
 
+**The four switches** (§20 phase 52), stored server-side like every other
+preference because there is no browser storage and a layout that lived in one
+browser would be the wrong shape anyway:
+
+| Switch | Instrument | Quiet | Broadsheet |
+| --- | --- | --- | --- |
+| `readouts` — the subsystem row | on | off | off |
+| `cast` — the control above the composer | `segments` | `line` | `line` |
+| `dek` — the scene's scenario under the title | off | off | **on** |
+| `attribution` — where the speaker's name sits | `stacked` | `stacked` | `inline` |
+
+A preset is a starting point, not a mode: sending a name sets all four, sending
+a switch alongside it wins, and touching one afterwards moves the label to
+**Yours** rather than leaving a name that disagrees with the switches under it.
+`presetOf` is the single answer to "which one is this", server-side, so the
+client is never told a name the values do not support.
+
+Four is the whole surface, deliberately. The line above is why.
+
 **What Instrument added, concretely:**
 
 - **The deck.** Above the composer: who speaks next with the reason printed
@@ -2977,6 +2996,8 @@ Each phase ends in a working, usable application.
     a hue per subsystem. See §16.
 51. **Empty states** — every screen that can be empty says what it is for and
     carries the action that ends it. See §16.
+52. **Layout presets** — Quiet and Broadsheet become four switches over
+    Instrument rather than three screens. See §16.
 
 Settled while building phase 15.
 

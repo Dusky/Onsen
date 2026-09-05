@@ -1,4 +1,5 @@
 import type {
+  CastDisplay,
   GuideDto,
   NextSpeakerDto,
   SceneMemberDto,
@@ -38,6 +39,10 @@ interface DeckProps {
   strategy: TurnStrategy;
   /** True when the classifier chooses at send time, so there is nobody to mark. */
   decidesOnSend: boolean;
+  /** Whether the subsystem row is shown at all (§20 phase 52). */
+  readouts: boolean;
+  /** Segments, or one line of prose naming who answers. */
+  castDisplay: CastDisplay;
   guides: GuideDto[];
   summaryCount: number;
   mediaOn: boolean;
@@ -89,6 +94,8 @@ export function Deck({
   onScope,
   strategy,
   decidesOnSend,
+  readouts,
+  castDisplay,
   guides,
   summaryCount,
   mediaOn,
@@ -104,10 +111,35 @@ export function Deck({
   // that secretly means something else.
   const autoOffered = canBeat && strategy === "classifier";
 
+  /*
+   * Why this speaker, printed verbatim. The design is emphatic that it is
+   * always shown — a decision nobody can read is the arbitrary dice roll this
+   * replaces — so it is computed once here and rendered by whichever cast
+   * control is on.
+   */
+  const reason =
+    canBeat && scope === "beat"
+      ? strings.chat.scopeBeatHint(inPlay.map((member) => member.name).join(", "))
+      : scope === "auto"
+        ? strings.chat.scopeAutoHint
+        : nextSpeaker === null
+          ? ""
+          : decidesOnSend
+            ? nextSpeaker.reason
+            : nextSpeaker.source === "user"
+              ? strings.chat.yourPickOverrides
+              : nextSpeaker.reason;
+
   return (
     <div className="flex flex-col gap-[10px]">
       <div className="flex flex-col gap-[6px]">
-        <div className="flex items-baseline justify-between gap-[10px]">
+        {/* The header row states the name and the reason separately, which is
+            what the segments below need. The one-line control says both in a
+            sentence, so showing both is saying it twice. */}
+        <div
+          className="flex items-baseline justify-between gap-[10px]"
+          hidden={castDisplay === "line"}
+        >
           <span
             className="chrome text-[10.5px] tracking-[0.14em] uppercase"
             style={{ color: "var(--onsen-color-red-text)" }}
@@ -119,21 +151,11 @@ export function Deck({
               classifier that has not run yet has no name to print, and
               printing the fallback would be a guess. */}
           <span className="chrome min-w-0 flex-1 truncate text-right text-[10.5px] text-ink-dim">
-            {canBeat && scope === "beat"
-              ? strings.chat.scopeBeatHint(inPlay.map((member) => member.name).join(", "))
-              : scope === "auto"
-                ? strings.chat.scopeAutoHint
-                : nextSpeaker === null
-                  ? ""
-                  : decidesOnSend
-                    ? nextSpeaker.reason
-                    : nextSpeaker.source === "user"
-                      ? strings.chat.yourPickOverrides
-                      : nextSpeaker.reason}
+            {reason}
           </span>
         </div>
 
-        <div className="flex border border-rule-strong">
+        <div className="flex border border-rule-strong" hidden={castDisplay !== "segments"}>
           {inPlay.map((member) => {
             const cued = scope === "spotlight" && member.characterId === cuedId;
             return (
@@ -196,12 +218,42 @@ export function Deck({
         </div>
       </div>
 
-      <Readouts
-        guides={guides}
-        summaryCount={summaryCount}
-        mediaOn={mediaOn}
-        onOpen={onOpen}
-      />
+      {/*
+       * Quiet's cast control: one line of prose rather than a row of
+       * segments. The name that answers is a button, because "change" has to
+       * lead somewhere — it cycles to the next in play, which on a cast of
+       * two or three is the whole decision.
+       */}
+      {castDisplay === "line" && inPlay.length > 0 ? (
+        <p className="explain">
+          {strings.chat.answersNext(
+            scope === "beat" ? strings.chat.scopeBeat : (nextSpeaker?.name ?? inPlay[0]!.name),
+            reason,
+          )}{" "}
+          <button
+            type="button"
+            className="underline underline-offset-2"
+            style={{ color: "var(--onsen-color-red)" }}
+            onClick={() => {
+              const at = inPlay.findIndex((m) => m.characterId === cuedId);
+              const next = inPlay[(at + 1) % inPlay.length]!;
+              onScope("spotlight");
+              onCue(next.characterId);
+            }}
+          >
+            {strings.chat.changeSpeaker}
+          </button>
+        </p>
+      ) : null}
+
+      {readouts ? (
+        <Readouts
+          guides={guides}
+          summaryCount={summaryCount}
+          mediaOn={mediaOn}
+          onOpen={onOpen}
+        />
+      ) : null}
     </div>
   );
 }
