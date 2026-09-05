@@ -1203,6 +1203,8 @@ export const strings = {
     personaDeleteConfirm: "Delete this persona? Roleplays using it fall back to none.",
     personaAdd: "New persona",
     /* The persona list became a screen in phase 55 (§16 §Density rule 3). */
+    /** Provenance for an imported roleplay (§20 phase 58). */
+    importedFrom: (file: string) => `Imported from ${file}`,
     personaKicker: "You",
     /** The screen's own title; `personaEdit` stays the button that reaches it. */
     personaTitle: "Personas",

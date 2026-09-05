@@ -97,6 +97,21 @@ mode, `busy_timeout` set. Integer PKs internally, ULIDs externally. Every
 `migrations/index.ts` — `test/migrations.test.ts` fails otherwise, because a
 migration that exists on disk but never runs is a silent, expensive divergence.
 
+**Storage nothing reads is a defect, and it is measured (phase 58).**
+`test/dead-columns.test.ts` sweeps every column of a migrated database and
+fails on two shapes: a column mentioned nowhere outside its own migration, and
+a column written but never read. Four phases running had each found one by
+accident — `presets.is_default`, `messages.generation_meta`,
+`presets.prompt_order`, `personas.avatar_path` — the oldest dating to migration
+0001, and every one of them was a feature the app already paid for and could
+not use. Adding a column means adding the read in the same phase, or an entry
+in that test's `DELIBERATE` map saying why not.
+
+The check matches on column *name* rather than `table.column`, because that is
+what a text search can honestly do: `avatar_path` is on two tables and one
+table's use hides the other's. It under-reports on shared names deliberately —
+a guard that cried wolf on a live column would be switched off within a week.
+
 **Schema discipline, settled while building phase 31.** Two rules that keep
 STRICT migrations cheap to evolve:
 

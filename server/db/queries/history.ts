@@ -37,6 +37,14 @@ export interface SceneRow {
   id: number;
   ulid: string;
   title: string;
+  /**
+   * The SillyTavern file this scene was imported from (§18, phase 44).
+   *
+   * Written since phase 44 and read by nothing until phase 58's sweep found
+   * it: its sibling `import_hash` is the dedupe key and *is* read, so the pair
+   * looked alive from the outside. Null for a roleplay started here.
+   */
+  import_source: string | null;
   preset_id: number | null;
   connection_profile_id: number | null;
   /** Null selects single-character mode (SPEC §3). */
@@ -283,6 +291,7 @@ export function toSceneDto(
     lastPromptTokens: extras.lastPromptTokens,
     summaryCount: extras.summaryCount,
     contextSize: extras.contextSize,
+    importSource: row.import_source,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

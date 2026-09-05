@@ -3149,6 +3149,10 @@ Each phase ends in a working, usable application.
     shape switchable per side. Four of the five actions asked for already
     existed as turn commands and were unreachable behind a desktop-only hover;
     the fifth, swipe history, had no command at all. See §16.
+58. **The dead-column sweep** — the pattern behind phases 54–57 measured rather
+    than stumbled on. `test/dead-columns.test.ts` reads all 58 tables and 587
+    columns out of a migrated database and fails on a column mentioned only by
+    its migration, or written and never read. See §2 and `HANDOFF.md`.
 
 Settled while building phase 15.
 

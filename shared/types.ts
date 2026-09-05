@@ -1062,6 +1062,15 @@ export interface AuthorMemoryDto {
 export interface SceneDto {
   id: string;
   title: string;
+  /**
+   * The SillyTavern file this was imported from, or null (§18, §20 phase 58).
+   *
+   * Written since phase 44 and carried by nothing until the dead-column sweep
+   * found it. Shown on scene setup: during a migration the useful question is
+   * "which file is this", and the re-run flow phase 44 was built for is exactly
+   * when it gets asked.
+   */
+  importSource: string | null;
   presetId: string | null;
   connectionProfileId: string | null;
   /** The profile's name, so the status bar can say which model answers (§43). */

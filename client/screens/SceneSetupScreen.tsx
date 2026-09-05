@@ -233,6 +233,17 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
           <div className="min-w-0 flex-1">
             <p className="screen-kicker">{strings.sceneSetup.kicker}</p>
             <h1 className="truncate text-[19px] font-medium tracking-[-0.01em]">{scene.title}</h1>
+            {/* Where this came from, for a roleplay that was imported (§20
+                phase 58). Written since phase 44 and read by nothing until the
+                dead-column sweep; the re-run-the-import flow phase 44 exists
+                for is exactly when "which file is this" gets asked. */}
+            {scene.importSource === null ? null : (
+              <p className="meta mt-[3px] truncate" title={scene.importSource}>
+                {strings.sceneSetup.importedFrom(
+                  scene.importSource.split("/").pop() ?? scene.importSource,
+                )}
+              </p>
+            )}
           </div>
         </div>
       </header>

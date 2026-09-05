@@ -4968,3 +4968,65 @@ picture reveals the letter underneath.
 
 - **The reader's avatar** is an initial. `personas.avatar_path` exists and
   nothing reads or writes it (`GAPS.md` §3); wiring it is that row's work.
+
+## Phase 58 — The dead-column sweep
+
+Four phases running had each turned up storage nothing reads, and each one was
+older than the last:
+
+| Phase | Found | Dead since |
+| --- | --- | --- |
+| 54 | `presets.is_default` written once at install, no route to move it | install |
+| 55 | `messages.generation_meta` written every turn, on no DTO | phase 4 |
+| 56 | `presets.prompt_order` never read *or* written | migration 0001 |
+| 57 | `personas.avatar_path` still unread | phase 7 |
+
+Every one was found by accident, while working on something next to it. This
+phase measures the whole schema instead — 58 tables, 587 columns, read out of a
+migrated database rather than parsed from the migration text, so what is checked
+is what actually exists.
+
+### The two shapes
+
+- **Unmentioned**: the column name appears nowhere outside its own migration.
+  Nothing can read it, because nothing knows it is there. This is
+  `prompt_order`.
+- **Write-only**: it is written, and never named in a read — no `row.x`, no
+  field on a row type, no explicit `SELECT`. This is `generation_meta`, which
+  the first check cannot see, because the column *is* mentioned, in the `UPDATE`
+  that writes it.
+
+### What it found on its first run
+
+**One: `scenes.import_source`.** Written since phase 44 beside `import_hash`,
+which *is* read — it is the dedupe key that makes re-running a SillyTavern
+import safe. The pair looked alive from outside because half of it was. The
+other half, the name of the file a roleplay came from, reached nothing.
+
+Surfaced rather than excused: an imported roleplay's setup screen now says which
+file it came from. The re-run flow phase 44 was built for — import, fix the
+missing cards, import again — is exactly when "which file is this one" gets
+asked.
+
+### Honest limits, stated in the test
+
+It matches on column **name**, not `table.column`, because that is what a text
+search can do without lying: `avatar_path` is on `characters` and on `personas`,
+and the characters' use makes the personas' look alive. So it under-reports on
+shared names. That is the right direction to be wrong in — a guard that cried
+wolf on a live column would be switched off within a week, and one that misses
+some still catches the `prompt_order` class, which is the expensive one.
+
+### Surprises
+
+**The looser check found nothing and the stricter one found the bug.** The
+unmentioned sweep came back clean across all 587 columns, which was tempting to
+read as "the schema is fine". It only means distinctive dead names are gone; the
+write-only check, added second and harder to write, is the one that earned the
+phase. Both were verified by breaking them: reverting `import_source` to its
+found state, and adding a column mentioned nowhere.
+
+**`personas.avatar_path` is not caught**, and it is the one already known to be
+dead. `characters.avatar_path` is read constantly and the names are identical.
+It is recorded here rather than papered over with a `DELIBERATE` entry, which
+would have implied the guard saw it.
