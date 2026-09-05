@@ -1,5 +1,11 @@
 import { useState } from "react";
-import type { AnnotationDto, MessageDto, MessageSegmentDto } from "@shared/types.ts";
+import type {
+  AnnotationDto,
+  AvatarShape,
+  MessageDto,
+  MessageSegmentDto,
+  TurnStyle,
+} from "@shared/types.ts";
 import { useSwipe } from "../lib/gestures.ts";
 import { strings } from "../strings.ts";
 import { MessageMedia } from "./MessageMedia.tsx";
@@ -26,6 +32,13 @@ interface MessageBlockProps {
    * rather than as a transcript.
    */
   attribution?: "stacked" | "inline";
+  /**
+   * How this side's turns are shaped (§20 phase 57). Passed in rather than read
+   * from preferences so the component stays a function of its props — the same
+   * reasoning `attribution` was given in phase 52.
+   */
+  style?: TurnStyle;
+  avatarShape?: AvatarShape;
   onReroll(): void;
   onOpenVersions(): void;
   onLongPress(): void;
@@ -48,13 +61,23 @@ interface MessageBlockProps {
    * Reroll, branch and edit at the end of the attribution rule, revealed on
    * hover (design `4a`).
    *
-   * **The only hover affordance in the system, and it exists only on desktop.**
-   * Every mobile equivalent is a tap, a swipe or a long-press, and those still
-   * work here — this is a shortcut for a pointer, not a replacement. Passed in
-   * rather than read from a breakpoint so the component stays a function of its
-   * props: absent means no hover row, on any width.
+   * Always rendered, on every width (§20 phase 57). Until then this was a hover
+   * row of three, passed only when `isDesktop` — so on a phone the other twelve
+   * turn commands were reachable solely by a long-press nobody is told about.
+   * §16 §Density rule 3: controls live in the row.
    */
-  hoverActions?: { onBranch(): void; onEdit(): void };
+  actions: TurnActions;
+}
+
+/** What a turn can have done to it, in the order the row shows them. */
+export interface TurnActions {
+  onVersions(): void;
+  onBranch(): void;
+  onEdit(): void;
+  onCopy(): void;
+  onHide(): void;
+  /** The palette, opened on this turn — where all fifteen commands live. */
+  onMore(): void;
 }
 
 /**
@@ -314,11 +337,130 @@ function Stats({ message, ordinal }: { message: MessageDto; ordinal: number | un
   );
 }
 
+/**
+ * Who is speaking, as a picture (§20 phase 57).
+ *
+ * Characters have one at `/api/characters/:id/avatar`, the URL the cast rail
+ * has used since phase 50. The reader has none: `personas.avatar_path` exists
+ * in the schema and nothing reads or writes it (`docs/GAPS.md` §3), so their
+ * side falls back to an initial rather than to a broken image.
+ */
+function Avatar({
+  message,
+  speakerName,
+  shape,
+}: {
+  message: MessageDto;
+  speakerName: string;
+  shape: AvatarShape;
+}) {
+  const url = message.characterId === null ? null : `/api/characters/${message.characterId}/avatar`;
+  return (
+    <span
+      aria-hidden="true"
+      className="flex h-[26px] w-[26px] flex-none items-center justify-center bg-bg-raised bg-cover bg-center text-[11px] text-ink-dim"
+      style={{
+        borderRadius: shape === "circle" ? "50%" : "var(--onsen-radius)",
+        ...(url === null ? {} : { backgroundImage: `url(${url})` }),
+      }}
+    >
+      {/* The initial is always rendered and the picture sits on top of it, so a
+          character with no avatar — `hasAvatar: false`, a 404 from the endpoint
+          — shows a letter rather than an empty disc. `MessageDto` does not
+          carry `hasAvatar`, and a background image that fails to load simply
+          reveals what is underneath, which is the behaviour wanted here. */}
+      {speakerName.slice(0, 1)}
+    </span>
+  );
+}
+
+/**
+ * What can be done to this turn, on the turn (SPEC §16 §Density rule 3,
+ * §20 phase 57).
+ *
+ * There were fifteen turn-scoped commands and three of them were on screen —
+ * behind a hover, passed only when the window was desktop-width. On a phone the
+ * other twelve were reachable by a long-press nobody is told about, which is
+ * the same defect phase 54 removed from the roleplay list one level up.
+ *
+ * Glyphs, not an icon library: nothing in this client ships SVG icons and the
+ * chrome is mono throughout. Every button carries an accessible name and a
+ * `title`, so the row is readable rather than a guessing game.
+ *
+ * `…` opens the palette on this turn, which is where all fifteen live — so a
+ * command added there can never go missing from here.
+ */
+function TurnRow({
+  message,
+  actions,
+  onReroll,
+}: {
+  message: MessageDto;
+  actions: TurnActions;
+  onReroll(): void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const items: { glyph: string; name: string; run(): void; on?: boolean }[] = [
+    { glyph: strings.chat.turnReroll, name: strings.chat.reroll, run: onReroll },
+    ...(message.siblingCount > 1
+      ? [
+          {
+            glyph: strings.chat.turnVersions,
+            name: strings.chat.versions,
+            run: actions.onVersions,
+          },
+        ]
+      : []),
+    { glyph: strings.chat.turnBranch, name: strings.chat.branch, run: actions.onBranch },
+    { glyph: strings.chat.turnEdit, name: strings.chat.edit, run: actions.onEdit },
+    {
+      glyph: strings.chat.turnCopy,
+      name: copied ? strings.chat.turnCopied : strings.chat.copy,
+      run: () => {
+        actions.onCopy();
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1200);
+      },
+    },
+    {
+      glyph: message.isHidden ? strings.chat.turnHide : strings.chat.turnShow,
+      name: message.isHidden ? strings.chat.unhide : strings.chat.hideFromPrompt,
+      run: actions.onHide,
+      // Red while it reaches the author, hollow while it does not: the same
+      // live/not-live pair the prompt manager uses.
+      on: !message.isHidden,
+    },
+    { glyph: strings.chat.turnMore, name: strings.chat.more, run: actions.onMore },
+  ];
+
+  return (
+    <span className="turn-actions order-last ml-auto flex flex-none items-center">
+      {items.map((item) => (
+        <button
+          key={item.name}
+          type="button"
+          onClick={item.run}
+          aria-label={item.name}
+          title={item.name}
+          className="chrome flex items-center justify-center text-[13px] text-ink-muted hover:text-ink-label"
+          style={item.on === false ? { color: "var(--onsen-color-text-dim)" } : undefined}
+        >
+          {item.glyph}
+        </button>
+      ))}
+    </span>
+  );
+}
+
 export function MessageBlock({
   message,
+  actions,
   ordinal,
   speakerName,
   attribution = "stacked",
+  style: turnStyle = { bubble: false, avatar: false },
+  avatarShape = "circle",
   onReroll,
   onOpenVersions,
   onLongPress,
@@ -328,7 +470,6 @@ export function MessageBlock({
   recasting,
   onRevert,
   streamingReasoning,
-  hoverActions,
 }: MessageBlockProps) {
   const swipe = useSwipe({
     // Opposite directions by design (design handoff, Gestures).
@@ -347,7 +488,9 @@ export function MessageBlock({
   return (
     <article
       {...swipe}
-      className="turn group select-none"
+      className={`turn group select-none${turnStyle.bubble ? " turn-bubble" : ""}${
+        message.isHidden ? " turn-hidden" : ""
+      }`}
       // Instrument's spine (§20 phase 50): a rail belonging to the turn rather
       // than a rule between two of them. The user's is quieter than a
       // character's — their line is the prompt, not the performance.
@@ -376,7 +519,16 @@ export function MessageBlock({
           : undefined
       }
     >
-      <header className="mb-[10px] flex items-center gap-[10px]" hidden={attribution === "inline"}>
+      {/* Wraps: on a phone the name, six actions and the stats do not fit on
+          one line, and without this the stats were clipped at the edge. With
+          room it stays one row; without, the actions take a second. */}
+      <header
+        className="mb-[10px] flex flex-wrap items-center gap-x-[10px] gap-y-[4px]"
+        hidden={attribution === "inline"}
+      >
+        {turnStyle.avatar ? (
+          <Avatar message={message} speakerName={speakerName} shape={avatarShape} />
+        ) : null}
         <span
           className="chrome shrink-0 text-[11.5px] font-semibold"
           style={{ color: isUser ? "var(--onsen-color-text-muted)" : "var(--onsen-color-text-label)" }}
@@ -390,26 +542,12 @@ export function MessageBlock({
             painted over rather than laid out beside, since in flow they would
             reserve their width whether or not anyone is hovering — but it no
             longer draws a line. */}
-        <span className="relative h-px flex-1">
-          {hoverActions === undefined ? null : (
-            <span className="absolute top-1/2 right-0 flex -translate-y-1/2 items-center gap-[7px] bg-bg pl-[10px] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-              {[
-                { label: strings.chat.reroll, run: onReroll },
-                { label: strings.chat.hoverBranch, run: hoverActions.onBranch },
-                { label: strings.chat.edit, run: hoverActions.onEdit },
-              ].map((action) => (
-                <button
-                  key={action.label}
-                  type="button"
-                  onClick={action.run}
-                  className="chrome text-[9.5px] text-ink-dim hover:text-ink-label"
-                >
-                  {action.label}
-                </button>
-              ))}
-            </span>
-          )}
-        </span>
+        <span className="h-px flex-1" />
+        <TurnRow
+          message={message}
+          actions={actions}
+          onReroll={onReroll}
+        />
         <Stats message={message} ordinal={ordinal} />
         {message.siblingCount > 1 ? (
           <button

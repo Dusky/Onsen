@@ -394,6 +394,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       "inspect": () => turn && setInspecting(turn),
       "reroll": () => void (turn && reroll(turn)),
       "edit": () => turn && setEditing(turn.id),
+      "versions": () => turn && setVersionsFor(turn),
       "branch": () => turn && setLeaf.mutate({ messageId: turn.id, descend: false }),
       "mark": () => turn && setMarking(turn),
       "hide": () => turn && edit.mutate({ messageId: turn.id, isHidden: !turn.isHidden }),
@@ -834,20 +835,25 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         ordinal={index + 1}
         speakerName={speakerFor(message, authorName)}
         attribution={layout.attribution}
+        style={message.authorType === "user" ? layout.reader : layout.author}
+        avatarShape={layout.avatarShape}
         onReroll={() => void reroll(message)}
         onOpenVersions={() => setVersionsFor(message)}
         onLongPress={() => setActing(message)}
         selected={selectedId === message.id}
         onSelect={() => setSelectedId(message.id)}
         onRevert={(note) => revert.mutate(note.id)}
-        {...(isDesktop
-          ? {
-              hoverActions: {
-                onBranch: () => setLeaf.mutate({ messageId: message.id, descend: false }),
-                onEdit: () => setEditing(message.id),
-              },
-            }
-          : {})}
+        // Every one goes through `runCommand`, the same path the palette takes,
+        // so the row and the sheet can never disagree about what an action does
+        // (§20 phase 57). No breakpoint gate: it is on every width.
+        actions={{
+          onVersions: () => runCommand("versions", message),
+          onBranch: () => runCommand("branch", message),
+          onEdit: () => runCommand("edit", message),
+          onCopy: () => runCommand("copy", message),
+          onHide: () => runCommand("hide", message),
+          onMore: () => setActing(message),
+        }}
         {...(recastInFlight?.messageId === message.id
           ? {
               recasting: { ordinal: recastInFlight.ordinal, text: recastInFlight.text },

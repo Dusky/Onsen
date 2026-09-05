@@ -4897,3 +4897,74 @@ waits on a clock rather than on the id it is looking for will keep doing this.
   work, and guessing would be worse than the honest gap.
 - **Per-scene overrides of the order.** The order is the preset's; a roleplay
   that wants a different one changes preset.
+
+## Phase 57 — The turn
+
+Asked for more per-message actions — *exclude from prompts, view swipe history,
+branch, copy, edit* — and more ways to format a post.
+
+### Four of the five already existed
+
+`edit`, `branch`, `hide` and `copy` were turn-scoped commands in
+`client/lib/commands.ts`, alongside eleven others: fifteen in all. `hide`
+genuinely worked; the builder has dropped hidden messages at
+`server/prompt/history.ts:125` throughout.
+
+They were unreachable. `MessageBlock` rendered three, faded in on hover, and
+`ChatScreen` passed them **only when `isDesktop`**. On a phone the other twelve
+were reachable by a long-press nobody is told about — the defect phase 54
+removed from the roleplay list, one level down, and now forbidden outright by
+§16 §Density rule 3.
+
+Only swipe history was genuinely missing a route: no `versions` command, and
+the carousel reachable by a swipe or by tapping a counter that only appears once
+siblings exist.
+
+### What was built
+
+- **An action row on every turn, every width.** Reroll, versions (with
+  siblings), branch, edit, copy, hide, and `…` for the rest. 32px touch / 24px
+  pointer. Every button runs through `runCommand`, the same path the palette
+  takes, so the row and the sheet cannot drift apart.
+- **`versions` is a command**, so swipe history is in the palette and on the
+  turn rather than only under a gesture.
+- **Shape, per side.** `LayoutDto` gains `avatarShape` and a `TurnStyle` each
+  for `reader` and `author`: bubble or flat, avatar or not. Instrument ships
+  bubbles for your turns and flat prose for the story, which is the case one
+  global switch could never express.
+- **A hidden turn looks hidden** — dimmed, with its dot hollow. It still
+  renders, which is the point; the state has to be legible.
+- **`test/density.test.ts`** gains two: no turn-scoped command is stranded from
+  `runCommand`, and the action row is not gated on a breakpoint.
+
+### Surprises
+
+**A width probe cannot detect a missing glyph in a monospace font.** The branch
+glyph came out as noise, so the candidates were measured by comparing rendered
+widths against the notdef box — which reports *everything* as missing, because
+in a mono font every glyph has the same advance. Re-done by drawing each to a
+canvas and comparing pixels: all of them render, and `⑂` was simply illegible at
+12px through a fallback face. It became `↳`.
+
+**A text search said `hide` was broken when it was not.** Checking whether a
+hidden turn had left the prompt by searching the assembled text for its opening
+words returned true — because the same sentence was also in the *guides* block.
+`PromptDebugInfo.historyIncluded` carries message ids and answers the question
+exactly; the loose match answered a different one. Third time in three phases
+that a substring probe has produced a false reading.
+
+**The guard read its own explanation as the defect.** The new assertion forbids
+`isDesktop` in `MessageBlock`, and the file's comment explaining the phase-57
+fix contains that word. Comments are stripped first now, as
+`reachable-fields.test.ts` already does — otherwise the rule could not be
+written about in the file it governs.
+
+**An avatar that 404s is an empty disc.** Characters here have no picture and
+`MessageDto` does not carry `hasAvatar`, so the first version showed blank
+circles. The initial is now always rendered with the image on top: a missing
+picture reveals the letter underneath.
+
+### Deliberately deferred
+
+- **The reader's avatar** is an initial. `personas.avatar_path` exists and
+  nothing reads or writes it (`GAPS.md` §3); wiring it is that row's work.

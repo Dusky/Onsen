@@ -852,7 +852,10 @@ function LayoutSection() {
   }) {
     return (
       <div className="mb-[14px]">
-        <p className="section-label mb-[6px]">{label}</p>
+        {/* An empty label is a deliberate second row under one heading (the
+            per-side avatar switch), not a missing string — and an empty
+            heading with a margin is just a gap. */}
+        {label === "" ? null : <p className="section-label mb-[6px]">{label}</p>}
         <div className="flex gap-[6px]">
           {options.map((option) => (
             <button
@@ -931,6 +934,48 @@ function LayoutSection() {
           { value: "inline", label: strings.settings.layoutAttributionInline },
         ]}
         onPick={(next) => set({ attribution: next })}
+      />
+
+      {/* Shape, per side (§20 phase 57). Two switches each rather than one
+          global pair, because the reader's turns and the author's rarely want
+          the same treatment — bubbles for what you typed, flat prose for the
+          story is the common case, and it is the default Instrument ships. */}
+      {(["reader", "author"] as const).map((which) => (
+        <div key={which}>
+          <Segmented
+            label={
+              which === "reader"
+                ? strings.settings.layoutShapeReader
+                : strings.settings.layoutShapeAuthor
+            }
+            value={layout[which].bubble ? "bubble" : "flat"}
+            options={[
+              { value: "flat", label: strings.settings.layoutFlat },
+              { value: "bubble", label: strings.settings.layoutBubble },
+            ]}
+            onPick={(next) => set({ [which]: { ...layout[which], bubble: next === "bubble" } })}
+          />
+          <div className="-mt-[8px]" />
+          <Segmented
+            label=""
+            value={layout[which].avatar ? "on" : "off"}
+            options={[
+              { value: "off", label: strings.settings.layoutAvatarOff },
+              { value: "on", label: strings.settings.layoutAvatarOn },
+            ]}
+            onPick={(next) => set({ [which]: { ...layout[which], avatar: next === "on" } })}
+          />
+        </div>
+      ))}
+
+      <Segmented
+        label={strings.settings.layoutAvatarShape}
+        value={layout.avatarShape}
+        options={[
+          { value: "circle", label: strings.settings.layoutAvatarCircle },
+          { value: "square", label: strings.settings.layoutAvatarSquare },
+        ]}
+        onPick={(next) => set({ avatarShape: next })}
       />
     </>
   );

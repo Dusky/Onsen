@@ -4,7 +4,7 @@ import { requireAuth } from "../middleware/session.ts";
 import { applyUpdate, checkForUpdates, readUpdateStatus } from "../updates.ts";
 import { getSetting, setSetting } from "../db/queries/settings.ts";
 import { LAYOUT_PRESETS, READING_DEFAULTS, clampReading, presetOf } from "@shared/types.ts";
-import type { LayoutDto, LayoutPreset, ReadingDto } from "@shared/types.ts";
+import type { LayoutDto, LayoutPreset, ReadingDto, TurnStyle } from "@shared/types.ts";
 
 /**
  * System endpoints (SPEC §17). The updater's logic lives in `server/updates.ts`;
@@ -47,6 +47,13 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
    * never told a preset name that disagrees with the switches under it.
    */
   function layout(): LayoutDto {
+    /** A per-side switch, defaulting to Instrument's rather than to false. */
+    const side = (which: "reader" | "author"): TurnStyle => ({
+      bubble: getSetting(ctx.db, `layout_${which}_bubble`) === null
+        ? LAYOUT_PRESETS.instrument[which].bubble
+        : getSetting(ctx.db, `layout_${which}_bubble`) === "1",
+      avatar: getSetting(ctx.db, `layout_${which}_avatar`) === "1",
+    });
     const values = {
       readouts: getSetting(ctx.db, "layout_readouts") !== "0",
       cast: getSetting(ctx.db, "layout_cast") === "line" ? ("line" as const) : ("segments" as const),
@@ -55,6 +62,12 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
         getSetting(ctx.db, "layout_attribution") === "inline"
           ? ("inline" as const)
           : ("stacked" as const),
+      avatarShape:
+        getSetting(ctx.db, "layout_avatar_shape") === "square"
+          ? ("square" as const)
+          : ("circle" as const),
+      reader: side("reader"),
+      author: side("author"),
     };
     return { preset: presetOf(values), ...values };
   }
@@ -94,6 +107,11 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
         setSetting(ctx.db, "layout_cast", values.cast);
         setSetting(ctx.db, "layout_dek", values.dek ? "1" : "0");
         setSetting(ctx.db, "layout_attribution", values.attribution);
+        setSetting(ctx.db, "layout_avatar_shape", values.avatarShape);
+        for (const which of ["reader", "author"] as const) {
+          setSetting(ctx.db, `layout_${which}_bubble`, values[which].bubble ? "1" : "0");
+          setSetting(ctx.db, `layout_${which}_avatar`, values[which].avatar ? "1" : "0");
+        }
       }
       if (typeof patch["readouts"] === "boolean") {
         setSetting(ctx.db, "layout_readouts", patch["readouts"] ? "1" : "0");
@@ -106,6 +124,21 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
       }
       if (patch["attribution"] === "stacked" || patch["attribution"] === "inline") {
         setSetting(ctx.db, "layout_attribution", patch["attribution"]);
+      }
+      if (patch["avatarShape"] === "circle" || patch["avatarShape"] === "square") {
+        setSetting(ctx.db, "layout_avatar_shape", patch["avatarShape"]);
+      }
+      // Each side is merged onto what is stored, so a request carrying only
+      // `reader.avatar` does not silently switch that side's bubble off.
+      for (const which of ["reader", "author"] as const) {
+        const asked = patch[which];
+        if (typeof asked !== "object" || asked === null) continue;
+        const fields = asked as Record<string, unknown>;
+        for (const field of ["bubble", "avatar"] as const) {
+          if (typeof fields[field] === "boolean") {
+            setSetting(ctx.db, `layout_${which}_${field}`, fields[field] ? "1" : "0");
+          }
+        }
       }
     }
 

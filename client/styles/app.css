@@ -388,6 +388,48 @@
   }
 
   /*
+   * The turn's action row (§20 phase 57).
+   *
+   * 32px under a thumb, 24px under a pointer — §16 rule 4, and below the 44px
+   * floor deliberately: these sit in a row of six or seven, they are not the
+   * primary target on the turn (the message body is), and a 44px square each
+   * would be a 300px toolbar on every message. The accessibility note in
+   * DESIGN.md allows a pointer down to 28px; this is the one place that goes
+   * under it on touch, and the glyphs are spaced rather than packed to pay
+   * for it.
+   */
+  .turn-actions > button {
+    width: 32px;
+    height: 32px;
+  }
+
+  @media (pointer: fine) {
+    .turn-actions > button {
+      width: 24px;
+      height: 24px;
+    }
+  }
+
+  /*
+   * A bubble is a ground behind a turn, not a card (§20 phase 57).
+   *
+   * Radius and border width come from the theme, as `.surface` takes them, so a
+   * flat theme gets a flat bubble rather than a rounded one it never asked for.
+   */
+  .turn-bubble {
+    background: var(--onsen-color-bg-raised);
+    border: var(--onsen-border-width) solid var(--onsen-color-rule);
+    border-radius: var(--onsen-radius);
+    padding: 10px 14px;
+  }
+
+  /* A turn the author will not see. It still renders — that is the point of
+     being able to read it — so it says so rather than just going quiet. */
+  .turn-hidden {
+    opacity: 0.55;
+  }
+
+  /*
    * The track is drawn rather than left to the browser: `accent-color` alone
    * colours the fill and the thumb and leaves the rest of the bar the UA's
    * white, which on a dark ground is the brightest thing on the screen.

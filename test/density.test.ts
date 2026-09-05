@@ -84,3 +84,47 @@ describe("rows scale with the input device", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe("every turn command is reachable", () => {
+  /**
+   * The defect this phase removed: fifteen turn-scoped commands, three of them
+   * on screen, behind a hover passed only when the window was desktop-width.
+   * On a phone the other twelve were reachable by a long-press nobody is told
+   * about.
+   *
+   * Reachability here means one of two things, and both count: the turn's own
+   * action row names it, or the palette sheet the row's `…` opens carries it.
+   * The row deliberately shows a handful — the sheet is the full list — so this
+   * asserts nothing is stranded, not that everything is inline.
+   */
+  test("no turn-scoped command is stranded", () => {
+    const commands = readFileSync(join(ROOT, "client", "lib", "commands.ts"), "utf8");
+    const chat = readFileSync(join(ROOT, "client", "screens", "ChatScreen.tsx"), "utf8");
+    const ids = [...commands.matchAll(/\{ id: "([\w-]+)",[^}]*scope: "turn"/g)].map((m) => m[1]!);
+    expect(ids.length).toBeGreaterThan(10);
+    // `runCommand`'s handler map is the one place a turn command is executed;
+    // the row and the palette both go through it.
+    const stranded = ids.filter((id) => !new RegExp(`"${id}":`).test(chat));
+    expect(stranded).toEqual([]);
+  });
+
+  /**
+   * The action row is not conditional on a breakpoint.
+   *
+   * One `isDesktop` hid twelve commands from every phone for six phases, and
+   * nothing caught it because each half looked correct: the component took the
+   * prop it was given, and the screen passed a prop conditionally.
+   */
+  test("the turn's actions are not gated on a width", () => {
+    const chat = readFileSync(join(ROOT, "client", "screens", "ChatScreen.tsx"), "utf8");
+    // Comments stripped first, as `reachable-fields` does: this file explains
+    // the `isDesktop` mistake in prose, and a guard that reads its own
+    // explanation as the defect is a guard that cannot be written about.
+    const block = readFileSync(join(ROOT, "client", "components", "MessageBlock.tsx"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/[^\n]*/g, "");
+    expect(block).not.toMatch(/isDesktop/);
+    // The actions prop is passed unconditionally, not inside a spread ternary.
+    expect(chat).toMatch(/\n\s*actions=\{\{/);
+  });
+});

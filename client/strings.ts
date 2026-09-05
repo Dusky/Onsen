@@ -275,6 +275,25 @@ export const strings = {
     keyHints: "⌘↵ send",
     /** The desktop hover row, which the design draws as REROLL · BRANCH · EDIT. */
     hoverBranch: "Branch",
+    /*
+     * The turn's own row (§20 phase 57). Glyphs rather than an icon set: this
+     * client carries no SVG library and the mono chrome already speaks this way
+     * — `versionCounter` reads `◂ 3/4 ▸`. Each one is labelled, so it is
+     * readable to a screen reader and on hover rather than decorative.
+     */
+    turnReroll: "↻",
+    turnVersions: "◂▸",
+    turnBranch: "↳",
+    turnEdit: "✎",
+    turnCopy: "⧉",
+    turnHide: "⊘",
+    turnShow: "●",
+    turnMore: "…",
+    turnCopied: "Copied",
+    more: "More",
+    /** Said on the turn itself, because a hidden message still renders. */
+    hiddenNote: "Kept from the author",
+    unhide: "Give it back to the author",
     scopeSpotlight: "One voice",
     scopeBeat: "The room",
     scopeBeatHint: (names: string) => `${names} — one exchange, written together`,
@@ -734,6 +753,16 @@ export const strings = {
     layoutCastLine: "One line",
     layoutDek: "Scene line under the title",
     layoutAttribution: "Attribution",
+    /* Message shape, per side (§20 phase 57). */
+    layoutShapeReader: "Your turns",
+    layoutShapeAuthor: "The author's turns",
+    layoutBubble: "Bubble",
+    layoutFlat: "Flat",
+    layoutAvatarOn: "With a picture",
+    layoutAvatarOff: "No picture",
+    layoutAvatarShape: "Picture shape",
+    layoutAvatarCircle: "Round",
+    layoutAvatarSquare: "Square",
     layoutAttributionStacked: "Above the text",
     layoutAttributionInline: "In the text",
     /* The reading surface, which the reader sets (§20 phase 55). */

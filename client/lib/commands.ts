@@ -48,6 +48,7 @@ export const COMMANDS: readonly Command[] = [
   /* ---------------- on the selected turn ---------------- */
   { id: "reroll", title: c.reroll, scope: "turn", group: "turn", key: "r", keywords: ["regenerate", "swipe", "again"] },
   { id: "edit", title: c.edit, scope: "turn", group: "turn", key: "e" },
+  { id: "versions", title: c.versions, scope: "turn", group: "turn", key: "v", keywords: ["swipe", "history", "carousel", "alternatives"] },
   { id: "branch", title: c.branch, scope: "turn", group: "turn", key: "b", keywords: ["fork", "diverge"] },
   { id: "mark", title: c.checkpoint, scope: "turn", group: "turn", key: "m", keywords: ["checkpoint", "bookmark", "save place"] },
   { id: "hide", title: c.hideFromPrompt, scope: "turn", group: "turn", key: "h", keywords: ["exclude", "prompt"] },

@@ -116,6 +116,11 @@ Every message in the screenshot carries `#46 · 27.3s · 868t` in its gutter.
 | --- | --- | --- | --- |
 | Per-message id / elapsed / tokens / model | **have** (phase 55) | `MessageDto.generation` carries the record; `MessageBlock` renders `#4 · 20ms · ~126t · 10/s` in the gutter, untapped. Model on hover. Was: measured since phase 4, on no DTO | — |
 | Timestamps | **have** | `createdAt` throughout | — |
+| Actions on every turn | **have** (phase 57) | An always-visible row of six plus `…`, on every width — was three, hover-only, `isDesktop`-gated, hiding twelve commands from every phone | — |
+| Exclude a turn from the prompt | **have** (phase 57) | `hide` existed and worked (`server/prompt/history.ts:125`); it now has a control and the turn dims. Verified by `historyIncluded` in the inspector, not by a text match | — |
+| Swipe history reachable | **have** (phase 57) | The `versions` command, and a `◂▸` button on any turn with siblings | — |
+| Avatars in the log | **have** (phase 57) | `LayoutDto.reader/author.avatar` + `avatarShape`; character pictures from `/api/characters/:id/avatar`, initial underneath so a character without one shows a letter | — |
+| Bubbles vs flat | **have** (phase 57) | `LayoutDto.reader/author.bubble`, per side. Radius and border come from the theme, so a flat theme gets a flat bubble | — |
 | Swipe counter | **have** | 54 hits for `siblings` | — |
 | Swipe / reroll / edit / branch / continue | **have** | ops registry `server/tasks/registry.ts:102-108` | — |
 | Auto-swipe | **missing** | reroll automatically on short or blocked output | close — cheap given the ops path exists |

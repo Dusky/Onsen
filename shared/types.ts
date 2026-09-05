@@ -1460,6 +1460,22 @@ export function clampReading(input: Partial<Record<keyof ReadingDto, unknown>>):
   return out;
 }
 
+/**
+ * How one side's turns are shaped (§20 phase 57).
+ *
+ * Per side because that is how a log actually reads: bubbles for what you
+ * typed, flat prose for the story, an avatar on one side and not the other.
+ * One switch for both would make the reader's turns and the author's argue for
+ * the same treatment, which is the thing nobody wants.
+ */
+export interface TurnStyle {
+  /** A ground, padding and the theme's radius behind the turn. */
+  bubble: boolean;
+  avatar: boolean;
+}
+
+export type AvatarShape = "circle" | "square";
+
 export interface LayoutDto {
   /** Which named starting point this matches, or `custom` once it does not. */
   preset: LayoutPreset | "custom";
@@ -1469,23 +1485,59 @@ export interface LayoutDto {
   /** Broadsheet's standing line under the title, from the scene's scenario. */
   dek: boolean;
   attribution: AttributionStyle;
+  avatarShape: AvatarShape;
+  /** Your turns. */
+  reader: TurnStyle;
+  /** Everything the author writes. */
+  author: TurnStyle;
 }
 
-/** The four switches each named direction sets. */
+/** The switches each named direction sets. */
 export const LAYOUT_PRESETS: Record<LayoutPreset, Omit<LayoutDto, "preset">> = {
-  instrument: { readouts: true, cast: "segments", dek: false, attribution: "stacked" },
-  quiet: { readouts: false, cast: "line", dek: false, attribution: "stacked" },
-  broadsheet: { readouts: false, cast: "line", dek: true, attribution: "inline" },
+  instrument: {
+    readouts: true,
+    cast: "segments",
+    dek: false,
+    attribution: "stacked",
+    avatarShape: "circle",
+    // Instrument is the reading layout: the story runs flat and unadorned, and
+    // your own turns are set apart so the log reads as one voice interrupted
+    // rather than two columns of chat.
+    reader: { bubble: true, avatar: false },
+    author: { bubble: false, avatar: false },
+  },
+  quiet: {
+    readouts: false,
+    cast: "line",
+    dek: false,
+    attribution: "stacked",
+    avatarShape: "circle",
+    reader: { bubble: false, avatar: false },
+    author: { bubble: false, avatar: false },
+  },
+  broadsheet: {
+    readouts: false,
+    cast: "line",
+    dek: true,
+    attribution: "inline",
+    avatarShape: "square",
+    reader: { bubble: false, avatar: false },
+    author: { bubble: false, avatar: false },
+  },
 };
 
 /** Which preset a set of switches is, or `custom` when it is none of them. */
 export function presetOf(layout: Omit<LayoutDto, "preset">): LayoutDto["preset"] {
+  const same = (a: TurnStyle, b: TurnStyle) => a.bubble === b.bubble && a.avatar === b.avatar;
   for (const [name, values] of Object.entries(LAYOUT_PRESETS)) {
     if (
       values.readouts === layout.readouts &&
       values.cast === layout.cast &&
       values.dek === layout.dek &&
-      values.attribution === layout.attribution
+      values.attribution === layout.attribution &&
+      values.avatarShape === layout.avatarShape &&
+      same(values.reader, layout.reader) &&
+      same(values.author, layout.author)
     ) {
       return name as LayoutPreset;
     }

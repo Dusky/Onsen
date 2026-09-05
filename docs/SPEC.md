@@ -2392,6 +2392,15 @@ toggle.
 - Message gestures: swipe left to reroll, swipe right for the swipe carousel,
   long-press for the action sheet (edit, continue, expand, corrections, branch,
   checkpoint, hide, delete, copy).
+- **An action row on every turn** (§20 phase 57): reroll, versions where there
+  are siblings, branch, edit, copy, hide, and `…` for the rest. Always visible,
+  on every width — 32px under a thumb, 24px under a pointer. Until phase 57 this
+  was a hover row of three, passed only on a desktop-width window, which left
+  twelve of the fifteen turn commands reachable on a phone by a long-press
+  nobody is told about. §16 §Density rule 3.
+- **A hidden turn looks hidden.** `hide` keeps a message out of the prompt and
+  still renders it, so the turn dims and its dot hollows rather than the
+  exclusion being invisible.
 - Swipe counter on messages with siblings.
 - Streaming indicator naming the speaking character; prominent stop button.
 - Per-message generation stats — id, TTFT, tokens, tokens/sec — in the gutter,
@@ -2557,6 +2566,11 @@ hundreds of chats, tens of personas and a prompt of eighteen ordered blocks.
 Terse and dense are not opposites, and the app should be both: no explanatory
 prose (§Voice), a great deal of visible state. The register settled in phase 53
 — sentence case, no uppercase, no tracking — is unaffected by this and stays.
+
+**Shape is the reader's too, and per side** (§20 phase 57): bubble or flat, an
+avatar or not, round or square — set separately for the reader's turns and the
+author's, because bubbles for what you typed and flat prose for the story is
+the common case and one switch for both cannot express it.
 
 **The reading surface is the one exception, and the reader owns it.** Prose
 scale, measure and leading are user settings, not constants; the defaults are
@@ -3131,6 +3145,10 @@ Each phase ends in a working, usable application.
     3, with a literal `null` between them. An imported SillyTavern preset's
     prompts now land as that preset's own blocks rather than as options nobody
     switched on. Guarded by `test/prompt-blocks.test.ts`. See §3, §13, §16.
+57. **The turn** — an action row on every message, on every width, and message
+    shape switchable per side. Four of the five actions asked for already
+    existed as turn commands and were unreachable behind a desktop-only hover;
+    the fifth, swipe history, had no command at all. See §16.
 
 Settled while building phase 15.
 
