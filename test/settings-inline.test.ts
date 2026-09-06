@@ -19,6 +19,11 @@ const SETTINGS = readFileSync(
   "utf8",
 );
 
+const PRESET = readFileSync(
+  join(import.meta.dir, "..", "client", "components", "PresetEditor.tsx"),
+  "utf8",
+);
+
 describe("op controls are one component", () => {
   test("OpFields is shared by the sheet and the inline row", () => {
     expect(SETTINGS).toContain("function OpFields");
@@ -48,5 +53,14 @@ describe("providers and profiles follow the same pattern", () => {
       "<ProfileFields profile={profile} providers={providers} onClose={onClose} />",
     );
     expect(SETTINGS).toContain("onClose={() => setEditingProfile(undefined)}");
+  });
+
+  test("PresetFields is shared by the pane and the sheet", () => {
+    expect(PRESET).toContain("function PresetFields");
+    // The phone's sheet, in PresetEditor.
+    expect(PRESET).toContain("<PresetFields preset={preset} onClose={onClose} />");
+    // The desktop's pane, in SettingsScreen.
+    expect(SETTINGS).toContain("<PresetFields");
+    expect(SETTINGS).toContain("onClose={() => setEditingPreset(null)}");
   });
 });

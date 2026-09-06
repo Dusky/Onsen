@@ -5888,3 +5888,23 @@ snapshot does not.
 **Verified in a browser** at 1440×900 (provider row expands inline, zero
 dialogs; the new-provider form appears in place of the add button) and 390×844
 (the same tap opens the sheet).
+
+## Phase 73 — The preset editor gets a pane
+
+The last of the three settings editors. The preset editor was the one that did
+not fit the accordion: samplers, the prompt manager, reasoning, retries, the
+example policy. On a desktop it is now a 480px pane beside the settings list —
+the same shape the chat screen's inspector takes — while the phone keeps the
+sheet.
+
+### One body, two frames
+
+`PresetFields` is extracted from `PresetEditor` exactly the way `OpFields`,
+`ProviderFields` and `ProfileFields` were: the pane and the sheet render the
+same component, so they cannot drift. The pane resolves the preset from the
+live list rather than the captured snapshot, for the same reason the profile
+row did in phase 72 — the list refreshes after a save, a snapshot does not.
+
+**Verified in a browser** at 1440×900 (the preset opens in an `aside` beside
+the list, zero dialogs, samplers and the prompt manager present) and 390×844
+(the same tap opens the sheet).

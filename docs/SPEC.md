@@ -3409,6 +3409,11 @@ Each phase ends in a working, usable application.
     a desktop, and the create-new form appears inline in place of the add
     button; the phone keeps the sheets. `ProviderFields` and `ProfileFields`
     serve both paths each. See §16 and `test/settings-inline.test.ts`.
+73. **The preset editor gets a pane** — on a desktop, choosing a preset opens
+    its editor in a 480px pane beside the settings list rather than a bottom
+    sheet; the phone keeps the sheet. `PresetFields` is the one body for both,
+    so the pane and the sheet cannot drift. See §16 and
+    `test/settings-inline.test.ts`.
 
 Settled while building phase 15.
 

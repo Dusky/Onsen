@@ -301,6 +301,17 @@ function PromptManager({ preset }: { preset: PresetDto }) {
 }
 
 export function PresetEditor({ preset, onClose }: { preset: PresetDto; onClose(): void }) {
+  return (
+    <Sheet title={preset.name} onClose={onClose}>
+      <div className="pt-[8px] pb-[14px]">
+        <PresetFields preset={preset} onClose={onClose} />
+      </div>
+    </Sheet>
+  );
+}
+
+/** The preset's body, shared by the desktop's pane and the phone's sheet. */
+export function PresetFields({ preset, onClose }: { preset: PresetDto; onClose(): void }) {
   const update = useUpdatePreset();
   const remove = useDeletePreset();
   const [confirmNode, confirm] = useConfirm();
@@ -319,8 +330,7 @@ export function PresetEditor({ preset, onClose }: { preset: PresetDto; onClose()
   }
 
   return (
-    <Sheet title={preset.name} onClose={onClose}>
-      <div className="pt-[8px] pb-[14px]">
+    <>
 
         <p className="section-label mb-[10px]">{strings.settings.samplers}</p>
         {GROUPS.map((group, at) => (
@@ -562,9 +572,8 @@ export function PresetEditor({ preset, onClose }: { preset: PresetDto; onClose()
             ? strings.settings.presetDefaultUndeletable
             : strings.common.delete}
         </button>
-      </div>
       {confirmNode}
-    </Sheet>
+    </>
   );
 }
 

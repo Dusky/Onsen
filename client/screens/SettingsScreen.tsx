@@ -55,7 +55,7 @@ import {
 import { TabBar } from "../components/TabBar.tsx";
 import { useIsDesktop } from "../lib/breakpoint.ts";
 import { Sheet } from "../components/Sheet.tsx";
-import { PresetEditor } from "../components/PresetEditor.tsx";
+import { PresetEditor, PresetFields } from "../components/PresetEditor.tsx";
 import { ScriptEditor } from "../components/ScriptEditor.tsx";
 import { TriggerEditor } from "../components/TriggerEditor.tsx";
 import { ExportPackSheet, InstallPackSheet, RemovePackSheet } from "../components/PackSheets.tsx";
@@ -1707,6 +1707,7 @@ export function SettingsScreen() {
         </div>
       </div>
 
+      <div className="flex min-h-0 flex-1">
       <main className="min-h-0 flex-1 overflow-y-auto px-[16px] py-[16px]">
         {/* On a raised surface rather than on the page (phase 49). Twelve
             groups of hairline rows directly on the ground read as one
@@ -2022,6 +2023,35 @@ export function SettingsScreen() {
         </div>
       </main>
 
+      {/* The preset editor deserves more than a sheet (§20 phase 73): with
+          room it is a pane beside the list, the same shape the chat screen's
+          inspector takes. The body is the one `PresetFields`, so the pane and
+          the phone's sheet cannot drift. */}
+      {isDesktop && editingPreset !== null ? (
+        <aside className="flex w-[480px] flex-none flex-col overflow-y-auto border-l border-rule bg-bg-sunken">
+          <div className="hairline flex flex-none items-baseline gap-[10px] px-[18px] py-[13px]">
+            <p className="section-label flex-1 truncate">{editingPreset.name}</p>
+            <button
+              type="button"
+              aria-label={strings.common.back}
+              className="chrome flex-none text-[13px] text-ink-muted"
+              onClick={() => setEditingPreset(null)}
+            >
+              ×
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-[18px] py-[14px]">
+            <PresetFields
+              preset={
+                (presets.data ?? []).find((row) => row.id === editingPreset.id) ?? editingPreset
+              }
+              onClose={() => setEditingPreset(null)}
+            />
+          </div>
+        </aside>
+      ) : null}
+      </div>
+
       {!isDesktop && editingProviderId !== undefined ? (
         <ProviderEditor
           provider={
@@ -2039,7 +2069,7 @@ export function SettingsScreen() {
           onClose={() => setEditingProfile(undefined)}
         />
       ) : null}
-      {editingPreset !== null ? (
+      {!isDesktop && editingPreset !== null ? (
         <PresetEditor
           preset={(presets.data ?? []).find((row) => row.id === editingPreset.id) ?? editingPreset}
           onClose={() => setEditingPreset(null)}
