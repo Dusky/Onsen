@@ -5366,3 +5366,67 @@ correct while the thing on screen was not.
 and used it for both the chips and the beat gate — so muting somebody removed
 them from the phone's cast display entirely, which is indistinguishable from
 benching them. Two sets now: `present` draws, `inPlay` decides.
+
+---
+
+## Phase 63 — The two automatic retries
+
+Auto-swipe and auto-continue: a turn came back wrong, so ask for another one
+without being asked. The interesting part was the prerequisite nobody had
+written down.
+
+### The thing that was missing
+
+**No adapter reported why a completion stopped.** `TokenChunk` carried text,
+reasoning and tool calls, and every provider's `finish_reason` was parsed past
+without being read. So there was nothing for auto-continue to fire on, and the
+tempting substitute — "the text does not end in punctuation, so it was probably
+cut off" — would have been a guess wearing a fact's clothes, continuing turns
+that had finished and leaving cut-off ones alone.
+
+`TokenChunk.finishReason` is new: `stop | length | tool_calls | content_filter
+| other`, normalised in each adapter because providers disagree (OpenAI's
+`length` is Anthropic's `max_tokens`, which arrives on `message_delta` rather
+than on the text frames). An unknown value becomes `other` rather than passing
+through, and an adapter never invents one — a provider that says nothing leaves
+it unset, and auto-continue does not fire.
+
+### What was built
+
+- **Auto-continue** runs the `continue` op on the turn that was cut off.
+- **Auto-swipe** starts a sibling of a turn shorter than a floor. The rejected
+  turn stays in the tree: a swipe is not a delete, and silently discarding a
+  generation the reader paid for is the worse half of automation.
+- **Neither is a second inference path.** Both call an op that already existed.
+  `maybeRetry` decides *whether* to ask for another turn and never *how* one is
+  produced, which is what keeps HANDOFF's "there is one path" true.
+- **The budget travels with the chain**, carried into the follow-up's start
+  options rather than counted per scene: two devices reading one roleplay are
+  two chains, and a per-scene counter would have one spend the other's.
+- **Both ship off**, as preset settings beside the samplers — the cap that
+  triggers auto-continue is `max_response_tokens`, on the same row.
+- **A cut-off turn says so** on its stats line: `#2 · 2ms · ~14t · 57/s · cut
+  off`. It explains a sentence that stops mid-word, and where the setting is off
+  it is the thing that says it would have helped.
+
+### Surprises
+
+**Five of the nine tests would have passed with the feature switched off.**
+They are the "does not fire" cases — off by default, no finish reason, over
+budget — and they are worth having, but they prove nothing about the feature
+working. Only four require it. Disabling `maybeRetry` and re-running was the
+check that separated them, and it is the same discipline phase 60 wrote down:
+a guard nobody has watched fail is a guard nobody has tested.
+
+**The conformance guard was the right home for the new contract.** A finish
+reason an adapter dropped would leave a preset's setting quietly doing nothing,
+and no generation test would see it — the failure is per-provider and invisible
+from above, which is exactly the shape `adapter-tools-conformance` exists for.
+It now asserts both halves: `length` is reported when the provider says so, and
+*not* reported when it does not.
+
+**The stub provider had to learn to say why it stopped.** Every drive script
+since phase 40 has used a stand-in that streams a fixed beat and ends. Driving
+this phase meant a stub that reports a cap, recognises the continue op's own
+prompt, and answers differently the second time — which is the first time the
+stand-in has had to model provider *behaviour* rather than provider *shape*.

@@ -32,6 +32,15 @@ interface Dialect {
   truncated: string[];
   /** Where the tool definitions land in the request body. */
   toolsIn(body: Record<string, unknown>): unknown;
+  /**
+   * A stream that ran out of room, in this dialect's own words (§20 phase 63).
+   *
+   * Every provider has a different one — `length`, `max_tokens` — and the one
+   * thing that reads it, auto-continue, branches on the normalised value. An
+   * adapter that dropped this would leave a preset's setting quietly doing
+   * nothing, which is not a failure any generation test would see.
+   */
+  capped: string[];
 }
 
 function sse(event: string, data: unknown): string {
@@ -84,6 +93,11 @@ const DIALECTS: Dialect[] = [
     ],
     truncated: [sse("m", { choices: [{ delta: { content: "Let me look." } }] }), ...OPENAI_CALL],
     toolsIn: (body) => body["tools"],
+    capped: [
+      sse("m", { choices: [{ delta: { content: "Cut off mid-" } }] }),
+      sse("m", { choices: [{ delta: {}, finish_reason: "length" }] }),
+      "data: [DONE]\n\n",
+    ],
   },
   {
     kind: "anthropic",
@@ -108,6 +122,16 @@ const DIALECTS: Dialect[] = [
       ...ANTHROPIC_CALL,
     ],
     toolsIn: (body) => body["tools"],
+    capped: [
+      sse("message_start", { type: "message_start", message: {} }),
+      sse("content_block_delta", {
+        type: "content_block_delta",
+        index: 0,
+        delta: { type: "text_delta", text: "Cut off mid-" },
+      }),
+      sse("message_delta", { type: "message_delta", delta: { stop_reason: "max_tokens" } }),
+      sse("message_stop", { type: "message_stop" }),
+    ],
   },
 ];
 
@@ -174,6 +198,7 @@ async function run(dialect: Dialect, frames: string[]) {
     fetch,
   });
   let text = "";
+  let finishReason: string | null = null;
   const calls: ToolCall[] = [];
   for await (const chunk of adapter.generate(
     PROMPT,
@@ -181,9 +206,10 @@ async function run(dialect: Dialect, frames: string[]) {
     new AbortController().signal,
   )) {
     text += chunk.text;
+    if (chunk.finishReason !== undefined) finishReason = chunk.finishReason;
     for (const call of chunk.toolCalls ?? []) calls.push(call);
   }
-  return { text, calls, body: bodies[0]! };
+  return { text, calls, finishReason, body: bodies[0]! };
 }
 
 describe("every tool-capable provider", () => {
@@ -213,6 +239,18 @@ describe("every tool-capable provider", () => {
         expect(calls[0]!.id).toBe("call_01");
         expect(calls[0]!.name).toBe("list_characters");
         expect(JSON.parse(calls[0]!.arguments)).toEqual({ limit: 5 });
+      });
+
+      test("reports why the completion stopped, in our words", async () => {
+        const capped = await run(dialect, dialect.capped);
+        expect(capped.text).toBe("Cut off mid-");
+        expect(capped.finishReason).toBe("length");
+
+        // And a normal end is not a cap: auto-continue branches on `length`,
+        // so an adapter that reported it for everything would continue every
+        // turn forever.
+        const normal = await run(dialect, dialect.frames);
+        expect(normal.finishReason).not.toBe("length");
       });
 
       test("delivers the call even if the stream just closes", async () => {

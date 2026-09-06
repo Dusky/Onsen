@@ -7,9 +7,27 @@ import type { BuiltPrompt, ProviderCapabilities, ToolCall } from "../prompt/inde
  * builder branches on them, so an adapter never reshapes a prompt itself.
  */
 
+/**
+ * Why a completion stopped (SPEC §4, §20 phase 63).
+ *
+ * Normalised across providers, because they disagree: OpenAI says `length`,
+ * Anthropic says `max_tokens`, and a text-completion endpoint says whatever its
+ * front end decided. `other` is an honest answer — a provider that reports
+ * nothing gets it rather than a guess, and the one thing that reads this
+ * (auto-continue) must never fire on a guess.
+ */
+export type FinishReason = "stop" | "length" | "tool_calls" | "content_filter" | "other";
+
 export interface TokenChunk {
   /** Text to append to the generation buffer. */
   text: string;
+  /**
+   * Why the completion ended, on the last chunk that carries one.
+   *
+   * Optional because not every provider sends it and no adapter should invent
+   * one. A caller keeps the last it sees.
+   */
+  finishReason?: FinishReason;
   /**
    * Tool calls the model asked for, complete (§20 phase 46).
    *

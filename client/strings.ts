@@ -430,6 +430,8 @@ export const strings = {
     passPart: (name: string) => `${name} —`,
 
     you: "You",
+    /** A turn the provider cut off at the response cap (§20 phase 63). */
+    cutOff: "cut off",
     /** The turns above the window (§20 phase 62). */
     showEarlier: (count: number) => `${count} earlier ${count === 1 ? "turn" : "turns"}`,
     /** Cast strip captions (design handoff). */
@@ -648,6 +650,14 @@ export const strings = {
     contextSizeUnit: "tokens",
     maxResponseTokens: "Reserved for the reply",
     maxResponseTokensUnit: "tokens",
+    /* The two automatic retries (§20 phase 63). */
+    retries: "When a turn comes back wrong",
+    autoContinue: "Carry on",
+    autoContinueUnit: "times",
+    autoSwipeMin: "Reroll under",
+    autoSwipeMinUnit: "chars",
+    autoSwipeAttempts: "Up to",
+    autoSwipeAttemptsUnit: "tries",
 
     /** Regex scripts and event triggers (SPEC §14, phase 33). */
     automation: "Automation",

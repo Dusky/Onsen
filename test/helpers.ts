@@ -21,7 +21,7 @@ import type { MemoryRunner } from "../server/memory/runner.ts";
 import type { AppContext } from "../server/context.ts";
 import type { Hono } from "hono";
 import type { AppEnv } from "../server/context.ts";
-import type { Adapter, TokenChunk } from "../server/adapters/index.ts";
+import type { Adapter, FinishReason, TokenChunk } from "../server/adapters/index.ts";
 import type { BuiltPrompt, ProviderCapabilities } from "../server/prompt/index.ts";
 import { OPENAI_COMPATIBLE_CAPABILITIES } from "../server/adapters/index.ts";
 
@@ -195,6 +195,8 @@ type ScriptItem =
   | { reasoning: string }
   /** Tool calls, whole, as an adapter reassembles them (§20 phase 46). */
   | { toolCalls: { id: string; name: string; arguments: string }[] }
+  /** Why the completion stopped, as a provider reports it (§20 phase 63). */
+  | { finishReason: FinishReason }
   | { end: true }
   | { error: Error };
 
@@ -261,6 +263,12 @@ export class ScriptedAdapter implements Adapter {
   /** Push a provider-field reasoning delta, separate from the prose (§13). */
   pushReasoning(reasoning: string): void {
     this.queue.push({ reasoning });
+    this.flush();
+  }
+
+  /** Say why the completion stopped, the way a provider does (§20 phase 63). */
+  pushFinish(finishReason: FinishReason): void {
+    this.queue.push({ finishReason });
     this.flush();
   }
 
@@ -349,6 +357,7 @@ export class ScriptedAdapter implements Adapter {
       if ("text" in item) yield { text: item.text };
       else if ("reasoning" in item) yield { text: "", reasoning: item.reasoning };
       else if ("toolCalls" in item) yield { text: "", toolCalls: item.toolCalls };
+      else if ("finishReason" in item) yield { text: "", finishReason: item.finishReason };
       else if ("end" in item) return;
       else throw item.error;
     }

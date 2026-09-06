@@ -48,6 +48,10 @@ interface PresetRow {
   prefill: string | null;
   reasoning_config: string | null;
   prompt_order: string | null;
+  /** The two automatic retries (§20 phase 63). Zero is off for both. */
+  auto_continue: number;
+  auto_swipe_min_chars: number;
+  auto_swipe_attempts: number;
   system_prompt: string | null;
   jailbreak: string | null;
   is_default: number;
@@ -173,6 +177,8 @@ export function toPresetDto(db: Database, row: PresetRow): PresetDto {
     isDefault: row.is_default === 1,
     blockOrder: parsePromptOrder(row.prompt_order),
     blocks: listPresetBlocks(db, row.id),
+    autoContinue: row.auto_continue,
+    autoSwipe: { minChars: row.auto_swipe_min_chars, attempts: row.auto_swipe_attempts },
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -538,6 +544,10 @@ export interface PresetPatch {
   reasoningConfig?: string;
   /** The whole assembly order as JSON, or null for §3's default (phase 56). */
   promptOrder?: string | null;
+  /** The two automatic retries (§20 phase 63). */
+  autoContinue?: number;
+  autoSwipeMinChars?: number;
+  autoSwipeAttempts?: number;
 }
 
 export function createPresetBlock(
@@ -613,7 +623,11 @@ export function updatePreset(db: Database, id: number, patch: PresetPatch): Pres
       `UPDATE presets
           SET name = $name, sampler_settings = $samplers, context_size = $context,
               max_response_tokens = $max, prefill = $prefill,
-              reasoning_config = $reasoning, prompt_order = $order, updated_at = $now
+              reasoning_config = $reasoning, prompt_order = $order,
+              auto_continue = $auto_continue,
+              auto_swipe_min_chars = $auto_swipe_min_chars,
+              auto_swipe_attempts = $auto_swipe_attempts,
+              updated_at = $now
         WHERE id = $id
         RETURNING *`,
     )
@@ -629,6 +643,9 @@ export function updatePreset(db: Database, id: number, patch: PresetPatch): Pres
       prefill: patch.prefill === undefined ? current.prefill : patch.prefill,
       reasoning: patch.reasoningConfig ?? current.reasoning_config,
       order: patch.promptOrder === undefined ? current.prompt_order : patch.promptOrder,
+      auto_continue: patch.autoContinue ?? current.auto_continue,
+      auto_swipe_min_chars: patch.autoSwipeMinChars ?? current.auto_swipe_min_chars,
+      auto_swipe_attempts: patch.autoSwipeAttempts ?? current.auto_swipe_attempts,
       now: Date.now(),
     }) as PresetRow;
 }

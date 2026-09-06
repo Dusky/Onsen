@@ -337,6 +337,11 @@ function Stats({ message, ordinal }: { message: MessageDto; ordinal: number | un
       parts.push(`${meta.tokensAreEstimated ? "~" : ""}${meta.completionTokens}t`);
     }
     if (meta.tokensPerSecond !== null) parts.push(`${Math.round(meta.tokensPerSecond)}/s`);
+    // A turn the provider cut off says so (§20 phase 63). It is the one finish
+    // reason worth a reader's attention: it explains a sentence that stops
+    // mid-word, and it is what auto-continue fires on — so when the setting is
+    // off, this is the thing that tells you it would have helped.
+    if (meta.finishReason === "length") parts.push(strings.chat.cutOff);
   }
   if (parts.length === 0) return null;
   return (
@@ -350,9 +355,10 @@ function Stats({ message, ordinal }: { message: MessageDto; ordinal: number | un
  * Who is speaking, as a picture (§20 phase 57).
  *
  * Characters have one at `/api/characters/:id/avatar`, the URL the cast rail
- * has used since phase 50. The reader has none: `personas.avatar_path` exists
- * in the schema and nothing reads or writes it (`docs/GAPS.md` §3), so their
- * side falls back to an initial rather than to a broken image.
+ * has used since phase 50. The reader's comes from `/api/personas/:id/avatar`,
+ * wired in phase 61; either side falls back to an initial rather than to a
+ * broken image, because the letter is always drawn and the picture sits on top
+ * of it.
  */
 function Avatar({
   message,

@@ -416,6 +416,9 @@ prompt_order       -- ordered array of prompt block descriptors
 system_prompt, jailbreak, prefill
 context_size, max_response_tokens
 reasoning_config   -- extract/hide/reinject rules
+auto_continue         -- carry on this many times when a turn hits the cap (§7)
+auto_swipe_min_chars  -- reroll a turn shorter than this; zero is off
+auto_swipe_attempts   -- how many rerolls before it gives up
 ```
 
 ### ConnectionProfile
@@ -892,6 +895,16 @@ Aborting the client request **must** propagate the `AbortSignal` upstream so
 local inference actually stops. Verify explicitly against llama.cpp — a leaked
 generation pins a GPU.
 
+**A chunk may say why the completion stopped** (§20 phase 63):
+`TokenChunk.finishReason` is `stop | length | tool_calls | content_filter |
+other`, normalised in the adapter because providers disagree — OpenAI's
+`length` is Anthropic's `max_tokens`. It is optional, and an adapter never
+invents one: a provider that reports nothing leaves it unset, and `other` is
+the answer for a value nobody has seen. Auto-continue is the one thing that
+reads it, and it branches on `length` alone, which is why a guess would be
+worse than silence. `test/adapter-tools-conformance.test.ts` asserts every
+tool-capable adapter reports it, and reports it only when the provider does.
+
 ### Settled while building phase 22
 
 - **Capabilities are not always a constant.** Anthropic removed `temperature`,
@@ -1096,6 +1109,35 @@ kitchen and does not know about it."
 
 This also gives you private knowledge — a cast member can hold an agenda the
 author tracks but doesn't reveal. Store it as a scene-scoped tracker field.
+
+### The two automatic retries (§20 phase 63)
+
+A turn that came back wrong gets one more go, without being asked:
+
+- **Auto-continue** — the turn was cut off by the response cap, so carry on
+  from where it stopped. It fires on a **reported** `length` finish (§4) and on
+  nothing else: never on a guess about trailing punctuation, because a provider
+  that says nothing about why it stopped has not said it ran out of room.
+- **Auto-swipe** — the turn came back shorter than a floor, so reroll it. The
+  rejected turn stays in the tree as a sibling: a swipe is not a delete, and a
+  reader who wanted the short one is one tap away from it.
+
+Three things keep this from being a way to spend a provider's budget in a loop:
+
+1. **Both are preset settings and both ship off.** `auto_continue`,
+   `auto_swipe_min_chars` and `auto_swipe_attempts` live beside the samplers
+   because they are the same kind of decision — and because the cap that
+   triggers the first of them is `max_response_tokens`, on the same row.
+2. **The budget travels with the chain**, not with the scene. A continue's
+   continue counts against the same allowance; two devices reading one roleplay
+   are two chains, and a per-scene counter would have one spend the other's.
+3. **Neither is a new inference path.** Auto-continue runs the `continue` op
+   (§7), auto-swipe starts a sibling turn. This decides *whether* to ask for
+   another turn, never *how* one is produced.
+
+A cut-off turn says so on its own stats line, whether or not anything followed:
+it explains a sentence that stops mid-word, and where the setting is off it is
+the thing that says it would have helped.
 
 ### Autopilot
 
@@ -3230,6 +3272,14 @@ Each phase ends in a working, usable application.
     prompt since phase 7, which is a mute, so migration 0046 renames the state
     people have and gives bench the meaning its label always claimed.
     See §2, §5, §6 and `test/history-window.test.ts`, `test/mute.test.ts`.
+63. **The two automatic retries** — auto-continue when a turn was cut off by
+    the response cap, auto-swipe when it came back too short. Both run an op
+    that already exists rather than adding a path, both are preset settings
+    that ship off, and both spend a budget that travels with the chain. The
+    prerequisite was missing: no adapter reported *why* a completion stopped,
+    so `TokenChunk.finishReason` is new and normalised across providers, and
+    auto-continue fires on a reported `length` and never on a guess.
+    See §4, §7 and `test/retries.test.ts`.
 
 Settled while building phase 15.
 

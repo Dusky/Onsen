@@ -6,7 +6,14 @@ import type {
   ToolCall,
 } from "../prompt/index.ts";
 import { parseSseStream } from "./sse.ts";
-import { AdapterError, type Adapter, type AdapterConfig, type ModelInfo, type TokenChunk } from "./types.ts";
+import {
+  AdapterError,
+  type Adapter,
+  type AdapterConfig,
+  type FinishReason,
+  type ModelInfo,
+  type TokenChunk,
+} from "./types.ts";
 
 /**
  * The Anthropic adapter (SPEC §4).
@@ -153,9 +160,39 @@ interface StreamEvent {
   /** Which content block this frame belongs to. Tool calls arrive interleaved. */
   index?: number;
   content_block?: { type?: string; id?: string; name?: string };
-  delta?: { type?: string; text?: string; thinking?: string; partial_json?: string };
+  delta?: {
+    type?: string;
+    text?: string;
+    thinking?: string;
+    partial_json?: string;
+    /** On `message_delta`: why the model stopped (§20 phase 63). */
+    stop_reason?: string | null;
+  };
   error?: { type?: string; message?: string };
   message?: { usage?: { input_tokens?: number } };
+}
+
+/**
+ * This API's word for why it stopped, in ours (§20 phase 63).
+ *
+ * Unknown values become `other` rather than passing through, for the same
+ * reason the OpenAI adapter does it: the caller branches on `length`, and a
+ * string nobody has seen must not be able to look like one.
+ */
+function normaliseStop(value: string): FinishReason {
+  switch (value) {
+    case "end_turn":
+    case "stop_sequence":
+      return "stop";
+    case "max_tokens":
+      return "length";
+    case "tool_use":
+      return "tool_calls";
+    case "refusal":
+      return "content_filter";
+    default:
+      return "other";
+  }
 }
 
 /** A block of content in a message being sent up. */
@@ -411,6 +448,16 @@ export function createAnthropicAdapter(config: AdapterConfig): Adapter {
             providerMessage: frame.error?.message ?? null,
             retryable: frame.error?.type === "overloaded_error",
           });
+        }
+        // `message_delta` is where the stop reason lands, one frame before the
+        // stream ends (§20 phase 63). `max_tokens` is the one the caller acts
+        // on, and it is this API's word for OpenAI's `length`.
+        if (frame.type === "message_delta") {
+          const reason = frame.delta?.stop_reason;
+          if (typeof reason === "string" && reason !== "") {
+            yield { text: "", finishReason: normaliseStop(reason) };
+          }
+          continue;
         }
         if (frame.type === "message_stop") {
           yield* flush();

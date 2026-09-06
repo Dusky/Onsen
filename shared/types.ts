@@ -186,6 +186,24 @@ export interface PresetDto {
   blockOrder: PromptOrderEntry[] | null;
   /** This preset's own blocks (§20 phase 56). */
   blocks: PresetBlockDto[];
+  /**
+   * Carry on automatically when a turn was cut off by the response cap
+   * (§7, §20 phase 63). The number is how many times, and zero is off.
+   *
+   * It fires only on a reported `length` finish — never on a guess about
+   * punctuation — so a provider that says nothing about why it stopped simply
+   * does not trigger it.
+   */
+  autoContinue: number;
+  /**
+   * Reroll automatically when a turn comes back too short (§7, §20 phase 63).
+   *
+   * `minChars` of zero is off. The rejected turn stays in the tree as a
+   * sibling, because that is what a swipe is: a reader who wanted the short
+   * one is one tap away from it, and silently deleting a generation the user
+   * paid for would be the worse half of automation.
+   */
+  autoSwipe: { minChars: number; attempts: number };
   createdAt: number;
   updatedAt: number;
 }
@@ -268,7 +286,21 @@ export interface UpdatePresetRequest {
    * half-orders. Null restores the default.
    */
   blockOrder?: PromptOrderEntry[] | null;
+  /** The two automatic retries (§20 phase 63). Zero is off for both. */
+  autoContinue?: number;
+  autoSwipe?: { minChars?: number; attempts?: number };
 }
+
+/**
+ * Ceilings for the automatic retries (§20 phase 63).
+ *
+ * Shared so the client's sliders and the server's clamp cannot disagree. An
+ * unbounded auto-continue is a way to spend a provider's budget in a loop, and
+ * a minimum length longer than most turns would reroll every one of them.
+ */
+export const AUTO_CONTINUE_MAX = 5;
+export const AUTO_SWIPE_MAX_CHARS = 2000;
+export const AUTO_SWIPE_MAX_ATTEMPTS = 5;
 
 export interface ConnectionProfileDto {
   id: string;
@@ -459,9 +491,18 @@ export interface AnnotationDto {
  * could act on renders untapped — the original spec put these "behind a tap",
  * which is most of why nobody noticed they were never wired up.
  */
+/** Why a completion stopped, normalised across providers (SPEC §4). */
+export type FinishReasonName = "stop" | "length" | "tool_calls" | "content_filter" | "other";
+
 export interface GenerationMeta {
   provider: string;
   model: string;
+  /**
+   * Why the model stopped (§20 phase 63). Null where the provider said nothing
+   * — which is a real answer, and the reason auto-continue never fires on a
+   * guess.
+   */
+  finishReason: FinishReasonName | null;
   /** Milliseconds from dispatch to the first token. */
   ttftMs: number | null;
   /** Estimated, because the estimator is the only tokenizer that ships (§3). */

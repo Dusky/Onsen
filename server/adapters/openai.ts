@@ -1,7 +1,14 @@
 import type { SamplerSettings } from "../../shared/types.ts";
 import type { BuiltPrompt, ProviderCapabilities } from "../prompt/index.ts";
 import { parseSseStream } from "./sse.ts";
-import { AdapterError, type Adapter, type AdapterConfig, type ModelInfo, type TokenChunk } from "./types.ts";
+import {
+  AdapterError,
+  type Adapter,
+  type AdapterConfig,
+  type FinishReason,
+  type ModelInfo,
+  type TokenChunk,
+} from "./types.ts";
 
 /**
  * The OpenAI-compatible adapter (SPEC §4): OpenAI itself, OpenRouter, and the
@@ -70,8 +77,36 @@ interface ChatCompletionChunk {
         function?: { name?: string; arguments?: string };
       }[];
     };
+    finish_reason?: string | null;
   }[];
   error?: { message?: string };
+}
+
+/**
+ * The provider's word for why it stopped, in ours (§20 phase 63).
+ *
+ * Unknown values become `other` rather than being passed through: the caller
+ * branches on `length`, and a string nobody has seen before must not be able to
+ * look like one by accident.
+ */
+function normaliseFinish(value: string): FinishReason {
+  switch (value) {
+    case "stop":
+    case "end_turn":
+    case "stop_sequence":
+      return "stop";
+    case "length":
+    case "max_tokens":
+      return "length";
+    case "tool_calls":
+    case "tool_use":
+    case "function_call":
+      return "tool_calls";
+    case "content_filter":
+      return "content_filter";
+    default:
+      return "other";
+  }
 }
 
 function joinUrl(baseUrl: string, path: string): string {
@@ -284,6 +319,14 @@ export function createOpenAiAdapter(config: AdapterConfig): Adapter {
 
         const text = delta?.content;
         if (typeof text === "string" && text !== "") yield { text };
+
+        // The reason arrives on its own frame, after the last token, with an
+        // empty delta beside it — so it is read here rather than inferred from
+        // the stream ending (§20 phase 63).
+        const finish = chunk.choices?.[0]?.finish_reason;
+        if (typeof finish === "string" && finish !== "") {
+          yield { text: "", finishReason: normaliseFinish(finish) };
+        }
       }
 
       // Not every provider sends [DONE]; some just close. Flushing here as

@@ -208,6 +208,13 @@ export function createTextCompletionAdapter(config: TextAdapterConfig): Adapter 
 
         const text = chunk.choices?.[0]?.text;
         if (typeof text === "string" && text !== "") yield { text };
+
+        // A completion endpoint reports the reason on the same frame shape the
+        // chat one does (§20 phase 63).
+        const finish = chunk.choices?.[0]?.finish_reason;
+        if (typeof finish === "string" && finish !== "") {
+          yield { text: "", finishReason: finish === "length" ? "length" : finish === "stop" ? "stop" : "other" };
+        }
       }
     },
 

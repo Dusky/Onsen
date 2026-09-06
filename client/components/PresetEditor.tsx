@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
 import {
+  AUTO_CONTINUE_MAX,
+  AUTO_SWIPE_MAX_ATTEMPTS,
+  AUTO_SWIPE_MAX_CHARS,
   DEFAULT_BLOCK_ORDER,
   INJECTION_ROLES,
   MODERN_SAMPLER_DEFAULTS,
@@ -369,6 +372,42 @@ export function PresetEditor({ preset, onClose }: { preset: PresetDto; onClose()
             min={16}
             max={32_768}
             onCommit={(value) => update.mutate({ id: preset.id, maxResponseTokens: value })}
+          />
+        </div>
+
+        {/* The two automatic retries (§7, §20 phase 63). Here rather than on the
+            scene because they are the same kind of decision as the response
+            cap beside them — and the cap being reached is what triggers the
+            first of them. Zero is off, which is where they ship. */}
+        <p className="section-label mb-[8px]">{strings.settings.retries}</p>
+        <div className="mb-[8px] flex gap-[10px]">
+          <Whole
+            label={strings.settings.autoContinue}
+            unit={strings.settings.autoContinueUnit}
+            value={preset.autoContinue}
+            min={0}
+            max={AUTO_CONTINUE_MAX}
+            onCommit={(value) => update.mutate({ id: preset.id, autoContinue: value })}
+          />
+          <Whole
+            label={strings.settings.autoSwipeMin}
+            unit={strings.settings.autoSwipeMinUnit}
+            value={preset.autoSwipe.minChars}
+            min={0}
+            max={AUTO_SWIPE_MAX_CHARS}
+            onCommit={(value) =>
+              update.mutate({ id: preset.id, autoSwipe: { minChars: value } })
+            }
+          />
+          <Whole
+            label={strings.settings.autoSwipeAttempts}
+            unit={strings.settings.autoSwipeAttemptsUnit}
+            value={preset.autoSwipe.attempts}
+            min={1}
+            max={AUTO_SWIPE_MAX_ATTEMPTS}
+            onCommit={(value) =>
+              update.mutate({ id: preset.id, autoSwipe: { attempts: value } })
+            }
           />
         </div>
 

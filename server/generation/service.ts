@@ -175,6 +175,14 @@ interface ActiveGeneration {
   /** Characters already written to the database. */
   persistedOffset: number;
   lastPersistAt: number;
+  /**
+   * How many automatic retries have already run in this chain (§20 phase 63).
+   *
+   * Carried from one generation to the next rather than counted per scene: two
+   * readers on two devices are two chains, and a budget kept on the scene would
+   * have one spend the other's.
+   */
+  retries: { continued: number; swiped: number };
 }
 
 /** Finished generations linger so a client that reconnects late still sees the end. */
@@ -278,6 +286,13 @@ export interface StartOptions {
    * beside a transcript that did not contain it.
    */
   ooc?: { question: string };
+  /**
+   * Internal (§20 phase 63): the automatic retries already spent in this chain.
+   *
+   * Set only by the service when it retries itself. A route never sends it —
+   * which is what stops a client asking for an unbounded loop.
+   */
+  retries?: { continued: number; swiped: number };
 }
 
 /**
@@ -416,6 +431,7 @@ export class GenerationService {
       meta: {
         provider: route.providerName,
         model: route.model,
+        finishReason: null,
         ttftMs: null,
         completionTokens: null,
         tokensPerSecond: null,
@@ -450,6 +466,7 @@ export class GenerationService {
       automationIds: [],
       persistedOffset: 0,
       lastPersistAt: startedAt,
+      retries: options.retries ?? { continued: 0, swiped: 0 },
     };
     this.active.set(id, generation);
 
@@ -713,6 +730,11 @@ export class GenerationService {
         if (chunk.reasoning !== undefined && chunk.reasoning !== "") {
           this.appendReasoning(generation, chunk.reasoning);
         }
+        // Before the empty-text guard below: the frame that carries the reason
+        // carries no prose, which is exactly why it would be dropped (§20 phase
+        // 63). The last one seen wins — a provider that revises it mid-stream
+        // is describing the same completion.
+        if (chunk.finishReason !== undefined) generation.meta.finishReason = chunk.finishReason;
         if (chunk.text === "") continue;
         // Inline `<think>` tags are a streaming problem, not a parsing one:
         // the splitter holds back anything that could still turn out to be a
@@ -1349,6 +1371,14 @@ export class GenerationService {
       }
     }
 
+    // The two automatic retries (§7, §20 phase 63). Before autopilot, because a
+    // turn that is about to be continued or rerolled has not finished — telling
+    // the loop it had would have it write the next one over the top.
+    if (!cancelled && this.maybeRetry(generation)) {
+      this.scheduleEviction(generation);
+      return;
+    }
+
     // Autopilot's moment (SPEC §6): a reply has completed. Spotlight and beat
     // turns only — a revise is an edit and a recast is a splice, and neither is
     // the "reply completes" the loop continues from. The runner decides
@@ -1624,6 +1654,80 @@ export class GenerationService {
   }
 
   /**
+   * The two automatic retries (SPEC §7, §20 phase 63).
+   *
+   * Both are the same shape — a turn came back wrong, run an op that already
+   * exists — which is why neither one is a second inference path. Auto-continue
+   * runs `revise` in continue mode; auto-swipe starts a sibling of the turn it
+   * rejected. HANDOFF's "there is one path" holds: this decides *whether* to
+   * ask for another turn, never *how* one is produced.
+   *
+   * Two rules keep it from running away:
+   *
+   *  * **The budget travels with the chain.** A continue's continue counts,
+   *    and the count is carried into the next generation rather than kept per
+   *    scene — two devices reading one roleplay are two chains.
+   *  * **Auto-continue fires only on a reported `length`.** Never on a guess
+   *    about trailing punctuation: a provider that says nothing about why it
+   *    stopped simply does not trigger it, which is the honest reading of
+   *    silence and the reason `FinishReason` has an `other`.
+   *
+   * Returns true when a follow-up was started, which is the caller's signal to
+   * leave autopilot alone: the turn is not over.
+   */
+  private maybeRetry(generation: ActiveGeneration): boolean {
+    // A revise is already a retry; a recast is a splice and an aside is not the
+    // scene. Only a turn the reader is waiting on gets one.
+    const kind = generation.turn.kind;
+    const continuing = kind === "revise" && generation.turn.mode === "continue";
+    if (kind !== "spotlight" && kind !== "beat" && !continuing) return false;
+    if (generation.landedMessageId === null) return false;
+
+    const scene = findSceneById(this.db, generation.sceneId);
+    if (scene === null) return false;
+    const preset = presetRetrySettings(this.db, scene);
+    if (preset === null) return false;
+
+    const landed = findMessageById(this.db, generation.landedMessageId);
+    if (landed === null) return false;
+
+    // Continue first: a turn cut off by the cap is short *because* it was cut
+    // off, and rerolling it would throw away a good beginning to ask for a
+    // whole new one.
+    if (
+      generation.meta.finishReason === "length" &&
+      generation.retries.continued < preset.autoContinue
+    ) {
+      this.start({
+        scene,
+        revise: { message: landed, mode: "continue" },
+        retries: { ...generation.retries, continued: generation.retries.continued + 1 },
+      });
+      return true;
+    }
+
+    if (
+      preset.autoSwipeMinChars > 0 &&
+      landed.content.trim().length < preset.autoSwipeMinChars &&
+      generation.retries.swiped < preset.autoSwipeAttempts
+    ) {
+      // A sibling of the turn being rejected, not a replacement for it: the
+      // short one stays one swipe away, because a reader who wanted it should
+      // not have to regenerate to get it back, and deleting a generation they
+      // paid for is the worse half of automation.
+      this.start({
+        scene,
+        parentId: landed.parent_id,
+        spotlightId: generation.requestedSpotlightId,
+        retries: { ...generation.retries, swiped: generation.retries.swiped + 1 },
+      });
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Finished generations linger briefly so a client reconnecting after a
    * network handoff still receives the terminal event, then are dropped from
    * memory (SPEC §5). The row stays in the database either way.
@@ -1840,6 +1944,35 @@ function resolveTurn(db: Database, options: StartOptions): ResolvedTurn {
  * or a beat first — so it maps to a spotlight here only as a guard against a
  * path that should not exist.
  */
+/**
+ * The retry policy in force for a scene (§20 phase 63).
+ *
+ * Read off the preset the scene will actually generate with, by the same
+ * resolution `run` uses — scene, then profile, then the default — so a scene
+ * that switches preset switches policy with it. Null where there is no preset
+ * at all, which is a fresh install and retries nothing.
+ */
+function presetRetrySettings(
+  db: Database,
+  scene: SceneRow,
+): { autoContinue: number; autoSwipeMinChars: number; autoSwipeAttempts: number } | null {
+  const presetId = presetIdFor(db, scene, null);
+  if (presetId === null) return null;
+  const row = db
+    .query(
+      "SELECT auto_continue, auto_swipe_min_chars, auto_swipe_attempts FROM presets WHERE id = $id",
+    )
+    .get({ id: presetId }) as
+    | { auto_continue: number; auto_swipe_min_chars: number; auto_swipe_attempts: number }
+    | null;
+  if (row === null) return null;
+  return {
+    autoContinue: row.auto_continue,
+    autoSwipeMinChars: row.auto_swipe_min_chars,
+    autoSwipeAttempts: row.auto_swipe_attempts,
+  };
+}
+
 function promptTurnOf(turn: ResolvedTurn) {
   switch (turn.kind) {
     case "recast":

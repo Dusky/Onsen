@@ -32,7 +32,14 @@ import {
   type PresetRow,
 } from "../db/queries/connections.ts";
 import { parseReasoningConfig } from "../generation/reasoning.ts";
-import { customBlockId, isInjectionRole, type PromptOrderEntry } from "../../shared/types.ts";
+import {
+  AUTO_CONTINUE_MAX,
+  AUTO_SWIPE_MAX_ATTEMPTS,
+  AUTO_SWIPE_MAX_CHARS,
+  customBlockId,
+  isInjectionRole,
+  type PromptOrderEntry,
+} from "../../shared/types.ts";
 import { fetchProviderModels } from "../adapters/models.ts";
 import { parseStPreset, StPresetError } from "../presets/st.ts";
 import { importStPreset } from "../presets/import.ts";
@@ -331,6 +338,42 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
           entries.push({ id, enabled: entry["enabled"] !== false });
         }
         patch.promptOrder = entries.length === 0 ? null : JSON.stringify(entries);
+      }
+    }
+
+    /*
+     * The two automatic retries (§7, §20 phase 63).
+     *
+     * Clamped rather than refused, in the shape §16 §Density's reading bounds
+     * settled on: a slider that pinned is better than a request that failed,
+     * and both of these are counts with obvious ceilings — an unbounded
+     * auto-continue is a way to spend a provider's budget in a loop.
+     */
+    const count = (value: unknown, max: number): number | undefined =>
+      typeof value === "number" && Number.isFinite(value)
+        ? Math.min(max, Math.max(0, Math.round(value)))
+        : undefined;
+
+    if ("autoContinue" in body) {
+      const value = count(body["autoContinue"], AUTO_CONTINUE_MAX);
+      if (value === undefined) return c.json(badRequest("autoContinue is a number."), 400);
+      patch.autoContinue = value;
+    }
+    if ("autoSwipe" in body) {
+      const value = body["autoSwipe"];
+      if (typeof value !== "object" || value === null) {
+        return c.json(badRequest("autoSwipe is an object."), 400);
+      }
+      const swipe = value as Record<string, unknown>;
+      if ("minChars" in swipe) {
+        const chars = count(swipe["minChars"], AUTO_SWIPE_MAX_CHARS);
+        if (chars === undefined) return c.json(badRequest("minChars is a number."), 400);
+        patch.autoSwipeMinChars = chars;
+      }
+      if ("attempts" in swipe) {
+        const attempts = count(swipe["attempts"], AUTO_SWIPE_MAX_ATTEMPTS);
+        if (attempts === undefined) return c.json(badRequest("attempts is a number."), 400);
+        patch.autoSwipeAttempts = attempts;
       }
     }
 

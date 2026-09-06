@@ -124,8 +124,8 @@ Every message in the screenshot carries `#46 · 27.3s · 868t` in its gutter.
 | Bubbles vs flat | **have** (phase 57) | `LayoutDto.reader/author.bubble`, per side. Radius and border come from the theme, so a flat theme gets a flat bubble | — |
 | Swipe counter | **have** | 54 hits for `siblings` | — |
 | Swipe / reroll / edit / branch / continue | **have** | ops registry `server/tasks/registry.ts:102-108` | — |
-| Auto-swipe | **missing** | reroll automatically on short or blocked output | close — cheap given the ops path exists |
-| Auto-continue | **missing** | continue automatically on a length-capped finish | close, same |
+| Auto-swipe | **have** | phase 63; `presets.auto_swipe_min_chars` and `_attempts`, decided in `maybeRetry` (`server/generation/service.ts:1678`). The rejected turn stays as a sibling — a swipe is not a delete | — |
+| Auto-continue | **have** | phase 63; fires only on a *reported* `length` finish. `TokenChunk.finishReason` is new, normalised across providers in each adapter (`openai.ts:328`, `anthropic.ts:458`, `text.ts:216`) and guarded by `adapter-tools-conformance` | — |
 | Smooth streaming / streaming FPS | **missing** | no render throttle in `client/lib/generation.ts` | low priority; revisit if streaming judders |
 
 ## 6. Chrome and settings
@@ -206,6 +206,12 @@ second half is why the evidence rule exists: the row said mute was missing and
 bench worked, and it was the other way round — what the app had was a mute
 under the wrong name, and nothing took a character out of the prompt at all.
 
-Then, in rough order of how early a session hits them: auto-swipe and
-auto-continue; example-message eviction and squash; Quick Reply macro buttons;
-chat translation; auto background.
+**Phase 63 (done)** built both automatic retries on top of the ops that already
+existed, so neither is a second inference path. The prerequisite was one nobody
+had noticed: no adapter reported *why* a completion stopped, so there was
+nothing for auto-continue to fire on. It fires on a reported `length` and never
+on a guess.
+
+Then, in rough order of how early a session hits them: example-message eviction
+and squash; Quick Reply macro buttons; chat translation; auto background;
+smooth streaming.
