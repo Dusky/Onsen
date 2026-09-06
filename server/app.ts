@@ -29,6 +29,7 @@ import { documentRoutes } from "./routes/documents.ts";
 import { demoRoutes } from "./routes/demo.ts";
 import { loreRoutes } from "./routes/lore.ts";
 import { scriptRoutes } from "./routes/scripts.ts";
+import { quickReplyRoutes } from "./routes/quick-replies.ts";
 import { triggerRoutes } from "./routes/triggers.ts";
 import { packRoutes } from "./routes/packs.ts";
 import { webhookRoutes } from "./routes/webhooks.ts";
@@ -196,6 +197,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   api.route("/documents", documentRoutes(ctx));
   api.route("/demo", demoRoutes(ctx));
   api.route("/scripts", scriptRoutes(ctx));
+  api.route("/quick-replies", quickReplyRoutes(ctx));
   api.route("/triggers", triggerRoutes(ctx, triggers));
   api.route("/packs", packRoutes(ctx));
   api.route("/webhooks", webhookRoutes(ctx, webhooks));

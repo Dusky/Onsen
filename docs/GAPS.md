@@ -159,7 +159,7 @@ mostly good news and was the biggest source of wrong first guesses.
 | Character Creator | **have** | `CREATE_CHARACTER`, `EXTRACT_CHARACTER`, `REVISE_CHARACTER` |
 | **World Info Recommender** | **have** | `SUGGEST_LORE` (`registry.ts:97`) — *this row is why the evidence rule exists* |
 | LoreBook Creator | **have** | `REVISE_LORE`, `SUGGEST_LORE` |
-| Quick Reply | **partial** | ops are fixed buttons; no user-defined macro button |
+| Quick Reply | **have** (phase 65) | `grep -rliE 'quick.?reply' server client shared --include='*.ts' --include='*.tsx' --include='*.sql'` → 9 files: the `quick_replies` table (migration 0049), CRUD (`server/routes/quick-replies.ts`), and the composer row + sheet (`client/components/QuickReplies.tsx`). Firing one runs the stored prompt through the nudge path |
 | Chat Translation | **missing** | no translation path |
 | Auto Background | **partial** | per-scene backgrounds exist (`SceneDto.hasBackground`); nothing generates one |
 | Moonlit Echoes Theme | **have** | full theme system, import/export, custom CSS |
@@ -217,5 +217,12 @@ structure before it needed a setting: example dialogue was one undifferentiated
 string, so "drop an example when the budget tightens" had only ever one thing
 to drop.
 
-Then, in rough order of how early a session hits them: Quick Reply macro
-buttons; chat translation; auto background; smooth streaming; web search.
+**Phase 65 (done)** built quick replies: a label and a prompt the reader writes
+once and fires from the composer with one tap. The nudge path already did the
+work a macro button needs, so this is storage plus a row of buttons — the
+`quick_replies` table, its CRUD, and the composer row and sheet. The row's
+evidence command was re-run before building: the row was the one honest
+`partial` — nothing had been guessed wrong, the feature simply did not exist.
+
+Then, in rough order of how early a session hits them: chat translation; auto
+background; smooth streaming; web search.

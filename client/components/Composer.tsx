@@ -31,6 +31,8 @@ interface ComposerProps {
   opsOpen: boolean;
   onToggleOps(): void;
   ops?: ReactNode;
+  /** Quick replies (SPEC §7, §20 phase 65): a row of saved nudges. */
+  quickReplies?: ReactNode;
   /**
    * With room, the ops are a row above this and always visible, so the key
    * that opens them is a button onto something already open (design `4a`).
@@ -64,6 +66,7 @@ export function Composer({
   opsOpen,
   onToggleOps,
   ops,
+  quickReplies,
   wide = false,
 }: ComposerProps) {
   const field = useRef<HTMLTextAreaElement>(null);
@@ -96,6 +99,11 @@ export function Composer({
       {/* Progressive disclosure: the ops drawer sits above the input row and is
           closed by default, so the resting composer stays two rows tall. */}
       {ops === undefined ? null : <div className="mb-[11px]">{ops}</div>}
+
+      {/* Quick replies stay above the field even while the ops drawer is open:
+          their whole point is one tap, and a button that hides when the
+          keyboard does is a button that never fires. */}
+      {quickReplies === undefined ? null : <div className="mb-[9px]">{quickReplies}</div>}
 
       {/* What is going with the next line (§20 phase 41). Above the field
           rather than inside it: a picture is not text, and the row it sits in

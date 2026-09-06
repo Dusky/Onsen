@@ -89,6 +89,10 @@ import type {
   UpdateLoreEntryRequest,
   ImportLorebookResponse,
   UpdateMessageRequest,
+  QuickReplyDto,
+  CreateQuickReplyRequest,
+  UpdateQuickReplyRequest,
+  MoveQuickReplyRequest,
 } from "@shared/types.ts";
 
 /**
@@ -139,6 +143,7 @@ export const connectionKeys = {
   packs: ["packs"] as const,
   webhooks: ["webhooks"] as const,
   apiKeys: ["api-keys"] as const,
+  quickReplies: ["quick-replies"] as const,
 };
 
 /** Invalidate everything a connection change can touch. */
@@ -1892,6 +1897,49 @@ export function useUpdateScript() {
 
 export function useDeleteScript() {
   return useScriptMutation((id: string) => api.delete<void>(`/scripts/${id}`));
+}
+
+/* ------------------------------------------------------------------ */
+/* Quick replies (SPEC §7, §20 phase 65)                               */
+/* ------------------------------------------------------------------ */
+
+export function useQuickReplies() {
+  return useQuery({
+    queryKey: connectionKeys.quickReplies,
+    queryFn: () => api.get<QuickReplyDto[]>("/quick-replies"),
+  });
+}
+
+function useQuickReplyMutation<TArgs, TResult>(fn: (args: TArgs) => Promise<TResult>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: connectionKeys.quickReplies });
+    },
+  });
+}
+
+export function useCreateQuickReply() {
+  return useQuickReplyMutation((body: CreateQuickReplyRequest) =>
+    api.post<QuickReplyDto>("/quick-replies", body),
+  );
+}
+
+export function useUpdateQuickReply() {
+  return useQuickReplyMutation(({ id, ...body }: UpdateQuickReplyRequest & { id: string }) =>
+    api.patch<QuickReplyDto>(`/quick-replies/${id}`, body),
+  );
+}
+
+export function useMoveQuickReply() {
+  return useQuickReplyMutation(({ id, ...body }: MoveQuickReplyRequest & { id: string }) =>
+    api.post<QuickReplyDto[]>(`/quick-replies/${id}/move`, body),
+  );
+}
+
+export function useDeleteQuickReply() {
+  return useQuickReplyMutation((id: string) => api.delete<void>(`/quick-replies/${id}`));
 }
 
 /** The test panel (§14). A dry run: it writes nothing, so it invalidates nothing. */

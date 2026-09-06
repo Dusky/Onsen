@@ -5501,3 +5501,74 @@ message from the history, and those keep their own turn.
 disabled.** Checked by disabling each and re-running, as phases 60 and 63 did.
 The rest are the shape assertions and the "leaves it alone" cases, which are
 worth having and prove nothing on their own.
+
+## Phase 65 — Quick replies
+
+The top of `GAPS.md`'s queue: the incumbent's Quick Reply is a button the
+reader defines — a label and a prompt — pinned to the composer. Onsen already
+had the engine it needs in the nudge path, so this was storage plus a row of
+buttons rather than a feature with a shape to invent.
+
+### A saved nudge, not a new op
+
+A nudge is already exactly what a macro button does: a one-shot instruction for
+the next turn, never persisted as a message. Quick replies ride that path.
+Firing one calls the same `generation.start({ ...nextTurn(), nudge: prompt })`
+the nudge op uses, so there is no second inference path — the thing §5 rules
+out and the thing this phase did not build.
+
+The storage is a global `quick_replies` table: `ulid, label, prompt,
+sort_order`, plus timestamps. Global rather than per-scene, the way the
+incumbent's Quick Reply sets are — a reply worth writing down is worth having
+in every roleplay. Order is the reader's, via `sort_order`, the same discipline
+`preset_blocks` and `regex_scripts` use, and moving a reply swaps it with its
+neighbour in one transaction rather than renumbering the whole row.
+
+### The surface
+
+A horizontally scrolling row of chips above the composer, always visible even
+while the ops drawer is open — its whole point is one tap, and a button that
+hides when the keyboard does is a button that never fires. With none written
+the row is a single "Quick replies" chip that opens the management sheet, which
+is the empty state offering the thing it is empty of.
+
+The sheet writes, edits, reorders and removes replies in place — a quick reply
+is two fields, so the form lives inside the sheet rather than a sheet on a
+sheet.
+
+### What was built
+
+- Migration 0049: the `quick_replies` table and its order index.
+- `server/db/queries/quick-replies.ts` and `server/routes/quick-replies.ts`:
+  list, create, edit, delete, and a move endpoint that swaps `sort_order`.
+- `client/components/QuickReplies.tsx`: the composer row and the sheet, wired
+  into `ChatScreen` through a new `Composer` prop.
+- `test/quick-replies.test.ts`: round-trip, ordering, move semantics, and the
+  validation that refuses empty labels and prompts.
+
+### What was deferred
+
+Per-scene quick replies, and anything beyond a label and a prompt. The
+incumbent's Quick Reply buttons can also run scripts; §21 already says no to a
+scripting language, and Onsen's nudge is the whole of what a macro button does
+here.
+
+### Surprises
+
+**The setup wizard does not render — and has not for some time.** `SetupScreen`
+mounts `ModelPicker`, which calls a react-query hook, but `App` only wraps the
+authenticated shell in `QueryClientProvider`; the wizard and the login screen
+sit outside it. A first run in a browser lands on "No QueryClient set" and a
+blank page. The API is fine — the test harness and this phase both set up
+through it — so nothing had caught the browser-only break. Worked around here
+by completing setup over the API, then driving the rest in a real browser. It
+is a one-line fix in `App.tsx` and should be its own commit when picked up.
+
+**The theme picker is behind the Reading category.** Switching theme "through
+the app's own picker" is four taps: Settings → Reading → the theme's name →
+wait for the reload. The drive script had to click the category first; the
+theme buttons are not on the page until it is open.
+
+**Firing a quick reply proves the nudge on the wire.** The stub logs every
+message it is sent, and the fired prompt appears verbatim — which is the whole
+claim "storage plus a row of buttons" rests on, checked rather than assumed.

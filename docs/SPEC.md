@@ -501,6 +501,7 @@ and §2 omits them only because their phases wrote the columns with the feature:
 - `instruct_templates` — §4's text-completion markers.
 - `character_versions` — §9's snapshots; `saved_filters` — §9's filters.
 - `embeddings_config` — §11's single-row embeddings provider.
+- `quick_replies` — §7's saved nudges (phase 65).
 - `app_settings` — the setup-wizard's single row.
 
 **Entities above that are not built yet**, and are here as the target: MemoryEntity
@@ -1234,6 +1235,7 @@ down here") rather than terse system commands.
 | Op | Behavior |
 | --- | --- |
 | **Simple Send** | Post the user's message without triggering a reply. Essential for stacking messages. |
+| **Quick Reply** | A saved nudge — a label and a prompt the reader writes once and fires from the composer with one tap (§20 phase 65). Firing sends its prompt as a one-shot instruction for the next turn, never a message. Global, ordered by the reader. |
 | **Spellchecker** | Polish the user's input, returning it to the composer. |
 | **Edit Intros** | Rewrite a scene's opening message; aware of alternate and group greetings. |
 | **Input Recovery** | Restore previously cleared composer input from a client-side ring buffer. |
@@ -1369,6 +1371,21 @@ injection_role, auto_trigger, button_visible, run_order
   makes it safe: it is the one place the author is asked to write the reader's
   character, and nothing it produces reaches the story without the user pressing
   send. The cost is that it does not stream token by token.
+
+### Settled while building phase 65
+
+- **A quick reply is a saved nudge, not a new op.** The nudge path already is
+  a one-shot instruction that never becomes a message, so quick replies are
+  storage plus a row of buttons and nothing behind the scenes. A second
+  inference path would be the failure §5 rules out; this rides the one that
+  exists.
+- **Quick replies are global, not per-scene.** A reply worth writing down is
+  worth having in every roleplay, the way the incumbent's Quick Reply sets are.
+  The row order is the reader's, via `sort_order` — the same discipline
+  `preset_blocks` and `regex_scripts` use, lower first.
+- **The row stays visible while the ops drawer is open.** Its whole point is
+  one tap; a button that hides when the keyboard does is a button that never
+  fires.
 
 ### Background tasks
 
@@ -3320,6 +3337,13 @@ Each phase ends in a working, usable application.
     consecutive system turns into one. Both ship as the builder already
     behaved, because both change what every prompt on that preset looks like.
     See §3 and `test/examples.test.ts`.
+65. **Quick replies** — a label and a prompt the reader writes once and fires
+    from the composer with one tap. The nudge path already does the work a
+    macro button needs, so this is storage plus a row of buttons: a global
+    `quick_replies` table with an order the reader sets, a composer row, and a
+    sheet that writes, reorders and removes them. Firing one sends its prompt
+    as a nudge — one instruction for the next turn, never a message.
+    See §7 and `test/quick-replies.test.ts`.
 
 Settled while building phase 15.
 

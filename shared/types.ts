@@ -753,6 +753,42 @@ export interface TriggerOutcomeDto {
 }
 
 /* ------------------------------------------------------------------ */
+/* Quick replies (SPEC §7, §20 phase 65)                               */
+/* ------------------------------------------------------------------ */
+
+export const QUICK_REPLY_DIRECTIONS = ["up", "down"] as const;
+export type QuickReplyDirection = (typeof QUICK_REPLY_DIRECTIONS)[number];
+
+export function isQuickReplyDirection(value: unknown): value is QuickReplyDirection {
+  return typeof value === "string" && (QUICK_REPLY_DIRECTIONS as readonly string[]).includes(value);
+}
+
+/** A labelled prompt the reader fires from the composer with one tap. */
+export interface QuickReplyDto {
+  id: string;
+  label: string;
+  prompt: string;
+  /** Lower runs first, in the reader's row. */
+  sortOrder: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface CreateQuickReplyRequest {
+  label: string;
+  prompt: string;
+}
+
+export interface UpdateQuickReplyRequest {
+  label?: string;
+  prompt?: string;
+}
+
+export interface MoveQuickReplyRequest {
+  direction: QuickReplyDirection;
+}
+
+/* ------------------------------------------------------------------ */
 /* Packs (SPEC §15 tier 2)                                             */
 /* ------------------------------------------------------------------ */
 

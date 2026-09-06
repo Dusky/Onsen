@@ -33,6 +33,7 @@ import { InspectorSheet } from "../components/InspectorSheet.tsx";
 import { CastStrip } from "../components/CastStrip.tsx";
 import { Deck, Readouts } from "../components/Deck.tsx";
 import { OpsGrid, OpsRow, OpPrompt, type Op } from "../components/OpsGrid.tsx";
+import { QuickReplyRow, QuickReplySheet } from "../components/QuickReplies.tsx";
 import { CastRail } from "../components/CastRail.tsx";
 import { VnStage } from "../components/VnStage.tsx";
 import { TrackerPanel } from "../components/TrackerPanel.tsx";
@@ -188,6 +189,8 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const [opsPanel, setOpsPanel] = useState<
     null | "grid" | "nudge" | "guided_swipe" | "steer" | "impersonate"
   >(null);
+  /** Whether the quick replies sheet is open (SPEC §7, §20 phase 65). */
+  const [quickRepliesOpen, setQuickRepliesOpen] = useState(false);
   /** Set while an op that produces a draft is working. */
   const [opWorking, setOpWorking] = useState(false);
   /** A message being corrected, once the user has said which one. */
@@ -599,6 +602,12 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     setOpsPanel(null);
     await generation.start({ ...nextTurn(), nudge: instruction });
     setCued(null);
+  }
+
+  /** A quick reply is a saved nudge: one tap, same path (SPEC §7, phase 65). */
+  function fireQuickReply(prompt: string) {
+    setOpsPanel(null);
+    void nudge(prompt);
   }
 
   /** Reroll the last reply with direction. Only when there is one to reroll. */
@@ -1147,6 +1156,13 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           opsOpen={opsPanel !== null}
           onToggleOps={() => setOpsPanel(opsPanel === null ? "grid" : null)}
           ops={opsDrawer()}
+          quickReplies={
+            <QuickReplyRow
+              onFire={fireQuickReply}
+              onEdit={() => setQuickRepliesOpen(true)}
+              disabled={isGenerating}
+            />
+          }
           wide={isDesktop}
         />
 
@@ -1531,6 +1547,9 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             </button>
           ))}
         </Sheet>
+      ) : null}
+      {quickRepliesOpen ? (
+        <QuickReplySheet onClose={() => setQuickRepliesOpen(false)} />
       ) : null}
       {confirmNode}
     </div>

@@ -46,6 +46,7 @@ import persona from "./0045_persona.sql" with { type: "text" };
 import mute from "./0046_mute.sql" with { type: "text" };
 import retries from "./0047_retries.sql" with { type: "text" };
 import examples from "./0048_examples.sql" with { type: "text" };
+import quickReplies from "./0049_quick_replies.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -109,4 +110,5 @@ export const migrations: readonly Migration[] = [
   { version: 46, name: "mute", sql: mute },
   { version: 47, name: "retries", sql: retries },
   { version: 48, name: "examples", sql: examples },
+  { version: 49, name: "quick_replies", sql: quickReplies },
 ];

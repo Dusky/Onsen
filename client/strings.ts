@@ -348,6 +348,21 @@ export const strings = {
     opContinue: "Continue",
     opContinueKey: "→",
     opContinueUnavailable: "This provider cannot continue a finished message.",
+    /** Quick replies (SPEC §7, §20 phase 65). A saved nudge, one tap away. */
+    quickReplies: "Quick replies",
+    quickRepliesEdit: "Edit quick replies",
+    quickRepliesEmpty: "No quick replies yet. Write one and it becomes a button here.",
+    quickReplyAdd: "Add a quick reply",
+    quickReplyLabel: "Label",
+    quickReplyLabelPlaceholder: "Fade to black",
+    quickReplyPrompt: "Prompt",
+    quickReplyPromptPlaceholder: "Cut to the morning after, nothing said.",
+    quickReplyPromptHint:
+      "Fired as a nudge — one instruction for the next turn, never a message.",
+    quickReplyMoveUp: "Move up",
+    quickReplyMoveDown: "Move down",
+    quickReplyDelete: "Delete",
+    quickReplyDeleteConfirm: "Delete this quick reply?",
     /** The guides panel (SPEC §8, design screen 3f). Blue: the author's own notes. */
     opGuides: "Guides",
     opGuidesKey: "G",
