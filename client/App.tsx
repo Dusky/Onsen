@@ -47,7 +47,15 @@ export function App() {
 
   const refresh = useCallback(async () => {
     try {
-      setPhase({ status: "ready", boot: await api.get<BootstrapDto>("/bootstrap") });
+      const boot = await api.get<BootstrapDto>("/bootstrap");
+      // The theme's base is a document-level fact, applied before any branch
+      // renders so the login screen's fall-through tokens are right — a theme
+      // that names few colours renders dark or light as its `base` says,
+      // rather than following the OS preference (§20 phase 75).
+      if (boot.themeBase !== null) {
+        document.documentElement.dataset.theme = boot.themeBase;
+      }
+      setPhase({ status: "ready", boot });
     } catch {
       setPhase({ status: "error" });
     }

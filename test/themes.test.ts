@@ -142,6 +142,14 @@ describe("the stylesheet", () => {
     expect(css).toContain("--onsen-radius: 9px;");
   });
 
+  test("carries the theme's base as color-scheme", () => {
+    // §20 phase 75: a theme's `base` finally does something. It is emitted as
+    // `color-scheme` so native controls and the fall-through tokens follow it,
+    // and the bootstrap carries it to the client, which sets `data-theme`.
+    expect(themeCss(theme({ base: "dark" }))).toContain("color-scheme: dark;");
+    expect(themeCss(theme({ base: "light" }))).toContain("color-scheme: light;");
+  });
+
   test("outranks the stylesheet's own values wherever the bundler puts them", () => {
     // tokens.css sets its light values behind `:root:not([data-theme="dark"])`,
     // which ties any single-attribute :root selector on specificity — so source

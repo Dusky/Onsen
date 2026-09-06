@@ -19,4 +19,11 @@ describe("the pre-auth screens sit inside the query provider", () => {
     const count = APP.split("<QueryClientProvider client={queryClient}>").length - 1;
     expect(count).toBe(3);
   });
+
+  test("the theme base reaches the document as data-theme", () => {
+    // §20 phase 75: the bootstrap carries the active theme's base, and the app
+    // sets it before any branch renders, so a theme's dark/light is honoured
+    // rather than following the OS preference.
+    expect(APP).toContain("document.documentElement.dataset.theme = boot.themeBase");
+  });
 });

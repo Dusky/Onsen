@@ -24,7 +24,7 @@ async function postSetup(t: TestHarness, body: unknown): Promise<Response> {
 describe("setup wizard", () => {
   test("a fresh install reports that it needs setting up", async () => {
     const boot = (await (await h().fetch("/api/bootstrap")).json()) as BootstrapDto;
-    expect(boot).toEqual({ setupCompleted: false, authenticated: false });
+    expect(boot).toEqual({ setupCompleted: false, authenticated: false, themeBase: "dark" });
   });
 
   test("creates the password, provider, profile and default preset, and signs the user in", async () => {
@@ -50,7 +50,7 @@ describe("setup wizard", () => {
 
     // The wizard signs the caller in, so there is no second password prompt.
     const boot = (await (await t.fetch("/api/bootstrap")).json()) as BootstrapDto;
-    expect(boot).toEqual({ setupCompleted: true, authenticated: true });
+    expect(boot).toEqual({ setupCompleted: true, authenticated: true, themeBase: "dark" });
   });
 
   test("runs only once", async () => {

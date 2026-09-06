@@ -2869,13 +2869,12 @@ plus, optionally, CSS of the reader's own.
   by hand. Phase 45 had made the default a rounded, shadowed theme in answer
   to "reads flat"; the real cause was surfaces two lightness points apart,
   fixed in phase 49. `test/themes.test.ts` pins the default flat and dark.
-- **A theme's `base` flag changes nothing yet.** `dark` vs `light` is stored
-  and round-tripped, but nothing sets `data-theme` on the document from it, so
-  a theme renders dark or light only through the colours it names. The shipped
-  light themes work because they name light colours; `Ledger` names its dark
-  palette explicitly for the same reason, so the default is deterministic.
-  Either wire `base` to the document or delete the field — today it is a
-  promise the renderer does not keep.
+- **A theme's `base` flag is wired.** `dark` vs `light` is emitted as
+  `color-scheme` in the theme's stylesheet, carried by the bootstrap, and set
+  as `data-theme` on the document before any screen renders (§20 phase 75) — so
+  a theme that names few colours still renders dark or light as its `base`
+  says, rather than following the OS preference. Until phase 75 it was stored
+  and round-tripped and changed nothing.
 - **Shipped themes are read-only.** Editing one derives a copy.
 - **Tokens are data; CSS is code.** A token value that could close its
   declaration, or reach the network, is refused — so a shared theme cannot phone
@@ -3419,6 +3418,11 @@ Each phase ends in a working, usable application.
     in `QueryClientProvider`; a first run landed on a blank page. The provider
     now wraps the wizard and the login screen too. See §17 and
     `test/setup-screen.test.ts`.
+75. **A theme's `base` flag does something** — `dark` vs `light` is emitted as
+    `color-scheme` in the theme stylesheet, carried by the bootstrap, and set
+    as `data-theme` on the document before any screen renders, so a theme that
+    names few colours still renders as its `base` says. See §16 and
+    `test/themes.test.ts`, `test/setup-screen.test.ts`.
 
 Settled while building phase 15.
 

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { AppContext, AppEnv } from "../context.ts";
 import { clearSession, isAuthenticated, issueSession } from "../middleware/session.ts";
 import { createRateLimiter } from "../middleware/rate-limit.ts";
+import { activeTheme } from "../db/queries/themes.ts";
 import {
   SettingKey,
   getSetting,
@@ -23,9 +24,11 @@ export function authRoutes(ctx: AppContext): Hono<AppEnv> {
   const limiter = createRateLimiter({ scope: "login", limit: 10, windowMs: 5 * 60 * 1000 });
 
   app.get("/bootstrap", (c) => {
+    const theme = activeTheme(ctx.db);
     const body: BootstrapDto = {
       setupCompleted: isSetupCompleted(ctx.db),
       authenticated: isAuthenticated(c, ctx),
+      themeBase: theme?.base ?? null,
     };
     return c.json(body);
   });

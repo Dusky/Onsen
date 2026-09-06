@@ -115,12 +115,19 @@ export function completeTokens(tokens: Record<string, string>): Record<string, s
  * approved is ever passed in here.
  */
 export function themeCss(theme: ThemeDto): string {
-  const declarations = Object.entries(completeTokens(theme.tokens))
-    .filter(([name, value]) => isSafeToken(name, value))
-    .map(([name, value]) => `  --onsen-${name}: ${value};`)
-    .join("\n");
+  // `base` finally does something (§20 phase 75): it is the theme's light or
+  // dark declaration, emitted as `color-scheme` so native controls, scrollbars
+  // and the fall-through tokens all follow it. Until now a theme only rendered
+  // dark or light through the colours it happened to name, and a tokenless
+  // dark theme followed the OS light preference.
+  const declarations =
+    `  color-scheme: ${theme.base};\n` +
+    Object.entries(completeTokens(theme.tokens))
+      .filter(([name, value]) => isSafeToken(name, value))
+      .map(([name, value]) => `  --onsen-${name}: ${value};`)
+      .join("\n");
 
-  const root = declarations === "" ? "" : `:root:root:root {\n${declarations}\n}\n`;
+  const root = `:root:root:root {\n${declarations}\n}\n`;
   return theme.customCss.trim() === "" ? root : `${root}\n${theme.customCss}\n`;
 }
 

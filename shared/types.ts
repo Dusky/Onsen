@@ -384,6 +384,11 @@ export interface BootstrapDto {
   /** False until the setup wizard has completed (SPEC §17). */
   setupCompleted: boolean;
   authenticated: boolean;
+  /**
+   * The active theme's base, so the client can set `data-theme` on the document
+   * before any screen renders (§20 phase 75). Null before themes are seeded.
+   */
+  themeBase: "dark" | "light" | null;
 }
 
 export interface SetupRequest {

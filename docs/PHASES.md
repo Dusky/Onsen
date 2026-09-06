@@ -5925,3 +5925,26 @@ future branch cannot slip outside again.
 **Verified in a browser** at 390×844: a fresh install renders the wizard, the
 form completes, and `/api/bootstrap` reports `setupCompleted: true,
 authenticated: true`.
+
+## Phase 75 — A theme's `base` flag does something
+
+Found during phase 66: a theme's `dark` vs `light` was stored, round-tripped,
+shown — and changed nothing. A theme only rendered dark or light through the
+colours it happened to name, so a tokenless dark theme followed the OS light
+preference. The flag was a promise the renderer did not keep.
+
+### Three small wires, one end
+
+`base` now flows the whole way: `themeCss` emits it as `color-scheme`, the
+bootstrap carries it (`themeBase`), and `App` sets it as `data-theme` on the
+document before any branch renders — so the login screen's fall-through tokens
+and native controls are right. The `:root[data-theme=...]` selectors that had
+sat in `tokens.css` since phase 45 with nothing ever setting them are finally
+driven.
+
+`test/themes.test.ts` asserts the stylesheet carries the base, and
+`test/setup-screen.test.ts` asserts the client applies it.
+
+**Verified in a browser** on a light-OS context: the default dark theme sets
+`data-theme="dark"` and renders `#14120f`; switching to Bone sets
+`data-theme="light"` and renders `#fafafa`.
