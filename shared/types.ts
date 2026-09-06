@@ -171,6 +171,14 @@ export interface InstructTemplateDto {
   stopSequences: string[];
 }
 
+/** What happens to example dialogue when the budget tightens (§20 phase 64). */
+export const EXAMPLE_EVICTIONS = ["keep", "gradual", "never"] as const;
+export type ExampleEvictionName = (typeof EXAMPLE_EVICTIONS)[number];
+
+export function isExampleEviction(value: unknown): value is ExampleEvictionName {
+  return typeof value === "string" && (EXAMPLE_EVICTIONS as readonly string[]).includes(value);
+}
+
 export interface PresetDto {
   id: string;
   name: string;
@@ -204,6 +212,16 @@ export interface PresetDto {
    * paid for would be the worse half of automation.
    */
   autoSwipe: { minChars: number; attempts: number };
+  /**
+   * What happens to the example dialogue as a scene fills up (§3, §20 phase 64).
+   *
+   * `keep` holds every example and trims history around it, which is what the
+   * builder did before there was a choice. `gradual` makes examples the first
+   * thing dropped when the budget tightens. `never` leaves them out entirely.
+   */
+  exampleEviction: ExampleEvictionName;
+  /** Merge consecutive system messages into one (§3, §20 phase 64). */
+  squashSystem: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -289,6 +307,9 @@ export interface UpdatePresetRequest {
   /** The two automatic retries (§20 phase 63). Zero is off for both. */
   autoContinue?: number;
   autoSwipe?: { minChars?: number; attempts?: number };
+  /** What happens to the examples as a scene fills up (§20 phase 64). */
+  exampleEviction?: ExampleEvictionName;
+  squashSystem?: boolean;
 }
 
 /**
@@ -2006,7 +2027,12 @@ export interface PromptBlock {
   tokens: number;
 }
 
-export type EvictionReason = "history_budget" | "hidden" | "summarized";
+export type EvictionReason =
+  | "history_budget"
+  | "hidden"
+  | "summarized"
+  /** An example pushed out to make room for the scene (§20 phase 64). */
+  | "example_pushed_out";
 
 /** What the budget could not carry, and why (§3). */
 export interface EvictedItem {

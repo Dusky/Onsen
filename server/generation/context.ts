@@ -3,6 +3,7 @@ import {
   CUSTOM_BLOCK_PREFIX,
   MODERN_SAMPLER_DEFAULTS,
   customBlockId,
+  isExampleEviction,
   type SamplerSettings,
 } from "../../shared/types.ts";
 import { listPresetBlocks, parsePromptOrder } from "../db/queries/connections.ts";
@@ -86,6 +87,9 @@ interface PresetRow {
   reasoning_config: string | null;
   /** The assembly order as JSON; see `parsePromptOrder` (§20 phase 56). */
   prompt_order: string | null;
+  /** Prompt assembly policy (§20 phase 64). */
+  example_eviction: string;
+  squash_system: number;
 }
 
 export interface ResolvedPreset {
@@ -175,6 +179,11 @@ export function resolvePreset(db: Database, presetId: number | null): ResolvedPr
       prefill: row?.prefill ?? null,
       postHistoryInstructions: null,
       maxResponseTokens: row?.max_response_tokens ?? 1024,
+      // Parsed with a fallback rather than trusted: the column carries no
+      // CHECK, so a value written by a newer build reads as the default here
+      // instead of reaching the builder as a policy it does not have.
+      exampleEviction: isExampleEviction(row?.example_eviction) ? row.example_eviction : "keep",
+      squashSystem: row?.squash_system === 1,
       blockOrder,
       customBlocks: blocks
         .filter((block) => block.enabled)

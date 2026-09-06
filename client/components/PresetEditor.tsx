@@ -4,6 +4,7 @@ import {
   AUTO_SWIPE_MAX_ATTEMPTS,
   AUTO_SWIPE_MAX_CHARS,
   DEFAULT_BLOCK_ORDER,
+  EXAMPLE_EVICTIONS,
   INJECTION_ROLES,
   MODERN_SAMPLER_DEFAULTS,
   SAMPLER_BOUNDS,
@@ -410,6 +411,33 @@ export function PresetEditor({ preset, onClose }: { preset: PresetDto; onClose()
             }
           />
         </div>
+
+        {/* Prompt assembly policy (§3, §20 phase 64). Both change what every
+            prompt on this preset looks like, which is why both ship as they
+            were: examples kept, system turns unmerged. */}
+        <p className="section-label mb-[8px]">{strings.settings.examples}</p>
+        <div className="mb-[8px] flex gap-[6px]">
+          {EXAMPLE_EVICTIONS.map((option) => (
+            <button
+              key={option}
+              type="button"
+              aria-pressed={preset.exampleEviction === option}
+              onClick={() => update.mutate({ id: preset.id, exampleEviction: option })}
+              className={`btn flex-1 ${preset.exampleEviction === option ? "btn-primary" : ""}`}
+            >
+              {strings.settings.exampleEvictions[option]}
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          aria-pressed={preset.squashSystem}
+          onClick={() => update.mutate({ id: preset.id, squashSystem: !preset.squashSystem })}
+          className={`btn mb-[8px] w-full ${preset.squashSystem ? "btn-primary" : ""}`}
+        >
+          {strings.settings.squashSystem}
+        </button>
 
         <p className="section-label mb-[8px]">{strings.settings.prefill}</p>
         <textarea

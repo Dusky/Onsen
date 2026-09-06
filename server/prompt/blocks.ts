@@ -66,6 +66,23 @@ function fullCharacter(character: PromptCharacter): string {
 }
 
 /** Everyone else, compactly: fewer fields, not truncated text. */
+/**
+ * A card's example dialogue, split into the examples it is made of (§20 phase 64).
+ *
+ * `<START>` is the CCv2 separator, and cards use it loosely — leading, doubled,
+ * lower-case, with or without the angle brackets on the same line. Anything
+ * that is not a separator is content, so a card with no separators at all is
+ * one example, which is the common case and must keep working exactly as it
+ * did.
+ */
+export function splitExamples(text: string | null): string[] {
+  if (text === null) return [];
+  return text
+    .split(/^\s*<\s*START\s*>\s*$/gim)
+    .map((part) => part.trim())
+    .filter((part) => part !== "");
+}
+
 function compactCharacter(character: PromptCharacter): string {
   return paragraphs(`### ${character.name}`, character.description);
 }
@@ -580,7 +597,23 @@ export function draftBlocks(ctx: PromptContext): Map<string, DraftBlock[]> {
     add("constant_lore", "Lore", `entry ${entry.id}`, entry.content, PREFIX, entry.insertionRole);
   }
 
-  add("example_dialogue", "Example dialogue", ctx.spotlight.name, ctx.spotlight.exampleDialogue);
+  /*
+   * The examples, one block each (§20 phase 64).
+   *
+   * A card separates them with `<START>`, and until this phase they were one
+   * undifferentiated string — which made "drop an example when the budget
+   * tightens" impossible to express, because there was only ever one thing to
+   * drop. Split here so each is costed and evicted on its own, and so the
+   * inspector can say which of them the model actually saw.
+   *
+   * `never` is handled by drafting nothing: a policy that dropped them later
+   * would still pay for them in the block list.
+   */
+  if (ctx.preset.exampleEviction !== "never") {
+    for (const example of splitExamples(ctx.spotlight.exampleDialogue)) {
+      add("example_dialogue", "Example dialogue", ctx.spotlight.name, example);
+    }
+  }
   add("summaries", "Summary", "rolling summarisation", summariesBlock(ctx));
   add("history", "History", "message tree", HISTORY_PLACEHOLDER);
 

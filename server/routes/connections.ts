@@ -37,6 +37,7 @@ import {
   AUTO_SWIPE_MAX_ATTEMPTS,
   AUTO_SWIPE_MAX_CHARS,
   customBlockId,
+  isExampleEviction,
   isInjectionRole,
   type PromptOrderEntry,
 } from "../../shared/types.ts";
@@ -375,6 +376,20 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
         if (attempts === undefined) return c.json(badRequest("attempts is a number."), 400);
         patch.autoSwipeAttempts = attempts;
       }
+    }
+
+    /* Prompt assembly policy (§3, §20 phase 64). */
+    if ("exampleEviction" in body) {
+      const value = body["exampleEviction"];
+      if (!isExampleEviction(value)) {
+        return c.json(badRequest("Keep the examples, push them out, or send none?"), 400);
+      }
+      patch.exampleEviction = value;
+    }
+    if ("squashSystem" in body) {
+      const value = body["squashSystem"];
+      if (typeof value !== "boolean") return c.json(badRequest("squashSystem is a boolean."), 400);
+      patch.squashSystem = value;
     }
 
     return c.json(toPresetDto(ctx.db, updatePreset(ctx.db, row.id, patch)));

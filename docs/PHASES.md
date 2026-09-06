@@ -5430,3 +5430,74 @@ since phase 40 has used a stand-in that streams a fixed beat and ends. Driving
 this phase meant a stub that reports a cap, recognises the continue op's own
 prompt, and answers differently the second time — which is the first time the
 stand-in has had to model provider *behaviour* rather than provider *shape*.
+
+---
+
+## Phase 64 — The examples, and the system run
+
+The two prompt-assembly policies left in `GAPS.md`, and the first of them
+needed structure before it needed a setting.
+
+### The examples had no parts
+
+A card separates its example dialogue with `<START>`, and this builder stored
+and sent the whole thing as one string. So "drop an example when the budget
+tightens" — the incumbent's *gradual push-out* — was not a policy that could be
+expressed here at all: there was only ever one thing to drop, and dropping it
+would take every example with it.
+
+`splitExamples` breaks the string on the separator, loosely enough for what
+cards actually contain — lower case, extra whitespace, a leading separator, a
+doubled one; every card library in the wild has all four. Each example becomes
+its own block, costed and listed on its own, which is what makes the rest
+possible.
+
+### One trim order, not two
+
+The first version of push-out was a separate pass with its own rule: measure
+the whole history, drop examples from the end while it overflows. It was wrong
+twice over. Measured against the *whole* history it fired all-or-nothing — once
+a scene is bigger than the window every example goes at once, which is not
+"gradual" by any reading. And dropping from the end was a rationale I invented
+("the first example sets the voice") rather than one the behaviour supported.
+
+The right model was simpler and was already in the file: the examples are the
+oldest things in the transcript, so they join the same oldest-first queue ahead
+of the first turn. A short scene keeps all of them; a long one loses them one
+at a time; only once they are gone does the scene start being trimmed. There is
+one trim order, and the policy decides whether the examples are in it.
+
+### What was built
+
+- **`example_eviction`** — keep, gradual, never. `keep` is the default because
+  any other value changes what every prompt on that preset looks like.
+- **`squash_system`** — merge consecutive system turns. After the alternation
+  pass, not before: that pass has already turned system entries into user ones
+  where a provider demands it, and merging first would join along a boundary
+  that no longer exists. A history message keeps its own turn, so
+  `historyIncluded` stays honest.
+- **A pushed-out example is reported as an eviction** with its text and its
+  cost, for the reason §3 insists on the list at all: "the character forgot" is
+  almost always "the model never saw it".
+
+### Surprises
+
+**The drive found zero examples in every prompt, and the code was right.** This
+install's preset had `example_dialogue` switched *off* in the block order — left
+by a phase 56 drive, saved in the database, invisible from the code. Ten minutes
+went into a bug that was a stale fixture. It is also a small argument for the
+prompt manager: the setting was doing exactly what it said, on a preset nobody
+had looked at since.
+
+**The inspector cannot see the squash, and that is correct.** `PromptInspectorDto`
+carries `debug` and no message array, because the inspector's subject is the
+assembled prompt rather than the wire format. Verifying squash meant a stub that
+logs the role sequence of what actually arrives — which found
+`system,system,user,system×9` becoming `system,system,user,assistant,system`,
+and confirmed the leading pair correctly *not* merging: one of them is a system
+message from the history, and those keep their own turn.
+
+**Three of fourteen tests fail with push-out disabled; one fails with squash
+disabled.** Checked by disabling each and re-running, as phases 60 and 63 did.
+The rest are the shape assertions and the "leaves it alone" cases, which are
+worth having and prove nothing on their own.

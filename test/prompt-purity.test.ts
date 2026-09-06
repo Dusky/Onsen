@@ -69,6 +69,8 @@ describe("determinism", () => {
         maxResponseTokens: 200,
         blockOrder: null,
         customBlocks: [],
+        exampleEviction: "keep",
+        squashSystem: false,
       },
       nudge: "It is {{time}} on {{date}}.",
     });
@@ -89,6 +91,8 @@ describe("determinism", () => {
         maxResponseTokens: 200,
         blockOrder: null,
         customBlocks: [],
+        exampleEviction: "keep",
+        squashSystem: false,
       },
     });
 

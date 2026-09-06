@@ -3,6 +3,7 @@ import { ulid } from "../../lib/ulid.ts";
 import { decryptSecret, maskSecret, type Keyring } from "../../lib/crypto.ts";
 import {
   MODERN_SAMPLER_DEFAULTS,
+  isExampleEviction,
   type ConnectionProfileDto,
   type InjectionRole,
   type PresetBlockDto,
@@ -52,6 +53,9 @@ interface PresetRow {
   auto_continue: number;
   auto_swipe_min_chars: number;
   auto_swipe_attempts: number;
+  /** Prompt assembly policy (§20 phase 64). */
+  example_eviction: string;
+  squash_system: number;
   system_prompt: string | null;
   jailbreak: string | null;
   is_default: number;
@@ -179,6 +183,10 @@ export function toPresetDto(db: Database, row: PresetRow): PresetDto {
     blocks: listPresetBlocks(db, row.id),
     autoContinue: row.auto_continue,
     autoSwipe: { minChars: row.auto_swipe_min_chars, attempts: row.auto_swipe_attempts },
+    // Parsed with a fallback rather than trusted: the column has no CHECK, so
+    // a value written by a newer build must not break an older one.
+    exampleEviction: isExampleEviction(row.example_eviction) ? row.example_eviction : "keep",
+    squashSystem: row.squash_system === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -548,6 +556,9 @@ export interface PresetPatch {
   autoContinue?: number;
   autoSwipeMinChars?: number;
   autoSwipeAttempts?: number;
+  /** Prompt assembly policy (§20 phase 64). */
+  exampleEviction?: string;
+  squashSystem?: boolean;
 }
 
 export function createPresetBlock(
@@ -627,6 +638,8 @@ export function updatePreset(db: Database, id: number, patch: PresetPatch): Pres
               auto_continue = $auto_continue,
               auto_swipe_min_chars = $auto_swipe_min_chars,
               auto_swipe_attempts = $auto_swipe_attempts,
+              example_eviction = $example_eviction,
+              squash_system = $squash_system,
               updated_at = $now
         WHERE id = $id
         RETURNING *`,
@@ -646,6 +659,8 @@ export function updatePreset(db: Database, id: number, patch: PresetPatch): Pres
       auto_continue: patch.autoContinue ?? current.auto_continue,
       auto_swipe_min_chars: patch.autoSwipeMinChars ?? current.auto_swipe_min_chars,
       auto_swipe_attempts: patch.autoSwipeAttempts ?? current.auto_swipe_attempts,
+      example_eviction: patch.exampleEviction ?? current.example_eviction,
+      squash_system: (patch.squashSystem ?? current.squash_system === 1) ? 1 : 0,
       now: Date.now(),
     }) as PresetRow;
 }

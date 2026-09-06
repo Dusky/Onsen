@@ -650,6 +650,14 @@ export const strings = {
     contextSizeUnit: "tokens",
     maxResponseTokens: "Reserved for the reply",
     maxResponseTokensUnit: "tokens",
+    /* Prompt assembly policy (§20 phase 64). */
+    examples: "The examples",
+    exampleEvictions: {
+      keep: "Always",
+      gradual: "Push out",
+      never: "Never",
+    } as Record<string, string>,
+    squashSystem: "Merge system turns",
     /* The two automatic retries (§20 phase 63). */
     retries: "When a turn comes back wrong",
     autoContinue: "Carry on",

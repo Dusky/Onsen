@@ -172,7 +172,6 @@ export function buildPrompt(ctx: PromptContext): BuiltPrompt {
   const available = ctx.budget - reservedForResponse;
   if (fixedTokens > available) throw new PromptBudgetError(fixedTokens, available);
 
-  const historyBudget = available - fixedTokens;
   const evicted: EvictedItem[] = [
     ...history.hidden.map(
       (message): EvictedItem => ({
@@ -198,20 +197,63 @@ export function buildPrompt(ctx: PromptContext): BuiltPrompt {
     ),
   ];
 
+  /*
+   * Gradual push-out (§20 phase 64).
+   *
+   * The incumbent's policy, and the shape of it is the whole idea: the
+   * examples are the *oldest* things in the transcript, so they join the trim
+   * queue ahead of the first turn and go by the same rule everything else goes
+   * by — oldest first, whole items only. With a short scene they all survive;
+   * as it grows they leave one at a time, and only once they are gone does the
+   * scene itself start being trimmed.
+   *
+   * Which is why this is not a separate pass with a policy of its own. There
+   * is one trim order, and `gradual` decides whether the examples are in it.
+   */
+  const examples =
+    ctx.preset.exampleEviction === "gradual"
+      ? blocks.filter((block) => block.id === "example_dialogue")
+      : [];
+  const exampleTokens = examples.reduce((sum, block) => sum + block.tokens, 0);
+
+  // Everything that is not being trimmed has to fit first; what is left is
+  // shared by the examples and the scene.
+  const trimBudget = available - (fixedTokens - exampleTokens);
+
+  let dropped = 0;
+  let queueTokens = exampleTokens + history.turns.reduce((sum, turn) => sum + turn.tokens, 0);
+  while (queueTokens > trimBudget && dropped < examples.length) {
+    const example = examples[dropped]!;
+    evicted.push({
+      blockId: "example_dialogue",
+      itemId: null,
+      label: example.content.slice(0, 80),
+      tokens: example.tokens,
+      reason: "example_pushed_out",
+    });
+    queueTokens -= example.tokens;
+    const at = blocks.indexOf(example);
+    if (at !== -1) blocks.splice(at, 1);
+    dropped += 1;
+  }
+
+  const fixedAfterExamples = fixedTokens - examples.slice(0, dropped).reduce((sum, block) => sum + block.tokens, 0);
+  const historyBudget = available - fixedAfterExamples;
+
   // Trim oldest first, whole messages only — never a partial message (§3).
   let kept = history.turns;
   let historyTokens = kept.reduce((sum, turn) => sum + turn.tokens, 0);
   let firstKept = 0;
   while (historyTokens > historyBudget && firstKept < kept.length) {
-    const dropped = kept[firstKept]!;
+    const oldest = kept[firstKept]!;
     evicted.push({
       blockId: "history",
-      itemId: dropped.messageId,
-      label: dropped.content.slice(0, 80),
-      tokens: dropped.tokens,
+      itemId: oldest.messageId,
+      label: oldest.content.slice(0, 80),
+      tokens: oldest.tokens,
       reason: "history_budget",
     });
-    historyTokens -= dropped.tokens;
+    historyTokens -= oldest.tokens;
     firstKept += 1;
   }
   kept = kept.slice(firstKept);
@@ -244,10 +286,10 @@ export function buildPrompt(ctx: PromptContext): BuiltPrompt {
     budget: ctx.budget,
     reservedForResponse,
     available,
-    fixedTokens,
+    fixedTokens: fixedAfterExamples,
     historyTokens,
-    totalTokens: fixedTokens + historyTokens,
-    headroom: available - (fixedTokens + historyTokens),
+    totalTokens: fixedAfterExamples + historyTokens,
+    headroom: available - (fixedAfterExamples + historyTokens),
     blocks,
     evicted,
     historyIncluded: kept.map((turn) => turn.messageId),
@@ -388,6 +430,39 @@ function shapeForProvider(
       }
     }
     entries = merged;
+  }
+
+  /*
+   * Squash consecutive system messages (§20 phase 64).
+   *
+   * Several near-turn blocks land at the same depth — guides, trackers, the
+   * ban list, a director's note — and each becomes its own system turn. Some
+   * models follow one combined instruction better than a run of small ones,
+   * and some providers bill per message.
+   *
+   * After the alternation pass rather than before, because that pass has
+   * already turned system entries into user ones where a provider demands it,
+   * and squashing them first would merge along a boundary that no longer
+   * exists. Messages carrying an id keep it: `historyIncluded` is how the
+   * inspector knows what the model saw, and a merged turn would lose that.
+   */
+  if (ctx.preset.squashSystem) {
+    const squashed: TimelineEntry[] = [];
+    for (const entry of entries) {
+      const previous = squashed.at(-1);
+      if (
+        previous !== undefined &&
+        previous.role === "system" &&
+        entry.role === "system" &&
+        previous.messageId === undefined &&
+        entry.messageId === undefined
+      ) {
+        previous.content = `${previous.content}\n\n${entry.content}`;
+      } else {
+        squashed.push({ ...entry });
+      }
+    }
+    entries = squashed;
   }
 
   return {

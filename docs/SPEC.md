@@ -419,6 +419,8 @@ reasoning_config   -- extract/hide/reinject rules
 auto_continue         -- carry on this many times when a turn hits the cap (§7)
 auto_swipe_min_chars  -- reroll a turn shorter than this; zero is off
 auto_swipe_attempts   -- how many rerolls before it gives up
+example_eviction      -- keep | gradual | never (§3, §20 phase 64)
+squash_system         -- merge consecutive system turns into one
 ```
 
 ### ConnectionProfile
@@ -821,6 +823,37 @@ history has a fixed or capped cost. History absorbs the remainder and is trimmed
 oldest-first — but trimmed messages should be covered by a summary before they
 fall out (§11). Never trim a partial message. If the budget cannot fit the fixed
 blocks, fail loudly.
+
+**The examples can join that trim queue** (§20 phase 64). A card separates its
+example dialogue with `<START>`, and each example is a block of its own —
+costed, listed and evicted individually, because "drop an example when the
+budget tightens" cannot be said about one undifferentiated string. A preset
+chooses what happens to them:
+
+- **keep** — hold every example and trim the scene around it. What this builder
+  did before there was a choice, and still the default: any other value changes
+  what every prompt on that preset looks like.
+- **gradual** — the examples are the *oldest* things in the transcript, so they
+  go into the same oldest-first queue ahead of the first turn. A short scene
+  keeps all of them; a long one loses them one at a time, and only once they
+  are gone does the scene start being trimmed. There is one trim order, and
+  this decides whether the examples are in it.
+- **never** — not drafted at all. A policy that dropped them later would still
+  have paid for them in the block list.
+
+An example that was pushed out is reported as an eviction like any other, with
+its text and its cost, for the reason §3 insists on the list at all.
+
+**Consecutive system messages may be merged** (§20 phase 64, `squash_system`).
+Several near-turn blocks land at the same depth — guides, trackers, the ban
+list, a director's note — and each becomes its own system turn; some models
+follow one combined instruction better, and some providers bill per message. It
+runs *after* provider shaping, because that pass has already turned system
+entries into user ones where a provider demands strict alternation, and merging
+first would join along a boundary that no longer exists. A message that is a
+history turn keeps its own place either way: `historyIncluded` is how the
+inspector says what the model saw, and a merged turn would lose it. Off by
+default, for the same reason `keep` is.
 
 Token counting: use a real tokenizer per provider family where available; fall
 back to a character-ratio estimate with a safety margin, and **label estimates as
@@ -3280,6 +3313,13 @@ Each phase ends in a working, usable application.
     so `TokenChunk.finishReason` is new and normalised across providers, and
     auto-continue fires on a reported `length` and never on a guess.
     See §4, §7 and `test/retries.test.ts`.
+64. **The examples, and the system run** — a card's example dialogue is split
+    on `<START>` into one block each, costed and evicted individually, and a
+    preset chooses what happens to them as a scene fills: keep every one,
+    push them out ahead of the scene, or send none. Plus an option to merge
+    consecutive system turns into one. Both ship as the builder already
+    behaved, because both change what every prompt on that preset looks like.
+    See §3 and `test/examples.test.ts`.
 
 Settled while building phase 15.
 

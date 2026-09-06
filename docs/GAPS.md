@@ -54,8 +54,8 @@ ordered, budgeted, inspectable — and almost none of it is reachable.
 | Seed | **have** | 74 hits across shared/server/client | — |
 | Reasoning config | **have** | `ReasoningConfigDto` `shared/types.ts:196` | — |
 | Tool calling on any provider | **have** | phase 48; `test/adapter-tools-conformance.test.ts` | — |
-| Example-message eviction policy | **missing** | ST offers *Gradual push-out / never / always*; no equivalent in `server/prompt/` | close — cheap, and it changes every long scene |
-| Squash consecutive system messages | **missing** | `grep -rni squash` → 0 | close — one flag, affects coherence |
+| Example-message eviction policy | **have** | phase 64; `presets.example_eviction` is keep / gradual / never. `splitExamples` (`server/prompt/blocks.ts:78`) breaks a card's examples on `<START>` so each is costed and evicted on its own, and under *gradual* they sit ahead of the scene in one oldest-first trim queue (`index.ts:232`) | — |
+| Squash consecutive system messages | **have** | phase 64; `presets.squash_system`, applied after the alternation pass (`server/prompt/index.ts:449`). A history message keeps its own turn, so `historyIncluded` stays honest | — |
 | Web search | **missing** | `grep -rniE 'webSearch\|web_search'` → 0 | judgement call — backend-dependent |
 
 ## 2. Library at scale
@@ -212,6 +212,10 @@ had noticed: no adapter reported *why* a completion stopped, so there was
 nothing for auto-continue to fire on. It fires on a reported `length` and never
 on a guess.
 
-Then, in rough order of how early a session hits them: example-message eviction
-and squash; Quick Reply macro buttons; chat translation; auto background;
-smooth streaming.
+**Phase 64 (done)** built both prompt-assembly policies. The first needed
+structure before it needed a setting: example dialogue was one undifferentiated
+string, so "drop an example when the budget tightens" had only ever one thing
+to drop.
+
+Then, in rough order of how early a session hits them: Quick Reply macro
+buttons; chat translation; auto background; smooth streaming; web search.

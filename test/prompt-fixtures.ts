@@ -71,6 +71,8 @@ export const PRESET: PromptPreset = {
   maxResponseTokens: 200,
   blockOrder: null,
   customBlocks: [],
+  exampleEviction: "keep",
+  squashSystem: false,
 };
 
 export const OPENAI: ProviderCapabilities = {

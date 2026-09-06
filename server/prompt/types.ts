@@ -436,6 +436,9 @@ export interface PromptGuide {
   content: string;
 }
 
+/** What happens to example dialogue when the budget tightens (§20 phase 64). */
+export type ExampleEviction = "keep" | "gradual" | "never";
+
 export interface PromptPreset {
   name: string;
   systemPrompt: string | null;
@@ -460,6 +463,26 @@ export interface PromptPreset {
    * Drafted like any other block, so macros and outlets resolve in them.
    */
   customBlocks: PromptCustomBlock[];
+  /**
+   * What happens to the example dialogue as a scene fills up (§20 phase 64).
+   *
+   * `keep` holds every example whatever else has to go, which is what this
+   * builder did before there was a choice. `gradual` makes them the first
+   * thing dropped when the budget tightens — the incumbent's "gradual push
+   * out", and the reason examples are drafted one block each. `never` leaves
+   * them out entirely, for a card whose examples are longer than its scenes.
+   */
+  exampleEviction: ExampleEviction;
+  /**
+   * Merge consecutive system messages into one (§20 phase 64).
+   *
+   * Several near-turn blocks land at the same depth — guides, trackers, the
+   * ban list, a director's note — and each becomes its own system message.
+   * Some models follow one combined instruction better than a run of small
+   * ones; some providers bill per message. Off by default, because it changes
+   * what every existing prompt looks like.
+   */
+  squashSystem: boolean;
 }
 
 export interface PromptCustomBlock {
