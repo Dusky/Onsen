@@ -87,6 +87,7 @@ running a table, while you direct.
 | [`docs/design/DESIGN.md`](docs/design/DESIGN.md) | Layout, visual system, component structure. |
 | [`docs/HANDOFF.md`](docs/HANDOFF.md) | The non-negotiables, the conventions, and the guards that measure them. |
 | [`docs/PHASES.md`](docs/PHASES.md) | What each completed phase actually built. |
+| [`docs/NEXT.md`](docs/NEXT.md) | What is left, in order, and how to pick it up. |
 
 `SPEC.md` wins on behaviour and data; the design doc wins on layout and
 appearance.
