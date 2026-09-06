@@ -5624,3 +5624,55 @@ trusting a future phase to keep it.
 **Verified in a browser** at 390×844 and 1440×900, reading the computed custom
 properties rather than a screenshot: radius `0px`, no shadow, ground `#14120f`
 on both widths, on a fresh install.
+
+## Phase 67 — The sidebar
+
+The second surface pass. The desktop rail's whole justification — from the
+design's own `4a` — is that on a desktop, switching scenes should be free where
+on a phone it is a screen change. The shipped sidebar had not earned that: a
+10px mono kicker where a wordmark should be, five bare text rows, and a recent
+list of title plus "N replies" — 232px of dead grey.
+
+### A real row, not a bare title
+
+The recent row now carries what the design's own scenes list always carried:
+the title, the newest line of prose (`lastLine`), the cast's initials, and the
+message count. Two scenes with the same title were otherwise indistinguishable
+in the one place that exists to tell them apart. Cast initials are up to three,
+with a `+n` surplus — the same rule the scenes list uses.
+
+### The sidebar is a live map
+
+The writing indicator reads the global generation store, so the scene
+generating right now wears a red dot and a red `writing` in place of its count,
+wherever the reader is. The design handoff called for a "still writing" strip
+on any screen that is not the generating scene; the sidebar is the natural
+place for the desktop half of that, and it was already holding the store.
+
+### What was built
+
+- A Spectral wordmark — the app's name set as prose, the same allowance phase
+  47 made for a group heading.
+- Nav rows with counts and an active state that is three signals, not one: red
+  label, `bg-inset`, and the 2px red left bar.
+- The recent list upgraded to real rows, density-correct via `.row`.
+- `test/sidebar.test.ts` pins the substance: the excerpt and cast are rendered,
+  the generating scene is marked, and the rows go through `.row`.
+
+### Surprises
+
+**Glyphs were dropped on purpose.** The plan's first draft gave each nav
+destination a typographic glyph. On the page it read as more cipher, not less —
+the five words are short and distinct, and a column of half-remembered marks
+was exactly the "AI slop" texture the pass exists to remove. The structure came
+from the wordmark and the richer rows instead, which is the real hierarchy.
+
+**The wordmark had no string of its own.** `strings.nav.appName` ("Onsen") is
+the app name, provisional like every other noun, and it doubles as the
+wordmark; no new vocabulary was invented for a mark that will be renamed with
+everything else.
+
+**Verified in a browser** at 1440×900: the wordmark resolves to Spectral, the
+nav carries counts, the recent rows show title, excerpt, cast initials and
+count, and firing a reply mid-stream turns the row red with `writing` in place
+of the count.

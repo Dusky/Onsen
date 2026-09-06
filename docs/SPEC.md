@@ -2580,6 +2580,11 @@ toggle.
 - **Prompt inspector** — the exact assembled prompt for the last generation,
   block by block, with token costs, **what was evicted**, retrieved chunks and
   scores, and which lore entries fired and why. Reachable from any message.
+- **Desktop sidebar** — the tab bar unrolled (§20 phase 67): a Spectral
+  wordmark, the five destinations with counts and an unmistakable active state,
+  and a `RECENT` list of real rows — title, the newest line of prose, the
+  cast's initials, the message count — with a red dot and a red `writing` in
+  place of the count while that scene is generating.
 
 ### Empty states
 
@@ -3366,6 +3371,12 @@ Each phase ends in a working, usable application.
     `base` is not wired to `data-theme` — a default must be deterministic. The
     first of the four surface passes in `docs/SURFACE-PASS.md`. See §16 and
     `test/themes.test.ts`.
+67. **The sidebar** — the desktop rail stops being a bare list. A Spectral
+    wordmark, the five destinations with counts and an unmistakable active
+    state, and a `RECENT` list of real rows: title, the newest line of prose,
+    cast initials, message count, and a red `writing` indicator on the scene
+    generating now. The second of the four surface passes. See §16 and
+    `test/sidebar.test.ts`.
 
 Settled while building phase 15.
 

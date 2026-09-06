@@ -1694,6 +1694,8 @@ export const strings = {
     characters: "Cast",
     authors: "Author",
     lore: "Lore",
+    /** A roleplay in the recent list that is generating right now (§5). */
+    writing: "writing",
   },
 
   errors: {
