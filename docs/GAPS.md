@@ -161,7 +161,7 @@ mostly good news and was the biggest source of wrong first guesses.
 | LoreBook Creator | **have** | `REVISE_LORE`, `SUGGEST_LORE` |
 | Quick Reply | **have** (phase 65) | `grep -rliE 'quick.?reply' server client shared --include='*.ts' --include='*.tsx' --include='*.sql'` → 9 files: the `quick_replies` table (migration 0049), CRUD (`server/routes/quick-replies.ts`), and the composer row + sheet (`client/components/QuickReplies.tsx`). Firing one runs the stored prompt through the nudge path |
 | Chat Translation | **missing** | no translation path |
-| Auto Background | **partial** | per-scene backgrounds exist (`SceneDto.hasBackground`); nothing generates one |
+| Auto Background | **have** (phase 77) | `grep -rn 'background/generate' server client` → the route in `scenes.ts`, `drawBackground` in `media/runner.ts`, and the `Generate` button in scene setup. It reads the scene (or the reader's prompt) and files the image where an upload would go |
 | Moonlit Echoes Theme | **have** | full theme system, import/export, custom CSS |
 
 ## 8. Deliberately not ported
@@ -224,5 +224,8 @@ work a macro button needs, so this is storage plus a row of buttons — the
 evidence command was re-run before building: the row was the one honest
 `partial` — nothing had been guessed wrong, the feature simply did not exist.
 
-Then, in rough order of how early a session hits them: chat translation; auto
-background; smooth streaming; web search.
+**Phase 77 (done)** built auto background: a scene background can now be
+generated, not only uploaded, filed exactly where an upload would go.
+
+Then, in rough order of how early a session hits them: chat translation;
+smooth streaming; web search.

@@ -1753,6 +1753,18 @@ export function useSetSceneBackground(sceneId: string) {
   });
 }
 
+/** Generate a scene background from the configured picture service (§12, §20 phase 77). */
+export function useGenerateSceneBackground(sceneId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { prompt?: string }) =>
+      api.post<SceneDto>(`/scenes/${sceneId}/background/generate`, body),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: keys.scene(sceneId) });
+    },
+  });
+}
+
 /* ---------------- the data bank (SPEC §11, phase 30) ---------------- */
 
 export function useEmbeddingsConfig() {

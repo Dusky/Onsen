@@ -1383,6 +1383,8 @@ export const strings = {
     vnModeOn: "On",
     vnModeOff: "Off",
     background: "Set a background",
+    backgroundGenerate: "Generate",
+    backgroundWorking: "Drawing…",
 
     customGuide: "Custom guide",
     customGuidePlaceholder: "What does the crew believe about the captain?",

@@ -256,6 +256,30 @@ export class MediaRunner {
   serviceFor(purpose: "image" | "speech"): MediaServiceRow | null {
     return defaultService(this.db, purpose);
   }
+
+  /**
+   * Draw a scene background (SPEC §12, §20 phase 77).
+   *
+   * Returns the raw image rather than storing it: a background is a scene
+   * property (`scenes.background_path`), not a message asset, so the caller
+   * files it under the data directory and points the scene at it.
+   */
+  async drawBackground(input: {
+    prompt: string;
+    signal?: AbortSignal;
+  }): Promise<{ bytes: Uint8Array; mime: string }> {
+    const service = this.serviceFor("image");
+    if (service === null) {
+      throw new Error("No picture service is set up yet. Add one in Settings.");
+    }
+    const adapter = imageAdapterFor(service.kind, this.configOf(service));
+    const controller = new AbortController();
+    const result = await adapter.draw(
+      { prompt: input.prompt },
+      input.signal === undefined ? controller.signal : input.signal,
+    );
+    return { bytes: result.bytes, mime: result.mime };
+  }
 }
 
 /** Raised when the chosen profile cannot be shown a picture at all. */

@@ -1,5 +1,8 @@
 # App improvement plan
 
+**Status:** items 1–6 done (phases 71–77). Item 7 (chat translation) is next
+and needs the display-only-vs-stored decision first; item 8 is conditional.
+
 Written at phase 71. Ordered by felt improvement per hour of work, which has
 been the thread of every review since phase 65. Each item is its own phase —
 its own commit, its own guard, verified in a browser at 390×844 with

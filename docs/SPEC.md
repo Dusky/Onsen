@@ -2025,7 +2025,9 @@ single-character one — seeing who is on stage is how a reader tracks a scene.
 
 - Multi-sprite staging with the cast positioned across the viewport, spotlighted
   character emphasized, and inactive members dimmed.
-- Scene background image, settable per scene.
+- Scene background image, settable per scene — and generatable (§20 phase 77):
+  a route reads the scene and asks the configured picture service for one,
+  filing it exactly where an upload would go.
 - On mobile: sprites occupy the upper portion, chat scrolls below. Must degrade
   to normal chat with a toggle, and must not hurt scroll performance.
 
@@ -3431,6 +3433,12 @@ Each phase ends in a working, usable application.
     `recordActivations`, the orphaned write half of §10's timed effects — was
     wired, so sticky, cooldown and delay actually arm. See §2, §10 and
     `test/dead-exports.test.ts`, `test/timed-effects.test.ts`.
+77. **Auto background** — a scene background can now be *generated*, not only
+    uploaded: `POST /scenes/:id/background/generate` reads the scene (title,
+    framing, latest line) or the reader's own prompt and asks the configured
+    picture service, filing the image exactly where an upload would go so
+    `hasBackground` and the VN stage light up. A `Generate` button sits beside
+    the upload in scene setup. See §12 and `test/background.test.ts`.
 
 Settled while building phase 15.
 

@@ -3,15 +3,17 @@
 A short, honest list, written at the end of phase 65 so work can resume without
 re-deriving it. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 76, on `glm/sillytavern-replacement-dyp30w`. 1376 tests across
-95 files, typecheck clean, working tree clean. Feature complete against
+**State:** phase 77, on `glm/sillytavern-replacement-dyp30w`. 1378 tests across
+96 files, typecheck clean, working tree clean. Feature complete against
 `SPEC.md` §20 apart from the deferred phase 42.
 
 **Desktop settings** — background tasks, providers and profiles expand in
 place, the preset editor opens in a pane, the setup wizard renders again, and
 a theme's `base` flag is wired to `data-theme` (§20 phases 71–75). **The
-dead-export sweep** (§20 phase 76) found and fixed an orphaned write half of
-timed effects. Next: the GAPS capability queue — auto background first.
+dead-export sweep** found and fixed an orphaned write half of timed effects
+(§20 phase 76), and **auto background** generates a scene background from the
+picture service (§20 phase 77). Next: chat translation, which needs the
+display-only-vs-stored decision first.
 
 ## How to pick up
 

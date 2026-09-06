@@ -21,6 +21,7 @@ import {
   useAuthorExtract,
   useAuthorSuggestLore,
   useSetSceneBackground,
+  useGenerateSceneBackground,
   useDocuments,
   useIngestDocument,
   useDeleteDocument,
@@ -136,6 +137,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
   const authorExtract = useAuthorExtract(sceneId);
   const authorSuggestLore = useAuthorSuggestLore(sceneId);
   const setBackground = useSetSceneBackground(sceneId);
+  const generateBackground = useGenerateSceneBackground(sceneId);
   const documents = useDocuments(sceneId);
   const ingestDocument = useIngestDocument();
   const removeDocument = useDeleteDocument();
@@ -761,16 +763,33 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            className="btn mb-[22px] w-full"
-            disabled={setBackground.isPending}
-            onClick={() =>
-              document.getElementById(`vn-background-${sceneId}`)?.click()
-            }
-          >
-            {strings.sceneSetup.background}
-          </button>
+          <div className="mb-[8px] flex gap-[6px]">
+            <button
+              type="button"
+              className="btn flex-1"
+              disabled={setBackground.isPending}
+              onClick={() =>
+                document.getElementById(`vn-background-${sceneId}`)?.click()
+              }
+            >
+              {strings.sceneSetup.background}
+            </button>
+            <button
+              type="button"
+              className="btn flex-1"
+              disabled={generateBackground.isPending}
+              onClick={() => generateBackground.mutate({})}
+            >
+              {generateBackground.isPending
+                ? strings.sceneSetup.backgroundWorking
+                : strings.sceneSetup.backgroundGenerate}
+            </button>
+          </div>
+          {generateBackground.error !== null ? (
+            <p className="explain explain-alert mb-[10px]">
+              {generateBackground.error.message}
+            </p>
+          ) : null}
           <input
             id={`vn-background-${sceneId}`}
             type="file"

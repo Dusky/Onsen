@@ -58,6 +58,7 @@ import { scriptText } from "../scripts/runtime.ts";
 import { getSetting } from "../db/queries/settings.ts";
 import type { TriggerRunner } from "../triggers/runner.ts";
 import type { WebhookSender } from "../webhooks/sender.ts";
+import type { MediaRunner } from "../media/runner.ts";
 import { sceneChannel, type SceneEvent } from "../sync/channel.ts";
 import { activeGuides, editGuide, findGuide, flushGuides, toGuideDto } from "../db/queries/guides.ts";
 import type { AutopilotRunner } from "../generation/autopilot.ts";
@@ -126,6 +127,24 @@ function optionalString(
   return { ok: true, value: trimmed };
 }
 
+/** A background prompt from what the scene is, when the reader gave none. */
+function backgroundPrompt(db: AppContext["db"], row: SceneRow): string {
+  const parts: string[] = [`A background for a scene titled \u201c${row.title}\u201d.`];
+  if (row.scenario_override !== null && row.scenario_override.trim() !== "") {
+    parts.push(row.scenario_override.trim());
+  }
+  const leaf =
+    row.active_leaf_id === null
+      ? null
+      : (db
+          .query("SELECT content FROM messages WHERE id = $id")
+          .get({ id: row.active_leaf_id }) as { content: string } | null);
+  if (leaf !== null && leaf.content.trim() !== "") {
+    parts.push(`The scene's latest moment: ${leaf.content.trim().slice(0, 300)}`);
+  }
+  return parts.join(" ");
+}
+
 /**
  * Scenes, the message tree, and checkpoints (SPEC §20 phase 2). The API comes
  * before any UI so the tree can be exercised directly; the chat screen in
@@ -153,6 +172,7 @@ export function sceneRoutes(
   autopilot: AutopilotRunner | null = null,
   triggers: TriggerRunner | null = null,
   webhooks: WebhookSender | null = null,
+  media: MediaRunner | null = null,
 ): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
   app.use("*", requireAuth());
@@ -538,6 +558,49 @@ export function sceneRoutes(
     if (!(await file.exists())) return c.json(notFound("scene"), 404);
     c.header("Cache-Control", "public, max-age=3600");
     return c.body(file.stream(), 200, { "Content-Type": file.type });
+  });
+
+  /**
+   * Generate a scene background (SPEC §12, §20 phase 77).
+   *
+   * Reads the scene and asks the configured picture service for a background,
+   * then files it exactly where an uploaded one goes — `scenes.background_path`
+   * — so `hasBackground` and the VN stage light up without a second path. The
+   * reader's own words win, as with a message illustration; without them the
+   * scene's title, framing and latest line describe what to draw.
+   */
+  app.post("/:sceneId/background/generate", async (c) => {
+    const row = scene(c.req.param("sceneId"));
+    if (row === null) return c.json(notFound("scene"), 404);
+    if (media === null) return c.json(badRequest("Picture services are not available."), 400);
+
+    const body = asObject(await readJson(c));
+    const prompt =
+      body === null ? undefined : optionalString(body["prompt"], 2_000);
+    if (prompt !== undefined && !prompt.ok) {
+      return c.json(badRequest("The prompt must be text."), 400);
+    }
+    const chosen = prompt?.value ?? backgroundPrompt(ctx.db, row);
+    if (chosen === "") return c.json(badRequest("There is nothing here to describe."), 400);
+
+    try {
+      const drawn = await media.drawBackground({ prompt: chosen });
+      const path = `${row.id}-${ulid()}.${extensionOfName(drawn.mime)}`;
+      await Bun.write(join(ctx.config.dataDir, "backgrounds", path), drawn.bytes);
+      ctx.db.query("UPDATE scenes SET background_path = $path WHERE id = $id").run({
+        id: row.id,
+        path,
+      });
+      return c.json(sceneDto(ctx.db, findScene(ctx.db, row.ulid)!));
+    } catch (caught) {
+      const detail =
+        caught instanceof Error && /ECONNREFUSED|fetch failed|Unable to connect/i.test(caught.message)
+          ? "Could not reach the picture service. Check that it is running and the address is right."
+          : caught instanceof Error
+            ? caught.message
+            : "The picture service failed.";
+      return c.json({ error: { code: "service_failed", message: detail } }, 502);
+    }
   });
 
   /* -------------------------------------------------------------- */

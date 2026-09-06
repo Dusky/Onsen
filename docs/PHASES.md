@@ -5989,3 +5989,25 @@ The sweep now runs on comment-stripped source.
 the full read side and no write side, and nothing had noticed because the read
 side simply reported "never fired". The same shape as `findDefaultPersona`
 (phase 61): a capability the app had already paid for, unreachable.
+
+## Phase 77 — Auto background
+
+The top of the capability queue. `scenes.background_path` has had a way to
+*upload* into it since phase 41 and nothing that generates one — the GAPS §7
+row stood as `partial` on exactly that.
+
+### Draw, then file where an upload would go
+
+`POST /api/scenes/:id/background/generate` builds a prompt from what the scene
+is — its title, its framing, its latest line — or takes the reader's own words,
+and asks the configured picture service through a new `MediaRunner.drawBackground`.
+The bytes land in `dataDir/backgrounds/` and `scenes.background_path` points at
+them, so `hasBackground` and the VN stage light up without a second serving
+path. The client gets a `Generate` button beside the upload in scene setup.
+
+`drawBackground` returns the raw image rather than a `media_assets` row: a
+background is a scene property, not a message illustration, and the two storage
+shapes are deliberately not merged.
+
+**Verified in a browser** at 390×844 against a stub A1111 service: the button
+draws, `hasBackground` flips true, and the file serves as `image/png`.
