@@ -8,8 +8,11 @@ import { useIsDesktop } from "../lib/breakpoint.ts";
 import {
   useCreateScene,
   useDeleteScene,
+  useOrganiseScene,
   useRenameScene,
-  useScenes,
+  useSceneFolders,
+  useSceneList,
+  useSceneTags,
   useStartLikeScene,
 } from "../lib/queries.ts";
 import { api } from "../lib/api.ts";
@@ -68,7 +71,15 @@ function castLine(scene: SceneDto): string | null {
 
 type Sort = "recent" | "title" | "longest";
 
-function SceneRow({ scene, onManage }: { scene: SceneDto; onManage(): void }) {
+function SceneRow({
+  scene,
+  onManage,
+  onFavourite,
+}: {
+  scene: SceneDto;
+  onManage(): void;
+  onFavourite(): void;
+}) {
   const empty = scene.messageCount === 0;
   const cast = castLine(scene);
   return (
@@ -90,7 +101,7 @@ function SceneRow({ scene, onManage }: { scene: SceneDto; onManage(): void }) {
       >
         <div className="flex items-baseline justify-between gap-[12px]">
           <span className="truncate text-[17px] font-medium">{scene.title}</span>
-          <span className="meta mr-[30px] flex-none">{relativeTime(scene.updatedAt)}</span>
+          <span className="meta mr-[58px] flex-none">{relativeTime(scene.updatedAt)}</span>
         </div>
         {/* One line of the newest turn - what the row is actually for. Clamped
             rather than truncated, so a wide window gets the whole line. */}
@@ -98,30 +109,142 @@ function SceneRow({ scene, onManage }: { scene: SceneDto; onManage(): void }) {
           {scene.lastLine ?? strings.scenes.emptyScene}
         </p>
         <div className="meta mt-[3px] flex items-baseline justify-between gap-[12px]">
-          <span className="truncate">{cast ?? strings.scenes.noCast}</span>
+          <span className="truncate">
+            {[scene.folder, ...scene.tags].filter((v) => v !== null && v !== "").join(" · ") ||
+              cast ||
+              strings.scenes.noCast}
+          </span>
           <span className="flex-none">{strings.scenes.counts(scene.messageCount)}</span>
         </div>
       </button>
 
-      {/* Always visible, and 44px square.
-          The first version faded it in on hover, which meant that on a phone —
-          where there is no hover — the only way to rename or delete anything
-          was a long-press nobody is told about. A control you cannot see is
-          not a control; it brightens on hover rather than appearing. */}
-      <button
-        type="button"
-        onClick={onManage}
-        aria-label={`${strings.scenes.manage} ${scene.title}`}
-        className="chrome absolute top-[8px] right-[-8px] flex h-[44px] w-[44px] items-center justify-center text-[15px] text-ink-dim hover:text-ink-label"
-      >
-        &hellip;
-      </button>
+      {/* The row's own controls, in one cluster at the top right.
+          Outside the row's button because a button cannot nest, absolute
+          because in flow they would reserve width on every row.
+
+          Always visible and 44px tall: the first version of the manage
+          affordance faded in on hover, which on a phone left a long-press
+          nobody is told about as the only way in (§20 phase 54). */}
+      <span className="absolute top-[4px] right-[-8px] flex items-center">
+        <button
+          type="button"
+          onClick={onFavourite}
+          aria-label={`${scene.isFavourite ? strings.scenes.unfavourite : strings.scenes.favourite}: ${scene.title}`}
+          aria-pressed={scene.isFavourite}
+          className="chrome flex h-[44px] w-[28px] items-center justify-center text-[13px]"
+          style={{
+            color: scene.isFavourite ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)",
+          }}
+        >
+          {scene.isFavourite ? "\u2605" : "\u2606"}
+        </button>
+        <button
+          type="button"
+          onClick={onManage}
+          aria-label={`${strings.scenes.manage} ${scene.title}`}
+          className="chrome flex h-[44px] w-[30px] items-center justify-center text-[15px] text-ink-dim hover:text-ink-label"
+        >
+          &hellip;
+        </button>
+      </span>
     </div>
   );
 }
 
+const PAGE = 50;
+
+/**
+ * Tags and a folder for one roleplay (§20 phase 59).
+ *
+ * A folder is a label rather than a tree — the same reading the character
+ * library settled on in phase 26 (`0023_character_library.sql`: "a folder is a
+ * label, not a tree"), so the two libraries file things the same way.
+ */
+function OrganiseSheet({
+  scene,
+  folders,
+  onSave,
+  onClose,
+}: {
+  scene: SceneDto;
+  folders: string[];
+  onSave(patch: { tags: string[]; folder: string | null }): void;
+  onClose(): void;
+}) {
+  const [tags, setTags] = useState(scene.tags);
+  const [folder, setFolder] = useState(scene.folder ?? "");
+  const [draft, setDraft] = useState("");
+
+  function add() {
+    const value = draft.trim();
+    setDraft("");
+    if (value === "" || tags.includes(value)) return;
+    setTags([...tags, value]);
+  }
+
+  return (
+    <Sheet title={strings.scenes.organise} meta={scene.title} onClose={onClose}>
+      <div className="pt-[8px] pb-[14px]">
+        <p className="section-label mb-[6px]">{strings.scenes.tagsLabel}</p>
+        <div className="mb-[10px] flex flex-wrap items-center gap-[6px]">
+          {tags.map((name) => (
+            <button
+              key={name}
+              type="button"
+              onClick={() => setTags(tags.filter((t) => t !== name))}
+              aria-label={`${strings.scenes.tagsLabel}: ${name}`}
+              className="chrome flex items-center gap-[6px] border border-rule-strong px-[8px] py-[6px] text-[11px] text-ink-label"
+            >
+              {name}
+              <span className="text-ink-dim">×</span>
+            </button>
+          ))}
+        </div>
+        <input
+          className="field mb-[14px]"
+          value={draft}
+          placeholder={strings.scenes.tagAdd}
+          aria-label={strings.scenes.tagAdd}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={add}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              add();
+            }
+          }}
+        />
+
+        <p className="section-label mb-[6px]">{strings.scenes.folderLabel}</p>
+        <input
+          className="field mb-[6px]"
+          value={folder}
+          list="scene-folders"
+          placeholder={strings.scenes.noFolder}
+          aria-label={strings.scenes.folderLabel}
+          onChange={(event) => setFolder(event.target.value)}
+        />
+        {/* The folders already in use, offered rather than imposed: typing a
+            new one is how a folder gets created. */}
+        <datalist id="scene-folders">
+          {folders.map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
+
+        <button
+          type="button"
+          className="btn btn-primary mt-[12px] w-full"
+          onClick={() => onSave({ tags, folder: folder.trim() === "" ? null : folder.trim() })}
+        >
+          {strings.settings.save}
+        </button>
+      </div>
+    </Sheet>
+  );
+}
+
 export function ScenesScreen() {
-  const scenes = useScenes();
   const create = useCreateScene();
   const rename = useRenameScene();
   const remove = useDeleteScene();
@@ -130,9 +253,18 @@ export function ScenesScreen() {
   const [profileId, setProfileId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<Sort>("recent");
+  const [tag, setTag] = useState("");
+  const [folder, setFolder] = useState("");
+  const [favourite, setFavourite] = useState(false);
+  /** How many pages have been asked for; the list grows rather than flips. */
+  const [pages, setPages] = useState(1);
+  const tags = useSceneTags();
+  const folders = useSceneFolders();
+  const organise = useOrganiseScene();
   /** The row whose action sheet is open, and whether it is being renamed. */
   const [managing, setManaging] = useState<SceneDto | null>(null);
   const [renaming, setRenaming] = useState<SceneDto | null>(null);
+  const [organising, setOrganising] = useState<SceneDto | null>(null);
   const isDesktop = useIsDesktop();
 
   // A new roleplay needs somewhere to generate; the wizard's default profile is
@@ -153,31 +285,34 @@ export function ScenesScreen() {
   }
 
   /*
-   * Searched and sorted here rather than on the server, deliberately.
-   * `useScenes` already fetches the whole list and this screen already renders
-   * all of it, so a server filter without pagination would buy a round trip and
-   * change nothing. If a library ever gets big enough to hurt, the fix is
-   * pagination, and that is the change that should move this.
+   * Filtered and paged on the server (§20 phase 59).
+   *
+   * Phase 54 did this on the client and left a note saying why that was fine
+   * and when it would stop being: "if a library ever gets big enough to hurt,
+   * the fix is pagination, and that is the change that should move this." The
+   * install this replaces runs 139 roleplays. This is that change.
    */
-  const shown = useMemo(() => {
-    const all = scenes.data ?? [];
-    const needle = query.trim().toLowerCase();
-    const matched =
-      needle === ""
-        ? all
-        : all.filter((scene) =>
-            [scene.title, scene.lastLine ?? "", ...castNames(scene)]
-              .join(" ")
-              .toLowerCase()
-              .includes(needle),
-          );
-    const sorted = [...matched];
-    if (sort === "title") sorted.sort((a, b) => a.title.localeCompare(b.title));
-    if (sort === "longest") sorted.sort((a, b) => b.messageCount - a.messageCount);
-    return sorted;
-  }, [scenes.data, query, sort]);
+  const filter = useMemo(
+    () => ({
+      ...(query.trim() === "" ? {} : { q: query.trim() }),
+      ...(tag === "" ? {} : { tag }),
+      ...(folder === "" ? {} : { folder }),
+      ...(favourite ? { favourite: true } : {}),
+      sort,
+      limit: PAGE * pages,
+    }),
+    [query, tag, folder, favourite, sort, pages],
+  );
+  const page = useSceneList(filter);
+  const shown = page.data?.scenes ?? [];
+  const total = page.data?.total ?? 0;
+  const all = page.data?.all ?? 0;
 
-  const nothing = (scenes.data ?? []).length === 0;
+  // A narrowed filter should start at the top rather than keeping the depth
+  // scrolled to under the last one.
+  useEffect(() => setPages(1), [query, tag, folder, favourite, sort]);
+
+  const nothing = all === 0;
 
   return (
     <div className="flex screen-height flex-col bg-bg">
@@ -193,7 +328,11 @@ export function ScenesScreen() {
               the edge of "Longest" and read as part of it. */}
           {nothing ? null : (
             <span className="meta shrink-0 tabular-nums">
-              {strings.showing(shown.length, (scenes.data ?? []).length)}
+              {/* Against the whole library when a filter narrows it: "1 of 60"
+                  answers "did my filter work", where a bare "1" does not. */}
+              {total < all
+                ? strings.showing(total, all)
+                : strings.showing(shown.length, total)}
             </span>
           )}
         </div>
@@ -210,6 +349,50 @@ export function ScenesScreen() {
               aria-label={strings.scenes.search}
               className="field"
             />
+            {/* Tag, folder and favourites (§20 phase 59). Selects rather than
+                chips: at 139 roleplays the vocabulary is longer than a row, and
+                the app already picks this way everywhere else. */}
+            <div className="flex flex-wrap gap-[6px]">
+              <button
+                type="button"
+                aria-pressed={favourite}
+                onClick={() => setFavourite(!favourite)}
+                className={`btn flex-none ${favourite ? "btn-primary" : ""}`}
+              >
+                {"\u2605"} {strings.scenes.favouritesOnly}
+              </button>
+              {(tags.data ?? []).length === 0 ? null : (
+                <select
+                  className="field min-w-0 flex-1"
+                  aria-label={strings.scenes.tagsLabel}
+                  value={tag}
+                  onChange={(event) => setTag(event.target.value)}
+                >
+                  <option value="">{strings.scenes.allTags}</option>
+                  {(tags.data ?? []).map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {(folders.data ?? []).length === 0 ? null : (
+                <select
+                  className="field min-w-0 flex-1"
+                  aria-label={strings.scenes.folderLabel}
+                  value={folder}
+                  onChange={(event) => setFolder(event.target.value)}
+                >
+                  <option value="">{strings.scenes.allFolders}</option>
+                  {(folders.data ?? []).map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
             <div className="flex gap-[6px]">
               {(
                 [
@@ -245,8 +428,24 @@ export function ScenesScreen() {
             <p className="explain mt-[18px]">{strings.scenes.noMatches}</p>
           ) : null}
           {shown.map((scene) => (
-            <SceneRow key={scene.id} scene={scene} onManage={() => setManaging(scene)} />
+            <SceneRow
+              key={scene.id}
+              scene={scene}
+              onManage={() => setManaging(scene)}
+              onFavourite={() =>
+                organise.mutate({ id: scene.id, isFavourite: !scene.isFavourite })
+              }
+            />
           ))}
+          {shown.length < total ? (
+            <button
+              type="button"
+              className="btn mt-[12px] mb-[16px] w-full"
+              onClick={() => setPages((n) => n + 1)}
+            >
+              {strings.scenes.more}
+            </button>
+          ) : null}
         </div>
       </main>
 
@@ -281,6 +480,16 @@ export function ScenesScreen() {
               }}
             >
               {strings.scenes.rename}
+            </button>
+            <button
+              type="button"
+              className="btn w-full"
+              onClick={() => {
+                setOrganising(managing);
+                setManaging(null);
+              }}
+            >
+              {strings.scenes.organise}
             </button>
             <button
               type="button"
@@ -338,6 +547,18 @@ export function ScenesScreen() {
             </button>
           </form>
         </Sheet>
+      )}
+
+      {organising === null ? null : (
+        <OrganiseSheet
+          scene={organising}
+          folders={folders.data ?? []}
+          onSave={(patch) => {
+            organise.mutate({ id: organising.id, ...patch });
+            setOrganising(null);
+          }}
+          onClose={() => setOrganising(null)}
+        />
       )}
 
       {confirmNode}

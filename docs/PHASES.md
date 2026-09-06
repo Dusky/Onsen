@@ -5030,3 +5030,77 @@ found state, and adding a column mentioned nowhere.
 dead. `characters.avatar_path` is read constantly and the names are identical.
 It is recorded here rather than papered over with a `DELIBERATE` entry, which
 would have implied the guard saw it.
+
+## Phase 59 — The library at scale
+
+Phase 54 gave the roleplay list search and sort, on the client, and left a note
+saying exactly when that would stop being right:
+
+> *"`useScenes` already fetches the whole list and this screen already renders
+> all of it, so a server filter without pagination would buy a round trip and
+> change nothing. If a library ever gets big enough to hurt, the fix is
+> pagination, and that is the change that should move this."*
+
+The install this replaces runs 139 roleplays. This is that change.
+
+### What was built
+
+- **Tags and a folder on a roleplay**, shaped exactly like the character
+  library's (`0023`): `tags` is a JSON array queried with `json_each`, and a
+  folder is a label rather than a tree. Two libraries that file things the same
+  way, rather than two ideas of what a folder is.
+- **A favourite on both lists.** `is_favourite` on `scenes` *and* `characters`,
+  each with a partial index. A star that worked on one list and not the other
+  would have been the half-measure this project keeps catching in itself.
+- **Server-side filtering and paging.** `listScenesFiltered` narrows by query,
+  tag, folder and favourite, sorts three ways, and returns `total` (what matches)
+  alongside `all` (what exists). The screen reads `50 of 60` and grows by fifty
+  rather than flipping pages.
+- **Tags normalised on write** — trimmed, de-duplicated, empties dropped — so
+  the filter's vocabulary and the stored value cannot drift apart. A folder of
+  blank space is no folder rather than a folder named nothing.
+
+### Decisions
+
+**`limit`/`offset`, not a cursor.** The incumbent's readout is `1-50 .. 139`, a
+page model people already read; and the ordering key is `updated_at`, which
+moves as roleplays are used — which is exactly the case where a cursor silently
+skips rows.
+
+**One response shape, always.** `GET /scenes` returns `{ scenes, total, all }`
+whether or not it was filtered. An endpoint that answers with an array when
+unfiltered and an object when not is a bug waiting for the caller who forgot.
+Seven callers wanted the whole list for pickers, so `useScenes()` stayed the
+array-shaped hook and now unwraps a large page; `useSceneList` is the new one.
+
+**Search is by title only.** The client version also matched the cast and the
+last line, which live on the DTO rather than the row — reproducing that in SQL
+means joining three tables to answer a question a name usually answers. Recorded
+here rather than quietly dropped.
+
+### Surprises
+
+**Changing the list's shape broke eight tests, and all eight were right to
+break.** Three in `scenes-api` and five in `migrate-api`, every one of them
+reading `GET /scenes` as a bare array. That is the contract genuinely changing,
+and the tests caught it at the boundary rather than in a browser.
+
+**A careless replace edited the card round-trip.** Adding `isFavourite` to the
+character DTO matched `tags: parseArray(row.tags)` twice — once in `toCharacterDto`
+and once in `toNormalisedCard`, which is the lossless card format and must never
+gain an app-local flag. Caught by the typecheck, since `NormalisedCard` does not
+have the field. `HANDOFF.md`'s rule about lossy card handling has a compile
+error standing behind it, which is the reason it held.
+
+**The star collided with the timestamp.** Two absolutely-positioned controls at
+the same corner, and the row's clamp had been sized for one. They are one
+cluster now. Only the screenshot showed it; the drive reported everything
+working.
+
+### Deferred, and now its own row
+
+**Windowing the message log.** `activePath` still walks the whole tree, and the
+incumbent ships *# Msg. to Load = 100*. The log is already virtualised, so this
+is bytes on the wire rather than render cost — a different problem from the list,
+and it gets its own `GAPS.md` row rather than being folded into a claim that
+paging is done.

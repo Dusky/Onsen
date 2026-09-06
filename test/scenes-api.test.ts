@@ -8,6 +8,7 @@ import type {
   CheckpointDto,
   MessageDto,
   SceneDto,
+  SceneListDto,
   SceneWithHistoryDto,
 } from "../shared/types.ts";
 
@@ -94,8 +95,11 @@ describe("scenes", () => {
     expect(created.activeLeafId).toBeNull();
     expect(created.messageCount).toBe(0);
 
-    const listed = await send<SceneDto[]>(t, "GET", "/api/scenes");
-    expect(listed.body.map((scene) => scene.id)).toEqual([created.id]);
+    // §20 phase 59: the list is paged, so it answers with its totals too.
+    const listed = await send<SceneListDto>(t, "GET", "/api/scenes");
+    expect(listed.body.scenes.map((scene) => scene.id)).toEqual([created.id]);
+    expect(listed.body.total).toBe(1);
+    expect(listed.body.all).toBe(1);
 
     const read = await send<SceneWithHistoryDto>(t, "GET", `/api/scenes/${created.id}`);
     expect(read.body.scene.id).toBe(created.id);
@@ -157,8 +161,8 @@ describe("scenes", () => {
 
     // Posting into the older scene should bring it back to the top.
     await post(t, first, "something happens");
-    const listed = await send<SceneDto[]>(t, "GET", "/api/scenes");
-    expect(listed.body.map((scene) => scene.title)).toEqual(["first", "second"]);
+    const listed = await send<SceneListDto>(t, "GET", "/api/scenes");
+    expect(listed.body.scenes.map((scene) => scene.title)).toEqual(["first", "second"]);
     expect(second.title).toBe("second");
   });
 });
@@ -597,6 +601,77 @@ describe("deleting a roleplay", () => {
 
     const after = await send(t, "GET", `/api/scenes/${scene.id}`);
     expect(after.status).toBe(404);
-    expect((await send<SceneDto[]>(t, "GET", "/api/scenes")).body).toEqual([]);
+    expect((await send<SceneListDto>(t, "GET", "/api/scenes")).body.scenes).toEqual([]);
+  });
+});
+
+/**
+ * The library at scale (§20 phase 59).
+ *
+ * Filtering moved to the server because the client-side version could not page,
+ * so these run against the endpoint rather than a rendered list: what matters is
+ * that `total` counts the filter and `scenes` carries the page.
+ */
+describe("filtering and paging the library", () => {
+  test("tags, folder and the star each narrow it, and total counts the filter", async () => {
+    const t = await signedIn();
+    const a = await newScene(t, "ridge station");
+    const b = await newScene(t, "kettle valley");
+    await send(t, "PATCH", `/api/scenes/${a.id}`, {
+      tags: ["winter", "slow"],
+      folder: "Ongoing",
+      isFavourite: true,
+    });
+    await send(t, "PATCH", `/api/scenes/${b.id}`, { tags: ["winter"] });
+
+    const list = async (qs: string) =>
+      (await send<SceneListDto>(t, "GET", `/api/scenes${qs}`)).body;
+
+    expect((await list("")).total).toBe(2);
+    expect((await list("?tag=winter")).total).toBe(2);
+    expect((await list("?tag=slow")).scenes.map((s) => s.id)).toEqual([a.id]);
+    expect((await list("?folder=Ongoing")).scenes.map((s) => s.id)).toEqual([a.id]);
+    expect((await list("?favourite=1")).scenes.map((s) => s.id)).toEqual([a.id]);
+    expect((await list("?q=kettle")).scenes.map((s) => s.id)).toEqual([b.id]);
+
+    // `all` ignores the filter, so an empty result can still say how many exist.
+    const none = await list("?tag=nothing-has-this");
+    expect(none.scenes).toEqual([]);
+    expect(none.total).toBe(0);
+    expect(none.all).toBe(2);
+  });
+
+  test("a page carries its slice, and the total carries the rest", async () => {
+    const t = await signedIn();
+    for (const title of ["one", "two", "three"]) await newScene(t, title);
+    const first = (await send<SceneListDto>(t, "GET", "/api/scenes?limit=2")).body;
+    expect(first.scenes).toHaveLength(2);
+    expect(first.total).toBe(3);
+    const second = (await send<SceneListDto>(t, "GET", "/api/scenes?limit=2&offset=2")).body;
+    expect(second.scenes).toHaveLength(1);
+  });
+
+  test("the tag and folder vocabularies come back for the filters", async () => {
+    const t = await signedIn();
+    const a = await newScene(t, "ridge station");
+    await send(t, "PATCH", `/api/scenes/${a.id}`, { tags: ["winter"], folder: "Ongoing" });
+    expect((await send<string[]>(t, "GET", "/api/scenes/tags")).body).toEqual(["winter"]);
+    expect((await send<string[]>(t, "GET", "/api/scenes/folders")).body).toEqual(["Ongoing"]);
+  });
+
+  test("tags are normalised on write, so the vocabulary cannot drift", async () => {
+    const t = await signedIn();
+    const a = await newScene(t, "ridge station");
+    const { body } = await send<SceneDto>(t, "PATCH", `/api/scenes/${a.id}`, {
+      tags: ["  winter ", "winter", "", "slow"],
+    });
+    expect(body.tags).toEqual(["winter", "slow"]);
+  });
+
+  test("a folder of blank space is no folder, not a folder named nothing", async () => {
+    const t = await signedIn();
+    const a = await newScene(t, "ridge station");
+    const { body } = await send<SceneDto>(t, "PATCH", `/api/scenes/${a.id}`, { folder: "   " });
+    expect(body.folder).toBeNull();
   });
 });

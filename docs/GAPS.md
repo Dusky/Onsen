@@ -67,13 +67,14 @@ the fix is pagination."*
 
 | Capability | Onsen | Evidence | Verdict |
 | --- | --- | --- | --- |
-| Search chats | **have** | phase 54, `client/screens/ScenesScreen.tsx` | — |
+| Search chats | **have** | phase 54, moved server-side in phase 59 | — |
 | Sort chats | **have** | phase 54 — recency / title / length | — |
-| Tag a chat | **missing** | `tags` is on `CharacterDto` only (`shared/types.ts:1955`) | close |
-| Folder a chat | **missing** | `folder` likewise (`shared/types.ts:1962`) | close |
-| Favourite anything | **missing** | `grep -rni favorite` → 0 | close — cheapest of the three |
+| Tag a chat | **have** (phase 59) | `scenes.tags`, a JSON array queried with `json_each` — the character library's shape, so both lists file things the same way. Normalised on write | — |
+| Folder a chat | **have** (phase 59) | `scenes.folder`, a label rather than a tree, as `0023` settled for characters | — |
+| Favourite anything | **have** (phase 59) | `is_favourite` on scenes *and* characters, with a partial index each. A star on one list only was the half-measure | — |
 | `n of m` readout on a list | **have** (phase 55) | `strings.showing`; the scenes list reads `3 of 5` when filtered, `5` when not | — |
-| Pagination / windowing | **missing** | no `LIMIT` for list reads in `server/db/queries/history.ts`; ST ships *# Msg. to Load = 100* | close — 139 is the number that makes it real |
+| Paging the roleplay list | **have** (phase 59) | `listScenesFiltered` pages with `LIMIT`/`OFFSET` and returns `total` and `all`; the screen reads `50 of 60` and grows by 50. Driven at 60 | — |
+| Windowing the message log | **missing** | `activePath` still walks the whole tree; ST ships *# Msg. to Load = 100*. The log is virtualised, so this is bytes on the wire rather than render cost | close — the remaining half of the old pagination row |
 | Character tags / folders / search | **have** | `CharacterFilterQuery`, server-side since phase 26 | — |
 | Character grid view | **have** | phase 26 | — |
 

@@ -2410,10 +2410,12 @@ toggle.
 
 ### Other screens
 
-- **Scenes list** — recent first, cast avatars, last message preview. Search
-  across title, cast and last line, sort by recency / title / length, and a
-  per-row menu: rename, start another like this (the setup copied, no history),
-  delete.
+- **Scenes list** — recent first, cast avatars, last message preview. Filtered
+  and paged **on the server** (§20 phase 59): search by title, narrow by tag,
+  folder or favourite, sort by recency / title / length, `50 of 139` on the
+  title row and a page that grows rather than flips. A star in each row, and a
+  per-row menu: rename, tags and folder, start another like this (the setup
+  copied, no history), delete.
 - **Scene setup** — author, cast, persona, connection profile, preset, scenario
   override, turn strategy, lorebooks, guides, trackers, OOC, VN toggle.
 - **Author editor** — personality, writing style, directing style, OOC voice,
@@ -3153,6 +3155,10 @@ Each phase ends in a working, usable application.
     than stumbled on. `test/dead-columns.test.ts` reads all 58 tables and 587
     columns out of a migrated database and fails on a column mentioned only by
     its migration, or written and never read. See §2 and `HANDOFF.md`.
+59. **The library at scale** — roleplays get tags, a folder and a favourite,
+    and the list is filtered and paged on the server. Phase 54 filtered on the
+    client and left a note saying pagination was the change that should move it;
+    at 139 roleplays it is. See §9 and §16.
 
 Settled while building phase 15.
 

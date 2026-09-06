@@ -18,6 +18,9 @@ import {
   isSelfOrDescendant,
   listCheckpoints,
   listScenes,
+  listScenesFiltered,
+  sceneFolders,
+  sceneTags,
   messageDto,
   copySceneSetup,
   sceneDto,
@@ -67,6 +70,8 @@ import {
   type SetActiveLeafRequest,
   type UpdateMessageRequest,
   type UpdateSceneRequest,
+  type SceneFilterQuery,
+  type SceneListDto,
 } from "../../shared/types.ts";
 
 const MAX_TITLE = 200;
@@ -178,7 +183,39 @@ export function sceneRoutes(
   /* Scenes                                                          */
   /* -------------------------------------------------------------- */
 
-  app.get("/", (c) => c.json(listScenes(ctx.db).map((row) => sceneDto(ctx.db, row))));
+  /**
+   * The roleplay list, filtered and paged server-side (§20 phase 59).
+   *
+   * One shape always, never an array when unfiltered and an object when not:
+   * an endpoint whose response changes with its query string is a bug waiting
+   * for the caller that forgot.
+   */
+  app.get("/", (c) => {
+    const bool = (name: string) => c.req.query(name) === "1" || c.req.query(name) === "true";
+    const num = (name: string) => {
+      const raw = c.req.query(name);
+      if (raw === undefined) return undefined;
+      const parsed = Number.parseInt(raw, 10);
+      return Number.isInteger(parsed) ? parsed : undefined;
+    };
+    const sort = c.req.query("sort");
+    const filter: SceneFilterQuery = {
+      ...(c.req.query("q") === undefined ? {} : { q: c.req.query("q") as string }),
+      ...(c.req.query("tag") === undefined ? {} : { tag: c.req.query("tag") as string }),
+      ...(c.req.query("folder") === undefined ? {} : { folder: c.req.query("folder") as string }),
+      ...(bool("favourite") ? { favourite: true } : {}),
+      ...(sort === "title" || sort === "longest" || sort === "recent" ? { sort } : {}),
+      ...(num("limit") === undefined ? {} : { limit: num("limit") as number }),
+      ...(num("offset") === undefined ? {} : { offset: num("offset") as number }),
+    };
+    const { rows, total, all } = listScenesFiltered(ctx.db, filter);
+    const body: SceneListDto = { scenes: rows.map((row) => sceneDto(ctx.db, row)), total, all };
+    return c.json(body);
+  });
+
+  /** The vocabulary the filters offer, so neither is a free-text guess. */
+  app.get("/tags", (c) => c.json(sceneTags(ctx.db)));
+  app.get("/folders", (c) => c.json(sceneFolders(ctx.db)));
 
   app.post("/", async (c) => {
     const body = await readJson(c);
@@ -240,6 +277,37 @@ export function sceneRoutes(
       if (persona === INVALID) return c.json(badRequest("No such persona."), 400);
       patch.personaId = persona;
     }
+    /* Organisation (§20 phase 59). Tags are normalised here rather than trusted:
+       trimmed, de-duplicated, empties dropped, so the filter's vocabulary and
+       the stored value cannot disagree. */
+    if ("tags" in input) {
+      const raw = (input as { tags?: unknown }).tags;
+      if (!Array.isArray(raw)) return c.json(badRequest("Tags must be a list."), 400);
+      const tags = [
+        ...new Set(
+          raw
+            .filter((t): t is string => typeof t === "string")
+            .map((t) => t.trim())
+            .filter((t) => t !== "")
+            .slice(0, 40),
+        ),
+      ];
+      patch.tags = JSON.stringify(tags);
+    }
+    if ("folder" in input) {
+      const folder = (input as { folder?: unknown }).folder;
+      if (folder !== null && typeof folder !== "string") {
+        return c.json(badRequest("A folder is a name, or null for none."), 400);
+      }
+      const trimmed = typeof folder === "string" ? folder.trim() : null;
+      patch.folder = trimmed === "" ? null : trimmed;
+    }
+    if ("isFavourite" in input) {
+      const value = (input as { isFavourite?: unknown }).isFavourite;
+      if (typeof value !== "boolean") return c.json(badRequest("isFavourite is a boolean."), 400);
+      patch.isFavourite = value;
+    }
+
     if ("turnStrategy" in input) {
       if (!(TURN_STRATEGIES as readonly unknown[]).includes(input.turnStrategy)) {
         return c.json(badRequest("Unknown turn strategy."), 400);

@@ -108,6 +108,18 @@ export const strings = {
     open: "Open",
     counts: (messages: number) => `${messages} ${messages === 1 ? "reply" : "replies"}`,
     noCast: "No cast",
+    /* Organisation, at the scale the incumbent runs at (§20 phase 59). */
+    favourite: "Favourite",
+    unfavourite: "Not a favourite",
+    favouritesOnly: "Favourites",
+    allFolders: "Every folder",
+    allTags: "Every tag",
+    tagsLabel: "Tags",
+    folderLabel: "Folder",
+    tagAdd: "Add a tag",
+    noFolder: "No folder",
+    more: "Show more",
+    organise: "Tags and folder",
   },
 
   chat: {

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api.ts";
 import type { UpdateStatusDto } from "@shared/types.ts";
-import type { LayoutDto, ReadingDto } from "@shared/types.ts";
+import type { LayoutDto, ReadingDto, SceneFilterQuery, SceneListDto } from "@shared/types.ts";
 import { LAYOUT_PRESETS, READING_DEFAULTS } from "@shared/types.ts";
 import type {
   AppendMessageRequest,
@@ -54,6 +54,7 @@ import type {
   TaskRunDto,
   UpdateConnectionProfileRequest,
   UpdatePresetRequest,
+  UpdateSceneRequest,
   UpdatePresetBlockRequest,
   UpdateProviderRequest,
   UpdateTaskRequest,
@@ -342,8 +343,73 @@ export function useTaskRuns(key: string, enabled: boolean) {
   });
 }
 
+function sceneQuery(filter: SceneFilterQuery): string {
+  const params = new URLSearchParams();
+  if (filter.q !== undefined && filter.q !== "") params.set("q", filter.q);
+  if (filter.tag !== undefined && filter.tag !== "") params.set("tag", filter.tag);
+  if (filter.folder !== undefined && filter.folder !== "") params.set("folder", filter.folder);
+  if (filter.favourite === true) params.set("favourite", "1");
+  if (filter.sort !== undefined) params.set("sort", filter.sort);
+  if (filter.limit !== undefined) params.set("limit", String(filter.limit));
+  if (filter.offset !== undefined) params.set("offset", String(filter.offset));
+  const qs = params.toString();
+  return qs === "" ? "/scenes" : `/scenes?${qs}`;
+}
+
+/**
+ * Every roleplay, for the pickers.
+ *
+ * Seven callers want the whole list to choose from — a trigger's scope, a
+ * script's, a lorebook binding — and one wants a page. This stays the first
+ * shape so those keep working; `useSceneList` is the browse screen's
+ * (§20 phase 59).
+ */
 export function useScenes() {
-  return useQuery({ queryKey: keys.scenes, queryFn: () => api.get<SceneDto[]>("/scenes") });
+  return useQuery({
+    queryKey: keys.scenes,
+    queryFn: async () => (await api.get<SceneListDto>(sceneQuery({ limit: 200 }))).scenes,
+  });
+}
+
+/**
+ * Tags, folder and the favourite star (§20 phase 59).
+ *
+ * Invalidates both list shapes: the pickers' `useScenes` and every page of
+ * `useSceneList`, since a star or a tag changes what a filter matches.
+ */
+export function useOrganiseScene() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...patch }: UpdateSceneRequest & { id: string }) =>
+      api.patch<SceneDto>(`/scenes/${id}`, patch),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: keys.scenes });
+      void client.invalidateQueries({ queryKey: ["scene-list"] });
+      void client.invalidateQueries({ queryKey: ["scene-tags"] });
+      void client.invalidateQueries({ queryKey: ["scene-folders"] });
+    },
+  });
+}
+
+/** One filtered, paged page of roleplays, with its totals (§20 phase 59). */
+export function useSceneList(filter: SceneFilterQuery) {
+  return useQuery({
+    queryKey: ["scene-list", filter] as const,
+    queryFn: () => api.get<SceneListDto>(sceneQuery(filter)),
+    // A page that flickers to empty between keystrokes reads as "no results".
+    placeholderData: (previous) => previous,
+  });
+}
+
+export function useSceneTags() {
+  return useQuery({ queryKey: ["scene-tags"], queryFn: () => api.get<string[]>("/scenes/tags") });
+}
+
+export function useSceneFolders() {
+  return useQuery({
+    queryKey: ["scene-folders"],
+    queryFn: () => api.get<string[]>("/scenes/folders"),
+  });
 }
 
 /**

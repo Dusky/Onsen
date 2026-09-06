@@ -1071,6 +1071,10 @@ export interface SceneDto {
    * when it gets asked.
    */
   importSource: string | null;
+  /** Organisation (§20 phase 59), shaped like the character library's. */
+  tags: string[];
+  folder: string | null;
+  isFavourite: boolean;
   presetId: string | null;
   connectionProfileId: string | null;
   /** The profile's name, so the status bar can say which model answers (§43). */
@@ -1205,6 +1209,10 @@ export interface UpdateSceneRequest {
   title?: string;
   presetId?: string | null;
   connectionProfileId?: string | null;
+  /** Organisation (§20 phase 59). */
+  tags?: string[];
+  folder?: string | null;
+  isFavourite?: boolean;
 }
 
 export interface AppendMessageRequest {
@@ -2215,6 +2223,8 @@ export interface CharacterDto {
   postHistoryInstructions: string | null;
   creatorNotes: string | null;
   tags: string[];
+  /** §20 phase 59: the same star the roleplay list has. */
+  isFavourite: boolean;
   creator: string | null;
   characterVersion: string | null;
 
@@ -2281,6 +2291,39 @@ export interface SavedFilterDto {
   id: string;
   name: string;
   query: CharacterFilterQuery;
+}
+
+/**
+ * How the roleplay list is narrowed and paged (SPEC §16, §20 phase 59).
+ *
+ * Server-side, unlike phase 54's client-side search — which was right when the
+ * whole list was already fetched and is wrong at 139. `limit`/`offset` rather
+ * than a cursor: the incumbent's readout is `1-50 .. 139`, a page model people
+ * already read, and the ordering key (`updated_at`) moves as scenes are used,
+ * which is exactly when a cursor quietly skips rows.
+ */
+export interface SceneFilterQuery {
+  q?: string;
+  tag?: string;
+  folder?: string;
+  /** Favourites only. */
+  favourite?: boolean;
+  sort?: SceneSort;
+  limit?: number;
+  offset?: number;
+}
+
+export type SceneSort = "recent" | "title" | "longest";
+
+export const SCENE_SORTS: readonly SceneSort[] = ["recent", "title", "longest"];
+
+/** One page of roleplays, and how many there are in total. */
+export interface SceneListDto {
+  scenes: SceneDto[];
+  /** Matching the filter, ignoring the page — the `m` in `n of m`. */
+  total: number;
+  /** In the library altogether, so an empty filter can say so. */
+  all: number;
 }
 
 export interface CharacterFilterQuery {

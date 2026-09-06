@@ -16,6 +16,7 @@ import type {
   PersonaDto,
   RegexScriptDto,
   SceneDto,
+  SceneListDto,
   SceneWithHistoryDto,
 } from "../shared/types.ts";
 
@@ -76,8 +77,9 @@ const CHAT = chatJsonl([
   }),
 ]);
 
+/** The roleplay list is paged as of §20 phase 59; these tests want its rows. */
 async function scenesOf(t: TestHarness) {
-  return json<SceneDto[]>(t, "GET", "/api/scenes");
+  return (await json<SceneListDto>(t, "GET", "/api/scenes")).scenes;
 }
 
 describe("importing a folder", () => {

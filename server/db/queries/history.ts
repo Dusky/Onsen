@@ -6,6 +6,7 @@ import { originOfRequest, sceneChannel } from "../../sync/channel.ts";
 import type {
   CheckpointDto,
   GenerationMeta,
+  SceneFilterQuery,
   MessageAuthorType,
   MessageDto,
   MessageKind,
@@ -45,6 +46,10 @@ export interface SceneRow {
    * looked alive from the outside. Null for a roleplay started here.
    */
   import_source: string | null;
+  /** Organisation (§20 phase 59). `tags` is a JSON array, as characters' is. */
+  tags: string;
+  folder: string | null;
+  is_favourite: number;
   preset_id: number | null;
   connection_profile_id: number | null;
   /** Null selects single-character mode (SPEC §3). */
@@ -232,6 +237,17 @@ export function toMessageDto(
   };
 }
 
+/** A JSON tag array, tolerantly: a corrupt value is no tags, never a throw. */
+function parseTags(raw: string | null): string[] {
+  if (raw === null || raw === "") return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((t): t is string => typeof t === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 export function toSceneDto(
   row: SceneRow,
   extras: {
@@ -292,6 +308,9 @@ export function toSceneDto(
     summaryCount: extras.summaryCount,
     contextSize: extras.contextSize,
     importSource: row.import_source,
+    tags: parseTags(row.tags),
+    folder: row.folder,
+    isFavourite: row.is_favourite === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -422,6 +441,79 @@ export function listScenes(db: Database): SceneRow[] {
   return db.query("SELECT * FROM scenes ORDER BY updated_at DESC, id DESC").all() as SceneRow[];
 }
 
+/**
+ * One page of the roleplay list, filtered server-side (§20 phase 59).
+ *
+ * Shaped after `listCharactersFiltered` (phase 26) so the two libraries narrow
+ * the same way. Phase 54 filtered on the client, which was right while the whole
+ * list was fetched anyway and wrong by 139 — its own comment said the fix would
+ * be pagination, and this is it.
+ *
+ * `total` counts what matches before the page is taken, because `n of m` is the
+ * readout and a page cannot report the whole.
+ */
+export function listScenesFiltered(
+  db: Database,
+  filter: SceneFilterQuery,
+): { rows: SceneRow[]; total: number; all: number } {
+  const conditions: string[] = [];
+  const params: Record<string, string | number> = {};
+
+  const q = filter.q?.trim() ?? "";
+  if (q !== "") {
+    // Title only. The cast and the last line are on the DTO rather than the
+    // row, so matching them here would mean joining three tables to reproduce
+    // what the client already had; a scene is found by its name.
+    conditions.push("scenes.title LIKE $q ESCAPE '\\'");
+    params.q = `%${q.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`;
+  }
+  if (filter.tag !== undefined && filter.tag !== "") {
+    conditions.push("EXISTS (SELECT 1 FROM json_each(scenes.tags) WHERE json_each.value = $tag)");
+    params.tag = filter.tag;
+  }
+  if (filter.folder !== undefined && filter.folder !== "") {
+    conditions.push("scenes.folder = $folder");
+    params.folder = filter.folder;
+  }
+  if (filter.favourite === true) conditions.push("scenes.is_favourite = 1");
+
+  const where = conditions.length === 0 ? "" : `WHERE ${conditions.join(" AND ")}`;
+  const order =
+    filter.sort === "title"
+      ? "scenes.title COLLATE NOCASE, scenes.id"
+      : filter.sort === "longest"
+        ? "(SELECT count(*) FROM messages WHERE messages.scene_id = scenes.id) DESC, scenes.id DESC"
+        : "scenes.updated_at DESC, scenes.id DESC";
+
+  const total = (
+    db.query(`SELECT count(*) AS n FROM scenes ${where}`).get(params) as { n: number }
+  ).n;
+  const all = (db.query("SELECT count(*) AS n FROM scenes").get() as { n: number }).n;
+
+  const limit = Math.min(Math.max(filter.limit ?? 50, 1), 200);
+  const offset = Math.max(filter.offset ?? 0, 0);
+  const rows = db
+    .query(`SELECT scenes.* FROM scenes ${where} ORDER BY ${order} LIMIT $limit OFFSET $offset`)
+    .all({ ...params, limit, offset }) as SceneRow[];
+  return { rows, total, all };
+}
+
+/** Every folder a roleplay is filed under, for the filter. */
+export function sceneFolders(db: Database): string[] {
+  const rows = db
+    .query("SELECT DISTINCT folder FROM scenes WHERE folder IS NOT NULL AND folder <> '' ORDER BY folder")
+    .all() as { folder: string }[];
+  return rows.map((row) => row.folder);
+}
+
+/** Every tag in use, for the filter and for autocomplete. */
+export function sceneTags(db: Database): string[] {
+  const rows = db
+    .query("SELECT DISTINCT json_each.value AS tag FROM scenes, json_each(scenes.tags) ORDER BY tag")
+    .all() as { tag: string }[];
+  return rows.map((row) => row.tag);
+}
+
 export function updateScene(
   db: Database,
   id: number,
@@ -431,6 +523,10 @@ export function updateScene(
     connectionProfileId?: number | null;
     authorId?: number | null;
     personaId?: number | null;
+    /** Organisation (§20 phase 59). `tags` arrives already JSON-encoded. */
+    tags?: string;
+    folder?: string | null;
+    isFavourite?: boolean;
   },
 ): SceneRow {
   const current = findSceneById(db, id);
@@ -448,6 +544,9 @@ export function updateScene(
               connection_profile_id = $connection_profile_id,
               author_id = $author_id,
               persona_id = $persona_id,
+              tags = $tags,
+              folder = $folder,
+              is_favourite = $favourite,
               updated_at = $now
         WHERE id = $id
         RETURNING *`,
@@ -459,6 +558,9 @@ export function updateScene(
       connection_profile_id: keep(patch.connectionProfileId, current.connection_profile_id),
       author_id: keep(patch.authorId, current.author_id),
       persona_id: keep(patch.personaId, current.persona_id),
+      tags: patch.tags ?? current.tags,
+      folder: keep(patch.folder, current.folder),
+      favourite: (patch.isFavourite ?? current.is_favourite === 1) ? 1 : 0,
       now: Date.now(),
     }) as SceneRow;
 }

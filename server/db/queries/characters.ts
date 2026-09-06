@@ -39,6 +39,7 @@ export interface CharacterRow {
   post_history_instructions: string | null;
   creator_notes: string | null;
   tags: string;
+  is_favourite: number;
   creator: string | null;
   character_version: string | null;
   raw_card: string;
@@ -134,6 +135,7 @@ export function toCharacterDto(db: Database, row: CharacterRow): CharacterDto {
     postHistoryInstructions: row.post_history_instructions,
     creatorNotes: row.creator_notes,
     tags: parseArray(row.tags),
+    isFavourite: row.is_favourite === 1,
     creator: row.creator,
     characterVersion: row.character_version,
     format: row.raw_card_format,
@@ -397,6 +399,7 @@ function snapshotOfCharacter(row: CharacterRow): Record<string, unknown> {
     postHistoryInstructions: row.post_history_instructions,
     creatorNotes: row.creator_notes,
     tags: parseArray(row.tags),
+    isFavourite: row.is_favourite === 1,
     creator: row.creator,
     characterVersion: row.character_version,
   };

@@ -41,6 +41,7 @@ import importProvenance from "./0040_import_provenance.sql" with { type: "text" 
 import themes from "./0041_themes.sql" with { type: "text" };
 import agent from "./0042_agent.sql" with { type: "text" };
 import presetBlocks from "./0043_preset_blocks.sql" with { type: "text" };
+import libraryAtScale from "./0044_library_at_scale.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -99,4 +100,5 @@ export const migrations: readonly Migration[] = [
   { version: 41, name: "themes", sql: themes },
   { version: 42, name: "agent", sql: agent },
   { version: 43, name: "preset_blocks", sql: presetBlocks },
+  { version: 44, name: "library_at_scale", sql: libraryAtScale },
 ];
