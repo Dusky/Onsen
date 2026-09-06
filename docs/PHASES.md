@@ -5948,3 +5948,44 @@ driven.
 **Verified in a browser** on a light-OS context: the default dark theme sets
 `data-theme="dark"` and renders `#14120f`; switching to Bone sets
 `data-theme="light"` and renders `#fafafa`.
+
+## Phase 76 — The dead-export sweep
+
+The last of the process debt, and the first guard in this repo to find a
+*new* bug on its first run. Phase 60 counted 21 exported functions in
+`server/db/queries/` referenced nowhere outside their own file and fixed two;
+this measures it instead of counting it.
+
+### A guard in the dead-columns shape
+
+`test/dead-exports.test.ts` sweeps the query files, matches each export's name
+against comment-stripped source, and fails on a name that appears only in its
+own file. A `DELIBERATE` map holds the deliberate ones, with the same staleness
+check. The first run re-found the same 21 phase 60 had.
+
+### The audit
+
+- **Two deleted**: `findDefaultPreset` (a second, unused copy of the default
+  preset answer that `presetIdFor` already gives inline) and
+  `dossierBookBindings` (dead).
+- **Seventeen lost their `export`**: internal helpers — DTO mappers, a keyword
+  reader, slug and template helpers — used only inside their own file. An
+  `export` on a private helper is the same lie as a dead column: it says
+  "public API" while nothing calls it.
+- **One wired**: `recordActivations`, the write half of §10's timed effects.
+  `timedStateFor` read `lore_timed_effects` and *nothing ever inserted into
+  it*, so sticky, cooldown and delay could never arm. The generation service
+  now records the fired lore entries against the turn that landed, and
+  `test/timed-effects.test.ts` pins it.
+
+### Surprises
+
+**The guard missed `findDefaultPreset` until it stripped comments.** The name
+sat in a comment in the test's own header — the exact trap HANDOFF warns about
+for banned-name greps, running in reverse: the explanation read as a caller.
+The sweep now runs on comment-stripped source.
+
+**The sweep found a feature that had never worked.** Timed effects shipped with
+the full read side and no write side, and nothing had noticed because the read
+side simply reported "never fired". The same shape as `findDefaultPersona`
+(phase 61): a capability the app had already paid for, unreachable.

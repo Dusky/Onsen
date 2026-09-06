@@ -65,7 +65,7 @@ const BOOK_NAME = "Dossiers";
  * the right one: an NPC who emerged in one story has no business appearing in
  * another, and a global dossier book would leak every roleplay into every other.
  */
-export function dossierBookFor(db: Database, sceneId: number): { id: number } {
+function dossierBookFor(db: Database, sceneId: number): { id: number } {
   const existing = db
     .query(
       `SELECT b.id AS id FROM lorebooks b
@@ -120,7 +120,7 @@ export function dossierBody(row: DossierRow): string {
  * carries the same material, and two copies in one prompt is the failure this
  * avoids.
  */
-export function renderDossier(db: Database, row: DossierRow): DossierRow {
+function renderDossier(db: Database, row: DossierRow): DossierRow {
   const book = dossierBookFor(db, row.scene_id);
   const content = dossierBody(row);
   const entryId =
@@ -246,9 +246,4 @@ export function deleteDossier(db: Database, id: number): void {
   if (row?.lore_entry_id != null) {
     db.query("DELETE FROM lore_entries WHERE id = $id").run({ id: row.lore_entry_id });
   }
-}
-
-/** So a caller can tell whether the scene's dossier book is bound at all. */
-export function dossierBookBindings(db: Database, sceneId: number) {
-  return bindingsOf(db, dossierBookFor(db, sceneId).id);
 }

@@ -189,7 +189,7 @@ export function candidatesFor(db: Database, books: LorebookRow[]): LoreCandidate
   return candidates;
 }
 
-export function toCandidate(row: LoreEntryRow, book: LorebookRow): LoreCandidate {
+function toCandidate(row: LoreEntryRow, book: LorebookRow): LoreCandidate {
   return {
     id: row.ulid,
     title: row.title,
@@ -292,7 +292,7 @@ export function recordActivations(
  * Without this, an entry edited mid-sticky keeps injecting its old behaviour
  * for the rest of the window — the change appears not to have taken.
  */
-export function clearTimedEffects(db: Database, entryId: number): void {
+function clearTimedEffects(db: Database, entryId: number): void {
   db.query("DELETE FROM lore_timed_effects WHERE entry_id = $entry").run({ entry: entryId });
 }
 

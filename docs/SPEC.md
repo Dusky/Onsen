@@ -3423,6 +3423,14 @@ Each phase ends in a working, usable application.
     as `data-theme` on the document before any screen renders, so a theme that
     names few colours still renders as its `base` says. See §16 and
     `test/themes.test.ts`, `test/setup-screen.test.ts`.
+76. **The dead-export sweep** — every exported function in `server/db/queries/`
+    must be referenced somewhere outside its own file, measured the way
+    `dead-columns` measures storage, on comment-stripped source with a
+    `DELIBERATE` map. The first run found the same 21 phase 60 did: two were
+    deleted, seventeen internal helpers lost their `export`, and one —
+    `recordActivations`, the orphaned write half of §10's timed effects — was
+    wired, so sticky, cooldown and delay actually arm. See §2, §10 and
+    `test/dead-exports.test.ts`, `test/timed-effects.test.ts`.
 
 Settled while building phase 15.
 

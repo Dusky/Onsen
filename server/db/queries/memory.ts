@@ -51,7 +51,7 @@ export function findEntity(db: Database, entityUlid: string): MemoryEntityRow | 
     | null;
 }
 
-export function findEntityByName(
+function findEntityByName(
   db: Database,
   sceneId: number,
   name: string,

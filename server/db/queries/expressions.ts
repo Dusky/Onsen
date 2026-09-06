@@ -73,7 +73,7 @@ export function deleteExpression(db: Database, id: number): void {
   db.query("DELETE FROM expressions WHERE id = $id").run({ id });
 }
 
-export function expressionDtos(db: Database, packId: number): ExpressionDto[] {
+function expressionDtos(db: Database, packId: number): ExpressionDto[] {
   const rows = db
     .query("SELECT * FROM expressions WHERE pack_id = $pack ORDER BY label, variant_index")
     .all({ pack: packId }) as ExpressionRow[];

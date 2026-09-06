@@ -27,7 +27,7 @@ export function setSetting(db: Database, key: string, value: string): void {
   ).run({ key, value, updated_at: Date.now() });
 }
 
-export function getNumericSetting(db: Database, key: string, fallback: number): number {
+function getNumericSetting(db: Database, key: string, fallback: number): number {
   const raw = getSetting(db, key);
   if (raw === null) return fallback;
   const parsed = Number(raw);

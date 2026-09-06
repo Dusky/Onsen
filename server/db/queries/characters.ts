@@ -198,7 +198,7 @@ function withMentionKeywords(
 }
 
 /** Mention keywords carried by an imported card, if it was one of ours. */
-export function mentionKeywordsOf(extensions: Record<string, unknown>): string[] {
+function mentionKeywordsOf(extensions: Record<string, unknown>): string[] {
   const value = asRecord(extensions["onsen"])[MENTION_EXTENSION];
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
 }

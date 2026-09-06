@@ -28,7 +28,7 @@ export interface InstructTemplateRow {
 }
 
 /** A url-safe id derived from a name, which is what a provider row stores. */
-export function slugFor(name: string): string {
+function slugFor(name: string): string {
   const slug = name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -50,7 +50,7 @@ export function findCustomTemplate(db: Database, value: string): InstructTemplat
 }
 
 /** Parse a stored row back into the shape the builder and adapter use. */
-export function toTemplate(row: InstructTemplateRow): InstructTemplate {
+function toTemplate(row: InstructTemplateRow): InstructTemplate {
   let parsed: unknown;
   try {
     parsed = JSON.parse(row.body);

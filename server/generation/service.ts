@@ -28,6 +28,7 @@ import {
   type SceneRow,
 } from "../db/queries/history.ts";
 import { buildPromptContext, presetIdFor, resolvePreset } from "./context.ts";
+import { recordActivations } from "../db/queries/lore.ts";
 import { resolveRoute, RouteError, type ResolvedRoute } from "./route.ts";
 import { internalIdOf, resolveNextSpeaker } from "./turn.ts";
 import {
@@ -172,6 +173,11 @@ interface ActiveGeneration {
    * Collected at build time and dispatched after the turn - see `runTriggers`.
    */
   automationIds: string[];
+  /**
+   * The ULIDs of the lore entries that fired for this turn, so the write half
+   * of §10's timed effects can be recorded when the message lands (phase 77).
+   */
+  firedLoreUlids: string[];
   /** Characters already written to the database. */
   persistedOffset: number;
   lastPersistAt: number;
@@ -464,6 +470,7 @@ export class GenerationService {
       startedAt,
       finishedAt: null,
       automationIds: [],
+      firedLoreUlids: [],
       persistedOffset: 0,
       lastPersistAt: startedAt,
       retries: options.retries ?? { continued: 0, swiped: 0 },
@@ -680,6 +687,11 @@ export class GenerationService {
       // because this is the only moment it is known, and dispatched after the
       // turn - see `runTriggers`.
       generation.automationIds = this.automationIdsOf(context.loreTrace ?? []);
+      // The same fired set, as ULIDs, so the write half of timed effects can be
+      // recorded when the turn lands (§10, §20 phase 77).
+      generation.firedLoreUlids = (context.loreTrace ?? [])
+        .filter((entry) => entry.skipped === null)
+        .map((entry) => entry.entryId);
 
       // §15's `lore.activated`: which entries reached this prompt and why. The
       // trace is already computed for the inspector, so this costs nothing but
@@ -1306,6 +1318,12 @@ export class GenerationService {
         }
         generation.messageUlid = message.ulid;
         generation.landedMessageId = message.id;
+        // §10 timed effects: the write half. The fired entries were collected
+        // at build time; recording them here is what arms sticky, cooldown and
+        // delay for the turns that follow (phase 77).
+        if (generation.firedLoreUlids.length > 0) {
+          recordActivations(this.db, generation.sceneId, message.id, generation.firedLoreUlids);
+        }
         this.db
           .query("UPDATE generations SET target_message_id = $target WHERE id = $id")
           .run({ id: generation.rowId, target: message.id });

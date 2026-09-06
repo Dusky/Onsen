@@ -274,10 +274,6 @@ export function insertDefaultPreset(db: Database, name: string): PresetRow {
     }) as PresetRow;
 }
 
-export function findDefaultPreset(db: Database): PresetRow | null {
-  return (db.query("SELECT * FROM presets WHERE is_default = 1").get() ?? null) as PresetRow | null;
-}
-
 /**
  * A preset that arrives from outside — an import, never the default. The
  * system-prompt and jailbreak overrides ride on it because §18's marker import

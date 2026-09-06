@@ -372,7 +372,7 @@ export function deleteBan(db: Database, id: number): void {
 /* Mappers                                                             */
 /* ------------------------------------------------------------------ */
 
-export function toOptionDto(row: OptionRow, selected: boolean): OptionDto {
+function toOptionDto(row: OptionRow, selected: boolean): OptionDto {
   const tokenizer = createEstimatingTokenizer();
   return {
     id: row.ulid,

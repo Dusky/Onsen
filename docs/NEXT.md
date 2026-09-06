@@ -3,14 +3,15 @@
 A short, honest list, written at the end of phase 65 so work can resume without
 re-deriving it. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 75, on `glm/sillytavern-replacement-dyp30w`. 1372 tests across
-93 files, typecheck clean, working tree clean. Feature complete against
+**State:** phase 76, on `glm/sillytavern-replacement-dyp30w`. 1376 tests across
+95 files, typecheck clean, working tree clean. Feature complete against
 `SPEC.md` §20 apart from the deferred phase 42.
 
 **Desktop settings** — background tasks, providers and profiles expand in
 place, the preset editor opens in a pane, the setup wizard renders again, and
-a theme's `base` flag is wired to `data-theme` (§20 phases 71–75). Next: the
-dead-export sweep.
+a theme's `base` flag is wired to `data-theme` (§20 phases 71–75). **The
+dead-export sweep** (§20 phase 76) found and fixed an orphaned write half of
+timed effects. Next: the GAPS capability queue — auto background first.
 
 ## How to pick up
 
@@ -48,7 +49,7 @@ been ordered since phase 55.
 6. **Usage stats** and **avatar shape/blur/shadow** (`GAPS.md` §3, §6). Both
    marked low priority by their own rows. Left where they are.
 
-## Two pieces of process debt
+## One piece of process debt
 
 - **The `dead-columns` blind spot.** The guard matches a column *name*, so a
   busy table's read masks a quiet one's: 58 of 264 column names are on more
@@ -57,12 +58,6 @@ been ordered since phase 55.
   text sweep, and every cheap version either cries wolf or needs a per-pair
   allowlist nobody maintains. Recorded in `HANDOFF.md`; a column whose name is
   on another table is one to check by hand until somebody builds the real one.
-- **Dead query exports.** A sweep during phase 60 found **21 of 310** exported
-  functions in `server/db/queries/` referenced nowhere outside their own file.
-  Two were behaviourally significant (`findDefaultPersona`, fixed in phase 61;
-  `findDefaultPreset`, unchecked). The other nineteen have not been looked at.
-  This is the same defect class as a dead column and is measurable the same
-  way — a guard with a `DELIBERATE` map, in the shape `dead-columns` uses.
 
 ## One question the user has not answered
 

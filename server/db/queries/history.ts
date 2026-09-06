@@ -248,7 +248,7 @@ function parseTags(raw: string | null): string[] {
   }
 }
 
-export function toSceneDto(
+function toSceneDto(
   row: SceneRow,
   extras: {
     presetUlid: string | null;
@@ -569,7 +569,7 @@ export function deleteScene(db: Database, id: number): void {
   db.query("DELETE FROM scenes WHERE id = $id").run({ id });
 }
 
-export function countMessages(db: Database, sceneId: number): number {
+function countMessages(db: Database, sceneId: number): number {
   return (
     db.query("SELECT count(*) AS n FROM messages WHERE scene_id = $scene_id").get({
       scene_id: sceneId,
@@ -770,7 +770,7 @@ export function siblingsOf(db: Database, row: MessageRow): MessageRow[] {
 }
 
 /** Follow the most recent child down to a leaf. */
-export function descendToLeaf(db: Database, messageId: number): number {
+function descendToLeaf(db: Database, messageId: number): number {
   const query = db.query(
     "SELECT id FROM messages WHERE parent_id = $parent_id ORDER BY id DESC LIMIT 1",
   );
@@ -866,7 +866,7 @@ export function activePathLength(db: Database, sceneId: number): number {
 }
 
 /** Attach sibling position to a single row, for responses about one message. */
-export function withSiblings(db: Database, row: MessageRow): MessageRowWithSiblings {
+function withSiblings(db: Database, row: MessageRow): MessageRowWithSiblings {
   const siblings = siblingsOf(db, row);
   return {
     ...row,
@@ -1020,7 +1020,7 @@ function ulidOf(db: Database, table: "presets" | "connection_profiles" | "messag
 }
 
 /** The cast, in display order (SPEC §2 SceneMember). */
-export function castOf(db: Database, sceneId: number): SceneMemberDto[] {
+function castOf(db: Database, sceneId: number): SceneMemberDto[] {
   const rows = db
     .query(
       `SELECT c.ulid, c.name, c.avatar_path, m.display_order, m.is_active, m.is_muted
@@ -1498,7 +1498,7 @@ export function splitBeat(db: Database, message: MessageRow): MessageRow[] {
  * Read here rather than in the annotations module so the tree module stays the
  * one place a message DTO is assembled — the same reason segments live here.
  */
-export function annotationDtosOf(db: Database, messageId: number): AnnotationDto[] {
+function annotationDtosOf(db: Database, messageId: number): AnnotationDto[] {
   return annotationsOf(db, messageId).map((row) =>
     toAnnotationDto(row, opKind(row.pass_key)?.label ?? row.pass_key),
   );
