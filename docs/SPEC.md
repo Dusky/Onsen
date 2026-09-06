@@ -3398,6 +3398,12 @@ Each phase ends in a working, usable application.
     was being used at 130% browser zoom. The floor moves to 11px, labels,
     buttons and counts go up with it, and prose returns to 17px. `Ledger`
     unchanged; this is size, not palette. See §16 and `test/typography.test.ts`.
+71. **Settings expand in place** — on a desktop, clicking a background task
+    expands its controls into the row instead of opening a bottom sheet, which
+    is a phone shape; the phone keeps the sheet. One `OpFields` component
+    serves both paths, so they cannot drift into different editors. The same
+    pattern is the shape for the remaining settings editors (providers,
+    profiles, presets). See §16 and `test/settings-inline.test.ts`.
 
 Settled while building phase 15.
 

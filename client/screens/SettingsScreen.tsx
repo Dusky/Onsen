@@ -53,6 +53,7 @@ import {
   useSignOut,
 } from "../lib/queries.ts";
 import { TabBar } from "../components/TabBar.tsx";
+import { useIsDesktop } from "../lib/breakpoint.ts";
 import { Sheet } from "../components/Sheet.tsx";
 import { PresetEditor } from "../components/PresetEditor.tsx";
 import { ScriptEditor } from "../components/ScriptEditor.tsx";
@@ -541,12 +542,26 @@ function OpEditor({
   profiles: ConnectionProfileDto[];
   onClose(): void;
 }) {
+  return (
+    <Sheet title={task.label} onClose={onClose}>
+      <div className="pt-[8px] pb-[14px]">
+        <OpFields task={task} profiles={profiles} />
+      </div>
+    </Sheet>
+  );
+}
+
+/**
+ * The op's controls, shared by the desktop's inline expansion and the phone's
+ * sheet, so the two cannot drift into different editors (SPEC §16 §Density
+ * rule 3, §20 phase 71).
+ */
+function OpFields({ task, profiles }: { task: TaskDto; profiles: ConnectionProfileDto[] }) {
   const update = useUpdateTask();
   const [template, setTemplate] = useState(task.promptTemplate ?? task.defaultTemplate);
 
   return (
-    <Sheet title={task.label} onClose={onClose}>
-      <div className="pt-[8px] pb-[14px]">
+    <>
         <p className="explain mb-[16px]">
           {task.description}
         </p>
@@ -675,8 +690,7 @@ function OpEditor({
             </div>
           </>
         )}
-      </div>
-    </Sheet>
+    </>
   );
 }
 
@@ -1601,6 +1615,9 @@ export function SettingsScreen() {
   );
   const [editingOp, setEditingOp] = useState<TaskDto | null>(null);
   const [editingPreset, setEditingPreset] = useState<PresetDto | null>(null);
+  /** The op expanded inline in the routing list, desktop only (§20 phase 71). */
+  const [openOp, setOpenOp] = useState<string | null>(null);
+  const isDesktop = useIsDesktop();
 
   const profileList = profiles.data ?? [];
   const providerList = providers.data ?? [];
@@ -1825,11 +1842,15 @@ export function SettingsScreen() {
                   ? strings.settings.routingSame
                   : (profileList.find((profile) => profile.id === task.connectionProfileId)?.name ??
                     strings.settings.routingSame);
+            const isOpen = isDesktop && openOp === task.key;
             return (
               <Row key={task.key}>
                 <button
                   type="button"
-                  onClick={() => setEditingOp(task)}
+                  onClick={() =>
+                    isDesktop ? setOpenOp(isOpen ? null : task.key) : setEditingOp(task)
+                  }
+                  aria-expanded={isDesktop ? isOpen : undefined}
                   className="flex w-full items-baseline gap-[9px] text-left"
                 >
                   <span className="min-w-0 flex-1">
@@ -1853,8 +1874,20 @@ export function SettingsScreen() {
                   <span className="chrome flex-none text-[12.5px] text-ink-muted">
                     {routed}
                   </span>
-                  <span className="chrome flex-none self-center text-[12px] text-ink-dim">›</span>
+                  <span className="chrome flex-none self-center text-[12px] text-ink-dim">
+                    {isDesktop ? (isOpen ? "▾" : "›") : "›"}
+                  </span>
                 </button>
+
+                {/* With room, the options are the row itself (design 4a,
+                    §20 phase 71): expand in place, no sheet between the reader
+                    and the setting. On a phone there is no room, so the sheet
+                    stays. */}
+                {isOpen ? (
+                  <div className="mt-[14px] border-t border-rule pt-[14px]">
+                    <OpFields task={task} profiles={profileList} />
+                  </div>
+                ) : null}
               </Row>
             );
           })}

@@ -5819,3 +5819,41 @@ The diagnosis was right and the dosage was one step. A floor is not a scale.
 **Verified in a browser** at 390×844 and 1440×900, reading the computed
 custom properties: prose 17px, section labels 12px, buttons 12.5px, attribution
 13px, on both widths.
+
+## Phase 71 — Settings expand in place
+
+The desktop navigation pass, prompted by one concrete example: a background
+task row in Settings opened a bottom sheet, which is a phone shape stretched
+across a desktop. The Workbench direction said it outright — "editing opens in
+the pane, not in a stack of sheets" — and §16 §Density rule 3 says controls
+live in the row. The ops list was the clearest case, and the shape for the
+rest.
+
+### One component, two paths
+
+`OpEditor`'s body became `OpFields`, shared by the phone's sheet and the
+desktop's inline expansion. That is the load-bearing part: the defect this
+codebase actually has is two editors drifting apart, and a single component is
+the only thing that prevents it. The row's click branches on `isDesktop` —
+expand in place with the chevron flipping to `▾`, or open the sheet where there
+is no room for the expansion.
+
+### What was built
+
+- `OpFields` extracted, `OpEditor` becomes a sheet wrapper around it.
+- The routing list's rows expand inline on a desktop; the phone keeps the sheet.
+- `test/settings-inline.test.ts` pins the single-component contract and the
+  width branch.
+
+### What was deferred
+
+The same pattern applies to the remaining settings editors — providers,
+profiles, presets — and they are the same class of change. Providers and
+profiles are rows with a handful of fields and should expand the same way; the
+preset editor is large enough that a full-width pane or a dedicated surface is
+a better fit than an accordion. Left for the next pass rather than half-built
+into this one.
+
+**Verified in a browser** at 1440×900 (a task row expands inline, zero dialogs,
+role buttons and template textarea present) and 390×844 (the same tap opens the
+sheet).

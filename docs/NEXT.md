@@ -3,14 +3,14 @@
 A short, honest list, written at the end of phase 65 so work can resume without
 re-deriving it. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 70, on `glm/sillytavern-replacement-dyp30w`. 1364 tests across
-91 files, typecheck clean, working tree clean. Feature complete against
+**State:** phase 71, on `glm/sillytavern-replacement-dyp30w`. 1366 tests across
+92 files, typecheck clean, working tree clean. Feature complete against
 `SPEC.md` §20 apart from the deferred phase 42.
 
-**The surface pass** (`docs/SURFACE-PASS.md`) is done — all four passes, plus a
-follow-up that raised the type scale to a usable floor of 11px and prose to the
-design's own 17px. What remains from the pass is the settings-table rewrite it
-deferred, which is its own phase rather than a tail on this one.
+**Desktop settings** — background-task rows now expand in place instead of
+opening a bottom sheet (§20 phase 71). The same pattern is the shape for the
+remaining editors: providers and profiles next, presets probably as a pane
+rather than an accordion.
 
 ## How to pick up
 
