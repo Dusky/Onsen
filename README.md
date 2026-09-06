@@ -4,7 +4,7 @@ A self-hosted, mobile-first AI roleplay frontend. Group scenes are the primary
 case: one AI **author** with its own personality plays the whole cast, like a GM
 running a table, while you direct.
 
-> **Status: phase 59 — feature complete, less the deferred phase 42.**
+> **Status: phase 60 — feature complete, less the deferred phase 42.**
 > Set it up, **point it at your SillyTavern folder and move in** — cards, chats,
 > group chats, personas, world info, instruct templates and regex scripts all
 > come across, with your swipes intact as branches — give the AI an author
@@ -85,7 +85,7 @@ running a table, while you direct.
 | --- | --- |
 | [`docs/SPEC.md`](docs/SPEC.md) | Behaviour, architecture, data model, build order. The source of truth. |
 | [`docs/design/DESIGN.md`](docs/design/DESIGN.md) | Layout, visual system, component structure. |
-| [`docs/HANDOFF.md`](docs/HANDOFF.md) | Process, non-negotiables, conventions. |
+| [`docs/HANDOFF.md`](docs/HANDOFF.md) | The non-negotiables, the conventions, and the guards that measure them. |
 | [`docs/PHASES.md`](docs/PHASES.md) | What each completed phase actually built. |
 
 `SPEC.md` wins on behaviour and data; the design doc wins on layout and

@@ -5104,3 +5104,95 @@ incumbent ships *# Msg. to Load = 100*. The log is already virtualised, so this
 is bytes on the wire rather than render cost — a different problem from the list,
 and it gets its own `GAPS.md` row rather than being folded into a claim that
 paging is done.
+
+---
+
+## Phase 60 — The invariants, guarded
+
+Raised by the user rather than by the build order: *"i think we are almost ready
+to ditch handoff.md and other old guidance completely."*
+
+Half right. The document was two things wearing one name. Half of it was
+bootstrap instructions for an app that did not exist — read §0, §1, §2 and §17,
+confirm the stack, propose the migrations and wait for review, then build phase
+1 and stop — and that half has been spent since roughly phase 2. The other half
+is ten invariants that are still the reason the architecture holds, and deleting
+them because the scaffolding around them went stale would have thrown away the
+only part worth keeping.
+
+So it was cut down rather than retired, and the interesting question turned out
+to be a different one: **which of the ten were actually being enforced?**
+
+### What was found
+
+Six had a test standing behind them and nobody had ever said which. Four had
+nothing at all:
+
+| Rule | Held by, before this phase |
+| --- | --- |
+| 6. The client never calls an inference backend | reading the diff |
+| 7. No native modules | reading the diff |
+| 8. No browser storage APIs | reading the diff, and two code comments |
+| 9. Extensions never see provider credentials | reading the diff |
+
+Every one of them is a structural question a text sweep can answer, which is
+what makes their absence notable rather than excusable. They were unguarded
+because nobody had asked, not because asking was hard.
+
+### What was built
+
+- **`test/invariants.test.ts`**, in two halves. The second half measures the
+  four: no installed package has an install hook or a `binding.gyp` and nothing
+  in the *runtime* dependency closure is a native binary; no client source names
+  `localStorage`, `sessionStorage`, `indexedDB` or `document.cookie`; every
+  `fetch` in client source targets this app's own `/api`; and the script
+  runtime, pack installer and webhook sender reach no key store, with no pack
+  kind that could be a provider.
+- **The first half reads the document back.** Every numbered non-negotiable in
+  `HANDOFF.md` must carry a `Guarded by` line, and every test file it names must
+  exist. A rule added to that list without a guard fails the suite — which is
+  the actual repair, because the failure mode being fixed is not "rule 7 is
+  unguarded" but "nobody noticed rule 7 was unguarded for sixty phases".
+- **`HANDOFF.md` rewritten**: 191 lines to 243, but a different 243. Gone are
+  the phase-1 starting instructions and the note about the migration review that
+  never happened (`PHASES.md` phase 20 and SPEC §20 both carry that record).
+  Added are a guards table naming all fourteen, the two rules for writing one
+  (never cry wolf; strip comments first), the `openDatabase` lesson from phase
+  56, the browser-verification protocol, and — under precedence — the phase 55
+  reversal, stated as a rule: when the authority is the problem, rewrite the
+  authority.
+
+### Surprises
+
+**Two of the first drafts of the guard were wrong in the same direction, and
+both would have cried wolf.** The first asserted that no client source names
+`apiKey` — but the settings screen holds a provider's key because the reader
+types it there, and handling a credential on its way to *this app's own server*
+is the feature. The second forbade the extension surfaces from importing
+`db/queries/connections.ts` — but a preset is a legitimate pack artifact, and
+presets live in that module beside the provider rows. Both were caught by
+running the guard against a correct tree, which is the only way this class of
+mistake ever gets caught: a guard is falsifiable only in the direction of a
+false alarm, and a false alarm on a live usage is how a guard gets switched off.
+`dead-columns` learned this two phases ago and wrote it down; this phase learned
+it again anyway, twice, in one file.
+
+**There genuinely are `.node` binaries under `node_modules`.** Eight of them —
+Rolldown's Linux bindings, Tailwind's oxide, lightningcss. The naive check would
+have failed on a tree that has never violated the rule, because prebuilt is not
+a compile step and every one of those is a build-time devDependency. What the
+rule protects is `bun server/index.ts` on somebody else's machine, so the check
+walks the transitive closure of `dependencies` — ten packages, zero binaries —
+and the distinction is written into the test rather than left for the next
+person to rediscover at 2am.
+
+**The parser read every rule as unguarded.** `[\s\S]*?` up to a `\s*$` lookahead
+under the `m` flag matches at the end of the *first line*, so every body was the
+empty string and every rule looked unguarded — a guard failing loudly for a
+reason that had nothing to do with its subject. Split on the numbering instead.
+
+**Every assertion was negative-tested.** localStorage added to a client file, an
+absolute `fetch` to `api.openai.com`, an `apiKey` in the script runtime, a
+`Guarded by` line deleted, a fake package with a `node-gyp` postinstall, a
+`probe.node` dropped into hono — six deliberate breaks, six failures, tree
+restored. A guard nobody has watched fail is a guard nobody has tested.

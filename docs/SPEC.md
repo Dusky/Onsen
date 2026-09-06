@@ -3159,6 +3159,13 @@ Each phase ends in a working, usable application.
     and the list is filtered and paged on the server. Phase 54 filtered on the
     client and left a note saying pagination was the change that should move it;
     at 139 roleplays it is. See §9 and §16.
+60. **The invariants, guarded** — `HANDOFF.md` is cut down to what is still
+    load-bearing, and each of its ten non-negotiables names the test that
+    measures it. Four were held by nothing: no native modules, no browser
+    storage, the client never calling a backend, extensions never reaching a
+    credential. `test/invariants.test.ts` measures those four and reads the
+    document back, so a rule cannot be added to that list without a guard
+    behind it. See `HANDOFF.md`.
 
 Settled while building phase 15.
 
@@ -3168,12 +3175,14 @@ Settled while building phase 15.
   them. Every screen built mobile-only after this point is one more to retrofit,
   so it goes at the end of the core product and before the depth phases, and
   everything from lorebooks onward is built for both widths from the start.
-- **The schema review is phase 20, and it is overdue.** `HANDOFF.md` asks for
-  the migrations to be reviewed before they are run; thirteen of them have been
-  written and run without that ever happening, because waiting would have
-  stopped every phase. The honest repair is a phase that reads them all against
-  §2, taken before the depth phases add lorebooks, trackers and packs — the
-  point past which a schema mistake stops being cheap.
+- **The schema review is phase 20, and it is overdue.** `HANDOFF.md` asked at
+  the time for the migrations to be reviewed before they are run; thirteen of
+  them had been written and run without that ever happening, because waiting
+  would have stopped every phase. The honest repair is a phase that reads them
+  all against §2, taken before the depth phases add lorebooks, trackers and
+  packs — the point past which a schema mistake stops being cheap. (The rule
+  itself was retired in phase 60, its repair long since done and
+  `test/dead-columns.test.ts` standing where it stood.)
 - **The numbering past 34 was wrong**, and is corrected here: the tail repeated
   40 and 41 several times over. The count is 43 phases with the two above added.
 
