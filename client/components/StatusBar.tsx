@@ -12,6 +12,11 @@ import { strings } from "../strings.ts";
  * panel the desktop shows beside the log, laid down rather than stood up. That
  * is deliberate but it is doing two jobs, so the right side reads as a control
  * rather than as more status.
+ *
+ * The token readout doubles as the *preview* handle (§20 phase 68): the one
+ * number on this bar a reader would act on is how much of the window the next
+ * turn will take, so tapping it shows the whole assembled prompt behind that
+ * number — the number's job is to be the doorway, not the answer.
  */
 export function StatusBar({
   profileName,
@@ -19,6 +24,7 @@ export function StatusBar({
   contextSize,
   generating,
   onOpenContext,
+  onOpenPrompt,
 }: {
   profileName: string | null;
   tokens: number | null;
@@ -33,7 +39,36 @@ export function StatusBar({
   generating: boolean;
   /** Absent on desktop, where the inspector is already on screen. */
   onOpenContext?: (() => void) | undefined;
+  /** Opens the next-turn prompt preview (§20 phase 68). */
+  onOpenPrompt?: (() => void) | undefined;
 }) {
+  // The fill takes the memory hue rather than the red pencil: this is a gauge,
+  // and red here would read as an alarm at 8% full.
+  const gauge =
+    tokens === null || contextSize === null || contextSize <= 0 ? null : (
+      <>
+        <span className="chrome text-[10.5px] text-ink-dim">{strings.chat.ctxLabel}</span>
+        <span
+          className="hidden h-[3px] w-[64px] flex-none sm:inline-block"
+          style={{ background: "var(--onsen-color-rule)" }}
+        >
+          <span
+            className="block h-[3px]"
+            style={{
+              width: `${Math.min(100, Math.round((tokens / contextSize) * 100))}%`,
+              background:
+                tokens / contextSize > 0.9
+                  ? "var(--onsen-color-red)"
+                  : "var(--onsen-color-green)",
+            }}
+          />
+        </span>
+        <span className="chrome text-[10.5px] text-ink-dim tabular-nums">
+          {strings.chat.ctxOf(tokens, contextSize)}
+        </span>
+      </>
+    );
+
   return (
     <div
       className="flex flex-none items-center gap-[14px] border-t border-rule px-[14px]"
@@ -53,36 +88,32 @@ export function StatusBar({
         {profileName ?? strings.chat.barNoModel}
       </span>
 
-      {tokens === null ? null : contextSize === null || contextSize <= 0 ? (
-        <span className="chrome text-[10.5px] text-ink-dim">
-          {strings.chat.barTokens(tokens)}
-        </span>
+      {onOpenPrompt === undefined ? (
+        gauge === null ? (
+          tokens === null ? null : (
+            <span className="chrome text-[10.5px] text-ink-dim">
+              {strings.chat.barTokens(tokens)}
+            </span>
+          )
+        ) : (
+          <span className="flex min-w-0 items-center gap-[7px]">{gauge}</span>
+        )
       ) : (
-        // The fill takes the memory hue rather than the red pencil: this is a
-        // gauge, and red here would read as an alarm at 8% full.
-        <span className="flex min-w-0 items-center gap-[7px]">
-          <span className="chrome text-[10.5px] text-ink-dim">
-            {strings.chat.ctxLabel}
-          </span>
-          <span
-            className="hidden h-[3px] w-[64px] flex-none sm:inline-block"
-            style={{ background: "var(--onsen-color-rule)" }}
-          >
-            <span
-              className="block h-[3px]"
-              style={{
-                width: `${Math.min(100, Math.round((tokens / contextSize) * 100))}%`,
-                background:
-                  tokens / contextSize > 0.9
-                    ? "var(--onsen-color-red)"
-                    : "var(--onsen-color-green)",
-              }}
-            />
-          </span>
-          <span className="chrome text-[10.5px] text-ink-dim tabular-nums">
-            {strings.chat.ctxOf(tokens, contextSize)}
-          </span>
-        </span>
+        <button
+          type="button"
+          onClick={onOpenPrompt}
+          title={strings.chat.promptPreviewTitle}
+          aria-label={strings.chat.promptPreviewTitle}
+          className="chrome flex min-w-0 items-center gap-[7px] text-left"
+        >
+          {gauge === null ? (
+            <span className="chrome text-[10.5px]" style={{ color: "var(--onsen-color-red)" }}>
+              {strings.chat.promptPreview}
+            </span>
+          ) : (
+            gauge
+          )}
+        </button>
       )}
 
       <span className="flex-grow" />

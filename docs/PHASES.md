@@ -5676,3 +5676,59 @@ everything else.
 nav carries counts, the recent rows show title, excerpt, cast initials and
 count, and firing a reply mid-stream turns the row red with `writing` in place
 of the count.
+
+## Phase 68 — The prompt on the surface
+
+The third surface pass, and the one the design handoff calls "the screen that
+wins over a dissatisfied SillyTavern user" — except the shipped inspector only
+looked *back* at a prompt behind a message you had already paid for. There was
+no way to see the prompt before sending it.
+
+### A forward inspector
+
+`POST /api/scenes/:id/preview` assembles the *next* turn's prompt exactly the
+way a generation would — `resolveRoute` for the provider, `capabilitiesFor` for
+the shape, the same pure builder — and returns only the debug record. Nothing
+is generated, nothing is written. The status bar's token readout becomes the
+doorway: the one number a reader acts on is how much of the window the next
+turn will take, so tapping it shows the whole prompt behind that number — block
+order, per-block cost, evictions, lore verdicts, the budget arithmetic.
+
+The client posts the composer's cue (`characterId`, `scope`) so the preview is
+*this* turn — the cued speaker, one voice or the room — and renders the result
+in the same `InspectorSheet` the backward inspector already used, which is what
+kept the sheet from needing a second implementation.
+
+### What was built
+
+- `PromptPreviewDto` (`{ debug }`), and `InspectorSheet` narrowed to read
+  exactly that, so both directions share the one renderer.
+- `test/prompt-preview.test.ts`: the prompt assembles without writing, a cued
+  character reaches the spotlight, a one-member beat degrades to a spotlight,
+  and a scene with no connection is refused rather than invented.
+
+### What was deferred
+
+The composer draft is not part of the preview. The preview answers "what will
+the model see" from the tree as it stands; the reader's unsent line is one user
+message and the least interesting thing in the block list. Folding it in would
+mean a synthetic message row and a `{{pick}}` anchor that differs from the real
+turn, for little gain.
+
+### Surprises
+
+**Capabilities, not an adapter.** The preview needs the provider's shape but
+never its network, so it calls `capabilitiesFor(kind, model)` with the route's
+`supportsPrefill` override — the same object the adapter would carry — and never
+touches the key or the base URL. A preview that required constructing an
+adapter would have been pulling a credential it had no use for.
+
+**The token readout was already the right affordance.** The design's `4a` had a
+`PROMPT · 29,940 TOK` chip in the header; the status bar already showed the
+gauge. Making the gauge the button — the number you act on is the number you
+tap — avoided inventing a second control and follows §16 §Density rule 2: a
+number behind a tap is a number nobody reads, so the number *is* the tap.
+
+**Verified in a browser** at 390×844 and 1440×900: tapping the readout opens
+the sheet with the budget arithmetic and the block list — Spotlight, History,
+Guides, the prompt options — costed and in order, before anything was sent.

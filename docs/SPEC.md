@@ -2579,7 +2579,10 @@ toggle.
   auto-trigger, visibility.
 - **Prompt inspector** — the exact assembled prompt for the last generation,
   block by block, with token costs, **what was evicted**, retrieved chunks and
-  scores, and which lore entries fired and why. Reachable from any message.
+  scores, and which lore entries fired and why. Reachable from any message —
+  and forward, from the status bar's token readout (§20 phase 68): a preview of
+  the *next* turn's prompt, assembled the same way and shown in the same sheet
+  before anything is generated.
 - **Desktop sidebar** — the tab bar unrolled (§20 phase 67): a Spectral
   wordmark, the five destinations with counts and an unmistakable active state,
   and a `RECENT` list of real rows — title, the newest line of prose, the
@@ -3377,6 +3380,12 @@ Each phase ends in a working, usable application.
     cast initials, message count, and a red `writing` indicator on the scene
     generating now. The second of the four surface passes. See §16 and
     `test/sidebar.test.ts`.
+68. **The prompt on the surface** — the inspector gains a forward half. The
+    status bar's token readout becomes a button that assembles the *next*
+    turn's prompt — same route resolution, same capabilities, same builder —
+    and shows it block by block with costs, evictions and lore verdicts, before
+    anything is generated. A preview writes nothing. The third surface pass.
+    See §16 and `test/prompt-preview.test.ts`.
 
 Settled while building phase 15.
 

@@ -61,6 +61,7 @@ import {
   useConnectionProfiles,
   useLayout,
   useInspector,
+  usePreviewPrompt,
 } from "../lib/queries.ts";
 import type {
   GuideKind,
@@ -169,6 +170,9 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   /** The message whose prompt the inspector sheet is showing (SPEC §16). */
   const [inspecting, setInspecting] = useState<MessageDto | null>(null);
   const inspector = useInspector(sceneId, inspecting?.id ?? null);
+  /** The next-turn prompt preview (§20 phase 68): open while it is shown. */
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const preview = usePreviewPrompt(sceneId);
   /** The beat whose parts are being picked from, for a recast. */
   const [recasting, setRecasting] = useState<MessageDto | null>(null);
   /**
@@ -1174,6 +1178,13 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           tokens={scene.data?.scene.lastPromptTokens ?? null}
           contextSize={scene.data?.scene.contextSize ?? null}
           generating={isGenerating}
+          onOpenPrompt={() => {
+            preview.mutate({
+              ...(nextSpeaker === null ? {} : { characterId: nextSpeaker.characterId }),
+              scope,
+            });
+            setPreviewOpen(true);
+          }}
           {...(isDesktop ? {} : { onOpenContext: () => setGuidesOpen(true) })}
         />
     </>
@@ -1425,6 +1436,32 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           messages={messages}
           onClose={() => setInspecting(null)}
         />
+      ) : null}
+
+      {/* The next-turn preview (§20 phase 68): the same sheet, the forward
+          answer. While the build runs the sheet shows a line rather than
+          opening empty. */}
+      {previewOpen ? (
+        preview.data !== undefined ? (
+          <InspectorSheet
+            inspection={preview.data}
+            messages={messages}
+            onClose={() => setPreviewOpen(false)}
+          />
+        ) : (
+          <Sheet title={strings.chat.inspectorTitle} onClose={() => setPreviewOpen(false)}>
+            <p className="meta py-[10px] leading-[1.5]">
+              {preview.isPending
+                ? strings.chat.promptPreviewWorking
+                : preview.error !== null
+                  ? strings.chat.promptPreviewFailed
+                  : strings.chat.promptPreviewWorking}
+            </p>
+            {preview.error !== null ? (
+              <p className="explain explain-alert">{preview.error.message}</p>
+            ) : null}
+          </Sheet>
+        )
       ) : null}
 
       {correcting !== null ? (

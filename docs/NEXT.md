@@ -3,14 +3,14 @@
 A short, honest list, written at the end of phase 65 so work can resume without
 re-deriving it. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 67, on `glm/sillytavern-replacement-dyp30w`. 1358 tests across
-89 files, typecheck clean, working tree clean. Feature complete against
+**State:** phase 68, on `glm/sillytavern-replacement-dyp30w`. 1362 tests across
+90 files, typecheck clean, working tree clean. Feature complete against
 `SPEC.md` §20 apart from the deferred phase 42.
 
 **In progress: the surface pass** (`docs/SURFACE-PASS.md`) — four passes over
 the design, UI and navigation, each small enough to verify in a browser in one
-sitting. Passes 1 (the default theme) and 2 (the sidebar) are done; passes 3
-(the prompt on the surface) and 4 (navigation density) remain.
+sitting. Passes 1–3 (the default theme, the sidebar, the prompt on the
+surface) are done; pass 4 (navigation density) remains.
 
 ## How to pick up
 

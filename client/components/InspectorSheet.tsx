@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { MessageDto, PromptBlock, PromptInspectorDto } from "@shared/types.ts";
+import type { MessageDto, PromptBlock, PromptDebugInfo } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { Sheet } from "./Sheet.tsx";
 
@@ -30,7 +30,8 @@ export function InspectorSheet({
   messages,
   onClose,
 }: {
-  inspection: PromptInspectorDto;
+  /** The debug record only: the post-hoc inspector and the preview both have one. */
+  inspection: { debug: PromptDebugInfo };
   /** The scene's active path, to resolve history identifiers into content. */
   messages: MessageDto[];
   onClose(): void;

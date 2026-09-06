@@ -243,6 +243,11 @@ export const strings = {
     barContext: "Context",
     barNoModel: "No model",
     barTokens: (n: number) => `${n.toLocaleString()} tok`,
+    /** The next-turn preview (SPEC §16, §20 phase 68). */
+    promptPreview: "Prompt",
+    promptPreviewTitle: "What this turn will send",
+    promptPreviewWorking: "Assembling…",
+    promptPreviewFailed: "Could not read the prompt.",
 
     /* The inspector pane (§20 phase 43). */
     inspectorPane: "Inspector",

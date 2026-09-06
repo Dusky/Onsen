@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { AppContext, AppEnv } from "../context.ts";
 import { requireAuth } from "../middleware/session.ts";
 import { findScene, findMessage, activePath, speakerLookup } from "../db/queries/history.ts";
+import { findCharacter } from "../db/queries/characters.ts";
 import {
   isBeatBound,
   isImpersonatePerson,
@@ -10,9 +11,15 @@ import {
   type ImpersonateResponse,
   type PromptDebugInfo,
   type PromptInspectorDto,
+  type PromptPreviewDto,
 } from "../../shared/types.ts";
 import { buildImpersonatePrompt, cleanImpersonation } from "../generation/impersonate.ts";
 import { createEstimatingTokenizer } from "../prompt/index.ts";
+import { buildPrompt, PromptBudgetError } from "../prompt/index.ts";
+import { buildPromptContext } from "../generation/context.ts";
+import { resolveRoute, RouteError } from "../generation/route.ts";
+import { templateFor } from "../db/queries/instruct.ts";
+import { DEFAULT_BEAT_BOUND } from "../../shared/types.ts";
 import { IMPERSONATE, taskKind } from "../tasks/registry.ts";
 import type { TaskRunner } from "../tasks/runner.ts";
 import type { PassPipeline } from "../passes/pipeline.ts";
@@ -731,6 +738,91 @@ export function sceneGenerationRoutes(
       createdAt: row.started_at,
       debug,
     } satisfies PromptInspectorDto);
+  });
+
+  /**
+   * The prompt for the *next* turn, before anything is generated (§20 phase
+   * 68).
+   *
+   * The inspector above looks backward; this looks forward, which is what a
+   * power user is actually deciding on: what will the model see, what will it
+   * cost, and what will be trimmed, if I send now. It assembles the context
+   * the same way a generation would — the same route resolution, the same
+   * capabilities, the same pure builder — and returns only the debug record,
+   * so it can render in the same sheet the inspector uses.
+   *
+   * `characterId` and `scope` mirror what the composer is about to ask for: a
+   * cued speaker, one voice or the room. Both are optional; without them the
+   * preview is the default next turn.
+   */
+  app.post("/:sceneId/preview", async (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+
+    let input: Record<string, unknown> = {};
+    try {
+      const parsed: unknown = await c.req.json();
+      if (typeof parsed === "object" && parsed !== null) input = parsed as Record<string, unknown>;
+    } catch {
+      /* An empty body is a valid preview of the default turn. */
+    }
+
+    // The same resolution a generation uses: which provider, which model,
+    // which preset. A scene with nowhere to generate has no prompt to preview.
+    let route;
+    try {
+      route = resolveRoute(ctx.db, ctx.keyring, { profileId: scene.connection_profile_id });
+    } catch (caught) {
+      if (caught instanceof RouteError) {
+        return c.json({ error: { code: caught.code, message: caught.message } }, 400);
+      }
+      throw caught;
+    }
+
+    const capabilities = {
+      ...capabilitiesFor(route.kind, route.model),
+      ...(route.supportsPrefill === null ? {} : { supportsPrefill: route.supportsPrefill }),
+    };
+
+    let spotlightId: number | null = null;
+    if (typeof input["characterId"] === "string" && input["characterId"] !== "") {
+      const character = findCharacter(ctx.db, input["characterId"]);
+      if (character === null) {
+        return c.json({ error: { code: "not_found", message: "No such character." } }, 404);
+      }
+      // A character not in this cast falls back to the first member, the same
+      // way the builder resolves an explicit spotlight it cannot find.
+      spotlightId = character.id;
+    }
+
+    const scope = input["scope"] === "beat" ? "beat" : "spotlight";
+    const instruct =
+      route.kind === "text_completion" ? templateFor(ctx.db, route.instructTemplateId) : null;
+
+    const context = buildPromptContext({
+      db: ctx.db,
+      scene,
+      capabilities,
+      ...(instruct === null ? {} : { instruct }),
+      ...(spotlightId === null ? {} : { spotlightId }),
+      turn: scope === "beat" ? { kind: "beat", bound: DEFAULT_BEAT_BOUND } : { kind: "spotlight" },
+      now: Date.now(),
+      seed: 0,
+    });
+
+    try {
+      return c.json({ debug: buildPrompt(context).debug } satisfies PromptPreviewDto);
+    } catch (caught) {
+      if (caught instanceof PromptBudgetError) {
+        return c.json(
+          { error: { code: "budget", message: "The fixed blocks do not fit the window." } },
+          400,
+        );
+      }
+      throw caught;
+    }
   });
 
   /**

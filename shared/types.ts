@@ -2158,6 +2158,16 @@ export interface PromptInspectorDto {
   debug: PromptDebugInfo;
 }
 
+/**
+ * The assembled prompt for the next turn, before any generation runs (§20
+ * phase 68). The client asks for it from the composer and shows it in the same
+ * sheet the post-hoc inspector uses; there is no generation behind it, so the
+ * DTO is just the debug record the sheet reads.
+ */
+export interface PromptPreviewDto {
+  debug: PromptDebugInfo;
+}
+
 /* ------------------------------------------------------------------ */
 /* Self-update (SPEC §17)                                              */
 /* ------------------------------------------------------------------ */

@@ -17,6 +17,7 @@ import type {
   EmbeddingsConfigDto,
   ExpressionPackDto,
   PromptInspectorDto,
+  PromptPreviewDto,
   ApplyStage,
   RegexScriptDto,
   ScriptTestDto,
@@ -73,6 +74,7 @@ import type {
   UpdateCharacterRequest,
   MessageDto,
   SceneDto,
+  TurnScope,
   SceneWithHistoryDto,
   SetActiveLeafRequest,
   DossierDto,
@@ -1437,6 +1439,20 @@ export function useInspector(sceneId: string, messageId: string | null) {
     queryFn: () => api.get<PromptInspectorDto>(`/scenes/${sceneId}/inspector/${messageId}`),
     enabled: messageId !== null,
     staleTime: 0,
+  });
+}
+
+/**
+ * The prompt for the *next* turn, before anything is generated (§20 phase 68).
+ *
+ * A mutation rather than a query: it is an answer computed on demand from the
+ * scene's state at the moment the reader asks, and it takes the composer's cue
+ * — who is about to speak, one voice or the room.
+ */
+export function usePreviewPrompt(sceneId: string) {
+  return useMutation({
+    mutationFn: (body: { characterId?: string; scope?: TurnScope }) =>
+      api.post<PromptPreviewDto>(`/scenes/${sceneId}/preview`, body),
   });
 }
 
