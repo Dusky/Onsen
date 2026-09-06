@@ -36,6 +36,7 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
       scale: Number(getSetting(ctx.db, "reading_scale") ?? READING_DEFAULTS.scale),
       measure: Number(getSetting(ctx.db, "reading_measure") ?? READING_DEFAULTS.measure),
       leading: Number(getSetting(ctx.db, "reading_leading") ?? READING_DEFAULTS.leading),
+      window: Number(getSetting(ctx.db, "reading_window") ?? READING_DEFAULTS.window),
     });
   }
 
@@ -150,6 +151,7 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
       setSetting(ctx.db, "reading_scale", String(next.scale));
       setSetting(ctx.db, "reading_measure", String(next.measure));
       setSetting(ctx.db, "reading_leading", String(next.leading));
+      setSetting(ctx.db, "reading_window", String(next.window));
     }
 
     return c.json(preferences());

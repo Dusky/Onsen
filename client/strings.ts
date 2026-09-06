@@ -430,6 +430,8 @@ export const strings = {
     passPart: (name: string) => `${name} —`,
 
     you: "You",
+    /** The turns above the window (§20 phase 62). */
+    showEarlier: (count: number) => `${count} earlier ${count === 1 ? "turn" : "turns"}`,
     /** Cast strip captions (design handoff). */
     autoNext: "Auto · next",
     /** In a beat the director's pick is who starts it, not who speaks. */
@@ -466,6 +468,10 @@ export const strings = {
     benched: "Benched",
     bench: "Bench",
     unbench: "Bring back",
+    /* Muted is the other half of benched (§20 phase 62). */
+    mute: "Mute",
+    unmute: "Let them speak",
+    statusMuted: "Muted",
     viewCard: "View card",
     castMember: "Cast member",
 
@@ -781,6 +787,8 @@ export const strings = {
     prose: "Text size",
     proseMeasure: "Column width",
     proseLeading: "Line spacing",
+    /** How many turns a roleplay opens with (§20 phase 62). */
+    historyWindow: "Turns loaded",
     proseSample:
       "She set the ledger down without closing it, and waited to see which of them would look first.",
     proseReset: "Back to defaults",

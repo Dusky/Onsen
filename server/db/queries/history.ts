@@ -797,10 +797,23 @@ export function latestLeaf(db: Database, sceneId: number): number | null {
  * The active history: every message from a root down to the leaf, in reading
  * order, each carrying its swipe position.
  */
-export function activePath(db: Database, sceneId: number): MessageRowWithSiblings[] {
+/**
+ * The active path, root to leaf.
+ *
+ * `limit` keeps only the newest N turns (§20 phase 62). Depth is counted from
+ * the leaf, so `depth < limit` is exactly the tail — the window a reader is
+ * looking at. Everything that builds a prompt passes no limit and gets the
+ * whole path: the window is bytes on the wire, never what the author sees.
+ */
+export function activePath(
+  db: Database,
+  sceneId: number,
+  limit?: number,
+): MessageRowWithSiblings[] {
   const scene = findSceneById(db, sceneId);
   if (scene === null || scene.active_leaf_id === null) return [];
 
+  const window = limit === undefined ? "" : "WHERE ancestry.depth < $limit";
   return db
     .query(
       `WITH RECURSIVE ancestry(id, depth) AS (
@@ -817,9 +830,39 @@ export function activePath(db: Database, sceneId: number): MessageRowWithSibling
                   WHERE s.scene_id = m.scene_id AND s.parent_id IS m.parent_id
                     AND s.id < m.id) AS sibling_index
            FROM ancestry JOIN messages m ON m.id = ancestry.id
+          ${window}
           ORDER BY ancestry.depth DESC`,
     )
-    .all({ leaf: scene.active_leaf_id }) as MessageRowWithSiblings[];
+    .all(
+      limit === undefined
+        ? { leaf: scene.active_leaf_id }
+        : { leaf: scene.active_leaf_id, limit },
+    ) as MessageRowWithSiblings[];
+}
+
+/**
+ * How long the active path is, without loading it.
+ *
+ * The count the window is measured against: a reader looking at the newest
+ * hundred of four hundred needs to be told the other three hundred are there,
+ * and counting them by fetching them is the thing being avoided.
+ */
+export function activePathLength(db: Database, sceneId: number): number {
+  const scene = findSceneById(db, sceneId);
+  if (scene === null || scene.active_leaf_id === null) return 0;
+  return (
+    db
+      .query(
+        `WITH RECURSIVE ancestry(id) AS (
+             SELECT id FROM messages WHERE id = $leaf
+             UNION ALL
+             SELECT m.parent_id FROM messages m JOIN ancestry ON m.id = ancestry.id
+              WHERE m.parent_id IS NOT NULL
+           )
+           SELECT count(*) AS n FROM ancestry`,
+      )
+      .get({ leaf: scene.active_leaf_id }) as { n: number }
+  ).n;
 }
 
 /** Attach sibling position to a single row, for responses about one message. */
@@ -980,7 +1023,7 @@ function ulidOf(db: Database, table: "presets" | "connection_profiles" | "messag
 export function castOf(db: Database, sceneId: number): SceneMemberDto[] {
   const rows = db
     .query(
-      `SELECT c.ulid, c.name, c.avatar_path, m.display_order, m.is_active
+      `SELECT c.ulid, c.name, c.avatar_path, m.display_order, m.is_active, m.is_muted
          FROM scene_members m JOIN characters c ON c.id = m.character_id
         WHERE m.scene_id = $scene_id
         ORDER BY m.display_order, m.id`,
@@ -991,6 +1034,7 @@ export function castOf(db: Database, sceneId: number): SceneMemberDto[] {
     avatar_path: string | null;
     display_order: number;
     is_active: number;
+    is_muted: number;
   }[];
   return rows.map((row) => ({
     characterId: row.ulid,
@@ -998,6 +1042,7 @@ export function castOf(db: Database, sceneId: number): SceneMemberDto[] {
     hasAvatar: row.avatar_path !== null,
     displayOrder: row.display_order,
     isActive: row.is_active === 1,
+    isMuted: row.is_muted === 1,
   }));
 }
 
@@ -1108,8 +1153,8 @@ function lastLine(db: Database, leafId: number | null): string | null {
  * The active path as DTOs. Each message's parent is its predecessor on the
  * path, so no extra lookups are needed to resolve parent identifiers.
  */
-export function activePathDtos(db: Database, scene: SceneRow): MessageDto[] {
-  const rows = activePath(db, scene.id);
+export function activePathDtos(db: Database, scene: SceneRow, limit?: number): MessageDto[] {
+  const rows = activePath(db, scene.id, limit);
   const speakers = speakerLookup(db);
   // Loaded once for the whole path. Per message this would be a query per turn
   // on every open of a scene, which is the cost that decides where §14's
@@ -1131,7 +1176,11 @@ export function activePathDtos(db: Database, scene: SceneRow): MessageDto[] {
       toMessageDto(
         row,
         scene.ulid,
-        index === 0 ? null : (rows[index - 1]?.ulid ?? null),
+        // The first row of a window has a parent that is simply not in the
+        // window, which is not the same as having none — reading it off the
+        // previous row would tell the client this turn is the root of the
+        // roleplay (§20 phase 62).
+        index === 0 ? ulidOf(db, "messages", row.parent_id) : (rows[index - 1]?.ulid ?? null),
         speakers,
         // Only a beat carries a parsed view; every other kind of message is its
         // own single segment and does not need it sent twice.

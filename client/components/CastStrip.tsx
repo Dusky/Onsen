@@ -60,7 +60,10 @@ export function CastStrip({
 }: CastStripProps) {
   if (cast.length === 0) return null;
 
-  const inPlay = cast.filter((member) => member.isActive);
+  // A beat needs two members who can speak, so a muted one does not count
+  // (§20 phase 62): the server degrades a beat of one to a spotlight, and
+  // offering the choice anyway offers something that does not happen.
+  const inPlay = cast.filter((member) => member.isActive && !member.isMuted);
   const canBeat = inPlay.length > 1;
   // `auto` means "ask the director", so it is offered only where a director can
   // answer. Offering it under a strategy that cannot would be a button that
@@ -114,7 +117,7 @@ export function CastStrip({
                   borderLeft: "1px solid var(--onsen-color-rule)",
                   borderRight: "1px solid var(--onsen-color-rule)",
                   borderBottom: "1px solid var(--onsen-color-rule)",
-                  opacity: member.isActive ? 1 : 0.45,
+                  opacity: !member.isActive ? 0.45 : member.isMuted ? 0.7 : 1,
                   ...(member.hasAvatar
                     ? { backgroundImage: `url(/api/characters/${member.characterId}/avatar)` }
                     : { background: cued ? "var(--onsen-stripe-cued)" : "var(--onsen-stripe)" }),

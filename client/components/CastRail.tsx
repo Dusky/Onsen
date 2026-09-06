@@ -84,8 +84,11 @@ export function CastRail({
       </div>
 
       {/* One voice or the room. The same control the phone puts in the cast
-          strip, and it means the same thing here. */}
-      {cast.filter((member) => member.isActive).length > 1 ? (
+          strip, and it means the same thing here. A beat needs two members who
+          can actually speak, so a muted one does not count (§20 phase 62) —
+          the server degrades a beat of one to a spotlight, and offering the
+          choice anyway would be offering something that does not happen. */}
+      {cast.filter((member) => member.isActive && !member.isMuted).length > 1 ? (
         <div className="flex-none px-[14px] pt-[12px]">
           <div className="flex gap-[5px]">
             {(["spotlight", "beat"] as const).map((value) => (
@@ -132,9 +135,11 @@ export function CastRail({
               ? strings.chat.statusCued
               : !member.isActive
                 ? strings.chat.statusBenched
-                : lastSpeaker === member.characterId
-                  ? strings.chat.statusJustSpoke
-                  : null;
+                : member.isMuted
+                  ? strings.chat.statusMuted
+                  : lastSpeaker === member.characterId
+                    ? strings.chat.statusJustSpoke
+                    : null;
 
           return (
             <div
@@ -145,7 +150,9 @@ export function CastRail({
                 // border; a benched one drops to 72% (design `4a`).
                 background: cued ? "var(--onsen-color-red-bg)" : "transparent",
                 borderTop: `2px solid ${cued ? "var(--onsen-color-red)" : "transparent"}`,
-                opacity: member.isActive ? 1 : 0.72,
+                // Benched drops furthest — they are not in the prompt at all;
+                // muted sits between, still present and simply not speaking.
+                opacity: !member.isActive ? 0.72 : member.isMuted ? 0.85 : 1,
               }}
             >
               <button

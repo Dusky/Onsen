@@ -1184,6 +1184,14 @@ export interface SceneWithHistoryDto {
    * message until a line is sent, so they travel with the scene.
    */
   pendingMedia: MediaAssetDto[];
+  /**
+   * How many turns are on the active path in all (§20 phase 62).
+   *
+   * `messages` carries the newest window of them. When this is larger, there
+   * are older turns the reader can ask for — and the count is what lets the
+   * log say so instead of ending in silence.
+   */
+  historyTotal: number;
 }
 
 export interface CheckpointDto {
@@ -1450,15 +1458,26 @@ export interface ReadingDto {
   measure: number;
   /** Line height for prose. */
   leading: number;
+  /**
+   * How many turns a roleplay opens with (§20 phase 62).
+   *
+   * The incumbent calls this *# Msg. to Load* and ships 100. It is a fetch
+   * size, not a prompt size: the author always sees the whole path, and this
+   * decides how much of it crosses the wire before the reader asks for more.
+   * A four-hundred-turn roleplay was sending four hundred turns of prose,
+   * their segments, their annotations and their media on every open.
+   */
+  window: number;
 }
 
-export const READING_DEFAULTS: ReadingDto = { scale: 1, measure: 720, leading: 1.5 };
+export const READING_DEFAULTS: ReadingDto = { scale: 1, measure: 720, leading: 1.5, window: 100 };
 
 /** Inclusive `[min, max]` per field. The old handoff values are all in range. */
 export const READING_BOUNDS: Record<keyof ReadingDto, readonly [number, number]> = {
   scale: [0.8, 1.5],
   measure: [520, 1100],
   leading: [1.25, 2],
+  window: [20, 1000],
 };
 
 /**
@@ -1468,11 +1487,14 @@ export const READING_BOUNDS: Record<keyof ReadingDto, readonly [number, number]>
  */
 export function clampReading(input: Partial<Record<keyof ReadingDto, unknown>>): ReadingDto {
   const out = { ...READING_DEFAULTS };
-  for (const key of ["scale", "measure", "leading"] as const) {
+  for (const key of ["scale", "measure", "leading", "window"] as const) {
     const value = input[key];
     if (typeof value !== "number" || !Number.isFinite(value)) continue;
     const [min, max] = READING_BOUNDS[key];
-    out[key] = Math.min(max, Math.max(min, value));
+    const clamped = Math.min(max, Math.max(min, value));
+    // A window is a count of turns, so a fractional one is meaningless; the
+    // other three are genuinely continuous.
+    out[key] = key === "window" ? Math.round(clamped) : clamped;
   }
   return out;
 }
@@ -2526,8 +2548,23 @@ export interface SceneMemberDto {
   name: string;
   hasAvatar: boolean;
   displayOrder: number;
-  /** A benched character keeps their history but is not chosen to speak. */
+  /**
+   * Benched: out of the prompt entirely (§20 phase 62).
+   *
+   * They keep every line they have written and stay in the cast list, but the
+   * author is not told they are there — which is what "bench" claimed from
+   * phase 7 and did not do until the two states were separated.
+   */
   isActive: boolean;
+  /**
+   * Muted: in the prompt, never chosen to speak (§20 phase 62).
+   *
+   * The distinction is the point. A muted character is still standing in the
+   * room and the author can write *about* them; a benched one has left it.
+   * What every roleplay had before this phase was a mute wearing the other
+   * name, and migration 0046 renames it rather than changing what it does.
+   */
+  isMuted: boolean;
 }
 
 /**

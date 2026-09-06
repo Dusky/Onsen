@@ -451,10 +451,25 @@ export function useStartLikeScene() {
   });
 }
 
-export function useScene(sceneId: string) {
+/**
+ * A roleplay and the tail of its history (§20 phase 62).
+ *
+ * `limit` is the reader's window. It is part of the key, so asking for more
+ * turns is a fetch rather than a merge: the server always answers with the
+ * newest N of the active path, which is the same shape the roleplay list's
+ * "Show more" uses and needs no prepend logic to get the order right.
+ * Undefined leaves the window to the reading preference.
+ */
+export function useScene(sceneId: string, limit?: number) {
   return useQuery({
-    queryKey: keys.scene(sceneId),
-    queryFn: () => api.get<SceneWithHistoryDto>(`/scenes/${sceneId}`),
+    queryKey: limit === undefined ? keys.scene(sceneId) : [...keys.scene(sceneId), limit],
+    queryFn: () =>
+      api.get<SceneWithHistoryDto>(
+        limit === undefined ? `/scenes/${sceneId}` : `/scenes/${sceneId}?limit=${limit}`,
+      ),
+    // The window only ever grows within a visit, so the turns already on screen
+    // stay there while the wider fetch is in flight.
+    placeholderData: (previous) => previous,
     /**
      * The post-generation passes run behind the turn rather than delaying it
      * (SPEC §7.5), so their notes arrive after the message does. Polling while
@@ -1193,11 +1208,24 @@ export function useRemoveFromCast(sceneId: string) {
 }
 
 /** Cue a character for the next turn. Client-side: the cue is not persisted. */
+/**
+ * Bench or mute a cast member (§20 phase 62).
+ *
+ * One hook for both because they are one request and one row; either field may
+ * be sent alone. Benched leaves the prompt, muted stays in it and is never
+ * chosen to speak.
+ */
 export function useBenchMember(sceneId: string) {
   return useSceneMutation(
     sceneId,
-    ({ characterId, isActive }: { characterId: string; isActive: boolean }) =>
-      api.patch<SceneDto>(`/scenes/${sceneId}/cast/${characterId}`, { isActive }),
+    ({
+      characterId,
+      ...patch
+    }: {
+      characterId: string;
+      isActive?: boolean;
+      isMuted?: boolean;
+    }) => api.patch<SceneDto>(`/scenes/${sceneId}/cast/${characterId}`, patch),
   );
 }
 

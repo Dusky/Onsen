@@ -5,6 +5,7 @@ import { requireAuth } from "../middleware/session.ts";
 import { ulid } from "../lib/ulid.ts";
 import {
   activePathDtos,
+  activePathLength,
   appendMessage,
   deleteCheckpoint,
   deleteMessage,
@@ -48,11 +49,13 @@ import {
   setDirectorNote,
   setDirectorProfile,
   setMemberActive,
+  setMemberMuted,
   setTurnStrategy,
 } from "../db/queries/authors.ts";
 import { findCharacter, type CharacterRow } from "../db/queries/characters.ts";
 import { seedGreeting } from "../scenes/greeting.ts";
 import { scriptText } from "../scripts/runtime.ts";
+import { getSetting } from "../db/queries/settings.ts";
 import type { TriggerRunner } from "../triggers/runner.ts";
 import type { WebhookSender } from "../webhooks/sender.ts";
 import { sceneChannel, type SceneEvent } from "../sync/channel.ts";
@@ -62,6 +65,8 @@ import { resolveNextSpeaker } from "../generation/turn.ts";
 import {
   isMessageAuthorType,
   isMessageKind,
+  READING_BOUNDS,
+  READING_DEFAULTS,
   TURN_STRATEGIES,
   type AppendMessageRequest,
   type CheckpointDto,
@@ -163,10 +168,27 @@ export function sceneRoutes(
     return row !== null && row.scene_id === sceneRow.id ? row : null;
   }
 
-  function history(sceneRow: SceneRow): SceneWithHistoryDto {
+  /**
+   * A scene and the tail of its history (§20 phase 62).
+   *
+   * `limit` is the reader's window — the newest N turns — and defaults to the
+   * reading preference, which is what the incumbent calls *# Msg. to Load*.
+   * The author is never windowed: everything that builds a prompt walks the
+   * whole path, and this is bytes on the wire.
+   */
+  /** The reader's window, as the settings screen last left it. */
+  function readingWindow(): number {
+    const stored = Number(getSetting(ctx.db, "reading_window"));
+    return Number.isFinite(stored) && stored > 0 ? stored : READING_DEFAULTS.window;
+  }
+
+  function history(sceneRow: SceneRow, limit?: number): SceneWithHistoryDto {
+    const [min, max] = READING_BOUNDS.window;
+    const window = Math.min(max, Math.max(min, Math.round(limit ?? readingWindow())));
     return {
       scene: sceneDto(ctx.db, sceneRow),
-      messages: activePathDtos(ctx.db, sceneRow),
+      messages: activePathDtos(ctx.db, sceneRow, window),
+      historyTotal: activePathLength(ctx.db, sceneRow.id),
       // The director's choice travels with the scene rather than needing a
       // second request: the composer has to know who the send button will
       // speak as before the user presses it.
@@ -242,7 +264,9 @@ export function sceneRoutes(
 
   app.get("/:sceneId", (c) => {
     const row = scene(c.req.param("sceneId"));
-    return row === null ? c.json(notFound("scene"), 404) : c.json(history(row));
+    if (row === null) return c.json(notFound("scene"), 404);
+    const limit = Number(c.req.query("limit"));
+    return c.json(history(row, Number.isFinite(limit) && limit > 0 ? limit : undefined));
   });
 
   app.patch("/:sceneId", async (c) => {
@@ -592,25 +616,42 @@ export function sceneRoutes(
     return c.json(sceneDto(ctx.db, opener === null ? sceneRow : adoptPersona(sceneRow, opener)));
   });
 
-  /** Bench or un-bench a cast member: they stay, but stop being chosen. */
+  /**
+   * Bench or mute a cast member (§20 phase 62).
+   *
+   * Two states, and they are not the same one: benched leaves the prompt
+   * entirely, muted stays in it and is never chosen to speak. Both keep every
+   * line the character has written, and both keep them in the cast list.
+   * Either field may be sent alone.
+   */
   app.patch("/:sceneId/cast/:characterId", async (c) => {
     const sceneRow = scene(c.req.param("sceneId"));
     if (sceneRow === null) return c.json(notFound("scene"), 404);
     const character = findCharacter(ctx.db, c.req.param("characterId"));
     if (character === null) return c.json(notFound("character"), 404);
 
-    let isActive = true;
+    let body: { isActive?: unknown; isMuted?: unknown };
     try {
-      const body = (await c.req.json()) as { isActive?: unknown };
-      if (typeof body.isActive !== "boolean") {
-        return c.json(badRequest("isActive must be a boolean."), 400);
-      }
-      isActive = body.isActive;
+      body = (await c.req.json()) as { isActive?: unknown; isMuted?: unknown };
     } catch {
       return c.json(badRequest("Expected a JSON body."), 400);
     }
+    if ("isActive" in body && typeof body.isActive !== "boolean") {
+      return c.json(badRequest("isActive must be a boolean."), 400);
+    }
+    if ("isMuted" in body && typeof body.isMuted !== "boolean") {
+      return c.json(badRequest("isMuted must be a boolean."), 400);
+    }
+    if (!("isActive" in body) && !("isMuted" in body)) {
+      return c.json(badRequest("isActive must be a boolean."), 400);
+    }
 
-    setMemberActive(ctx.db, sceneRow.id, character.id, isActive);
+    if (typeof body.isActive === "boolean") {
+      setMemberActive(ctx.db, sceneRow.id, character.id, body.isActive);
+    }
+    if (typeof body.isMuted === "boolean") {
+      setMemberMuted(ctx.db, sceneRow.id, character.id, body.isMuted);
+    }
     return c.json(sceneDto(ctx.db, sceneRow));
   });
 

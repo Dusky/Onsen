@@ -458,7 +458,13 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
       ? null
       : (messageUlids.get(row.joined_after_message_id) ?? null);
 
-  const cast = castRows.map((row) => toPromptCharacter(row, joinedAfterOf(row)));
+  // Benched members leave the prompt entirely (§20 phase 62). A muted one
+  // stays: the author should be able to write *about* somebody standing in the
+  // room without being told to write *as* them, and the two states existed as
+  // one until this phase — every bench was, in behaviour, a mute.
+  const cast = castRows
+    .filter((row) => row.is_active === 1)
+    .map((row) => toPromptCharacter(row, joinedAfterOf(row)));
 
   // Rolling summarisation (SPEC §11): which summaries this prompt carries, and
   // which raw messages they stand in for.
@@ -482,10 +488,12 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
     tokenizer,
   });
 
-  // Whoever the turn director chose, otherwise the first active member.
+  // Whoever the turn director chose, otherwise the first member who can speak
+  // — present and unmuted. An explicit spotlight is honoured either way: asking
+  // a muted character to talk is a direction, not an accident.
   const spotlightRow =
     options.spotlightId == null
-      ? (castRows.find((row) => row.is_active === 1) ?? castRows[0])
+      ? (castRows.find((row) => row.is_active === 1 && row.is_muted === 0) ?? castRows[0])
       : (castRows.find((row) => row.id === options.spotlightId) ?? castRows[0]);
   const spotlight =
     spotlightRow === undefined
@@ -499,11 +507,12 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
       ? null
       : findPersonaById(options.db, options.scene.persona_id);
 
-  // A beat writes everyone who is actually in play. Benched members are not in
-  // it, and a beat needs somebody to talk to, so a cast of one degrades to a
-  // spotlight rather than instructing the author to hold a conversation alone.
+  // A beat writes everyone who is actually in play. Benched and muted members
+  // are not in it — one has left the room and the other is in it silently — and
+  // a beat needs somebody to talk to, so a cast of one degrades to a spotlight
+  // rather than instructing the author to hold a conversation alone.
   const participants = castRows
-    .filter((row) => row.is_active === 1)
+    .filter((row) => row.is_active === 1 && row.is_muted === 0)
     .map((row) => toPromptCharacter(row, joinedAfterOf(row)));
   const requested = options.turn ?? { kind: "spotlight" };
   const turn: PromptTurn =

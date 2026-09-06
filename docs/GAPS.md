@@ -74,7 +74,7 @@ the fix is pagination."*
 | Favourite anything | **have** (phase 59) | `is_favourite` on scenes *and* characters, with a partial index each. A star on one list only was the half-measure | — |
 | `n of m` readout on a list | **have** (phase 55) | `strings.showing`; the scenes list reads `3 of 5` when filtered, `5` when not | — |
 | Paging the roleplay list | **have** (phase 59) | `listScenesFiltered` pages with `LIMIT`/`OFFSET` and returns `total` and `all`; the screen reads `50 of 60` and grows by 50. Driven at 60 | — |
-| Windowing the message log | **missing** | `activePath` still walks the whole tree; ST ships *# Msg. to Load = 100*. The log is virtualised, so this is bytes on the wire rather than render cost | close — the remaining half of the old pagination row |
+| Windowing the message log | **have** | phase 62; `activePath(db, sceneId, limit)` (`server/db/queries/history.ts:816`) takes the newest N by depth, `SceneWithHistoryDto.historyTotal` says how many are behind them, and the reading preference `window` is the incumbent's *# Msg. to Load* (default 100). Prompt building passes no limit and still walks the whole path | — |
 | Character tags / folders / search | **have** | `CharacterFilterQuery`, server-side since phase 26 | — |
 | Character grid view | **have** | phase 26 | — |
 
@@ -103,8 +103,8 @@ are `have` or `rejected` rather than gaps.
 | --- | --- | --- | --- |
 | Reply strategy | **have** | 4 strategies incl. a model classifier (`TurnStrategy`, `shared/types.ts:2179`) — stronger than ST's *Natural order* | — |
 | Reorder members | **have** | `SceneMemberDto.displayOrder` | — |
-| Bench a member | **have** | `SceneMemberDto.isActive` | — |
-| **Mute** a member | **missing** | `isActive` is benching — out of rotation *and* out of the prompt. ST's mute keeps a member present but silent | close — they are not the same state |
+| Bench a member | **have** | phase 62. **The row above was wrong.** `isActive` was *not* benching: `buildPromptContext` built `cast` from every member, so a benched character still appeared under "Also in this scene" — out of rotation and firmly in the prompt, which is a mute. `is_active = 0` now means out of the prompt entirely (`server/generation/context.ts:465`) | — |
+| **Mute** a member | **have** | phase 62; `scene_members.is_muted`, and migration 0046 turns every existing bench into one, because that is what it already was | — |
 | Allow self-responses | **missing** | — | judgement call under the author model |
 | Auto mode, n turns | **have** | autopilot + `autopilotMaxTurns` (`shared/types.ts:1056`) | — |
 | Group generation handling | **rejected** | §22: *"Don't add an independent-agent group mode… causes speaker-selection lotteries, characters speaking for each other, and merged personalities."* ST's own "swap/join character cards" is the thing being rejected | — |
@@ -201,6 +201,11 @@ default persona `findDefaultPersona` never applied — and a fourth had been
 star, which had shipped on `characters` as a column, an index and a DTO field
 with no route to set it.
 
-Then, in rough order of how early a session hits them: windowing the message
-log; mute-vs-bench; auto-swipe and auto-continue; example-message eviction and
-squash; Quick Reply macro buttons; chat translation.
+**Phase 62 (done)** windowed the message log and split mute from bench. The
+second half is why the evidence rule exists: the row said mute was missing and
+bench worked, and it was the other way round — what the app had was a mute
+under the wrong name, and nothing took a character out of the prompt at all.
+
+Then, in rough order of how early a session hits them: auto-swipe and
+auto-continue; example-message eviction and squash; Quick Reply macro buttons;
+chat translation; auto background.

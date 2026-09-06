@@ -220,10 +220,27 @@ import_hash        -- of that file's bytes, so re-running the import is safe
 ### SceneMember
 
 ```
-scene_id, character_id, display_order, is_active
+scene_id, character_id, display_order
+is_active          -- benched when 0: out of the prompt entirely (§20 phase 62)
+is_muted           -- in the prompt, never chosen to speak
 overrides          -- JSON, per-scene tweaks to the card
 first_seen_message_id  -- presence tracking: what this character witnessed
 ```
+
+**Two silences, and they are not the same one.** A **muted** character is still
+standing in the room: they keep their entry under "Also in this scene", the
+author can write *about* them, and the turn director never offers them a turn —
+though an explicit spotlight is honoured, because asking a muted character to
+speak is a direction rather than an accident. A **benched** one has left it:
+nothing about them reaches the prompt, and the tokens their definition cost are
+returned.
+
+Both keep every line the character has written and both keep them in the cast
+list; removal is the third thing and is destructive. From phase 7 to 62 there
+was one flag, labelled bench and behaving as a mute — `buildPromptContext` built
+its cast from every member — so migration 0046 sets `is_muted` on everything
+currently benched and leaves `is_active` alone, which preserves what every
+existing roleplay actually does.
 
 ### Message (tree node)
 
@@ -2600,7 +2617,12 @@ the common case and one switch for both cannot express it.
 
 **The reading surface is the one exception, and the reader owns it.** Prose
 scale, measure and leading are user settings, not constants; the defaults are
-denser than the 17px/620px the handoff drew for a phone at arm's length.
+denser than the 17px/620px the handoff drew for a phone at arm's length. So is
+**how many turns a roleplay opens with** (§20 phase 62) — the incumbent's *#
+Msg. to Load*, 100 by default. It sits with the other three because it is the
+same kind of decision, and it is a fetch size and nothing more: the log names
+how many turns are above the window and fetches another on request, and the
+author is handed the whole active path whatever the reader is looking at.
 
 Enforced the way §Voice and §Surfaces are: a guard test that measures the whole
 tree, because density is a distribution and no per-file review sees it.
@@ -3200,6 +3222,14 @@ Each phase ends in a working, usable application.
     it. And phase 59's star finished on the character library, where the
     column, the index and the DTO field had shipped without a route.
     See §2, §3, §9 and `test/persona.test.ts`.
+62. **The window, and the two silences** — a roleplay opens on the newest N
+    turns rather than on all of them, N being a reading preference and the
+    incumbent's *# Msg. to Load*; the log says how many are behind them and
+    fetches another window on request. The author is never windowed. And mute
+    is separated from bench: `is_active` had been out of rotation and *in* the
+    prompt since phase 7, which is a mute, so migration 0046 renames the state
+    people have and gives bench the meaning its label always claimed.
+    See §2, §5, §6 and `test/history-window.test.ts`, `test/mute.test.ts`.
 
 Settled while building phase 15.
 

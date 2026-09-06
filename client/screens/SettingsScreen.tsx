@@ -1001,6 +1001,10 @@ function ReadingControls() {
     { key: "scale", label: strings.settings.prose, step: 0.05 },
     { key: "measure", label: strings.settings.proseMeasure, step: 20 },
     { key: "leading", label: strings.settings.proseLeading, step: 0.05 },
+    // A count of turns, not a measure of the page — but it belongs beside the
+    // others because it is the same kind of decision: how much of the roleplay
+    // is in front of you at once (§20 phase 62).
+    { key: "window", label: strings.settings.historyWindow, step: 10 },
   ];
 
   return (
@@ -1012,7 +1016,11 @@ function ReadingControls() {
             <span className="flex items-baseline justify-between gap-[10px]">
               <span className="section-label">{label}</span>
               <span className="meta tabular-nums">
-                {key === "measure" ? `${reading[key]}px` : reading[key].toFixed(2)}
+                {key === "measure"
+                  ? `${reading[key]}px`
+                  : key === "window"
+                    ? String(reading[key])
+                    : reading[key].toFixed(2)}
               </span>
             </span>
             <input

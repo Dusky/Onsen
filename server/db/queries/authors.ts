@@ -327,6 +327,7 @@ export function removeSceneMember(db: Database, sceneId: number, characterId: nu
 /** A cast member: the character, plus how they take part in this scene. */
 export interface CastRow extends CharacterRow {
   is_active: number;
+  is_muted: number;
   display_order: number;
   /** The last message that had happened when this member joined (SPEC §6). */
   joined_after_message_id: number | null;
@@ -336,11 +337,23 @@ export interface CastRow extends CharacterRow {
 export function castRowsOf(db: Database, sceneId: number): CastRow[] {
   return db
     .query(
-      `SELECT c.*, m.is_active, m.display_order, m.joined_after_message_id
+      `SELECT c.*, m.is_active, m.is_muted, m.display_order, m.joined_after_message_id
          FROM scene_members m JOIN characters c ON c.id = m.character_id
         WHERE m.scene_id = $scene_id ORDER BY m.display_order, m.id`,
     )
     .all({ scene_id: sceneId }) as CastRow[];
+}
+
+export function setMemberMuted(
+  db: Database,
+  sceneId: number,
+  characterId: number,
+  isMuted: boolean,
+): void {
+  db.query(
+    `UPDATE scene_members SET is_muted = $is_muted
+      WHERE scene_id = $scene_id AND character_id = $character_id`,
+  ).run({ scene_id: sceneId, character_id: characterId, is_muted: isMuted ? 1 : 0 });
 }
 
 export function setMemberActive(

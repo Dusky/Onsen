@@ -5288,3 +5288,81 @@ the card tab now, under the name.
 joined a row built for two, and "Any folder" became "Any folde". The row wraps
 now and the selects have a floor. Only the screenshot showed it; every count
 the drive printed was correct.
+
+---
+
+## Phase 62 — The window, and the two silences
+
+Two rows off the top of `GAPS.md`. One went as planned. The other was written
+backwards, and finding that out was the phase.
+
+### The window
+
+Phase 59 paged the roleplay list and left a note saying the message log was a
+different problem — the log is already virtualised, so this was never render
+cost. It was a four-hundred-turn roleplay sending four hundred turns of prose,
+their segments, their annotations and their media on every open.
+
+- **`activePath(db, sceneId, limit)`.** Depth is already counted from the leaf
+  in that recursive CTE, so `WHERE ancestry.depth < $limit` is exactly the tail.
+  `activePathLength` counts without loading, because a reader looking at the
+  newest hundred of four hundred has to be told the other three hundred exist,
+  and counting them by fetching them is the thing being avoided.
+- **The window is a reading preference**, beside scale, measure and leading —
+  the same kind of decision, and the incumbent's *# Msg. to Load* with the same
+  default of 100. Bounded at 20: a window of one turn is not a log.
+- **"25 earlier turns"** at the top of the log, growing the limit rather than
+  paging with a cursor. The server always answers with the newest N, so there
+  is nothing to merge and the order cannot come out wrong — the shape phase 59
+  settled on for the list.
+- **The author is never windowed.** Every caller that builds a prompt passes no
+  limit and walks the whole path. `test/history-window.test.ts` asserts it
+  directly, because a window that reached the prompt builder would silently
+  truncate every long roleplay's memory and nothing on screen would say so.
+
+### The two silences
+
+`GAPS.md` said: *"`isActive` is benching — out of rotation and out of the
+prompt. ST's mute keeps a member present but silent."* Half of that was a claim
+about this codebase, and it was wrong. `buildPromptContext` built its cast from
+**every** member, so a benched character still appeared under "Also in this
+scene" with their compact definition. Out of rotation, firmly in the prompt.
+
+That is a mute. Onsen has had one since phase 7 under the other name, and has
+never had a bench at all — benching a character kept paying for their
+definition on every turn.
+
+So migration 0046 does not add a feature so much as name what is there:
+
+```sql
+UPDATE scene_members SET is_muted = 1, is_active = 1 WHERE is_active = 0;
+```
+
+Everything currently benched becomes muted, which preserves exactly what every
+existing roleplay does today, and `is_active = 0` is given the meaning its
+label always claimed. An explicit spotlight still reaches a muted character,
+because asking one to speak is a direction rather than an accident.
+
+### Surprises
+
+**The evidence rule caught a row I wrote myself.** `GAPS.md` requires a command
+that proves each row; this one had a description instead, and the description
+was inverted. Sixteen lines of probe — build a two-hander, bench one, read the
+prompt — settled it in a minute. The rule's value is not that it is rigorous, it
+is that it is *cheap enough to actually run*.
+
+**Nothing in 1,300 tests asserted what benching does to a prompt.** The
+behaviour changed in this phase and the suite stayed green. That is a coverage
+hole exactly the shape of the defect: the tests knew a benched member is not
+chosen to speak, and nothing knew whether the author could still see them.
+
+**The turn ordinals were wrong for one drive and only the screenshot said so.**
+`#17` in the gutter of the forty-first turn of forty-five, because
+`renderMessage` numbers by index within the window. The gutter's whole job is to
+be the number you quote at somebody, and every count the drive printed was
+correct while the thing on screen was not.
+
+**A muted member vanished from the deck.** The first fix filtered `inPlay` once
+and used it for both the chips and the beat gate — so muting somebody removed
+them from the phone's cast display entirely, which is indistinguishable from
+benching them. Two sets now: `present` draws, `inPlay` decides.

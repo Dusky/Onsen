@@ -43,6 +43,7 @@ import agent from "./0042_agent.sql" with { type: "text" };
 import presetBlocks from "./0043_preset_blocks.sql" with { type: "text" };
 import libraryAtScale from "./0044_library_at_scale.sql" with { type: "text" };
 import persona from "./0045_persona.sql" with { type: "text" };
+import mute from "./0046_mute.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -103,4 +104,5 @@ export const migrations: readonly Migration[] = [
   { version: 43, name: "preset_blocks", sql: presetBlocks },
   { version: 44, name: "library_at_scale", sql: libraryAtScale },
   { version: 45, name: "persona", sql: persona },
+  { version: 46, name: "mute", sql: mute },
 ];

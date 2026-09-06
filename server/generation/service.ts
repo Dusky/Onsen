@@ -1094,7 +1094,10 @@ export class GenerationService {
 
     const path = activePathOf(this.db, scene.id);
     const lastSpoke = lastCharacterOf(path);
-    const cast = castRowsOf(this.db, scene.id).filter((row) => row.is_active === 1);
+    // Present and unmuted: who can be offered the next turn (§20 phase 62).
+    const cast = castRowsOf(this.db, scene.id).filter(
+      (row) => row.is_active === 1 && row.is_muted === 0,
+    );
 
     // Never twice consecutively (SPEC §6) is enforced by not offering them,
     // rather than by asking the model nicely and hoping.

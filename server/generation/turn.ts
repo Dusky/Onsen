@@ -43,7 +43,10 @@ export function resolveNextSpeaker(
     cast: castRows.map((row) => ({
       id: row.ulid,
       name: row.name,
-      isActive: row.is_active === 1,
+      // The director's "can speak" is present *and* unmuted (§20 phase 62).
+      // A muted member is in the prompt and never chosen, which is the whole
+      // difference between the two states.
+      isActive: row.is_active === 1 && row.is_muted === 0,
       displayOrder: row.display_order,
       mentionKeywords: mentionKeywordsFrom(row.mention_keywords),
     })),

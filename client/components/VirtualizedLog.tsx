@@ -20,11 +20,20 @@ export function VirtualizedLog({
   scrollRef,
   count,
   renderRow,
+  head,
   tail,
 }: {
   scrollRef: RefObject<HTMLDivElement | null>;
   count: number;
   renderRow(index: number): ReactNode;
+  /**
+   * Above the first row, in normal flow (§20 phase 62): the control that asks
+   * for the turns older than the window. Outside the virtualized area for the
+   * same reason the tail is — it is one element that never scrolls out of the
+   * list's own coordinate space, and measuring it as a row would make the
+   * virtualizer's total size wrong by its height.
+   */
+  head?: ReactNode;
   tail: ReactNode;
 }) {
   const virtualizer = useVirtualizer({
@@ -48,6 +57,7 @@ export function VirtualizedLog({
 
   return (
     <div className="mx-auto w-full max-w-[var(--onsen-prose-measure)]">
+      {head}
       <div style={{ height: virtualizer.getTotalSize(), width: "100%", position: "relative" }}>
         {virtualizer.getVirtualItems().map((item) => (
           <div

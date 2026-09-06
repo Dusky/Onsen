@@ -101,7 +101,13 @@ export function Deck({
   mediaOn,
   onOpen,
 }: DeckProps) {
-  const inPlay = cast.filter((member) => member.isActive);
+  // Two sets, because mute is two things at once (§20 phase 62). `present` is
+  // everyone still in the room, muted or not — they stay on the deck, because a
+  // muted member who vanished would be indistinguishable from a benched one.
+  // `inPlay` is who the director may choose: a mute is never *offered* a turn,
+  // though tapping one is still a direction the server honours.
+  const present = cast.filter((member) => member.isActive);
+  const inPlay = present.filter((member) => !member.isMuted);
   const cuedId = decidesOnSend ? null : (nextSpeaker?.characterId ?? null);
   // The scope control only means anything with two or more in play: a beat is
   // several characters interacting, so with one there is nothing to choose.
@@ -154,7 +160,7 @@ export function Deck({
         </div>
 
         <div className="flex border border-rule-strong" hidden={castDisplay !== "segments"}>
-          {inPlay.map((member) => {
+          {present.map((member) => {
             const cued = scope === "spotlight" && member.characterId === cuedId;
             return (
               <button
@@ -173,6 +179,8 @@ export function Deck({
                 style={{
                   color: cued ? "var(--onsen-color-text-bright)" : "var(--onsen-color-text-muted)",
                   background: cued ? "var(--onsen-color-red-bg)" : "transparent",
+                  // Dimmed, not hidden: still there, simply not being asked.
+                  opacity: member.isMuted ? 0.6 : 1,
                 }}
               >
                 {member.name}

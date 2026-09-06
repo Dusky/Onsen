@@ -9,6 +9,7 @@ import {
   useDeleteMessage,
   useEditMessage,
   useScene,
+  useReading,
   useSendMessage,
   useSetLeaf,
   useSiblings,
@@ -108,7 +109,17 @@ function initialsOf(name: string): string {
 const LOG_VIRTUALIZE_THRESHOLD = 200;
 
 export function ChatScreen({ sceneId }: { sceneId: string }) {
-  const scene = useScene(sceneId);
+  /**
+   * How much of the history is loaded (§20 phase 62).
+   *
+   * The reading preference is one window; "show earlier" asks for another. A
+   * growing limit rather than a cursor, so the answer is always the newest N
+   * of the active path and the order needs no merging — the same shape the
+   * roleplay list's "show more" settled on in phase 59.
+   */
+  const [windows, setWindows] = useState(1);
+  const reading = useReading();
+  const scene = useScene(sceneId, reading.window * windows);
   const send = useSendMessage(sceneId);
   const edit = useEditMessage(sceneId);
   const remove = useDeleteMessage(sceneId);
@@ -217,6 +228,11 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   // the channel be its only home switches that off per scene (§7).
   const showInlineOoc = scene.data?.scene.oocInline ?? true;
   const logMessages = showInlineOoc ? messages : messages.filter((m) => m.kind !== "ooc");
+  // How long the active path is, of which `messages` is the newest window
+  // (§20 phase 62). Declared here rather than beside the control that reads it
+  // because the turn ordinals need it too, and a `#17` on the forty-first turn
+  // of forty-five is a number that means nothing.
+  const historyTotal = scene.data?.historyTotal ?? messages.length;
   const title = scene.data?.scene.title ?? "";
   const authorName = scene.data?.scene.authorName ?? null;
   const cast = scene.data?.scene.cast ?? [];
@@ -832,7 +848,10 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       <MessageBlock
         key={message.id}
         message={message}
-        ordinal={index + 1}
+        // Its place in the whole roleplay, not in the window (§20 phase 62).
+        // `#17` on the forty-first turn of forty-five is a number that means
+        // nothing — and the gutter's whole job is to be the number you quote.
+        ordinal={historyTotal - logMessages.length + index + 1}
         speakerName={speakerFor(message, authorName)}
         attribution={layout.attribution}
         style={message.authorType === "user" ? layout.reader : layout.author}
@@ -863,6 +882,27 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           : {})}
       />
     );
+
+  /**
+   * The turns above the window (§20 phase 62).
+   *
+   * A roleplay of four hundred turns used to send four hundred turns of prose,
+   * their segments, their annotations and their media on every open. It sends
+   * the newest hundred now, and this says how many are behind them — a count
+   * rather than a bare "load more", because a log that simply ends is
+   * indistinguishable from a log that has ended.
+   */
+  const earlier =
+    historyTotal > messages.length ? (
+      <button
+        type="button"
+        className="btn mb-[22px] w-full"
+        disabled={scene.isFetching}
+        onClick={() => setWindows((count) => count + 1)}
+      >
+        {strings.chat.showEarlier(historyTotal - messages.length)}
+      </button>
+    ) : null;
 
   // Everything after the messages: the turn being written, the error, the stop
   // strip, the autopilot note. Rendered in normal flow, below the virtualized
@@ -960,10 +1000,12 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
               scrollRef={log}
               count={logMessages.length}
               renderRow={(index) => renderMessage(logMessages[index]!, index)}
+              head={earlier}
               tail={tail}
             />
           ) : (
             <div className="mx-auto flex min-h-full w-full max-w-[var(--onsen-prose-measure)] flex-col justify-end gap-[26px]">
+              {earlier}
               {/* An unwritten scene is the one empty state with no button: the
                   thing that ends it is the composer, already on screen and
                   already the brightest thing on it. */}
@@ -1409,6 +1451,20 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
 
       {castActing !== null ? (
         <Sheet title={strings.chat.castMember} onClose={() => setCastActing(null)}>
+          {/* Two states, not one (§20 phase 62). Muted keeps them in the
+              prompt and out of the rotation — the author can write about
+              somebody standing there silently. Benched takes them out of the
+              prompt altogether. Both keep every line they have written. */}
+          <SheetAction
+            label={castActing.isMuted ? strings.chat.unmute : strings.chat.mute}
+            onClick={() => {
+              bench.mutate({
+                characterId: castActing.characterId,
+                isMuted: !castActing.isMuted,
+              });
+              setCastActing(null);
+            }}
+          />
           <SheetAction
             label={castActing.isActive ? strings.chat.bench : strings.chat.unbench}
             onClick={() => {
