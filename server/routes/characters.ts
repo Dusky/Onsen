@@ -47,6 +47,7 @@ import {
   parseTagSuggestions,
 } from "../generation/tags.ts";
 import { createEstimatingTokenizer } from "../prompt/index.ts";
+import { findPersona } from "../db/queries/authors.ts";
 import type {
   BulkCharacterRequest,
   CharacterFilterQuery,
@@ -98,10 +99,12 @@ export function characterRoutes(ctx: AppContext, tasks: TaskRunner): Hono<AppEnv
     const q = c.req.query("q");
     const tag = c.req.query("tag");
     const folder = c.req.query("folder");
+    const favourite = c.req.query("favourite");
     const filter: CharacterFilterQuery = {
       ...(q === undefined ? {} : { q }),
       ...(tag === undefined ? {} : { tag }),
       ...(folder === undefined ? {} : { folder }),
+      ...(favourite === "1" ? { favourite: true } : {}),
     };
     const rows = listCharactersFiltered(ctx.db, filter);
     return c.json(rows.map((row) => toCharacterDto(ctx.db, row)));
@@ -341,8 +344,25 @@ export function characterRoutes(ctx: AppContext, tasks: TaskRunner): Hono<AppEnv
     ) {
       return c.json(badRequest("Depth must be a number."), 400);
     }
+    if ("isFavourite" in patch && typeof patch.isFavourite !== "boolean") {
+      return c.json(badRequest("isFavourite is a boolean."), 400);
+    }
 
-    return c.json(toCharacterDto(ctx.db, updateCharacter(ctx.db, row.id, { ...patch })));
+    // The persona lock arrives as a ULID and is stored as a row id, so it is
+    // resolved here rather than in the query layer — which never sees external
+    // identifiers (§2).
+    const resolved: Record<string, unknown> = { ...patch };
+    if ("personaId" in patch) {
+      if (patch.personaId === null) {
+        resolved["personaId"] = null;
+      } else {
+        const persona = findPersona(ctx.db, String(patch.personaId));
+        if (persona === null) return c.json(badRequest("No such persona."), 400);
+        resolved["personaId"] = persona.id;
+      }
+    }
+
+    return c.json(toCharacterDto(ctx.db, updateCharacter(ctx.db, row.id, resolved)));
   });
 
   app.delete("/:characterId", (c) => {

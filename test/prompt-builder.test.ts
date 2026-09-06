@@ -366,7 +366,7 @@ describe("capability branching", () => {
 describe("an unnamed persona", () => {
   test("phrases the user-lock around the reader, not around a placeholder", () => {
     const built = buildPrompt(
-      context({ persona: { name: null, description: null }, history: [userSays("go")] }),
+      context({ persona: { name: null, description: null, depth: null }, history: [userSays("go")] }),
     );
 
     expect(built.system).toContain("The reader's own character is theirs alone");
@@ -379,14 +379,14 @@ describe("an unnamed persona", () => {
 
   test("still labels the reader's turns in the transcript", () => {
     const built = buildPrompt(
-      context({ persona: { name: null, description: null }, history: [userSays("mine")] }),
+      context({ persona: { name: null, description: null, depth: null }, history: [userSays("mine")] }),
     );
     expect(flatten(built)).toContain("Reader: mine");
   });
 
   test("a described but unnamed persona still contributes its description", () => {
     const built = buildPrompt(
-      context({ persona: { name: null, description: "A surveyor with a bad knee." } }),
+      context({ persona: { name: null, description: "A surveyor with a bad knee.", depth: null } }),
     );
     expect(built.system).toContain("A surveyor with a bad knee.");
   });

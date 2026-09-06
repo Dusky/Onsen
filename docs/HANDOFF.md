@@ -177,8 +177,19 @@ not use. Adding a column means adding the read in the same phase, or an entry
 in that test's `DELIBERATE` map saying why not.
 
 The check matches on column *name* rather than `table.column`, because that is
-what a text search can honestly do: `avatar_path` is on two tables and one
-table's use hides the other's. It under-reports on shared names deliberately.
+what a text search can honestly do: `avatar_path` is on three tables and one
+table's use hides the other two. It under-reports on shared names deliberately.
+
+**Know how big that blind spot is (measured in phase 61).** Of 264 distinct
+column names across 58 tables, 58 are carried by more than one table and 38 by
+two or three — 89 `(table, column)` pairs where a busy table's read masks a
+quiet one's. Three real defects have hidden there: both `avatar_path` columns,
+dead from migration 0005, and `characters.is_favourite`, which shipped in phase
+59 with an index and a DTO field and no route. All three were found by
+`GAPS.md` or by hand. Attributing a read to a table needs more than a text
+sweep, and every cheap version either cries wolf on a live column or needs a
+per-pair allowlist nobody will maintain — so until someone builds the real one,
+a column whose name is on another table is a column to check by hand.
 
 **Schema discipline, settled while building phase 31.** Two rules that keep
 STRICT migrations cheap to evolve:

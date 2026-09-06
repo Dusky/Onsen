@@ -144,7 +144,7 @@ describe("an unnamed persona", () => {
   test("resolves to the reader rather than a placeholder name", () => {
     // A stand-in name turns the most important sentence in the system prompt
     // into "You belongs to the reader".
-    const anonymous = context({ persona: { name: null, description: null } });
+    const anonymous = context({ persona: { name: null, description: null, depth: null } });
     expect(resolve("{{user}}", anonymous).text).toBe("the reader");
   });
 });

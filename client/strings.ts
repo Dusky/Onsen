@@ -1012,6 +1012,9 @@ export const strings = {
     bulkDeleteConfirm: (n: number) => `Delete ${n} card${n === 1 ? "" : "s"}? The card files are not touched.`,
     folderPrompt: "Folder name (empty clears)",
     tagPrompt: "Tag name",
+    /* The persona lock (§20 phase 61). */
+    opensAs: "Opens as",
+    opensAsDefault: "The default persona",
     derive: "Make a variant",
     /** Version history (SPEC §9). */
     versions: "Versions",
@@ -1214,16 +1217,25 @@ export const strings = {
     personaIsDefault: "Use this one by default",
     personaDeleteConfirm: "Delete this persona? Roleplays using it fall back to none.",
     personaAdd: "New persona",
-    /* The persona list became a screen in phase 55 (§16 §Density rule 3). */
     /** Provenance for an imported roleplay (§20 phase 58). */
     importedFrom: (file: string) => `Imported from ${file}`,
+    /* The persona list became a screen in phase 55 (§16 §Density rule 3). */
     personaKicker: "You",
     /** The screen's own title; `personaEdit` stays the button that reaches it. */
     personaTitle: "Personas",
     personaSearch: "Search personas",
     personaNoDescription: "No description",
     personaEmpty: "No personas yet",
-        personaNone: "Not set",
+    personaNone: "Not set",
+    /* Picture and placement (§20 phase 61). */
+    personaPicture: "Picture",
+    personaPictureAdd: "Add a picture",
+    personaPictureReplace: "Replace",
+    personaPictureRemove: "Remove",
+    personaPosition: "Position",
+    personaPositionPrefix: "In the prefix",
+    personaPositionDepth: (turns: number) =>
+      turns === 0 ? "At the turn" : `${turns} ${turns === 1 ? "turn" : "turns"} back`,
     cast: "Cast",
     castEmpty: "Nobody in the cast yet",
     addToCast: "Add character",

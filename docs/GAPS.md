@@ -86,11 +86,11 @@ Phase 54 made personas editable. The install shows how much further it goes.
 | --- | --- | --- | --- |
 | Create / edit / delete | **have** | phase 54 | — |
 | Description reaches the prompt | **have** | phase 54; `personaBlock()` `server/prompt/blocks.ts:149` | — |
-| Persona avatar | **partial** | `personas.avatar_path` exists in `0005_authors.sql`; nothing reads or writes it | close — schema is already there |
-| Position in the prompt | **missing** | ST offers *In Story String / Prompt Manager*; `personaBlock` is fixed | close with the prompt manager |
-| Lock a persona to a chat | **partial** | `scenes.persona_id` sets it per scene; no lock, no auto-lock | close |
-| Lock a persona to a character | **missing** | no per-character default anywhere | close |
-| Searchable / paginated list | **missing** | phase 54 shipped a `Sheet` with a flat list — wrong shape at 23 | close; §16 density rule 3 says this was a sheet that should have been a screen |
+| Persona avatar | **have** | phase 61; `mountAvatar` in `server/routes/authors.ts:62` serves, sets and clears it for personas *and* authors, and the reader's turns draw it |  — |
+| Position in the prompt | **have** | in the prefix, ordered by the preset's block list since phase 56; `personas.depth` injects it among the turns since phase 61 (`server/prompt/blocks.ts:570`) | — |
+| Lock a persona to a chat | **have** | `scenes.persona_id` *is* the chat lock: a roleplay takes a persona when its cast is first picked and keeps it. Deliberately no follow-the-default mode — the flag would be storage nothing reads (HANDOFF, phase 58) | — |
+| Lock a persona to a character | **have** | phase 61; `characters.persona_id`, applied in `adoptPersona` and beating the default | — |
+| Searchable / paginated list | **have** | phase 55 made it a screen with a search box (`client/screens/PersonasScreen.tsx:196`); the row was stale by six phases | — |
 | Usage stats | **missing** | — | low priority |
 | Backup / restore | **partial** | packs cover export/import broadly (`server/routes/packs.ts`) | verify, probably fine |
 
@@ -191,7 +191,16 @@ per-block costs, and blocks a person writes — owned by the preset, since
 now lands a SillyTavern preset's prompts as that preset's blocks, so importing
 one reproduces its prompt instead of a menu nobody switched on.
 
-Then, in rough order of how early a session hits them: scene tags / folders /
-favourites with windowing; the persona list becoming a screen with search, plus
-position, avatar and locking; mute-vs-bench; auto-swipe and auto-continue;
-example-message eviction and squash.
+**Phase 59 (done)** gave roleplays tags, a folder and a favourite, filtered and
+paged on the server.
+
+**Phase 61 (done)** closed the persona group. Three of its five rows were things
+the app already stored and could not reach — both `avatar_path` columns, and a
+default persona `findDefaultPersona` never applied — and a fourth had been
+`have` since phase 55 without the row being re-run. It also finished phase 59's
+star, which had shipped on `characters` as a column, an index and a DTO field
+with no route to set it.
+
+Then, in rough order of how early a session hits them: windowing the message
+log; mute-vs-bench; auto-swipe and auto-continue; example-message eviction and
+squash; Quick Reply macro buttons; chat translation.

@@ -41,6 +41,8 @@ import {
   addSceneMember,
   findAuthor,
   findPersona,
+  findDefaultPersona,
+  findPersonaById,
   removeSceneMember,
   setAutoPasses,
   setDirectorNote,
@@ -519,6 +521,27 @@ export function sceneRoutes(
   /* -------------------------------------------------------------- */
 
   /**
+   * Who the reader is, when a roleplay first gets a cast (§2, §20 phase 61).
+   *
+   * The character's lock wins, then the default persona. Only when the scene
+   * has none yet — a persona already chosen is a decision, and adding a second
+   * character must not quietly overwrite it.
+   *
+   * This is where it belongs rather than in `POST /scenes`, because a scene is
+   * created empty and the character that would carry a lock is not known until
+   * the cast is picked. `findDefaultPersona` has existed since phase 7 and was
+   * called by nothing: marking a persona default rendered a label and changed
+   * no behaviour anywhere.
+   */
+  function adoptPersona(sceneRow: SceneRow, character: CharacterRow): SceneRow {
+    if (sceneRow.persona_id !== null) return sceneRow;
+    const locked = character.persona_id === null ? null : findPersonaById(ctx.db, character.persona_id);
+    const persona = locked ?? findDefaultPersona(ctx.db);
+    if (persona === null) return sceneRow;
+    return updateScene(ctx.db, sceneRow.id, { personaId: persona.id });
+  }
+
+  /**
    * Add a character to a scene. Adding is cheap by design (SPEC §9): the author
    * drives generation, so a cast member costs a compact definition rather than
    * a whole second agent.
@@ -532,7 +555,7 @@ export function sceneRoutes(
     addSceneMember(ctx.db, sceneRow.id, character.id);
     // A scene with nobody in it had nobody to open it. Now it does (§2, §9).
     seedGreeting(ctx.db, sceneRow.id, character);
-    return c.json(sceneDto(ctx.db, sceneRow));
+    return c.json(sceneDto(ctx.db, adoptPersona(sceneRow, character)));
   });
 
   /**
@@ -566,7 +589,7 @@ export function sceneRoutes(
     // cast is in — whether the scene is a group is what decides between the
     // card's group greetings and its own (§2).
     if (opener !== null) seedGreeting(ctx.db, sceneRow.id, opener);
-    return c.json(sceneDto(ctx.db, sceneRow));
+    return c.json(sceneDto(ctx.db, opener === null ? sceneRow : adoptPersona(sceneRow, opener)));
   });
 
   /** Bench or un-bench a cast member: they stay, but stop being chosen. */

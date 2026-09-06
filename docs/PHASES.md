@@ -5196,3 +5196,95 @@ absolute `fetch` to `api.openai.com`, an `apiKey` in the script runtime, a
 `Guarded by` line deleted, a fake package with a `node-gyp` postinstall, a
 `probe.node` dropped into hono — six deliberate breaks, six failures, tree
 restored. A guard nobody has watched fail is a guard nobody has tested.
+
+---
+
+## Phase 61 — The persona
+
+The largest coherent block left in `GAPS.md`, and the pattern it turned up is
+the one this project keeps finding in itself. Five rows; **three of them were
+things the app already stored and could not reach**, one had been done for six
+phases without the row being re-run, and one was genuinely new.
+
+### What was found before anything was built
+
+| Row | What was actually there |
+| --- | --- |
+| Persona avatar | `personas.avatar_path` *and* `authors.avatar_path`, on the schema since migration 0005, never written, never served |
+| Position in the prompt | already reorderable in the prefix since phase 56's prompt manager; only depth injection was missing |
+| Lock to a chat | `scenes.persona_id` already *is* the chat lock |
+| Lock to a character | genuinely missing |
+| Searchable list | shipped in phase 55; the row was six phases stale |
+
+And two more found while looking:
+
+- **`findDefaultPersona` was exported and called by nothing.** Since phase 7.
+  Marking a persona default rendered a label beside its name and changed no
+  behaviour anywhere: every roleplay opened with no persona at all until
+  somebody picked one from scene setup.
+- **`characters.is_favourite` had no route.** Phase 59 added the column, a
+  partial index and the DTO field, and its own record in this file claims: *"A
+  star that worked on one list and not the other would have been the
+  half-measure this project keeps catching in itself."* That is exactly what
+  shipped. `dead-columns` did not catch it because `is_favourite` is on two
+  tables and `scenes.is_favourite` is read constantly.
+
+### What was built
+
+- **A picture for a persona and an author**, end to end. `mountAvatar` serves,
+  sets and clears one, written once for both because the column, the directory
+  and the lifetime are identical; the upload is named with a fresh ULID so a
+  replacement changes the URL and no cache has to be told anything, and the
+  old file is unlinked only *after* the new one is written.
+- **The reader's turns draw it.** Phase 57 shipped the avatar with a note
+  saying the reader's side would show an initial "until `personas.avatar_path`
+  is wired" and did not pretend otherwise. This is that wire.
+- **`personas.depth`.** Null keeps the persona block in the prefix, where the
+  preset's order puts it; a number injects it that many turns from the end,
+  which is the placement `assembleTimeline` already gives lore entries and
+  depth prompts. Four lines in `blocks.ts` and one in the context builder,
+  because the machinery was general.
+- **Which persona a roleplay opens as**, decided when the cast is first picked:
+  the character's lock, then the default, and never over a persona already
+  chosen. It belongs at cast time rather than at `POST /scenes` because a scene
+  is created empty and the character that carries a lock is not known yet.
+- **The star on a card**, with a favourites filter behind phase 59's index. It
+  files rather than edits: no version snapshot, the exemption bulk tag and
+  folder moves already take, so starring a hundred cards leaves the card
+  history alone.
+
+### Surprises
+
+**No `scenes.persona_locked` column, and that is the finding.** The obvious
+parity move was to mirror SillyTavern's two locks. But a scene already stores
+its own `persona_id` and nothing overrides it, so the chat lock exists by
+construction — and a "follow the default" mode would have been a flag written
+by a switch and read by nothing, which is the exact defect phase 58 built a
+guard against. The row is closed with the argument rather than with a column.
+
+**The `dead-columns` blind spot has now hidden three real defects.** Both
+`avatar_path` columns and `characters.is_favourite`, all found by `GAPS.md` or
+by hand rather than by the sweep, because the check matches a column *name* and
+a busy table's use masks a quiet one's. It was measured this phase: 58 tables
+carry 264 distinct column names, 58 of those names are on more than one table,
+and 38 are on two or three — 89 (table, column) pairs where one table's read
+hides another's. That is the design input for the attribution guard, and it is
+recorded rather than half-built: every cheap version of it either cries wolf on
+a live column or needs a per-pair allowlist nobody will maintain.
+
+**A guard that fails on a correct tree is a bug in the guard, twice more.** The
+character PATCH resolves `personaId` from a ULID, so the route needed
+`findPersona` — and the first version of the phase-60 credential guard would
+have flagged the settings screen for naming `apiKey`. Same lesson, one phase
+apart: the tree is the test's test.
+
+**The persona lock landed on the wrong tab and the browser said so.** Inserted
+next to the tag editor, which reads as adjacent in the source and is on the
+*advanced* tab — three clicks from where somebody sets a character up. The
+drive script found it by looking for a `<select>` that was not there. It is on
+the card tab now, under the name.
+
+**A third control clipped the folder filter at 390px.** The favourites button
+joined a row built for two, and "Any folder" became "Any folde". The row wraps
+now and the selects have a floor. Only the screenshot showed it; every count
+the drive printed was correct.

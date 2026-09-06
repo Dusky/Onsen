@@ -2225,6 +2225,15 @@ export interface CharacterDto {
   tags: string[];
   /** §20 phase 59: the same star the roleplay list has. */
   isFavourite: boolean;
+  /**
+   * The persona a roleplay with this character opens as (§2, §20 phase 61).
+   *
+   * SillyTavern's per-character persona lock. Null follows the default persona.
+   * It is read when a roleplay is created and never afterwards: the scene keeps
+   * its own `personaId` from that point, so changing the lock does not rewrite
+   * the roleplays already running under it.
+   */
+  personaId: string | null;
   creator: string | null;
   characterVersion: string | null;
 
@@ -2268,6 +2277,10 @@ export interface UpdateCharacterRequest {
   creator?: string | null;
   characterVersion?: string | null;
   folder?: string | null;
+  /** §20 phase 61. Null clears the lock; the roleplay follows the default again. */
+  personaId?: string | null;
+  /** §20 phase 61, closing what 59 half-built: the star the roleplay list has. */
+  isFavourite?: boolean;
 }
 
 /** One snapshot in a character's version history (SPEC §9). */
@@ -2330,6 +2343,8 @@ export interface CharacterFilterQuery {
   q?: string;
   tag?: string;
   folder?: string;
+  /** §20 phase 61, closing what 59 half-built: the column and its index existed. */
+  favourite?: boolean;
 }
 
 /** A bulk edit over a multi-selection (SPEC §9). */
@@ -2469,6 +2484,17 @@ export interface PersonaDto {
   id: string;
   name: string;
   description: string | null;
+  /** §20 phase 61. `personas.avatar_path` existed from 0005 and nothing served it. */
+  hasAvatar: boolean;
+  /**
+   * Where the persona block lands (§3, §20 phase 61).
+   *
+   * Null keeps it in the prefix, at whatever position the preset's block order
+   * gives it. A number injects it that many turns from the end instead — the
+   * same placement a lore entry or a depth prompt gets, and the reason is the
+   * same: a description sixty turns back stops governing the writing.
+   */
+  depth: number | null;
   isDefault: boolean;
   createdAt: number;
   updatedAt: number;
@@ -2477,8 +2503,12 @@ export interface PersonaDto {
 export interface UpdatePersonaRequest {
   name?: string;
   description?: string | null;
+  depth?: number | null;
   isDefault?: boolean;
 }
+
+/** Bounds for a persona's depth, shared so the client clamps what the server does. */
+export const PERSONA_DEPTH_BOUNDS = { min: 0, max: 24 } as const;
 
 /** SPEC §6. `mention` and `classifier` are accepted but not yet implemented. */
 export type TurnStrategy = "manual" | "round_robin" | "mention" | "classifier";

@@ -562,7 +562,13 @@ export function draftBlocks(ctx: PromptContext): Map<string, DraftBlock[]> {
     ),
   );
   add("cast", "Cast", "scene members", castBlock(ctx));
-  add("persona", "Persona", ctx.persona.name ?? "the reader", personaBlock(ctx));
+  add(
+    "persona",
+    "Persona",
+    ctx.persona.name ?? "the reader",
+    personaBlock(ctx),
+    ctx.persona.depth === null ? PREFIX : { kind: "depth", depth: ctx.persona.depth },
+  );
   add(
     "scenario",
     "Scenario",

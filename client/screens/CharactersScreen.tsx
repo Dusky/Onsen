@@ -19,6 +19,7 @@ import {
   useCreateFilter,
   useDeleteCharacter,
   useDeleteFilter,
+  useFavouriteCharacter,
   useDeriveCharacter,
   useBulkImportCharacters,
   useImportCharacter,
@@ -45,12 +46,14 @@ function Tile({
   selected,
   onToggle,
   onMenu,
+  onFavourite,
 }: {
   character: CharacterDto;
   selecting: boolean;
   selected: boolean;
   onToggle(): void;
   onMenu(): void;
+  onFavourite(): void;
 }) {
   return (
     <div className="relative text-left">
@@ -76,16 +79,38 @@ function Tile({
             .join(" · ")}
         </p>
       </button>
+      {/* Star and menu in one cluster, the arrangement phase 59 arrived at on
+          the roleplay row after the two collided. The star's column shipped
+          with migration 0044 and the DTO carried it from the same phase; there
+          was no route to set it and nothing on screen to press, which is the
+          half-measure that phase's own record said it had avoided. */}
       {!selecting ? (
-        <button
-          type="button"
-          aria-label={strings.characters.actions}
-          onClick={onMenu}
-          className="chrome absolute top-[6px] right-[6px] flex h-[24px] w-[24px] items-center justify-center text-[13px]"
-          style={{ background: "rgba(0,0,0,0.45)", color: "var(--onsen-color-text-bright)" }}
-        >
-          ⋯
-        </button>
+        <span className="absolute top-[6px] right-[6px] flex items-center gap-[4px]">
+          <button
+            type="button"
+            onClick={onFavourite}
+            aria-label={`${character.isFavourite ? strings.scenes.unfavourite : strings.scenes.favourite}: ${character.name}`}
+            aria-pressed={character.isFavourite}
+            className="chrome flex h-[24px] w-[24px] items-center justify-center text-[13px]"
+            style={{
+              background: "rgba(0,0,0,0.45)",
+              color: character.isFavourite
+                ? "var(--onsen-color-red)"
+                : "var(--onsen-color-text-bright)",
+            }}
+          >
+            {character.isFavourite ? "\u2605" : "\u2606"}
+          </button>
+          <button
+            type="button"
+            aria-label={strings.characters.actions}
+            onClick={onMenu}
+            className="chrome flex h-[24px] w-[24px] items-center justify-center text-[13px]"
+            style={{ background: "rgba(0,0,0,0.45)", color: "var(--onsen-color-text-bright)" }}
+          >
+            ⋯
+          </button>
+        </span>
       ) : null}
     </div>
   );
@@ -95,9 +120,11 @@ export function CharactersScreen() {
   const [q, setQ] = useState("");
   const [tag, setTag] = useState("");
   const [folder, setFolder] = useState("");
+  const [favourite, setFavourite] = useState(false);
   const [savedId, setSavedId] = useState<string>("");
 
-  const characters = useCharacters({ q, tag, folder });
+  const characters = useCharacters({ q, tag, folder, ...(favourite ? { favourite: true } : {}) });
+  const star = useFavouriteCharacter();
   const tags = useCharacterTags();
   const folders = useCharacterFolders();
   const savedFilters = useSavedFilters();
@@ -245,12 +272,24 @@ export function CharactersScreen() {
             aria-label={strings.characters.search}
           />
 
-          {/* Tag and folder narrow the search; the saved filter row keeps the
-              combination. All three are the server's filter, not the client's
-              — the library is too big to sort in a phone's memory. */}
-          <div className="mb-[10px] flex gap-[6px]">
+          {/* Tag, folder and favourites narrow the search; the saved filter row
+              keeps the combination. All of them are the server's filter, not
+              the client's — the library is too big to sort in a phone's memory.
+              The star's partial index shipped with phase 59 and had no query
+              behind it until phase 61. */}
+          {/* Wraps: three controls on one line clipped the folder select's
+              own label at 390px, which is the width this is designed for. */}
+          <div className="mb-[10px] flex flex-wrap gap-[6px]">
+            <button
+              type="button"
+              aria-pressed={favourite}
+              onClick={() => setFavourite(!favourite)}
+              className={`btn flex-none ${favourite ? "btn-primary" : ""}`}
+            >
+              {"\u2605"} {strings.scenes.favouritesOnly}
+            </button>
             <select
-              className="field flex-1"
+              className="field min-w-[140px] flex-1"
               value={tag}
               onChange={(event) => setTag(event.target.value)}
               aria-label={strings.characters.tagFilter}
@@ -263,7 +302,7 @@ export function CharactersScreen() {
               ))}
             </select>
             <select
-              className="field flex-1"
+              className="field min-w-[140px] flex-1"
               value={folder}
               onChange={(event) => setFolder(event.target.value)}
               aria-label={strings.characters.folderFilter}
@@ -368,6 +407,9 @@ export function CharactersScreen() {
                       selected={selected.has(character.id)}
                       onToggle={() => toggleOne(character.id)}
                       onMenu={() => setMenuFor(character)}
+                      onFavourite={() =>
+                        star.mutate({ id: character.id, isFavourite: !character.isFavourite })
+                      }
                     />
                   ))}
                 </div>

@@ -56,6 +56,9 @@ export function listCharactersFiltered(
     conditions.push("characters.folder = $folder");
     params.folder = filter.folder;
   }
+  // The partial index this uses shipped with phase 59's migration and had no
+  // query behind it until now.
+  if (filter.favourite === true) conditions.push("characters.is_favourite = 1");
 
   const where = conditions.length === 0 ? "" : `WHERE ${conditions.join(" AND ")}`;
   return db

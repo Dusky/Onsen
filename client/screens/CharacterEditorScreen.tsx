@@ -15,6 +15,7 @@ import {
   useExpressionPack,
   useUploadExpression,
   useDeleteExpression,
+  usePersonas,
 } from "../lib/queries.ts";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
 
@@ -176,6 +177,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
   const [reviseOpen, setReviseOpen] = useState(false);
   const [reviseDraft, setReviseDraft] = useState("");
   const [confirmNode, confirm] = useConfirm();
+  const personas = usePersonas();
 
   const character: CharacterDto | undefined = query.data;
   if (character === undefined) {
@@ -263,6 +265,27 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                   </FieldRow>
                 </div>
               </div>
+
+              {/* The persona lock (§2, §20 phase 61): starting a roleplay with
+                  this character opens it as this persona instead of the
+                  default. Read once, when the cast is first picked — a roleplay
+                  already running keeps whoever it opened with. */}
+              <p className="section-label mb-[8px]">{strings.characters.opensAs}</p>
+              <select
+                className="field mb-[16px] w-full"
+                value={character.personaId ?? ""}
+                aria-label={strings.characters.opensAs}
+                onChange={(event) =>
+                  save({ personaId: event.target.value === "" ? null : event.target.value })
+                }
+              >
+                <option value="">{strings.characters.opensAsDefault}</option>
+                {(personas.data ?? []).map((persona) => (
+                  <option key={persona.id} value={persona.id}>
+                    {persona.name}
+                  </option>
+                ))}
+              </select>
 
               {/* SPEC §6: what the `mention` director listens for besides the
                   name. Comma separated because these are short — "doc", "the

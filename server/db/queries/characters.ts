@@ -40,6 +40,8 @@ export interface CharacterRow {
   creator_notes: string | null;
   tags: string;
   is_favourite: number;
+  /** The persona a roleplay with this character opens as (§2, §20 phase 61). */
+  persona_id: number | null;
   creator: string | null;
   character_version: string | null;
   raw_card: string;
@@ -136,6 +138,7 @@ export function toCharacterDto(db: Database, row: CharacterRow): CharacterDto {
     creatorNotes: row.creator_notes,
     tags: parseArray(row.tags),
     isFavourite: row.is_favourite === 1,
+    personaId: personaUlidOf(db, row.persona_id),
     creator: row.creator,
     characterVersion: row.character_version,
     format: row.raw_card_format,
@@ -344,6 +347,23 @@ export function updateCharacter(
     params[column] = JSON.stringify(patch[field] ?? []);
   }
 
+  // Filing, not editing (§20 phase 61). A star and a persona lock say nothing
+  // about the card's text, so they take the same exemption bulk tag and folder
+  // moves take: no version snapshot, or organising a library would bury its
+  // history under entries that changed no prose.
+  let organisational = 0;
+  if ("isFavourite" in patch) {
+    assignments.push("is_favourite = $is_favourite");
+    params["is_favourite"] = patch["isFavourite"] === true ? 1 : 0;
+    organisational++;
+  }
+  if ("personaId" in patch) {
+    const value = patch["personaId"];
+    assignments.push("persona_id = $persona_id");
+    params["persona_id"] = typeof value === "number" ? value : null;
+    organisational++;
+  }
+
   if (assignments.length === 0) {
     return db.query("SELECT * FROM characters WHERE id = $id").get({ id }) as CharacterRow;
   }
@@ -351,8 +371,10 @@ export function updateCharacter(
   // A save is a version: snapshot what is about to change, then change it.
   // Bulk tag/folder moves bypass this path, which is why organisational churn
   // does not fill the history with noise (SPEC §9).
-  const before = db.query("SELECT * FROM characters WHERE id = $id").get({ id }) as CharacterRow;
-  if (before !== null) snapshotCharacter(db, before);
+  if (assignments.length > organisational) {
+    const before = db.query("SELECT * FROM characters WHERE id = $id").get({ id }) as CharacterRow;
+    if (before !== null) snapshotCharacter(db, before);
+  }
 
   return db
     .query(
@@ -367,6 +389,14 @@ export function deleteCharacter(db: Database, id: number): void {
 }
 
 /** The ulid of a character's parent variant, or null (SPEC §9). */
+function personaUlidOf(db: Database, personaId: number | null): string | null {
+  if (personaId === null) return null;
+  const row = db.query("SELECT ulid FROM personas WHERE id = $id").get({ id: personaId }) as
+    | { ulid: string }
+    | null;
+  return row?.ulid ?? null;
+}
+
 function parentUlidOf(db: Database, parentId: number | null): string | null {
   if (parentId === null) return null;
   const row = db.query("SELECT ulid FROM characters WHERE id = $id").get({ id: parentId }) as

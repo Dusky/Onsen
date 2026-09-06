@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { AuthorDto, UpdateAuthorRequest } from "@shared/types.ts";
 import { strings } from "../strings.ts";
+import { AvatarField } from "../components/AvatarField.tsx";
 import { EmptyState } from "../components/EmptyState.tsx";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { navigate } from "../lib/router.ts";
@@ -211,6 +212,13 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
 
       <main className="min-h-0 flex-1 overflow-y-auto px-[22px] py-[16px]">
         <div className="mx-auto w-full max-w-[var(--onsen-list-measure)]">
+          <AvatarField
+            kind="authors"
+            id={author.id}
+            name={author.name}
+            hasAvatar={author.hasAvatar}
+          />
+
           <Field label={strings.authors.name}>
             <TextField value={author.name} onCommit={(name) => save({ name })} />
           </Field>

@@ -39,6 +39,8 @@ export interface PersonaRow {
   name: string;
   avatar_path: string | null;
   description: string | null;
+  /** Null keeps the block in the prefix; a number injects it at that depth (§3). */
+  depth: number | null;
   is_default: number;
   created_at: number;
   updated_at: number;
@@ -84,6 +86,11 @@ export function toPersonaDto(row: PersonaRow): PersonaDto {
     id: row.ulid,
     name: row.name,
     description: row.description,
+    // Read at last, in phase 61. The column has been on the schema since 0005
+    // and the only reason it went unnoticed for fifty-odd phases is that
+    // `avatar_path` is on three tables and one table's use hid the other two.
+    hasAvatar: row.avatar_path !== null,
+    depth: row.depth,
     isDefault: row.is_default === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -226,6 +233,16 @@ export function updatePersona(
     params[column] = typeof value === "string" ? value : null;
   }
 
+  // Depth is a number or an explicit null, and null is a real value here — it
+  // is what puts the block back in the prefix — so it cannot ride the string
+  // loop above, which turns every non-string into null and would make clearing
+  // the field indistinguishable from not sending it.
+  if ("depth" in patch) {
+    const value = patch["depth"];
+    assignments.push("depth = $depth");
+    params["depth"] = typeof value === "number" ? Math.trunc(value) : null;
+  }
+
   if (patch["isDefault"] === true) {
     db.query("UPDATE personas SET is_default = 0 WHERE is_default = 1").run();
     assignments.push("is_default = 1");
@@ -242,6 +259,27 @@ export function updatePersona(
 
 export function deletePersona(db: Database, id: number): void {
   db.query("DELETE FROM personas WHERE id = $id").run({ id });
+}
+
+/**
+ * The avatar for a persona or an author (§20 phase 61).
+ *
+ * One function for both because the column, the directory and the lifetime are
+ * the same, and two near-identical ones would drift. The table name is a
+ * literal union rather than a string so it cannot be interpolated from a
+ * request.
+ */
+export function setAvatarPath(
+  db: Database,
+  table: "personas" | "authors",
+  id: number,
+  path: string | null,
+): void {
+  db.query(`UPDATE ${table} SET avatar_path = $path, updated_at = $now WHERE id = $id`).run({
+    path,
+    now: Date.now(),
+    id,
+  });
 }
 
 /* ------------------------------------------------------------------ */

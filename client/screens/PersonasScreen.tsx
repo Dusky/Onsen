@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import type { PersonaDto } from "@shared/types.ts";
+import { PERSONA_DEPTH_BOUNDS, type PersonaDto } from "@shared/types.ts";
 import { strings } from "../strings.ts";
+import { AvatarField } from "../components/AvatarField.tsx";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { EmptyState } from "../components/EmptyState.tsx";
 import { TabBar } from "../components/TabBar.tsx";
@@ -35,6 +36,13 @@ function One({ persona, onClose }: { persona: PersonaDto; onClose(): void }) {
 
   return (
     <div className="row last:border-b-0">
+      <AvatarField
+        kind="personas"
+        id={persona.id}
+        name={persona.name}
+        hasAvatar={persona.hasAvatar}
+      />
+
       <p className="section-label mb-[6px]">{strings.sceneSetup.personaName}</p>
       <input
         className="field mb-[12px]"
@@ -59,6 +67,34 @@ function One({ persona, onClose }: { persona: PersonaDto; onClose(): void }) {
           }
         }}
       />
+
+      {/* Where the block lands (§3, §20 phase 61). The prefix is the default and
+          the position the preset's block order gives it; a depth injects it
+          among the turns instead, the placement lore entries already get. */}
+      <p className="section-label mb-[6px]">{strings.sceneSetup.personaPosition}</p>
+      <div className="mb-[12px] flex items-center gap-[10px]">
+        <button
+          type="button"
+          className={`btn flex-none ${persona.depth === null ? "btn-primary" : ""}`}
+          onClick={() => update.mutate({ depth: persona.depth === null ? 0 : null })}
+        >
+          {persona.depth === null
+            ? strings.sceneSetup.personaPositionPrefix
+            : strings.sceneSetup.personaPositionDepth(persona.depth)}
+        </button>
+        {persona.depth === null ? null : (
+          <input
+            type="range"
+            className="min-w-0 flex-1"
+            min={PERSONA_DEPTH_BOUNDS.min}
+            max={PERSONA_DEPTH_BOUNDS.max}
+            step={1}
+            value={persona.depth}
+            aria-label={strings.sceneSetup.personaPosition}
+            onChange={(event) => update.mutate({ depth: Number(event.target.value) })}
+          />
+        )}
+      </div>
 
       <div className="flex gap-[8px]">
         <button
@@ -91,7 +127,18 @@ function One({ persona, onClose }: { persona: PersonaDto; onClose(): void }) {
 /** A closed persona: who they are, in one row (§16 §Density). */
 function Row({ persona, onOpen }: { persona: PersonaDto; onOpen(): void }) {
   return (
-    <button type="button" onClick={onOpen} className="row flex w-full items-baseline gap-[10px] text-left">
+    <button type="button" onClick={onOpen} className="row flex w-full items-center gap-[10px] text-left">
+      <span
+        aria-hidden="true"
+        className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full bg-bg-raised bg-cover bg-center text-[11px] text-ink-dim"
+        style={
+          persona.hasAvatar
+            ? { backgroundImage: `url(/api/personas/${persona.id}/avatar)` }
+            : undefined
+        }
+      >
+        {persona.name.slice(0, 1)}
+      </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[15px] font-medium">{persona.name}</span>
         <span className="meta mt-[2px] block truncate">

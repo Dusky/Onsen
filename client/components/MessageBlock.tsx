@@ -39,6 +39,15 @@ interface MessageBlockProps {
    */
   style?: TurnStyle;
   avatarShape?: AvatarShape;
+  /**
+   * Whose picture the reader's own turns draw (§20 phase 61).
+   *
+   * Phase 57 shipped the avatar with a note saying the reader's side would show
+   * an initial until `personas.avatar_path` was wired, and did not pretend
+   * otherwise. This is that wire. It comes from the scene rather than the
+   * message because a persona belongs to the roleplay, not to the turn.
+   */
+  personaId?: string | null;
   onReroll(): void;
   onOpenVersions(): void;
   onLongPress(): void;
@@ -349,12 +358,19 @@ function Avatar({
   message,
   speakerName,
   shape,
+  personaId,
 }: {
   message: MessageDto;
   speakerName: string;
   shape: AvatarShape;
+  personaId: string | null;
 }) {
-  const url = message.characterId === null ? null : `/api/characters/${message.characterId}/avatar`;
+  const url =
+    message.characterId !== null
+      ? `/api/characters/${message.characterId}/avatar`
+      : personaId === null
+        ? null
+        : `/api/personas/${personaId}/avatar`;
   return (
     <span
       aria-hidden="true"
@@ -461,6 +477,7 @@ export function MessageBlock({
   attribution = "stacked",
   style: turnStyle = { bubble: false, avatar: false },
   avatarShape = "circle",
+  personaId = null,
   onReroll,
   onOpenVersions,
   onLongPress,
@@ -527,7 +544,12 @@ export function MessageBlock({
         hidden={attribution === "inline"}
       >
         {turnStyle.avatar ? (
-          <Avatar message={message} speakerName={speakerName} shape={avatarShape} />
+          <Avatar
+            message={message}
+            speakerName={speakerName}
+            shape={avatarShape}
+            personaId={personaId ?? null}
+          />
         ) : null}
         <span
           className="chrome shrink-0 text-[11.5px] font-semibold"

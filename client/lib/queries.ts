@@ -835,6 +835,7 @@ export function useCharacters(filter: CharacterFilterQuery = {}) {
         const value = filter[key];
         if (value !== undefined && value !== "") params.set(key, value);
       }
+      if (filter.favourite === true) params.set("favourite", "1");
       const qs = params.toString();
       return api.get<CharacterDto[]>(qs === "" ? "/characters" : `/characters?${qs}`);
     },
@@ -1016,6 +1017,26 @@ export function useUpdateCharacter(id: string) {
   });
 }
 
+/**
+ * The star on a card (§20 phase 61).
+ *
+ * Not `useUpdateCharacter`, which is bound to one id: the grid needs to star
+ * whichever tile was pressed. The server files this rather than editing it —
+ * no version snapshot — so starring a hundred cards leaves the card history
+ * exactly as it was.
+ */
+export function useFavouriteCharacter() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, isFavourite }: { id: string; isFavourite: boolean }) =>
+      api.patch<CharacterDto>(`/characters/${id}`, { isFavourite }),
+    onSuccess: (character) => {
+      client.setQueryData(characterKeys.one(character.id), character);
+      void client.invalidateQueries({ queryKey: characterKeys.all });
+    },
+  });
+}
+
 export function useDeleteCharacter() {
   const client = useQueryClient();
   return useMutation({
@@ -1114,6 +1135,41 @@ export function useUpdatePersona(id: string) {
   return useMutation({
     mutationFn: (patch: UpdatePersonaRequest) => api.patch<PersonaDto>(`/personas/${id}`, patch),
     onSuccess: () => void client.invalidateQueries({ queryKey: authorKeys.personas }),
+  });
+}
+
+/**
+ * The reader's picture, and the author's (§20 phase 61).
+ *
+ * `avatar_path` has been on both tables since migration 0005 with nothing to
+ * write it. A character brings a picture inside its card; nobody brings one for
+ * the reader, so these two needed an upload and never got one.
+ *
+ * `null` clears it. Both resources answer the same three routes, so one pair of
+ * hooks covers them — `kind` is the path segment, never a value from a form.
+ */
+export function useSetOwnerAvatar(kind: "personas" | "authors", id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File | null) => {
+      if (file === null) return api.delete<unknown>(`/${kind}/${id}/avatar`);
+      const form = new FormData();
+      form.append("file", file);
+      const response = await fetch(`/api/${kind}/${id}/avatar`, { method: "PUT", body: form });
+      const body: unknown = await response.json();
+      if (!response.ok) {
+        const error = (body as { error?: { message?: string } })?.error;
+        throw new Error(error?.message ?? "That picture could not be saved.");
+      }
+      return body;
+    },
+    onSuccess: () => {
+      void client.invalidateQueries({
+        queryKey: kind === "personas" ? authorKeys.personas : authorKeys.all,
+      });
+      // A turn draws the reader's picture, so the open roleplay is stale too.
+      void client.invalidateQueries({ queryKey: keys.scenes });
+    },
   });
 }
 

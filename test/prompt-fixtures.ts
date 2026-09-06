@@ -59,6 +59,7 @@ export const AUTHOR: PromptAuthor = {
 export const PERSONA: PromptPersona = {
   name: "Ridge",
   description: "A surveyor with a bad knee.",
+  depth: null,
 };
 
 export const PRESET: PromptPreset = {

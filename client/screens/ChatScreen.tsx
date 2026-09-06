@@ -837,6 +837,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         attribution={layout.attribution}
         style={message.authorType === "user" ? layout.reader : layout.author}
         avatarShape={layout.avatarShape}
+        personaId={scene.data?.scene.personaId ?? null}
         onReroll={() => void reroll(message)}
         onOpenVersions={() => setVersionsFor(message)}
         onLongPress={() => setActing(message)}

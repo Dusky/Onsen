@@ -128,8 +128,26 @@ and a persona several books. Bound and unbound from the lorebook editor
 (§20 phase 54).
 
 ```
-id, name, avatar_path, description, is_default
+id, name, avatar_path, description, depth, is_default
 ```
+
+`avatar_path` is a picture the reader uploads rather than one a card carries,
+which is why it sat unwritten from migration 0005 until §20 phase 61 — an
+importer covers a character's face and nothing covers the reader's. The
+persona's turns draw it in the chat log.
+
+`depth` is where the persona block lands (§3). Null keeps it in the prefix, at
+whatever position the preset's block order gives it; a number injects it that
+many turns from the end, the placement lore entries and depth prompts already
+get. A description sixty turns back has stopped governing how the reader's
+character is treated, and this is the setting that fixes it.
+
+**Which persona a roleplay opens as.** A scene stores its own `persona_id`, so
+the chat lock other frontends offer is how this works by construction. What it
+takes is decided once, when the cast is first picked (§20 phase 61): the
+spotlight character's own `persona_id` wins, then the default persona, and a
+persona already chosen is never overwritten. There is deliberately no
+follow-the-default mode — the flag would be storage nothing reads.
 
 ### Character
 
@@ -153,6 +171,12 @@ system_prompt      -- optional per-character override
 post_history_instructions
 creator_notes, tags, creator, character_version
 folder            -- loose grouping label, not a tree (§9)
+is_favourite      -- the same star the roleplay list has (§9); the column and
+                     its partial index shipped with phase 59 and got a route in 61
+persona_id        -- the persona a roleplay with this character opens as (§20
+                     phase 61); null follows the default. Read once, when the
+                     cast is picked, so changing it never rewrites a roleplay
+                     already running
 parent_character_id -- set when this card is a derived variant (§9)
 source_filename, source_hash  -- parsed-card cache and duplicate detection
 raw_card           -- the complete original card JSON, preserved verbatim
@@ -2437,11 +2461,11 @@ toggle.
   the default rather than broken.
 - **Connection profiles** — provider, model, templates, test button, capability
   display, and the preset this profile generates with.
-- **Persona list** — name, description, default, delete, and search once there
-  are more than a handful. A screen at `/personas`, reached from scene setup:
-  phase 54 made it a sheet on the reasoning that choosing and editing are the
-  same moment, which is true of choosing one and false of managing twenty
-  (§16 §Density rule 3).
+- **Persona list** — name, description, picture, position in the prompt,
+  default, delete, and search once there are more than a handful. A screen at
+  `/personas`, reached from scene setup: phase 54 made it a sheet on the
+  reasoning that choosing and editing are the same moment, which is true of
+  choosing one and false of managing twenty (§16 §Density rule 3).
 - **Op settings** — per-op profile, prompt template, injection role,
   auto-trigger, visibility.
 - **Prompt inspector** — the exact assembled prompt for the last generation,
@@ -3166,6 +3190,16 @@ Each phase ends in a working, usable application.
     credential. `test/invariants.test.ts` measures those four and reads the
     document back, so a rule cannot be added to that list without a guard
     behind it. See `HANDOFF.md`.
+61. **The persona** — who the reader is, finished. A picture for a persona and
+    an author (`avatar_path` on both tables since migration 0005, never written
+    and never served); the reader's own turns draw it, which phase 57 had
+    deferred by name. A persona block that can be injected at a depth rather
+    than only ordered in the prefix. The default persona applied when a
+    roleplay's cast is first picked — `findDefaultPersona` had been exported
+    and called by nothing since phase 7 — and a per-character lock that beats
+    it. And phase 59's star finished on the character library, where the
+    column, the index and the DTO field had shipped without a route.
+    See §2, §3, §9 and `test/persona.test.ts`.
 
 Settled while building phase 15.
 

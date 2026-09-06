@@ -283,8 +283,8 @@ function toPromptPersona(row: PersonaRow | null) {
   // No persona is a real state, not a missing value: the builder phrases the
   // user-lock around the reader rather than around an invented name.
   return row === null
-    ? { name: null, description: null }
-    : { name: row.name, description: row.description };
+    ? { name: null, description: null, depth: null }
+    : { name: row.name, description: row.description, depth: row.depth };
 }
 
 /**

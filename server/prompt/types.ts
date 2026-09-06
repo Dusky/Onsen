@@ -222,6 +222,14 @@ export interface PromptAuthor {
 export interface PromptPersona {
   name: string | null;
   description: string | null;
+  /**
+   * Null keeps the persona block in the prefix, at whatever position the
+   * preset's block order gives it. A number injects it that many turns from the
+   * end instead (§3, §20 phase 61) — the placement lore entries and depth
+   * prompts already get, for the same reason: a description sixty turns back
+   * has stopped governing how the reader's character is treated.
+   */
+  depth: number | null;
 }
 
 /** A role the author voices (§2). */
