@@ -326,7 +326,7 @@ function ProviderEditor({
               {test.isPending ? strings.settings.providerTesting : strings.settings.providerTest}
             </button>
             {testResult !== null ? (
-              <span className="chrome min-w-0 flex-1 truncate text-[10px] leading-[1.4] text-ink-dim">
+              <span className="chrome min-w-0 flex-1 truncate text-[12px] leading-[1.4] text-ink-dim">
                 {testResult}
               </span>
             ) : null}
@@ -747,7 +747,7 @@ function UpdateGroup() {
           {/* Red is attention — owed by "behind" alone, not by every state
               that is not an error. */}
           <span
-            className="chrome flex-none text-[10.5px]"
+            className="chrome flex-none text-[12.5px]"
             style={{ color: behind !== null && behind > 0 ? "var(--onsen-color-red)" : undefined }}
           >
             {state}
@@ -1127,7 +1127,7 @@ function ApiKeysSection() {
               >
                 {key.name}
               </span>
-              <span className="chrome block truncate text-[10.5px] text-ink-dim">
+              <span className="chrome block truncate text-[12.5px] text-ink-dim">
                 <span className="font-mono">{key.hint}…</span>
                 <span className="">
                   {[
@@ -1208,7 +1208,7 @@ function WebhooksSection() {
                 >
                   {webhook.name}
                 </span>
-                <span className="chrome block truncate text-[10.5px] text-ink-dim">
+                <span className="chrome block truncate text-[12.5px] text-ink-dim">
                   {/* The URL keeps its own case. Everything else in this
                       subtitle is chrome and is uppercased; a URL is not chrome,
                       and a path is case-sensitive. */}
@@ -1635,7 +1635,7 @@ export function SettingsScreen() {
               type="button"
               onClick={() => setCategory(entry.id)}
               aria-current={entry.id === active ? "page" : undefined}
-              className="chrome flex min-h-[44px] flex-none items-center px-[10px] text-[11px]"
+              className="chrome flex min-h-[44px] flex-none items-center px-[10px] text-[13px]"
               style={{
                 color:
                   entry.id === active
@@ -1711,7 +1711,7 @@ export function SettingsScreen() {
                 </span>
                 {profile.isDefault ? (
                   <span
-                    className="chrome flex-none text-[10px]"
+                    className="chrome flex-none text-[12px]"
                     style={{ color: "var(--onsen-color-red)" }}
                   >
                     {strings.settings.profileDefault}
@@ -1850,7 +1850,7 @@ export function SettingsScreen() {
                         .join(" · ")}
                     </span>
                   </span>
-                  <span className="chrome flex-none text-[10.5px] text-ink-muted">
+                  <span className="chrome flex-none text-[12.5px] text-ink-muted">
                     {routed}
                   </span>
                   <span className="chrome flex-none self-center text-[12px] text-ink-dim">›</span>

@@ -249,7 +249,7 @@ function PromptManager({ preset }: { preset: PresetDto }) {
 
                 <button
                   type="button"
-                  className="chrome text-[10.5px]"
+                  className="chrome text-[12.5px]"
                   style={{ color: "var(--onsen-color-red)" }}
                   onClick={() =>
                     confirm(
@@ -341,7 +341,7 @@ export function PresetEditor({ preset, onClose }: { preset: PresetDto; onClose()
           </div>
         ))}
         {error === null ? null : (
-          <p role="alert" className="chrome mb-[10px] text-[11px] text-red-text">
+          <p role="alert" className="chrome mb-[10px] text-[13px] text-red-text">
             {error}
           </p>
         )}
@@ -611,10 +611,10 @@ function Slider({
   return (
     <div className="mb-[11px]">
       <div className="mb-[5px] flex items-baseline justify-between gap-[10px]">
-        <span className="chrome text-[11px] text-ink-muted">
+        <span className="chrome text-[13px] text-ink-muted">
           {label}
         </span>
-        <span className="chrome text-[11px] text-ink-label">
+        <span className="chrome text-[13px] text-ink-label">
           {shown === undefined ? strings.settings.samplerOff : shown}
         </span>
       </div>
@@ -681,7 +681,7 @@ function Whole({
           if (next !== value) onCommit(next);
         }}
       />
-      <span className="chrome mt-[5px] block text-[10.5px] text-ink-dim">
+      <span className="chrome mt-[5px] block text-[12.5px] text-ink-dim">
         {unit}
       </span>
     </label>

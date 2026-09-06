@@ -6,7 +6,7 @@ export function Notice({ children }: { children: string }) {
   return (
     <p
       role="alert"
-      className="chrome mb-[16px] border border-red-border bg-red-bg px-[11px] py-[9px] text-[11.5px] leading-[1.5] text-red-text"
+      className="chrome mb-[16px] border border-red-border bg-red-bg px-[11px] py-[9px] text-[13.5px] leading-[1.5] text-red-text"
     >
       {children}
     </p>

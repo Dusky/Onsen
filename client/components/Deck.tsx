@@ -70,7 +70,7 @@ function Readout({
       style={{ borderLeft: `2px solid var(--onsen-color-${hue})` }}
     >
       <span
-        className="chrome text-[10.5px]"
+        className="chrome text-[12.5px]"
         style={{ color: `var(--onsen-color-${hue}-text-muted)` }}
       >
         {label}
@@ -145,7 +145,7 @@ export function Deck({
           hidden={castDisplay === "line"}
         >
           <span
-            className="chrome text-[10.5px]"
+            className="chrome text-[12.5px]"
             style={{ color: "var(--onsen-color-red-text)" }}
           >
             {strings.chat.speakingNext}
@@ -154,7 +154,7 @@ export function Deck({
               cast strip's exactly, because it is the same statement — a
               classifier that has not run yet has no name to print, and
               printing the fallback would be a guess. */}
-          <span className="chrome min-w-0 flex-1 truncate text-right text-[10.5px] text-ink-dim">
+          <span className="chrome min-w-0 flex-1 truncate text-right text-[12.5px] text-ink-dim">
             {reason}
           </span>
         </div>

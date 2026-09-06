@@ -66,14 +66,14 @@ export function MediaSettings() {
                   {/* The one in use is marked in red: it is what happens now. */}
                   {service.isDefault ? (
                     <span
-                      className="chrome flex-none text-[10px]"
+                      className="chrome flex-none text-[12px]"
                       style={{ color: "var(--onsen-color-red)" }}
                     >
                       {strings.media.serviceIsDefault}
                     </span>
                   ) : null}
                   {service.enabled ? null : (
-                    <span className="chrome flex-none text-[10px] text-ink-dim">
+                    <span className="chrome flex-none text-[12px] text-ink-dim">
                       {strings.media.serviceOff}
                     </span>
                   )}

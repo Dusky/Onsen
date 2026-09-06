@@ -211,13 +211,13 @@ export function DossierSheet({
               buried tier's absence is the point, and a hint claiming it is not
               the same as seeing it missing. */}
           <p className="section-label mt-[14px] mb-[5px]">{strings.dossiers.injected}</p>
-          <pre className="chrome overflow-x-auto border border-rule bg-bg-inset p-[10px] text-[11px] leading-[1.6] whitespace-pre-wrap text-ink-muted">
+          <pre className="chrome overflow-x-auto border border-rule bg-bg-inset p-[10px] text-[13px] leading-[1.6] whitespace-pre-wrap text-ink-muted">
             {open_.injected === "" ? strings.dossiers.injectedEmpty : open_.injected}
           </pre>
 
           <div className="flex gap-[8px]">
             {open_.promoted ? (
-              <p className="chrome flex-1 py-[12px] text-[10.5px] text-ink-dim">
+              <p className="chrome flex-1 py-[12px] text-[12.5px] text-ink-dim">
                 {strings.dossiers.promoted}
               </p>
             ) : (

@@ -98,7 +98,7 @@ export function CommandPalette({
               ambiguous the moment more than one turn is on screen. */}
           {selectedSpeaker === null ? null : (
             <span
-              className="chrome flex-none text-[10px]"
+              className="chrome flex-none text-[12px]"
               style={{ color: "var(--onsen-color-red)" }}
             >
               {strings.chat.paletteScope(selectedSpeaker)}
@@ -108,7 +108,7 @@ export function CommandPalette({
 
         <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto">
           {matches.length === 0 ? (
-            <p className="chrome px-[16px] py-[18px] text-[11.5px] text-ink-dim">
+            <p className="chrome px-[16px] py-[18px] text-[13.5px] text-ink-dim">
               {strings.chat.paletteEmpty}
             </p>
           ) : (
@@ -146,11 +146,11 @@ export function CommandPalette({
                       </span>
                       {/* The reason, where there is one — §7's rule that an
                           unavailable action still says why. */}
-                      <span className="chrome flex-none text-[11px] text-ink-dim">
+                      <span className="chrome flex-none text-[13px] text-ink-dim">
                         {blocked ? command.unavailable : (command.hint ?? "")}
                       </span>
                       {command.key === undefined || blocked ? null : (
-                        <span className="chrome flex-none border border-border-quiet px-[5px] text-[10px] text-ink-dim">
+                        <span className="chrome flex-none border border-border-quiet px-[5px] text-[12px] text-ink-dim">
                           {command.key}
                         </span>
                       )}
@@ -163,13 +163,13 @@ export function CommandPalette({
         </div>
 
         <div className="flex flex-none items-center gap-[16px] border-t border-rule px-[16px] py-[9px]">
-          <span className="chrome text-[10px] text-ink-dim">
+          <span className="chrome text-[12px] text-ink-dim">
             {strings.chat.paletteHintMove}
           </span>
-          <span className="chrome text-[10px] text-ink-dim">
+          <span className="chrome text-[12px] text-ink-dim">
             {strings.chat.paletteHintRun}
           </span>
-          <span className="chrome text-[10px] text-ink-dim">
+          <span className="chrome text-[12px] text-ink-dim">
             {strings.chat.paletteHintClose}
           </span>
         </div>

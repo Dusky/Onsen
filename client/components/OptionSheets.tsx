@@ -70,7 +70,7 @@ export function OptionGroupSheet({
               </span>
               {/* The words themselves, because a rule you cannot read is a
                   rule you cannot judge. */}
-              <span className="chrome mt-[4px] block text-[10.5px] leading-[1.55] text-ink-dim">
+              <span className="chrome mt-[4px] block text-[12.5px] leading-[1.55] text-ink-dim">
                 {option.fragment.trim() === ""
                   ? strings.sceneSetup.optionsEmpty
                   : option.fragment}
@@ -189,7 +189,7 @@ export function BanListSheet({
         )}
 
         {settled.length === 0 && proposed.length === 0 ? (
-          <p className="chrome text-[11px] text-ink-dim">{strings.sceneSetup.bansEmpty}</p>
+          <p className="chrome text-[13px] text-ink-dim">{strings.sceneSetup.bansEmpty}</p>
         ) : null}
         {settled.map((row) => (
           <BanRow key={row.id} row={row} onUpdate={onUpdate} onDelete={onDelete} />
@@ -228,7 +228,7 @@ function BanRow({
       <div className="border-b border-rule py-[11px]">
         <div className="flex items-baseline gap-[10px]">
           <span className="min-w-0 flex-1 text-[13.5px]">{row.phrase}</span>
-          <span className="chrome flex-none text-[10px] text-ink-dim">
+          <span className="chrome flex-none text-[12px] text-ink-dim">
             {strings.sceneSetup.bansHits(row.hits)}
           </span>
         </div>
@@ -270,7 +270,7 @@ function BanRow({
         >
           {row.phrase}
         </span>
-        <span className="chrome flex-none text-[10px] text-ink-dim">
+        <span className="chrome flex-none text-[12px] text-ink-dim">
           {marks.join(" · ")}
         </span>
       </button>

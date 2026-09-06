@@ -95,7 +95,7 @@ export function CastStrip({
             >
               {cued ? (
                 <span
-                  className="chrome absolute -top-[14px] left-0 text-[10px]"
+                  className="chrome absolute -top-[14px] left-0 text-[12px]"
                   style={{ color: "var(--onsen-color-red)" }}
                 >
                   {nextSpeaker!.source === "user"
@@ -125,7 +125,7 @@ export function CastStrip({
               />
 
               <span
-                className="chrome mt-[4px] block truncate text-[10.5px]"
+                className="chrome mt-[4px] block truncate text-[12.5px]"
                 style={{
                   width: cued ? "82px" : "70px",
                   color: cued
@@ -150,7 +150,7 @@ export function CastStrip({
               type="button"
               onClick={() => onScope(option)}
               aria-pressed={scope === option}
-              className="chrome flex-1 border py-[8px] text-[10.5px]"
+              className="chrome flex-1 border py-[8px] text-[12.5px]"
               style={{
                 borderColor:
                   scope === option ? "var(--onsen-color-red)" : "var(--onsen-color-border-quiet)",
@@ -176,7 +176,7 @@ export function CastStrip({
         type="button"
         onClick={() => onToggleAutopilot(!autopilotOn)}
         aria-pressed={autopilotOn}
-        className="chrome mt-[6px] w-full border py-[8px] text-[10.5px]"
+        className="chrome mt-[6px] w-full border py-[8px] text-[12.5px]"
         style={{
           borderColor: autopilotOn
             ? "var(--onsen-color-red)"
@@ -191,11 +191,11 @@ export function CastStrip({
           is who opens rather than who speaks, so the caption says what is
           actually about to happen instead. */}
       {canBeat && scope === "beat" ? (
-        <p className="chrome mt-[8px] text-[11px] leading-[1.5] text-ink-dim">
+        <p className="chrome mt-[8px] text-[13px] leading-[1.5] text-ink-dim">
           {strings.chat.scopeBeatHint(inPlay.map((member) => member.name).join(", "))}
         </p>
       ) : nextSpeaker !== null ? (
-        <p className="chrome mt-[8px] text-[11px] leading-[1.5] text-ink-dim">
+        <p className="chrome mt-[8px] text-[13px] leading-[1.5] text-ink-dim">
           {/* While the classifier is still to decide there is no name to print:
               the fallback is a guess, and printing it would be one. */}
           {decidesOnSend

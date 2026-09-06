@@ -93,7 +93,7 @@ export function OocChannel({
           <button
             type="button"
             onClick={onClose}
-            className="chrome text-[10.5px]"
+            className="chrome text-[12.5px]"
             style={{ color: "var(--onsen-color-blue-text-muted)" }}
           >
             {strings.ooc.back}
@@ -103,7 +103,7 @@ export function OocChannel({
         <div className="min-h-0 flex-1 overflow-y-auto px-[22px] py-[12px]">
           {messages.length === 0 && pending === null ? (
             <p
-              className="chrome text-[11.5px] leading-[1.6]"
+              className="chrome text-[13.5px] leading-[1.6]"
               style={{ color: "var(--onsen-color-blue-text-muted)" }}
             >
               {strings.ooc.empty}
@@ -159,7 +159,7 @@ export function OocChannel({
         </div>
 
         <p
-          className="chrome px-[22px] pt-[8px] text-[10.5px] leading-[1.5]"
+          className="chrome px-[22px] pt-[8px] text-[12.5px] leading-[1.5]"
           style={{ color: "var(--onsen-color-blue-text-muted)" }}
         >
           {strings.ooc.hint}
@@ -183,7 +183,7 @@ function Bubble({
     <div className={`mb-[12px] flex flex-col ${fromReader ? "items-end" : "items-start"}`}>
       {name === null ? null : (
         <span
-          className="chrome mb-[4px] text-[10px]"
+          className="chrome mb-[4px] text-[12px]"
           style={{ color: "var(--onsen-color-blue-text-muted)" }}
         >
           {name}

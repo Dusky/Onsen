@@ -39,7 +39,7 @@ export function TabBar({ active }: { active: TabKey }) {
           type="button"
           onClick={() => navigate(item.route)}
           aria-current={item.key === active ? "page" : undefined}
-          className="chrome flex-1 py-[14px] text-[11px]"
+          className="chrome flex-1 py-[14px] text-[13px]"
           style={{
             color:
               item.key === active ? "var(--onsen-color-red)" : "var(--onsen-color-text-muted)",

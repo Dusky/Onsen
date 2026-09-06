@@ -64,7 +64,7 @@ export function GuidesBody({
       <div className="pt-[4px] pb-[14px]">
         {guides.length === 0 ? (
           <p
-            className="chrome mb-[10px] text-[11px] leading-[1.6]"
+            className="chrome mb-[10px] text-[13px] leading-[1.6]"
             style={{ color: "var(--onsen-color-blue-text-muted)" }}
           >
             {strings.chat.guidesEmpty}
@@ -90,7 +90,7 @@ export function GuidesBody({
                 className="chrome flex min-h-[44px] w-full items-center justify-between gap-[10px] py-[12px] text-left disabled:opacity-100"
               >
                 <span
-                  className="text-[11.5px]"
+                  className="text-[13.5px]"
                   style={{
                     color:
                       guide === null
@@ -100,13 +100,13 @@ export function GuidesBody({
                 >
                   {label}
                   {guide?.isPinned === true ? (
-                    <span className="ml-[7px] text-[9.5px] opacity-70">
+                    <span className="ml-[7px] text-[11.5px] opacity-70">
                       {strings.chat.guidesPinned}
                     </span>
                   ) : null}
                 </span>
                 <span
-                  className="flex items-center gap-[8px] text-[10.5px]"
+                  className="flex items-center gap-[8px] text-[12.5px]"
                   style={{ color: "var(--onsen-color-blue-text-muted)" }}
                 >
                   {working === kind
@@ -219,7 +219,7 @@ export function GuidesBody({
                       question is scene setup. Saying so is the whole row. */}
                   {unavailable ? (
                     <p
-                      className="chrome text-[10.5px] leading-[1.5]"
+                      className="chrome text-[12.5px] leading-[1.5]"
                       style={{ color: "var(--onsen-color-blue-text-muted)" }}
                     >
                       {strings.chat.guidesCustomHint}

@@ -49,7 +49,7 @@ export function QuickReplyRow({
           disabled={disabled}
           onClick={() => onFire(reply.prompt)}
           title={reply.prompt}
-          className="chrome flex-none border border-border-quiet px-[9px] py-[6px] text-[10px] text-ink-label disabled:opacity-40"
+          className="chrome flex-none border border-border-quiet px-[9px] py-[6px] text-[12px] text-ink-label disabled:opacity-40"
         >
           {reply.label}
         </button>
@@ -59,7 +59,7 @@ export function QuickReplyRow({
         onClick={onEdit}
         aria-label={strings.chat.quickRepliesEdit}
         title={strings.chat.quickRepliesEdit}
-        className="chrome flex-none border border-border-quiet px-[9px] py-[6px] text-[10px] text-ink-dim"
+        className="chrome flex-none border border-border-quiet px-[9px] py-[6px] text-[12px] text-ink-dim"
       >
         {list.length === 0 ? strings.chat.quickReplies : "✎"}
       </button>
@@ -157,7 +157,7 @@ export function QuickReplySheet({ onClose }: { onClose(): void }) {
                   onClick={() => setEditing(reply)}
                   className="min-w-0 flex-1 text-left"
                 >
-                  <span className="chrome block truncate text-[10.5px] text-ink-label">
+                  <span className="chrome block truncate text-[12.5px] text-ink-label">
                     {reply.label}
                   </span>
                   <span className="meta block truncate">{reply.prompt}</span>
@@ -167,7 +167,7 @@ export function QuickReplySheet({ onClose }: { onClose(): void }) {
                   aria-label={strings.chat.quickReplyMoveUp}
                   title={strings.chat.quickReplyMoveUp}
                   onClick={() => move.mutate({ id: reply.id, direction: "up" })}
-                  className="chrome flex-none px-[7px] py-[6px] text-[10px] text-ink-muted"
+                  className="chrome flex-none px-[7px] py-[6px] text-[12px] text-ink-muted"
                 >
                   ↑
                 </button>
@@ -176,7 +176,7 @@ export function QuickReplySheet({ onClose }: { onClose(): void }) {
                   aria-label={strings.chat.quickReplyMoveDown}
                   title={strings.chat.quickReplyMoveDown}
                   onClick={() => move.mutate({ id: reply.id, direction: "down" })}
-                  className="chrome flex-none px-[7px] py-[6px] text-[10px] text-ink-muted"
+                  className="chrome flex-none px-[7px] py-[6px] text-[12px] text-ink-muted"
                 >
                   ↓
                 </button>
@@ -189,7 +189,7 @@ export function QuickReplySheet({ onClose }: { onClose(): void }) {
                       confirmLabel: strings.chat.quickReplyDelete,
                     })
                   }
-                  className="chrome flex-none px-[7px] py-[6px] text-[10px] text-ink-muted"
+                  className="chrome flex-none px-[7px] py-[6px] text-[12px] text-ink-muted"
                 >
                   ×
                 </button>

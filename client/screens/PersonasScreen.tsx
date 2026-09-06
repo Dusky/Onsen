@@ -130,7 +130,7 @@ function Row({ persona, onOpen }: { persona: PersonaDto; onOpen(): void }) {
     <button type="button" onClick={onOpen} className="row flex w-full items-center gap-[10px] text-left">
       <span
         aria-hidden="true"
-        className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full bg-bg-raised bg-cover bg-center text-[11px] text-ink-dim"
+        className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full bg-bg-raised bg-cover bg-center text-[13px] text-ink-dim"
         style={
           persona.hasAvatar
             ? { backgroundImage: `url(/api/personas/${persona.id}/avatar)` }

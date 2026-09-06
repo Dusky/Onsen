@@ -93,7 +93,7 @@ function Row({
       <span className="chrome min-w-0 flex-1 text-[12px] text-ink">
         {label}
         {hint !== undefined ? (
-          <span className="block text-[11.5px] text-ink-dim">{hint}</span>
+          <span className="block text-[13.5px] text-ink-dim">{hint}</span>
         ) : null}
       </span>
       <input
@@ -259,7 +259,7 @@ export function ThemeSection() {
         <p className="explain explain-alert mb-[12px]">{notice}</p>
       ) : null}
       {report !== null ? (
-        <p className="chrome mb-[12px] text-[11.5px] leading-[1.6] text-ink-muted">
+        <p className="chrome mb-[12px] text-[13.5px] leading-[1.6] text-ink-muted">
           {strings.settings.themeImported(report.theme.name)}
           {report.droppedTokens.length > 0
             ? ` ${strings.settings.themeDropped(report.droppedTokens.length)}`

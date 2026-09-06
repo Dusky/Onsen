@@ -5773,3 +5773,49 @@ was dropped rather than shipped as theatre.
 
 **Verified in a browser** at 390×844: a generated turn's gutter is a button,
 and tapping it opens the inspector sheet with that turn's prompt.
+
+## Phase 70 — The type scale, raised for real
+
+"Everything is small" was the report, and it was correct. The design's type
+table was drawn for a phone at arm's length — mono captions down to 7px — and
+phase 49 raised it one step while admitting the app was already being used at
+130% browser zoom. One step was not a fix.
+
+### The three layers of small
+
+The chrome size lived in three places, which is why phase 49's one-step raise
+did not take:
+
+1. **The tokens** — `--onsen-text-*` driving `.section-label`, `.btn`,
+   `.group-heading`, `.field`, the prose. Labels at 10.5px, buttons 11px,
+   prose 15.5px — *below the design's own 17px spec*.
+2. **Two hardcoded sizes** — `.meta` at 10.5px and `.screen-kicker` at 11.5px,
+   set literally rather than from tokens.
+3. **~200 inline `text-[9px…11.5px]` arbitrary classes**, scattered across 44
+   files, which no token change could reach.
+
+### What was built
+
+- Prose returns to the design's own 17px (17.5px desktop); excerpt 14px, field
+  15.5px, explain 13.5px.
+- The chrome ramp goes up with it: attribution 13px, section labels 12px,
+  group headings 13.5px, buttons 12.5px, token counts 11px.
+- The ~200 inline classes are swept up to a new floor of 11px.
+- `test/typography.test.ts`'s floor moves from 9px to 11px, so the scale
+  cannot quietly sink back.
+
+### Surprises
+
+**Prose was below the design's own spec.** The handoff says 17px mobile and
+17.5px desktop; the app shipped 15.5px and 16px. The material — the one thing
+the reader reads for hours — was the thing that had been shrunk below its own
+authority, before any chrome was considered.
+
+**Phase 49 had said so, in its own file.** `tokens.css` carried the sentence:
+*"they were small enough that the app was being used at 130% browser zoom,
+which is a report that the default is wrong, not that the reader is unusual."*
+The diagnosis was right and the dosage was one step. A floor is not a scale.
+
+**Verified in a browser** at 390×844 and 1440×900, reading the computed
+custom properties: prose 17px, section labels 12px, buttons 12.5px, attribution
+13px, on both widths.

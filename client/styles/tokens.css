@@ -121,15 +121,15 @@
    * reach part of the app.
    */
   --onsen-prose-scale: 1;
-  --onsen-text-prose: calc(15.5px * var(--onsen-prose-scale));
-  --onsen-text-prose-desktop: calc(16px * var(--onsen-prose-scale));
-  --onsen-text-prose-excerpt: calc(13.5px * var(--onsen-prose-scale));
-  --onsen-text-field: calc(14.5px * var(--onsen-prose-scale));
+  --onsen-text-prose: calc(17px * var(--onsen-prose-scale));
+  --onsen-text-prose-desktop: calc(17.5px * var(--onsen-prose-scale));
+  --onsen-text-prose-excerpt: calc(14px * var(--onsen-prose-scale));
+  --onsen-text-field: calc(15.5px * var(--onsen-prose-scale));
   /*
    * The app explaining itself in sentences (phase 47). Prose, because it is
    * read rather than scanned, and scalable for the same reason.
    */
-  --onsen-text-explain: calc(12.5px * var(--onsen-prose-scale));
+  --onsen-text-explain: calc(13.5px * var(--onsen-prose-scale));
 
   --onsen-leading-prose: 1.5;
 
@@ -144,17 +144,17 @@
    */
   --onsen-text-title: 26px;
   --onsen-text-header: 19px;
-  --onsen-text-attribution: 11.5px;
-  --onsen-text-section-label: 10.5px;
+  --onsen-text-attribution: 13px;
+  --onsen-text-section-label: 12px;
   /*
    * A group of fields, not one field (phase 47). Two steps above the field
    * label — larger, brighter, and carrying a rule — because before this the
    * two were set identically and a screen of twelve groups read as one list of
    * two hundred labels.
    */
-  --onsen-text-group-heading: 12.5px;
-  --onsen-text-button: 11px;
-  --onsen-text-token-count: 10px;
+  --onsen-text-group-heading: 13.5px;
+  --onsen-text-button: 12.5px;
+  --onsen-text-token-count: 11px;
 
   /*
    * One tracking value, and it is none (§20 phase 53).

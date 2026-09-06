@@ -193,7 +193,7 @@ function OrganiseSheet({
               type="button"
               onClick={() => setTags(tags.filter((t) => t !== name))}
               aria-label={`${strings.scenes.tagsLabel}: ${name}`}
-              className="chrome flex items-center gap-[6px] border border-rule-strong px-[8px] py-[6px] text-[11px] text-ink-label"
+              className="chrome flex items-center gap-[6px] border border-rule-strong px-[8px] py-[6px] text-[13px] text-ink-label"
             >
               {name}
               <span className="text-ink-dim">×</span>

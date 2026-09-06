@@ -47,7 +47,7 @@ export function StatusBar({
   const gauge =
     tokens === null || contextSize === null || contextSize <= 0 ? null : (
       <>
-        <span className="chrome text-[10.5px] text-ink-dim">{strings.chat.ctxLabel}</span>
+        <span className="chrome text-[12.5px] text-ink-dim">{strings.chat.ctxLabel}</span>
         <span
           className="hidden h-[3px] w-[64px] flex-none sm:inline-block"
           style={{ background: "var(--onsen-color-rule)" }}
@@ -63,7 +63,7 @@ export function StatusBar({
             }}
           />
         </span>
-        <span className="chrome text-[10.5px] text-ink-dim tabular-nums">
+        <span className="chrome text-[12.5px] text-ink-dim tabular-nums">
           {strings.chat.ctxOf(tokens, contextSize)}
         </span>
       </>
@@ -75,7 +75,7 @@ export function StatusBar({
       style={{ background: "var(--onsen-color-bg-sunken)", minHeight: "26px" }}
     >
       <span
-        className="chrome flex items-center gap-[6px] text-[10px]"
+        className="chrome flex items-center gap-[6px] text-[12px]"
         style={{ color: profileName === null ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)" }}
       >
         <span
@@ -91,7 +91,7 @@ export function StatusBar({
       {onOpenPrompt === undefined ? (
         gauge === null ? (
           tokens === null ? null : (
-            <span className="chrome text-[10.5px] text-ink-dim">
+            <span className="chrome text-[12.5px] text-ink-dim">
               {strings.chat.barTokens(tokens)}
             </span>
           )
@@ -107,7 +107,7 @@ export function StatusBar({
           className="chrome flex min-w-0 items-center gap-[7px] text-left"
         >
           {gauge === null ? (
-            <span className="chrome text-[10.5px]" style={{ color: "var(--onsen-color-red)" }}>
+            <span className="chrome text-[12.5px]" style={{ color: "var(--onsen-color-red)" }}>
               {strings.chat.promptPreview}
             </span>
           ) : (
@@ -121,10 +121,10 @@ export function StatusBar({
       {/* Keyboard hints only where there is a keyboard to hint at. */}
       {onOpenContext === undefined ? (
         <>
-          <span className="chrome text-[10px] text-ink-dim">
+          <span className="chrome text-[12px] text-ink-dim">
             {strings.chat.barSelect}
           </span>
-          <span className="chrome text-[10px] text-ink-dim">
+          <span className="chrome text-[12px] text-ink-dim">
             {strings.chat.barCommands}
           </span>
         </>
@@ -133,7 +133,7 @@ export function StatusBar({
         <button
           type="button"
           onClick={onOpenContext}
-          className="chrome -mr-[6px] flex min-h-[44px] items-center gap-[5px] px-[6px] text-[10px]"
+          className="chrome -mr-[6px] flex min-h-[44px] items-center gap-[5px] px-[6px] text-[12px]"
           style={{ color: "var(--onsen-color-text-label)" }}
         >
           {strings.chat.barContext}
@@ -142,7 +142,7 @@ export function StatusBar({
       )}
 
       <span
-        className="chrome text-[10px]"
+        className="chrome text-[12px]"
         style={{
           color: generating ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)",
         }}

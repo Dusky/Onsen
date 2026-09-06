@@ -114,12 +114,16 @@ describe("the hierarchy stays a hierarchy", () => {
    * floor went with it: 9px, and the ops-key caption is no longer an exception
    * because it no longer needs to be.
    */
-  test("nothing is set below 9px", () => {
+  test("nothing is set below 11px", () => {
+    // §20 phase 70: the floor moved from 9px to 11px. The type table was drawn
+    // for a phone at arm's length, phase 49 raised it one step, and the app
+    // was still being used at 130% browser zoom — the report that the default
+    // was wrong. The chrome ramp was raised for real; this pins the new floor.
     const offending = classLists()
       .filter((c) =>
         c.classes.some((k) => {
           const size = /^text-\[([\d.]+)px\]$/.exec(k);
-          return size !== null && Number(size[1]) < 9;
+          return size !== null && Number(size[1]) < 11;
         }),
       )
       .map((c) => c.file);

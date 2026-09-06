@@ -73,7 +73,7 @@ function Tile({
           }}
         />
         <p className="mt-[7px] truncate text-[14px] font-medium">{character.name}</p>
-        <p className="chrome mt-[2px] truncate text-[10px] text-ink-dim">
+        <p className="chrome mt-[2px] truncate text-[12px] text-ink-dim">
           {[character.folder, strings.characters.tokens(character.tokens.total)]
             .filter((part) => part !== null && part !== "")
             .join(" · ")}
@@ -424,7 +424,7 @@ export function CharactersScreen() {
       <footer className="flex-none border-t border-rule bg-bg-raised px-[22px] py-[12px]">
         {selecting ? (
           <div className="mx-auto w-full max-w-[var(--onsen-list-measure)]">
-            <p className="chrome mb-[8px] text-[10.5px] text-ink-dim">
+            <p className="chrome mb-[8px] text-[12.5px] text-ink-dim">
               {strings.characters.selected(selected.size)}
             </p>
             <div className="flex gap-[6px]">
@@ -574,7 +574,7 @@ export function CharactersScreen() {
                     >
                       <div className="flex items-baseline justify-between gap-[10px]">
                         <span className="min-w-0 flex-1 truncate text-[14px]">{item.name}</span>
-                        <span className="chrome flex-none text-[10.5px] text-ink-dim">
+                        <span className="chrome flex-none text-[12.5px] text-ink-dim">
                           {item.filename}
                         </span>
                       </div>

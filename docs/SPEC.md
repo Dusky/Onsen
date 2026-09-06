@@ -2676,9 +2676,11 @@ catches a relationship between two hex values in one file.
 **The chrome was sized for a phone.** The table's mono sizes assume a handset
 at reading distance; on a desktop browser they were small enough that the app
 was being used at 130% browser zoom. Everything at or below 11px went up a
-step and the floor rose from 7px to 9px. Chrome still does not scale with the
-reader's prose size — a label is scanned, not read — but the size it does not
-scale from is now the right one.
+step and the floor rose from 7px to 9px — and it was still too small, so phase
+70 raised the whole ramp for real: the floor is 11px, prose returned to the
+design's own 17px, and the labels, buttons and counts went up with it. Chrome
+still does not scale with the reader's prose size — a label is scanned, not
+read — but the size it does not scale from is now the right one.
 
 A long form or a list of groups sits on a **`.surface`**: `bg-raised`, a
 hairline, and the theme's own radius, border width and shadow, so a flat theme
@@ -3391,6 +3393,11 @@ Each phase ends in a working, usable application.
     becomes a button that opens the prompt behind that turn, completing the
     density rule that a number is never behind a tap: the number is the tap.
     The fourth surface pass. See §16 and `test/gutter.test.ts`.
+70. **The type scale, raised for real** — the whole chrome ramp was a phone's
+    arm-length size and prose shipped below the design's own 17px, so the app
+    was being used at 130% browser zoom. The floor moves to 11px, labels,
+    buttons and counts go up with it, and prose returns to 17px. `Ledger`
+    unchanged; this is size, not palette. See §16 and `test/typography.test.ts`.
 
 Settled while building phase 15.
 

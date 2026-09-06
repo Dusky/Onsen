@@ -115,7 +115,7 @@ export function Sidebar() {
               type="button"
               onClick={() => navigate(item.route)}
               aria-current={isActive ? "page" : undefined}
-              className="flex items-baseline gap-[10px] py-[11px] pr-[16px] pl-[16px] text-left text-[11px]"
+              className="flex items-baseline gap-[10px] py-[11px] pr-[16px] pl-[16px] text-left text-[13px]"
               style={{
                 color: isActive
                   ? "var(--onsen-color-red)"
@@ -128,7 +128,7 @@ export function Sidebar() {
               <span className="min-w-0 flex-1 truncate">{item.label}</span>
               {item.count === undefined ? null : (
                 <span
-                  className="flex-none text-[10px]"
+                  className="flex-none text-[12px]"
                   style={{
                     color: isActive
                       ? "var(--onsen-color-red)"
@@ -179,7 +179,7 @@ export function Sidebar() {
                   {title}
                 </span>
                 <span
-                  className="chrome flex-none text-[9.5px]"
+                  className="chrome flex-none text-[11.5px]"
                   style={{
                     color: isWriting
                       ? "var(--onsen-color-red)"
@@ -201,7 +201,7 @@ export function Sidebar() {
 
               {cast === "" ? null : (
                 <span
-                  className="chrome mt-[4px] block text-[9.5px]"
+                  className="chrome mt-[4px] block text-[11.5px]"
                   style={{ color: "var(--onsen-color-text-dim)" }}
                 >
                   {cast}

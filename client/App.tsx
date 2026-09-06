@@ -60,7 +60,7 @@ export function App() {
   if (phase.status === "loading") {
     return (
       <div className="flex screen-height items-center justify-center">
-        <p className="chrome text-[10.5px] text-ink-dim">
+        <p className="chrome text-[12.5px] text-ink-dim">
           {strings.common.working}
         </p>
       </div>
@@ -70,7 +70,7 @@ export function App() {
   if (phase.status === "error") {
     return (
       <div className="flex screen-height items-center justify-center px-[22px]">
-        <p className="chrome text-center text-[11.5px] text-red-text">
+        <p className="chrome text-center text-[13.5px] text-red-text">
           {strings.errors.network}
         </p>
       </div>

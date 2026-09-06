@@ -115,7 +115,7 @@ function NumberField({
           if (next !== value) onCommit(next);
         }}
       />
-      <span className="chrome mt-[5px] block text-[10.5px] text-ink-dim">
+      <span className="chrome mt-[5px] block text-[12.5px] text-ink-dim">
         {unit}
       </span>
     </label>
@@ -203,7 +203,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
   if (scene === undefined) {
     return (
       <div className="flex screen-height items-center justify-center">
-        <p className="chrome text-[10.5px] text-ink-dim">
+        <p className="chrome text-[12.5px] text-ink-dim">
           {strings.common.working}
         </p>
       </div>
@@ -374,7 +374,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                       <div key={run.id} className="border-b border-rule py-[9px]">
                         <div className="flex items-baseline gap-[8px]">
                           <span
-                            className="chrome text-[10.5px]"
+                            className="chrome text-[12.5px]"
                             style={{
                               color:
                                 run.status === "ok"
@@ -384,10 +384,10 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                           >
                             {strings.sceneSetup.directorRunStatus(run.status)}
                           </span>
-                          <span className="chrome flex-1 truncate text-[10.5px] text-ink-dim">
+                          <span className="chrome flex-1 truncate text-[12.5px] text-ink-dim">
                             {run.model ?? ""}
                           </span>
-                          <span className="chrome text-[10.5px] text-ink-dim">
+                          <span className="chrome text-[12.5px] text-ink-dim">
                             {strings.sceneSetup.directorRunTiming(run.durationMs)}
                           </span>
                         </div>
@@ -457,7 +457,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                 className="flex w-full items-baseline gap-[9px] border-b border-rule py-[12px] text-left"
               >
                 <span className="min-w-0 flex-1">
-                  <span className="chrome block text-[11px] text-ink-muted">
+                  <span className="chrome block text-[13px] text-ink-muted">
                     {group.name}
                   </span>
                   <span className="mt-[4px] block truncate text-[13.5px]">
@@ -481,7 +481,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
             className="flex w-full items-baseline gap-[9px] border-b border-rule py-[12px] text-left"
           >
             <span className="min-w-0 flex-1">
-              <span className="chrome block text-[11px] text-ink-muted">
+              <span className="chrome block text-[13px] text-ink-muted">
                 {strings.sceneSetup.bans}
               </span>
               <span className="mt-[4px] block truncate text-[13.5px]">
@@ -509,7 +509,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
             className="flex w-full items-baseline gap-[9px] border-b border-rule py-[12px] text-left"
           >
             <span className="min-w-0 flex-1">
-              <span className="chrome block text-[11px] text-ink-muted">
+              <span className="chrome block text-[13px] text-ink-muted">
                 {strings.lore.sceneRow}
               </span>
               <span className="mt-[4px] block truncate text-[13.5px]">
@@ -818,12 +818,12 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                       : { background: "var(--onsen-stripe)" }
                   }
                 />
-                <p className="chrome mt-[5px] truncate text-[10.5px] text-ink-label">
+                <p className="chrome mt-[5px] truncate text-[12.5px] text-ink-label">
                   {member.name}
                 </p>
                 <button
                   type="button"
-                  className="chrome mt-[2px] text-[10px]"
+                  className="chrome mt-[2px] text-[12px]"
                   style={{ color: "var(--onsen-color-red)" }}
                   onClick={() => removeFromCast.mutate(member.characterId)}
                 >
@@ -879,7 +879,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
             className="flex w-full items-baseline gap-[9px] border-b border-rule py-[12px] text-left"
           >
             <span className="min-w-0 flex-1">
-              <span className="chrome block text-[11px] text-ink-muted">
+              <span className="chrome block text-[13px] text-ink-muted">
                 {strings.dossiers.open}
               </span>
               <span className="mt-[4px] block truncate text-[13.5px]">
@@ -1071,7 +1071,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               <p className="explain mt-[4px]">
                 {proposal.content}
               </p>
-              <p className="chrome mt-[6px] text-[10px] text-ink-muted">
+              <p className="chrome mt-[6px] text-[12px] text-ink-muted">
                 {proposal.keys.join(" · ")}
               </p>
             </div>
@@ -1084,19 +1084,19 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
         <Sheet title={strings.characters.documents} onClose={() => setDocumentsOpen(false)}>
           <div className="pt-[8px] pb-[12px]">
             {(documents.data ?? []).length === 0 ? (
-              <p className="chrome mb-[10px] text-[10.5px] text-ink-dim">
+              <p className="chrome mb-[10px] text-[12.5px] text-ink-dim">
                 {strings.characters.noDocuments}
               </p>
             ) : (
               (documents.data ?? []).map((document) => (
                 <div key={document.id} className="flex items-baseline gap-[8px] border-b border-rule py-[9px]">
                   <span className="min-w-0 flex-1 truncate text-[13.5px]">{document.title}</span>
-                  <span className="chrome flex-none text-[10.5px] text-ink-muted">
+                  <span className="chrome flex-none text-[12.5px] text-ink-muted">
                     {document.chunkCount}
                   </span>
                   <button
                     type="button"
-                    className="chrome flex-none text-[10.5px]"
+                    className="chrome flex-none text-[12.5px]"
                     style={{ color: "var(--onsen-color-red)" }}
                     onClick={() => removeDocument.mutate(document.id)}
                   >
@@ -1175,7 +1175,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[15px] font-medium">{character.name}</span>
-                <span className="chrome block text-[10px] text-ink-dim">
+                <span className="chrome block text-[12px] text-ink-dim">
                   {strings.characters.tokens(character.tokens.total)}
                 </span>
               </span>
