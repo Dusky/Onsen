@@ -3404,6 +3404,11 @@ Each phase ends in a working, usable application.
     serves both paths, so they cannot drift into different editors. The same
     pattern is the shape for the remaining settings editors (providers,
     profiles, presets). See §16 and `test/settings-inline.test.ts`.
+72. **Providers and profiles expand in place** — the same pattern reaches the
+    models section: a provider or profile row expands its form into the row on
+    a desktop, and the create-new form appears inline in place of the add
+    button; the phone keeps the sheets. `ProviderFields` and `ProfileFields`
+    serve both paths each. See §16 and `test/settings-inline.test.ts`.
 
 Settled while building phase 15.
 

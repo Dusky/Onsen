@@ -3,14 +3,13 @@
 A short, honest list, written at the end of phase 65 so work can resume without
 re-deriving it. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 71, on `glm/sillytavern-replacement-dyp30w`. 1366 tests across
+**State:** phase 72, on `glm/sillytavern-replacement-dyp30w`. 1368 tests across
 92 files, typecheck clean, working tree clean. Feature complete against
 `SPEC.md` §20 apart from the deferred phase 42.
 
-**Desktop settings** — background-task rows now expand in place instead of
-opening a bottom sheet (§20 phase 71). The same pattern is the shape for the
-remaining editors: providers and profiles next, presets probably as a pane
-rather than an accordion.
+**Desktop settings** — background tasks, providers and profiles now expand in
+place instead of opening a bottom sheet (§20 phases 71–72). The preset editor
+is next, as a pane rather than an accordion.
 
 ## How to pick up
 

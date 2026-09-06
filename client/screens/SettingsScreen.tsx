@@ -121,6 +121,29 @@ function ProviderEditor({
   provider: ProviderDto | null;
   onClose(): void;
 }) {
+  return (
+    <Sheet
+      title={provider === null ? strings.settings.addProvider : provider.name}
+      onClose={onClose}
+    >
+      <div className="pt-[8px] pb-[14px]">
+        <ProviderFields provider={provider} onClose={onClose} />
+      </div>
+    </Sheet>
+  );
+}
+
+/**
+ * The provider's form, shared by the desktop's inline expansion and the
+ * phone's sheet, so the two cannot drift into different editors (§20 phase 72).
+ */
+function ProviderFields({
+  provider,
+  onClose,
+}: {
+  provider: ProviderDto | null;
+  onClose(): void;
+}) {
   const create = useCreateProvider();
   const update = useUpdateProvider();
   const remove = useDeleteProvider();
@@ -147,13 +170,9 @@ function ProviderEditor({
   }
 
   return (
-    <Sheet
-      title={provider === null ? strings.settings.addProvider : provider.name}
-      onClose={onClose}
-    >
+    <>
       <form
         ref={formRef}
-        className="pt-[8px] pb-[14px]"
         onSubmit={(event) => {
           event.preventDefault();
           const form = new FormData(event.currentTarget);
@@ -360,7 +379,7 @@ function ProviderEditor({
         </div>
       </form>
       {confirmNode}
-    </Sheet>
+    </>
   );
 }
 
@@ -369,6 +388,28 @@ function ProviderEditor({
 /* ------------------------------------------------------------------ */
 
 function ProfileEditor({
+  profile,
+  providers,
+  onClose,
+}: {
+  profile: ConnectionProfileDto | null;
+  providers: ProviderDto[];
+  onClose(): void;
+}) {
+  return (
+    <Sheet title={profile === null ? strings.settings.addProfile : profile.name} onClose={onClose}>
+      <div className="pt-[8px] pb-[14px]">
+        <ProfileFields profile={profile} providers={providers} onClose={onClose} />
+      </div>
+    </Sheet>
+  );
+}
+
+/**
+ * The profile's form, shared by the desktop's inline expansion and the phone's
+ * sheet, so the two cannot drift into different editors (§20 phase 72).
+ */
+function ProfileFields({
   profile,
   providers,
   onClose,
@@ -404,10 +445,9 @@ function ProfileEditor({
   }
 
   return (
-    <Sheet title={profile === null ? strings.settings.addProfile : profile.name} onClose={onClose}>
+    <>
       <form
         ref={formRef}
-        className="pt-[8px] pb-[14px]"
         onSubmit={(event) => {
           event.preventDefault();
           const form = new FormData(event.currentTarget);
@@ -525,7 +565,7 @@ function ProfileEditor({
         </div>
       </form>
       {confirmNode}
-    </Sheet>
+    </>
   );
 }
 
@@ -1681,70 +1721,115 @@ export function SettingsScreen() {
             <>
           {/* Providers */}
           <p className="group-heading mb-[12px]">{strings.settings.providers}</p>
-          {providerList.map((provider) => (
-            <Row key={provider.id}>
-              <button
-                type="button"
-                onClick={() => setEditingProviderId(provider.id)}
-                className="flex w-full gap-[9px] text-left"
-              >
-                {statusDot(provider.enabled && provider.baseUrl !== null)}
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[15px] font-medium">{provider.name}</span>
-                  <span className="meta block truncate">
-                    {[provider.model, kindLabel(provider.kind), provider.hasApiKey ? "keyed" : null]
-                      .filter((part) => part !== null && part !== "")
-                      .join(" · ")}
+          {providerList.map((provider) => {
+            const isOpen = isDesktop && editingProviderId === provider.id;
+            return (
+              <Row key={provider.id}>
+                <button
+                  type="button"
+                  onClick={() => setEditingProviderId(isOpen ? undefined : provider.id)}
+                  aria-expanded={isDesktop ? isOpen : undefined}
+                  className="flex w-full gap-[9px] text-left"
+                >
+                  {statusDot(provider.enabled && provider.baseUrl !== null)}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[15px] font-medium">{provider.name}</span>
+                    <span className="meta block truncate">
+                      {[provider.model, kindLabel(provider.kind), provider.hasApiKey ? "keyed" : null]
+                        .filter((part) => part !== null && part !== "")
+                        .join(" · ")}
+                    </span>
                   </span>
-                </span>
-                <span className="chrome flex-none self-center text-[12px] text-ink-dim">›</span>
-              </button>
-            </Row>
-          ))}
-          <button
-            type="button"
-            className="btn mt-[12px] mb-[26px] w-full"
-            onClick={() => setEditingProviderId(null)}
-          >
-            {strings.settings.addProvider}
-          </button>
+                  <span className="chrome flex-none self-center text-[12px] text-ink-dim">
+                    {isDesktop ? (isOpen ? "▾" : "›") : "›"}
+                  </span>
+                </button>
+                {isOpen ? (
+                  <div className="mt-[14px] border-t border-rule pt-[14px]">
+                    <ProviderFields
+                      provider={provider}
+                      onClose={() => setEditingProviderId(undefined)}
+                    />
+                  </div>
+                ) : null}
+              </Row>
+            );
+          })}
+          {isDesktop && editingProviderId === null ? (
+            <div className="mb-[26px] mt-[12px] border-t border-rule pt-[14px]">
+              <ProviderFields provider={null} onClose={() => setEditingProviderId(undefined)} />
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="btn mt-[12px] mb-[26px] w-full"
+              onClick={() => setEditingProviderId(null)}
+            >
+              {strings.settings.addProvider}
+            </button>
+          )}
 
           {/* Profiles */}
           <p className="group-heading mb-[12px]">{strings.settings.profiles}</p>
-          {profileList.map((profile) => (
-            <Row key={profile.id}>
-              <button
-                type="button"
-                onClick={() => setEditingProfile(profile)}
-                className="flex w-full items-baseline gap-[9px] text-left"
-              >
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[15px] font-medium">{profile.name}</span>
-                  <span className="meta block truncate">
-                    {[byId.get(profile.providerId)?.name, profile.model]
-                      .filter((part) => part !== undefined && part !== null && part !== "")
-                      .join(" · ")}
+          {profileList.map((profile) => {
+            const isOpen = isDesktop && editingProfile?.id === profile.id;
+            return (
+              <Row key={profile.id}>
+                <button
+                  type="button"
+                  onClick={() => setEditingProfile(isOpen ? undefined : profile)}
+                  aria-expanded={isDesktop ? isOpen : undefined}
+                  className="flex w-full items-baseline gap-[9px] text-left"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[15px] font-medium">{profile.name}</span>
+                    <span className="meta block truncate">
+                      {[byId.get(profile.providerId)?.name, profile.model]
+                        .filter((part) => part !== undefined && part !== null && part !== "")
+                        .join(" · ")}
+                    </span>
                   </span>
-                </span>
-                {profile.isDefault ? (
-                  <span
-                    className="chrome flex-none text-[12px]"
-                    style={{ color: "var(--onsen-color-red)" }}
-                  >
-                    {strings.settings.profileDefault}
+                  {profile.isDefault ? (
+                    <span
+                      className="chrome flex-none text-[12px]"
+                      style={{ color: "var(--onsen-color-red)" }}
+                    >
+                      {strings.settings.profileDefault}
+                    </span>
+                  ) : null}
+                  <span className="chrome flex-none self-center text-[12px] text-ink-dim">
+                    {isDesktop ? (isOpen ? "▾" : "›") : "›"}
                   </span>
+                </button>
+                {isOpen ? (
+                  <div className="mt-[14px] border-t border-rule pt-[14px]">
+                    <ProfileFields
+                      profile={profile}
+                      providers={providerList}
+                      onClose={() => setEditingProfile(undefined)}
+                    />
+                  </div>
                 ) : null}
-                <span className="chrome flex-none self-center text-[12px] text-ink-dim">›</span>
-              </button>
-            </Row>
-          ))}
-          <button
-            type="button"
-            className="btn mt-[12px] mb-[26px] w-full"
-            onClick={() => setEditingProfile(null)}
-          >
-            {strings.settings.addProfile}
-          </button>
+              </Row>
+            );
+          })}
+          {isDesktop && editingProfile === null ? (
+            <div className="mb-[26px] mt-[12px] border-t border-rule pt-[14px]">
+              <ProfileFields
+                profile={null}
+                providers={providerList}
+                onClose={() => setEditingProfile(undefined)}
+              />
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="btn mt-[12px] mb-[26px] w-full"
+              onClick={() => setEditingProfile(null)}
+            >
+              {strings.settings.addProfile}
+            </button>
+          )}
 
             </>
           ) : null}
@@ -1937,7 +2022,7 @@ export function SettingsScreen() {
         </div>
       </main>
 
-      {editingProviderId !== undefined ? (
+      {!isDesktop && editingProviderId !== undefined ? (
         <ProviderEditor
           provider={
             editingProviderId === null
@@ -1947,7 +2032,7 @@ export function SettingsScreen() {
           onClose={() => setEditingProviderId(undefined)}
         />
       ) : null}
-      {editingProfile !== undefined ? (
+      {!isDesktop && editingProfile !== undefined ? (
         <ProfileEditor
           profile={editingProfile}
           providers={providerList}

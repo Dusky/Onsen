@@ -5857,3 +5857,34 @@ into this one.
 **Verified in a browser** at 1440×900 (a task row expands inline, zero dialogs,
 role buttons and template textarea present) and 390×844 (the same tap opens the
 sheet).
+
+## Phase 72 — Providers and profiles expand in place
+
+The same pattern phase 71 gave the background tasks, carried to the models
+section. A provider or profile row is a handful of fields — name, address,
+model, key, routing — and on a desktop it was still opening a bottom sheet.
+
+### One component each, two paths each
+
+`ProviderEditor` and `ProfileEditor` each split into a sheet wrapper and a
+`ProviderFields` / `ProfileFields` body, shared by the phone's sheet and the
+desktop's inline expansion — the same contract `OpFields` established, and the
+same reason: two editors drifting apart is the defect, and one component is
+what prevents it.
+
+The create-new flow moves inline too: on a desktop the add button is replaced
+by the form, in place, rather than a sheet over the list. The phone keeps every
+sheet.
+
+### Surprises
+
+**The profile state was a snapshot while the provider state was an id.** The
+two editors had drifted *before* any UI drifted: `editingProviderId` is an id,
+`editingProfile` is a captured `ConnectionProfileDto`. The inline row had to
+compare `editingProfile?.id` and pass the list row, not the snapshot — which is
+also the better object, because the list row refreshes after a save while a
+snapshot does not.
+
+**Verified in a browser** at 1440×900 (provider row expands inline, zero
+dialogs; the new-provider form appears in place of the add button) and 390×844
+(the same tap opens the sheet).

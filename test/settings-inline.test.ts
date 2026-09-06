@@ -33,3 +33,20 @@ describe("op controls are one component", () => {
     expect(SETTINGS).toContain("setEditingOp(task)");
   });
 });
+
+describe("providers and profiles follow the same pattern", () => {
+  test("ProviderFields is shared by the sheet and the inline row", () => {
+    expect(SETTINGS).toContain("function ProviderFields");
+    // The phone's sheet, and the desktop's inline expansion.
+    expect(SETTINGS).toContain("<ProviderFields provider={provider} onClose={onClose} />");
+    expect(SETTINGS).toContain("onClose={() => setEditingProviderId(undefined)}");
+  });
+
+  test("ProfileFields is shared by the sheet and the inline row", () => {
+    expect(SETTINGS).toContain("function ProfileFields");
+    expect(SETTINGS).toContain(
+      "<ProfileFields profile={profile} providers={providers} onClose={onClose} />",
+    );
+    expect(SETTINGS).toContain("onClose={() => setEditingProfile(undefined)}");
+  });
+});
