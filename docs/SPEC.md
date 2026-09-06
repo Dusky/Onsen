@@ -3414,6 +3414,11 @@ Each phase ends in a working, usable application.
     sheet; the phone keeps the sheet. `PresetFields` is the one body for both,
     so the pane and the sheet cannot drift. See §16 and
     `test/settings-inline.test.ts`.
+74. **The setup wizard renders again** — `SetupScreen` mounts `ModelPicker`,
+    which needs the query client, but only the authenticated shell was wrapped
+    in `QueryClientProvider`; a first run landed on a blank page. The provider
+    now wraps the wizard and the login screen too. See §17 and
+    `test/setup-screen.test.ts`.
 
 Settled while building phase 15.
 

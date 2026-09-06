@@ -3,14 +3,13 @@
 A short, honest list, written at the end of phase 65 so work can resume without
 re-deriving it. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 73, on `glm/sillytavern-replacement-dyp30w`. 1369 tests across
-92 files, typecheck clean, working tree clean. Feature complete against
+**State:** phase 74, on `glm/sillytavern-replacement-dyp30w`. 1370 tests across
+93 files, typecheck clean, working tree clean. Feature complete against
 `SPEC.md` §20 apart from the deferred phase 42.
 
 **Desktop settings** — background tasks, providers and profiles expand in
-place, and the preset editor opens in a pane (§20 phases 71–73). Next: the two
-repairs — the setup wizard's missing QueryClientProvider, and the theme `base`
-flag that is never wired to `data-theme`.
+place, the preset editor opens in a pane, and the setup wizard renders again
+(§20 phases 71–74). Next: the theme `base` flag, then the dead-export sweep.
 
 ## How to pick up
 

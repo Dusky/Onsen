@@ -5908,3 +5908,20 @@ row did in phase 72 — the list refreshes after a save, a snapshot does not.
 **Verified in a browser** at 1440×900 (the preset opens in an `aside` beside
 the list, zero dialogs, samplers and the prompt manager present) and 390×844
 (the same tap opens the sheet).
+
+## Phase 74 — The setup wizard renders again
+
+Found during phase 65 and finally repaired. `SetupScreen` mounts `ModelPicker`,
+which calls a react-query hook, but `App` only wrapped the authenticated shell
+in `QueryClientProvider` — the wizard and the login screen sat outside it. A
+real first run in a browser landed on "No QueryClient set" and a blank page.
+No test caught it, because the setup *API* the harness uses works without the
+screen.
+
+The provider now wraps all three branches: setup, login and the shell.
+`test/setup-screen.test.ts` pins it by counting the three providers, so a
+future branch cannot slip outside again.
+
+**Verified in a browser** at 390×844: a fresh install renders the wizard, the
+form completes, and `/api/bootstrap` reports `setupCompleted: true,
+authenticated: true`.

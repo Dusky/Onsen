@@ -78,10 +78,22 @@ export function App() {
   }
 
   if (!phase.boot.setupCompleted) {
-    return <SetupScreen onComplete={() => void refresh()} />;
+    // The wizard uses ModelPicker, which needs the query client — so the
+    // provider wraps every branch, not just the authenticated shell. Phase 65
+    // found this the hard way: a first run landed on a blank page with
+    // "No QueryClient set".
+    return (
+      <QueryClientProvider client={queryClient}>
+        <SetupScreen onComplete={() => void refresh()} />
+      </QueryClientProvider>
+    );
   }
   if (!phase.boot.authenticated) {
-    return <LoginScreen onAuthenticated={() => void refresh()} />;
+    return (
+      <QueryClientProvider client={queryClient}>
+        <LoginScreen onAuthenticated={() => void refresh()} />
+      </QueryClientProvider>
+    );
   }
   return (
     <QueryClientProvider client={queryClient}>
