@@ -113,7 +113,7 @@ describe("a theme only has to name what it cares about", () => {
       "color-red-text",
     ];
     for (const theme of BUILTIN_THEMES) {
-      if (theme.name === "Ledger") continue; // It *is* the warm palette.
+      if (theme.name === "Ledger") continue; // It sets the full warm palette itself.
       const full = completeTokens(theme.tokens);
       for (const token of bleeders) {
         expect(`${theme.name}:${token}`).toBe(`${theme.name}:${full[token] === undefined ? "MISSING" : token}`);
@@ -212,6 +212,30 @@ describe("the shipped themes", () => {
     const { seedBuiltinThemes } = await import("../server/db/queries/themes.ts");
     expect(seedBuiltinThemes(t.ctx.db)).toBe(0);
     expect((await listThemes(t)).themes.length).toBe(before);
+  });
+});
+
+describe("the shipped default is the flat original", () => {
+  test("a fresh install opens sharp and shadowless", () => {
+    // DESIGN.md's third rule — sharp corners, 1px hairlines, no shadows — is
+    // the brand. Phase 45 made the default a rounded, shadowed theme and it
+    // read as generic SaaS; this pins the default back to the flat original.
+    // Absent counts as flat, because a depth token nothing sets falls through
+    // to tokens.css, whose default is 0px and none.
+    const defaults = BUILTIN_THEMES.find((theme) => theme.name === DEFAULT_THEME_NAME);
+    expect(defaults).toBeDefined();
+    const tokens = completeTokens(defaults!.tokens);
+
+    expect(tokens["radius"] === undefined || ["0", "0px"].includes(tokens["radius"]!)).toBe(true);
+    expect(tokens["shadow-panel"] === undefined || tokens["shadow-panel"] === "none").toBe(true);
+    expect(tokens["shadow-card"] === undefined || tokens["shadow-card"] === "none").toBe(true);
+
+    // Deterministic dark, not OS-dependent: a default theme that names no
+    // colours follows prefers-color-scheme, and `base` is not wired to
+    // data-theme, so it cannot stop that. The default must carry its own
+    // ground — the handoff's warm dark one.
+    expect(tokens["color-bg"]).toBe("#14120f");
+    expect(tokens["color-text"]).toBe("#e8e2d6");
   });
 });
 

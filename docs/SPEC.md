@@ -2852,6 +2852,19 @@ plus, optionally, CSS of the reader's own.
   `--onsen-border-width`, `--onsen-shadow-card` and `--onsen-shadow-panel`
   default to the flat original, so a theme that says nothing about depth looks
   as it always did.
+- **The default is the flat original.** A fresh install opens on `Ledger` —
+  sharp corners, hairlines, no shadows, the handoff's warm dark ground — and
+  the other shipped themes, rounded and shadowed ones included, stay pickable
+  by hand. Phase 45 had made the default a rounded, shadowed theme in answer
+  to "reads flat"; the real cause was surfaces two lightness points apart,
+  fixed in phase 49. `test/themes.test.ts` pins the default flat and dark.
+- **A theme's `base` flag changes nothing yet.** `dark` vs `light` is stored
+  and round-tripped, but nothing sets `data-theme` on the document from it, so
+  a theme renders dark or light only through the colours it names. The shipped
+  light themes work because they name light colours; `Ledger` names its dark
+  palette explicitly for the same reason, so the default is deterministic.
+  Either wire `base` to the document or delete the field — today it is a
+  promise the renderer does not keep.
 - **Shipped themes are read-only.** Editing one derives a copy.
 - **Tokens are data; CSS is code.** A token value that could close its
   declaration, or reach the network, is refused — so a shared theme cannot phone
@@ -3344,6 +3357,15 @@ Each phase ends in a working, usable application.
     sheet that writes, reorders and removes them. Firing one sends its prompt
     as a nudge — one instruction for the next turn, never a message.
     See §7 and `test/quick-replies.test.ts`.
+66. **The identity, restored** — the default theme returns to `Ledger`, the
+    flat warm hairline palette the design's third rule describes, after phase
+    45 had made the default a rounded, shadowed theme in answer to "reads
+    flat" when the real cause (surfaces two lightness points apart) was fixed
+    in phase 49. `Ledger` now carries the dark warm palette explicitly,
+    because a theme that names no colours follows the OS light preference and
+    `base` is not wired to `data-theme` — a default must be deterministic. The
+    first of the four surface passes in `docs/SURFACE-PASS.md`. See §16 and
+    `test/themes.test.ts`.
 
 Settled while building phase 15.
 

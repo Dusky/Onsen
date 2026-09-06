@@ -59,11 +59,54 @@ function withDepth(
 
 export const BUILTIN_THEMES: readonly BuiltinTheme[] = [
   {
-    // The original handoff palette, flat, exactly as it was. Nothing about
-    // moving the default should make this unreachable.
+    // The original handoff palette, flat, exactly as it was.
+    //
+    // The colours are named explicitly rather than left to the stylesheet's
+    // fall-through, because a theme that sets no colours follows the OS's
+    // light preference — the `base` field is stored and round-tripped but
+    // nothing wires it to `data-theme`, so it cannot stop that. A default
+    // theme must be deterministic, so this carries the dark warm palette
+    // itself. Sharp corners and no shadows come from DEPTH.flat.
     name: "Ledger",
     base: "dark",
-    tokens: { ...DEPTH.flat },
+    tokens: {
+      ...DEPTH.flat,
+      "color-bg": "#14120f",
+      "color-bg-sunken": "#0f0d0a",
+      "color-bg-raised": "#1d1a15",
+      "color-bg-inset": "#262119",
+      "color-bg-input": "#100e0b",
+      "color-rule": "#2b2620",
+      "color-rule-strong": "#3b352c",
+      "color-border-quiet": "#332d25",
+      "color-text": "#e8e2d6",
+      "color-text-bright": "#f0e9dc",
+      "color-text-label": "#c9c1b1",
+      "color-text-muted": "#8b8477",
+      "color-text-dim": "#6f6a5f",
+      "color-text-prose-muted": "#9a9284",
+      "color-text-placeholder": "#6f6a5f",
+      "color-red": "#c0503c",
+      "color-red-bg": "#1e1712",
+      "color-red-border": "#4a3129",
+      "color-red-text": "#d78872",
+      "color-blue": "#5b7fa6",
+      "color-blue-bg": "#191d22",
+      "color-blue-bg-sheet": "#171b20",
+      "color-blue-border": "#232a31",
+      "color-blue-border-strong": "#2f3a45",
+      "color-blue-text": "#b9c3ce",
+      "color-blue-text-muted": "#6f7d8c",
+      "color-blue-prose": "#cdd5de",
+      "color-ooc-reader-bg": "#2b2118",
+      "color-ooc-reader-text": "#e2cdb4",
+      "color-green": "#7fa65b",
+      "color-green-text": "#b6c6a4",
+      "color-green-text-muted": "#7d8c6f",
+      "color-amber": "#a6864f",
+      "color-amber-text": "#cbb894",
+      "color-amber-text-muted": "#8c7d5b",
+    },
   },
   {
     name: "Bottle",
@@ -239,5 +282,14 @@ export const BUILTIN_THEMES: readonly BuiltinTheme[] = [
   },
 ];
 
-/** What a fresh install opens on. */
-export const DEFAULT_THEME_NAME = "Bottle";
+/**
+ * What a fresh install opens on.
+ *
+ * `Ledger` is the design handoff's own palette — flat, warm, hairline, no
+ * shadows — which is what DESIGN.md's third rule ("everything is a page being
+ * marked up") describes. It sat off the default since phase 45, when "the app
+ * read flat" was answered with rounded cards and drop shadows instead of with
+ * the real cause (surfaces two lightness points apart, fixed in phase 49).
+ * The flat identity is the brand; the rounded themes remain, pickable by hand.
+ */
+export const DEFAULT_THEME_NAME = "Ledger";

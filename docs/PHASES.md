@@ -5572,3 +5572,55 @@ theme buttons are not on the page until it is open.
 **Firing a quick reply proves the nudge on the wire.** The stub logs every
 message it is sent, and the fired prompt appears verbatim — which is the whole
 claim "storage plus a row of buttons" rests on, checked rather than assumed.
+
+## Phase 66 — The identity, restored
+
+The first of the four surface passes (`docs/SURFACE-PASS.md`), and the one the
+others are un-judgeable without: the app's own design system says "sharp
+corners, 1px hairlines, no shadows", and the shipped default had been a rounded,
+shadowed, greenish theme since phase 45.
+
+### What the wrong default actually was
+
+Phase 45's commit message is honest about the cause: "the app read flat, and
+nothing about it could be customised." So depth became a theme value and the
+default became `Bottle` — radius 9px, two drop shadows, on a green ground.
+Rounded corners plus shadows plus a neutral tint is the generic-SaaS recipe,
+which is the look the user was calling slop.
+
+But "read flat" was never about the sharp corners. It was the surfaces being
+two lightness points apart — page `#14120f`, raised `#16130f` — which phase 49
+fixed by raising the steps, *after* the default had already moved. The flat
+identity never needed to go; it needed the surfaces to step.
+
+### What was built
+
+- **Default theme → `Ledger`**: flat, warm (`#14120f` ground), hairline, no
+  shadows, with phase 49's raised surfaces. The rounded themes stay shipped and
+  pickable by hand.
+- **`Ledger` names its dark palette explicitly.** A theme that names no colours
+  falls through to `tokens.css`, which flips to light under
+  `prefers-color-scheme: light` — and a fresh drive showed exactly that, on the
+  very first check. The `base` field is stored but nothing wires it to
+  `data-theme`, so it cannot stop the flip. The default must be deterministic,
+  so `Ledger` carries the warm dark palette itself instead of inheriting it.
+- **A guard in `test/themes.test.ts`** pins the default flat *and* dark: radius
+  0, no shadows, ground `#14120f`.
+
+### Surprises
+
+**The `base` field is a promise the renderer does not keep.** `dark` vs `light`
+is stored, round-tripped, and shown — and changes nothing. A theme renders dark
+or light only through the colours it names. The shipped light themes happen to
+work because they name light colours; `Ledger` needed its palette spelled out
+for the same reason. Either wire `base` to the document root or delete the
+field. Recorded in `SPEC.md` §16 Themes, left for a later phase.
+
+**"Reads flat" had been answered with the wrong fix, and it stuck.** The
+criticism was real; the diagnosis was wrong. That is the shape of the whole
+surface pass, and it is why the guard now asserts the *identity* rather than
+trusting a future phase to keep it.
+
+**Verified in a browser** at 390×844 and 1440×900, reading the computed custom
+properties rather than a screenshot: radius `0px`, no shadow, ground `#14120f`
+on both widths, on a fresh install.
