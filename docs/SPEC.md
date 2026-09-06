@@ -2537,9 +2537,10 @@ toggle.
 - Swipe counter on messages with siblings.
 - Streaming indicator naming the speaking character; prominent stop button.
 - Per-message generation stats — id, TTFT, tokens, tokens/sec — in the gutter,
-  rendered untapped (§16 §Density rule 2; model on hover). Specced "behind a
-  tap" until phase 55, which is most of why it went unbuilt for fifty phases
-  while the server stored the record on every message.
+  rendered and tappable (§16 §Density rule 2; model on hover): the number is
+  the doorway, and tapping it opens the prompt behind the turn (§20 phase 69).
+  Specced "behind a tap" until phase 55, which is most of why it went unbuilt
+  for fifty phases while the server stored the record on every message.
 
 ### Other screens
 
@@ -3386,6 +3387,10 @@ Each phase ends in a working, usable application.
     and shows it block by block with costs, evictions and lore verdicts, before
     anything is generated. A preview writes nothing. The third surface pass.
     See §16 and `test/prompt-preview.test.ts`.
+69. **The numbers become doorways** — the message gutter (`#46 · 1.2s · 868t`)
+    becomes a button that opens the prompt behind that turn, completing the
+    density rule that a number is never behind a tap: the number is the tap.
+    The fourth surface pass. See §16 and `test/gutter.test.ts`.
 
 Settled while building phase 15.
 

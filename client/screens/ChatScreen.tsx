@@ -873,6 +873,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         onReroll={() => void reroll(message)}
         onOpenVersions={() => setVersionsFor(message)}
         onLongPress={() => setActing(message)}
+        onInspect={() => setInspecting(message)}
         selected={selectedId === message.id}
         onSelect={() => setSelectedId(message.id)}
         onRevert={(note) => revert.mutate(note.id)}

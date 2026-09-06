@@ -51,6 +51,8 @@ interface MessageBlockProps {
   onReroll(): void;
   onOpenVersions(): void;
   onLongPress(): void;
+  /** Open the prompt behind this turn (SPEC §16, §20 phase 69). */
+  onInspect?(): void;
   /** The turn ⌘K and the accelerators act on (§20 phase 43). */
   selected?: boolean;
   onSelect?(): void;
@@ -320,7 +322,16 @@ export function OocBlock({
  * so the ordinal renders alone rather than the row disappearing, because the
  * message number is useful on its own when reporting a bad turn.
  */
-function Stats({ message, ordinal }: { message: MessageDto; ordinal: number | undefined }) {
+function Stats({
+  message,
+  ordinal,
+  onOpen,
+}: {
+  message: MessageDto;
+  ordinal: number | undefined;
+  /** Set when the row should open the prompt behind the turn (§20 phase 69). */
+  onOpen?: (() => void) | undefined;
+}) {
   const meta = message.generation;
   const parts: string[] = [];
   if (ordinal !== undefined) parts.push(`#${ordinal}`);
@@ -344,10 +355,26 @@ function Stats({ message, ordinal }: { message: MessageDto; ordinal: number | un
     if (meta.finishReason === "length") parts.push(strings.chat.cutOff);
   }
   if (parts.length === 0) return null;
+  const label = parts.join(" \u00b7 ");
+  // The number is the doorway (§16 §Density rule 2): tapping it opens the
+  // prompt behind the turn, the same sheet the palette's "inspect" opens.
+  if (onOpen === undefined) {
+    return (
+      <span className="meta shrink-0 tabular-nums" title={meta?.model ?? undefined}>
+        {label}
+      </span>
+    );
+  }
   return (
-    <span className="meta shrink-0 tabular-nums" title={meta?.model ?? undefined}>
-      {parts.join(" \u00b7 ")}
-    </span>
+    <button
+      type="button"
+      onClick={onOpen}
+      title={meta?.model ?? strings.chat.inspect}
+      aria-label={strings.chat.inspect}
+      className="meta shrink-0 tabular-nums"
+    >
+      {label}
+    </button>
   );
 }
 
@@ -487,6 +514,7 @@ export function MessageBlock({
   onReroll,
   onOpenVersions,
   onLongPress,
+  onInspect,
   selected,
   onSelect,
   streamingText,
@@ -576,7 +604,7 @@ export function MessageBlock({
           actions={actions}
           onReroll={onReroll}
         />
-        <Stats message={message} ordinal={ordinal} />
+        <Stats message={message} ordinal={ordinal} onOpen={onInspect} />
         {message.siblingCount > 1 ? (
           <button
             type="button"

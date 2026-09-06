@@ -5732,3 +5732,44 @@ number behind a tap is a number nobody reads, so the number *is* the tap.
 **Verified in a browser** at 390×844 and 1440×900: tapping the readout opens
 the sheet with the budget arithmetic and the block list — Spotlight, History,
 Guides, the prompt options — costed and in order, before anything was sent.
+
+## Phase 69 — The numbers become doorways
+
+The fourth surface pass, and the smallest — which is fitting: the whole pass was
+about numbers that a reader could act on, and this is the last one that was a
+dead read-only line.
+
+### The gutter was a number nobody could act on
+
+`#46 · 1.2s · 868t · 41/s` sat in every message's gutter, carrying the exact
+answer to "why did this turn read wrong" — and it did nothing. The answer is
+behind it: the prompt that produced the turn, block by block, costed and with
+its evictions. §16 §Density rule 2 says a number behind a tap is a number
+nobody reads; the corollary this phase closes is that a number with a whole
+prompt behind it should *be* the tap. The gutter is now a button, and it opens
+the prompt behind the turn — the same sheet the palette's "inspect" command
+opens, so the two routes cannot disagree.
+
+### What was built
+
+- `MessageBlock.Stats` renders as a button when an `onInspect` is wired, with
+  the model still on hover and the inspector's own label as its accessible
+  name. `ChatScreen` wires every turn to the inspector.
+- `test/gutter.test.ts` pins both halves: the stats are a doorway, and every
+  turn passes the inspector in.
+
+### What was deferred
+
+**Settings as a table, edited in the pane.** The Workbench artboard wanted the
+thirty-one settings rows to become a table with in-pane editing instead of rows
+that open sheets. That is a rewrite of the settings screen's editing model and
+deserves its own phase, not a tail on a navigation pass.
+
+**The sheet-depth guard turned out to be a no-op.** The plan proposed "a sheet
+never opens another sheet"; reading the tree, none does — the command palette
+and the sheets are siblings that close each other before the next opens. A
+guard against a nesting that does not exist would be measuring nothing, so it
+was dropped rather than shipped as theatre.
+
+**Verified in a browser** at 390×844: a generated turn's gutter is a button,
+and tapping it opens the inspector sheet with that turn's prompt.
