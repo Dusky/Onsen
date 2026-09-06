@@ -1765,6 +1765,18 @@ export function useGenerateSceneBackground(sceneId: string) {
   });
 }
 
+/** Translate one turn into the scene's language (§20 phase 78). */
+export function useTranslateMessage(sceneId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (messageId: string) =>
+      api.post<MessageDto>(`/scenes/${sceneId}/messages/${messageId}/translate`, {}),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: keys.scene(sceneId) });
+    },
+  });
+}
+
 /* ---------------- the data bank (SPEC §11, phase 30) ---------------- */
 
 export function useEmbeddingsConfig() {

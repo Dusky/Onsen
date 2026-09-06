@@ -1,5 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { assetsForMessages, toMediaAssetDto } from "./media.ts";
+import { translationsFor } from "./translations.ts";
 import { ulid } from "../../lib/ulid.ts";
 import { runStage, scriptContext, type ScriptContext } from "../../scripts/runtime.ts";
 import { originOfRequest, sceneChannel } from "../../sync/channel.ts";
@@ -87,6 +88,8 @@ export interface SceneRow {
   background_path: string | null;
   /** Whether an OOC aside renders inline in the log, or only in the channel (§7). */
   ooc_inline: number;
+  /** Display-only translation's target language, null when off (§20 phase 78). */
+  translate_to: string | null;
   /** §11 layer 3's narrative memory: off by default, enabled per scene. */
   memory_enabled: number;
   /** §19's outbound API: off by default, enabled per scene. */
@@ -207,6 +210,8 @@ export function toMessageDto(
   annotations: AnnotationDto[] = [],
   /** Pictures and audio on this turn (§20 phase 41), passed in for the same reason. */
   media: MediaAssetDto[] = [],
+  /** Display-only translation for the scene's target language (§20 phase 78). */
+  translation: string | null = null,
 ): MessageDto {
   return {
     media,
@@ -223,6 +228,7 @@ export function toMessageDto(
     content: row.content,
     reasoning: row.reasoning,
     isHidden: row.is_hidden === 1,
+    translation,
     tokenCount: row.token_count,
     generation: parseGenerationMeta(row.generation_meta),
     expression: row.expression,
@@ -304,6 +310,7 @@ function toSceneDto(
     activeLeafId: extras.activeLeafUlid,
     messageCount: extras.messageCount,
     lastLine: extras.lastLine,
+    translateTo: row.translate_to,
     lastPromptTokens: extras.lastPromptTokens,
     summaryCount: extras.summaryCount,
     contextSize: extras.contextSize,
@@ -527,6 +534,8 @@ export function updateScene(
     tags?: string;
     folder?: string | null;
     isFavourite?: boolean;
+    /** Display-only translation's target language (§20 phase 78). */
+    translateTo?: string | null;
   },
 ): SceneRow {
   const current = findSceneById(db, id);
@@ -547,6 +556,7 @@ export function updateScene(
               tags = $tags,
               folder = $folder,
               is_favourite = $favourite,
+              translate_to = $translate_to,
               updated_at = $now
         WHERE id = $id
         RETURNING *`,
@@ -561,6 +571,7 @@ export function updateScene(
       tags: patch.tags ?? current.tags,
       folder: keep(patch.folder, current.folder),
       favourite: (patch.isFavourite ?? current.is_favourite === 1) ? 1 : 0,
+      translate_to: keep(patch.translateTo, current.translate_to),
       now: Date.now(),
     }) as SceneRow;
 }
@@ -1170,6 +1181,11 @@ export function activePathDtos(db: Database, scene: SceneRow, limit?: number): M
     if (asset.message_id === null) continue;
     media.set(asset.message_id, [...(media.get(asset.message_id) ?? []), toMediaAssetDto(asset)]);
   }
+  // Display-only translations, one query for the whole path (§20 phase 78).
+  const translations =
+    scene.translate_to === null
+      ? new Map<number, string>()
+      : translationsFor(db, rows.map((row) => row.id), scene.translate_to);
   return rows.map((row, index) =>
     displayScripted(
       scripts,
@@ -1187,6 +1203,7 @@ export function activePathDtos(db: Database, scene: SceneRow, limit?: number): M
         row.kind === "beat" ? segmentDtosOf(db, row, speakers) : null,
         annotationDtosOf(db, row.id),
         media.get(row.id) ?? [],
+        translations.get(row.id) ?? null,
       ),
     ),
   );
@@ -1194,6 +1211,13 @@ export function activePathDtos(db: Database, scene: SceneRow, limit?: number): M
 
 export function messageDto(db: Database, row: MessageRow, sceneUlid: string): MessageDto {
   const speakers = speakerLookup(db);
+  const target = db
+    .query("SELECT translate_to FROM scenes WHERE id = $id")
+    .get({ id: row.scene_id }) as { translate_to: string | null } | null;
+  const translation =
+    target === null || target.translate_to === null
+      ? null
+      : (translationsFor(db, [row.id], target.translate_to).get(row.id) ?? null);
   return displayScripted(
     scriptContext(db, row.scene_id),
     toMessageDto(
@@ -1204,6 +1228,7 @@ export function messageDto(db: Database, row: MessageRow, sceneUlid: string): Me
       row.kind === "beat" ? segmentDtosOf(db, row, speakers) : null,
       annotationDtosOf(db, row.id),
       mediaDtosOf(db, row.id),
+      translation,
     ),
   );
 }

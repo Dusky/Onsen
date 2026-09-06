@@ -438,6 +438,23 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
             }}
           />
 
+          {/* Display-only translation (§20 phase 78): the viewing language, not
+              the writing one. */}
+          <p className="section-label mt-[16px] mb-[8px]">
+            {strings.sceneSetup.translateTo}
+          </p>
+          <input
+            className="field mb-[8px]"
+            placeholder={strings.sceneSetup.translateToPlaceholder}
+            defaultValue={scene.translateTo ?? ""}
+            onBlur={(event) => {
+              const value = event.target.value.trim();
+              if (value === (scene.translateTo ?? "")) return;
+              setup.mutate({ translateTo: value === "" ? null : value });
+            }}
+          />
+          <p className="explain mb-[20px]">{strings.sceneSetup.translateToHint}</p>
+
           {/* Prompt option groups (SPEC §13.5). One row per group showing what
               is chosen; the options themselves are a sheet, because seven
               groups of four to six is thirty-odd switches on one screen. */}

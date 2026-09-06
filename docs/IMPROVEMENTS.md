@@ -1,7 +1,8 @@
 # App improvement plan
 
-**Status:** items 1–6 done (phases 71–77). Item 7 (chat translation) is next
-and needs the display-only-vs-stored decision first; item 8 is conditional.
+**Status:** items 1–7 done (phases 71–78). Item 8 is the conditional set:
+smooth streaming only if it judders, web search after a provider decision, and
+self-responses after a conversation.
 
 Written at phase 71. Ordered by felt improvement per hour of work, which has
 been the thread of every review since phase 65. Each item is its own phase —

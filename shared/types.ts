@@ -551,6 +551,12 @@ export interface MessageDto {
   speakerName: string | null;
   content: string;
   /**
+   * The display-only translation of this turn, when the scene has a target
+   * language and one has been made (§20 phase 78). Null otherwise. The stored
+   * text and the prompt keep `content`; this is the viewing layer only.
+   */
+  translation: string | null;
+  /**
    * The model's own reasoning, hidden from the prose and rendered collapsed
    * (SPEC §13). Never fed back into a later prompt unless the preset asks.
    */
@@ -1265,6 +1271,11 @@ export interface SceneDto {
   activeLeafId: string | null;
   messageCount: number;
   /**
+   * The target language for display-only translation, or null when off
+   * (§20 phase 78). The prompt keeps the author's language either way.
+   */
+  translateTo: string | null;
+  /**
    * A few words of the newest turn, for the roleplays list - the one thing that
    * tells two scenes with the same title apart. Null while the scene is empty.
    */
@@ -1324,6 +1335,8 @@ export interface UpdateSceneRequest {
   tags?: string[];
   folder?: string | null;
   isFavourite?: boolean;
+  /** Display-only translation's target language (§20 phase 78). */
+  translateTo?: string | null;
 }
 
 export interface AppendMessageRequest {
@@ -2773,4 +2786,6 @@ export interface SceneSetupRequest {
   vnModeEnabled?: boolean;
   summariseFreeze?: number;
   title?: string;
+  /** Display-only translation's target language (§20 phase 78). */
+  translateTo?: string | null;
 }

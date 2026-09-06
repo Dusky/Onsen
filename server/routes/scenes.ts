@@ -353,6 +353,15 @@ export function sceneRoutes(
       if (typeof value !== "boolean") return c.json(badRequest("isFavourite is a boolean."), 400);
       patch.isFavourite = value;
     }
+    // Display-only translation: a language name or code, or null for off.
+    if ("translateTo" in input) {
+      const value = (input as { translateTo?: unknown }).translateTo;
+      if (value !== null && typeof value !== "string") {
+        return c.json(badRequest("A translation language is a name, or null for none."), 400);
+      }
+      const trimmed = typeof value === "string" ? value.trim() : null;
+      patch.translateTo = trimmed === "" ? null : trimmed;
+    }
 
     if ("turnStrategy" in input) {
       if (!(TURN_STRATEGIES as readonly unknown[]).includes(input.turnStrategy)) {

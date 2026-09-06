@@ -61,6 +61,7 @@ export const COMMANDS: readonly Command[] = [
   { id: "recast", title: c.recast, scope: "turn", group: "turn", keywords: ["beat", "part", "character"] },
   { id: "split", title: c.splitBeat, scope: "turn", group: "turn", keywords: ["beat", "separate"] },
   { id: "copy", title: c.copy, scope: "turn", group: "turn", keywords: ["clipboard"] },
+  { id: "translate", title: c.translate, scope: "turn", group: "turn", keywords: ["language"] },
   { id: "delete", title: c.delete, scope: "turn", group: "turn", keywords: ["remove"] },
   {
     id: "continue",

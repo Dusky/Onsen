@@ -224,6 +224,7 @@ export const AUTHOR_REMEMBER = "author_remember";
 
 /** §20 phase 41: what a picture the reader attached actually shows. */
 export const CAPTION_IMAGE = "caption_image";
+export const TRANSLATE = "translate";
 
 export const OP_KINDS: readonly OpKind[] = [
   {
@@ -591,6 +592,20 @@ export const OP_KINDS: readonly OpKind[] = [
     // Runs when a picture is attached, which is the reader asking for it. There
     // is no unattended path that could fire this.
     autoByDefault: false,
+  },
+  {
+    key: TRANSLATE,
+    runs: "side_call",
+    label: "Translate",
+    description:
+      "Renders a turn in the scene's translation language. The stored text and the prompt keep the original; this is a viewing layer.",
+    stage: "sidecar",
+    // Faithful, not creative: a translation must keep the meaning and voice.
+    samplers: { temperature: 0.2, top_p: 0.9 },
+    timeoutMs: 45_000,
+    replyLimit: 8_000,
+    variables: ["text", "language"],
+    hideable: false,
   },
 ];
 

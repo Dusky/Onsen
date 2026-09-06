@@ -6011,3 +6011,41 @@ shapes are deliberately not merged.
 
 **Verified in a browser** at 390×844 against a stub A1111 service: the button
 draws, `hasBackground` flips true, and the file serves as `image/png`.
+
+## Phase 78 — Display-only chat translation
+
+The decision was display-only, and the build follows it exactly: the stored
+text and the prompt keep the language the author writes in, and a translation
+is a viewing layer stored beside the message — the same shape §14's
+`display_only` regex stage takes, but a model call rather than a pattern.
+
+### A row beside the message, never in it
+
+`scenes.translate_to` names the target language; `message_translations` holds
+one rendering per message per language. The DTO for the log carries
+`translation`, and the message block renders `translation ?? content`, while the
+editor and the prompt both keep reading `content`. The stored text is the
+author's original, so nothing downstream can drift: swipes, edits and the
+prompt are untouched by what the reader sees.
+
+The translation itself is a side call — a `translate` op with a template,
+routable to a cheap model like any other — fired by a turn's *Translate*
+command in the palette.
+
+### What was built
+
+- Migration 0050: `scenes.translate_to` and `message_translations`.
+- `server/translation/translate.ts`: the prompt and the side-call run.
+- The DTO path carries `translation` from one query for the whole path.
+- A *Translate* command, a scene-setup language field, and the log rendering.
+- `test/translation.test.ts` pins the invariant: the stored text and the
+  prompt-side content are unchanged, the DTO carries the rendering.
+
+### What was deferred
+
+Beats are translated as a whole turn; their per-segment view keeps the
+original. Auto-translating the newest turn after generation is a follow-up —
+v1 is on demand, which is what the incumbent's translate extension does too.
+
+**Verified in a browser** at 390×844: a translated turn renders in the target
+language while the stored text stays original.

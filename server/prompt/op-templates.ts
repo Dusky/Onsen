@@ -249,8 +249,13 @@ Write two or three sentences of plain description: who or what is in it, where, 
 
 Reply with the description alone.`;
 
+const TRANSLATE_TEMPLATE = `Translate the following text into {{language}}. Keep the meaning, the tone and the speaker's voice; do not add or leave anything out. Reply with the translation alone.
+
+{{text}}`;
+
 const DEFAULTS: Record<string, string> = {
   caption_image: CAPTION_IMAGE_TEMPLATE,
+  translate: TRANSLATE_TEMPLATE,
   author_remember: AUTHOR_REMEMBER_TEMPLATE,
   memory_extract: MEMORY_EXTRACT_TEMPLATE,
   [ANALYSE_SLOP]: ANALYSE_SLOP_TEMPLATE,

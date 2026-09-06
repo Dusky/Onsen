@@ -62,6 +62,7 @@ import {
   useLayout,
   useInspector,
   usePreviewPrompt,
+  useTranslateMessage,
 } from "../lib/queries.ts";
 import type {
   GuideKind,
@@ -173,6 +174,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   /** The next-turn prompt preview (§20 phase 68): open while it is shown. */
   const [previewOpen, setPreviewOpen] = useState(false);
   const preview = usePreviewPrompt(sceneId);
+  const translate = useTranslateMessage(sceneId);
   /** The beat whose parts are being picked from, for a recast. */
   const [recasting, setRecasting] = useState<MessageDto | null>(null);
   /**
@@ -436,6 +438,12 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           confirmLabel: strings.chat.splitBeat,
         }),
       "copy": () => void navigator.clipboard?.writeText(turn?.content ?? ""),
+      "translate": () => {
+        // Display-only: needs a target language from scene setup.
+        if (turn !== null && scene.data?.scene.translateTo !== null) {
+          translate.mutate(turn.id);
+        }
+      },
       "delete": () =>
         turn &&
         confirm(strings.chat.deleteConfirm, () => remove.mutate(turn.id), {

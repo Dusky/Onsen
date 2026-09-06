@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { AppContext, AppEnv } from "../context.ts";
 import { requireAuth } from "../middleware/session.ts";
 import { findScene, findMessage, activePath, speakerLookup } from "../db/queries/history.ts";
+import { translateMessage } from "../translation/translate.ts";
 import { findCharacter } from "../db/queries/characters.ts";
 import {
   isBeatBound,
@@ -1203,6 +1204,46 @@ export function sceneGenerationRoutes(
    * affordance: swiping rerolls the whole exchange, which is a different and
    * much blunter thing to want.
    */
+  /**
+   * Translate one turn into the scene's language (§20 phase 78).
+   *
+   * Display-only: the stored text and the prompt keep the author's language.
+   * The translation is stored beside the message and the message DTO carries
+   * it, so the log shows it while edits and generations still read the
+   * original.
+   */
+  app.post("/:sceneId/messages/:messageId/translate", async (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    if (scene.translate_to === null) {
+      return c.json(
+        { error: { code: "bad_request", message: "Set a translation language in setup first." } },
+        400,
+      );
+    }
+    const message = findMessage(ctx.db, c.req.param("messageId"));
+    if (message === null || message.scene_id !== scene.id) {
+      return c.json({ error: { code: "not_found", message: "No such message." } }, 404);
+    }
+
+    const translation = await translateMessage(
+      ctx.db,
+      tasks,
+      message,
+      scene.translate_to,
+      scene.connection_profile_id,
+    );
+    if (translation === null) {
+      return c.json(
+        { error: { code: "service_failed", message: "The translation failed." } },
+        502,
+      );
+    }
+    return c.json(messageDto(ctx.db, message, scene.ulid));
+  });
+
   app.post("/:sceneId/messages/:messageId/recast", async (c) => {
     const scene = findScene(ctx.db, c.req.param("sceneId"));
     if (scene === null) {

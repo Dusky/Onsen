@@ -212,6 +212,8 @@ autopilot_enabled, autopilot_max_turns
 ooc_enabled, ooc_interval
 vn_mode_enabled    -- visual novel staging
 background_path    -- the VN background, served from the data dir
+translate_to       -- display-only translation's target language, null when off
+                   (§20 phase 78); the prompt keeps the author's language
 active_leaf_id     -- pointer into the message tree
 import_source      -- the SillyTavern path this came from, or null (§20 ph. 44)
 import_hash        -- of that file's bytes, so re-running the import is safe
@@ -2586,6 +2588,10 @@ toggle.
   and forward, from the status bar's token readout (§20 phase 68): a preview of
   the *next* turn's prompt, assembled the same way and shown in the same sheet
   before anything is generated.
+- **Display-only translation** — a scene can name a translation language
+  (§20 phase 78), and a turn's *Translate* command renders it in that language
+  while the stored text and the prompt keep the author's own. The translation
+  lives in a row beside the message, read only when the log's DTO is built.
 - **Desktop sidebar** — the tab bar unrolled (§20 phase 67): a Spectral
   wordmark, the five destinations with counts and an unmistakable active state,
   and a `RECENT` list of real rows — title, the newest line of prose, the
@@ -3439,6 +3445,12 @@ Each phase ends in a working, usable application.
     picture service, filing the image exactly where an upload would go so
     `hasBackground` and the VN stage light up. A `Generate` button sits beside
     the upload in scene setup. See §12 and `test/background.test.ts`.
+78. **Display-only chat translation** — a scene can name a translation
+    language, and a turn's *Translate* command renders it in that language as
+    a viewing layer: the translation is stored in a row beside the message and
+    read only into the log's DTO, while the stored text and the prompt keep the
+    author's language. The decision was display-only, not stored. See §16 and
+    `test/translation.test.ts`.
 
 Settled while building phase 15.
 

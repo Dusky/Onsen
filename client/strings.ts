@@ -271,6 +271,7 @@ export const strings = {
 
     copy: "Copy",
     copied: "Copied",
+    translate: "Translate",
     delete: "Delete",
     deleteConfirm: "Delete this and everything after it?",
 
@@ -1392,6 +1393,12 @@ export const strings = {
     /** This scene's own framing, in place of the card's (SPEC §2). */
     scenario: "Scenario",
     scenarioPlaceholder: "A relay station on the ridge, three days into a shortage…",
+
+    /** Display-only translation (§20 phase 78). */
+    translateTo: "Translate the log into",
+    translateToPlaceholder: "Spanish, Japanese, French…",
+    translateToHint:
+      "Display only. The stored text and the prompt keep the language the author writes in.",
 
     /** Prompt option groups (SPEC §13.5). */
     options: "How it writes",

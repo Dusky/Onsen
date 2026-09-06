@@ -529,7 +529,9 @@ export function MessageBlock({
     onLongPress,
   });
 
-  const text = streamingText ?? message.content;
+  // Display-only translation (§20 phase 78): the log shows the translation,
+  // while edits and the prompt keep `message.content`.
+  const text = streamingText ?? message.translation ?? message.content;
   const segments = streamingText === undefined ? message.segments : null;
   // Attribution is the only thing that distinguishes a speaker: the design's
   // rule is three message kinds in one document, so the prose itself is not

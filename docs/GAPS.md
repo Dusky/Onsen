@@ -160,7 +160,7 @@ mostly good news and was the biggest source of wrong first guesses.
 | **World Info Recommender** | **have** | `SUGGEST_LORE` (`registry.ts:97`) — *this row is why the evidence rule exists* |
 | LoreBook Creator | **have** | `REVISE_LORE`, `SUGGEST_LORE` |
 | Quick Reply | **have** (phase 65) | `grep -rliE 'quick.?reply' server client shared --include='*.ts' --include='*.tsx' --include='*.sql'` → 9 files: the `quick_replies` table (migration 0049), CRUD (`server/routes/quick-replies.ts`), and the composer row + sheet (`client/components/QuickReplies.tsx`). Firing one runs the stored prompt through the nudge path |
-| Chat Translation | **missing** | no translation path |
+| Chat Translation | **have** (phase 78) | `grep -rn 'translate' server/translation server/routes/generation.ts | head` — the `translate` op, the `message_translations` table (migration 0050), and the *Translate* command. Display-only: the stored text and the prompt keep the author's language |
 | Auto Background | **have** (phase 77) | `grep -rn 'background/generate' server client` → the route in `scenes.ts`, `drawBackground` in `media/runner.ts`, and the `Generate` button in scene setup. It reads the scene (or the reader's prompt) and files the image where an upload would go |
 | Moonlit Echoes Theme | **have** | full theme system, import/export, custom CSS |
 
@@ -227,5 +227,9 @@ evidence command was re-run before building: the row was the one honest
 **Phase 77 (done)** built auto background: a scene background can now be
 generated, not only uploaded, filed exactly where an upload would go.
 
-Then, in rough order of how early a session hits them: chat translation;
-smooth streaming; web search.
+**Phase 78 (done)** built display-only chat translation: a scene names a
+language and a turn's *Translate* command renders it, without touching the
+stored text or the prompt.
+
+Then, in rough order of how early a session hits them: smooth streaming; web
+search.
