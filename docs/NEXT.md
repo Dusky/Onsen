@@ -7,10 +7,44 @@ re-deriving it. `GAPS.md` is the evidence; this is the order.
 105 files, typecheck clean, working tree clean. Feature complete against
 `SPEC.md` §20 apart from the deferred phase 42.
 
-**The extension ports** are the live work. AutoBackground is underway (§20
-phase 103: schema and settings shipped, the detection runner is next). Megumin
-Suite's preset is already imported; its Story Config and Blocks remain. Multihog
-is a full RPG engine and is the long pole.
+## The queue
+
+Ordered by what the user asked for most recently, which is the thread to
+follow.
+
+1. **Prompt preset management** — *the current ask.* Onsen has presets (multiple,
+   a selector, import via `POST /connections/presets/import`, export in the
+   preset editor), but the surface is buried and incomplete:
+   - A first-class manager: the left rail's Preset tab (or a dedicated screen)
+     with the whole lifecycle visible — New, Import (SillyTavern *and* Onsen),
+     Export, Delete, Set-default — not behind Settings.
+   - **Presets bundle a model**: add a `connectionProfileId` to presets so
+     picking a preset also picks the model; a scene's preset+profile becomes one
+     choice when the preset names one.
+   - Import/export parity: round-trip the utility prompts (impersonation,
+     continue nudge, new-chat) and the full sampler set in the SillyTavern
+     format — the import currently maps samplers + blocks and reports the rest
+     as unmapped.
+   - Reference: SillyTavern's "Chat Completion" panel (presets dropdown +
+     samplers + utility prompts, with save/new/delete/import/export). Example
+     preset: the Celia V5.4 JSON the user linked; UI screenshot in Downloads.
+
+2. **AutoBackground — the detection runner.** The schema and the setup-screen
+   settings shipped (phase 103); next is the post-turn detection call ("did the
+   location change?") and the background generation it triggers.
+
+3. **Megumin Suite — Story Config + Blocks.** The preset's prompt blocks are
+   already imported. What remains: the Story Config dropdowns (genre, POV,
+   friction, pace → scene prompt options) and the Blocks (tracker cards under a
+   reply).
+
+4. **Multihog** — the RPG engine and the long pole. State Tracker first, then
+   the RNG, then World Progression and Map Evolution.
+
+5. **Web search** — explicitly *not* core; the user said it could be an
+   extension. Left off the core list.
+
+6. **Self-responses** (`GAPS.md` §4). Still a product conversation, not a gap.
 
 ## How to pick up
 
@@ -23,30 +57,6 @@ is a full RPG engine and is the long pole.
    1440×900, both themes through the app's own picker.
 5. `SPEC.md` §20 + the section it touches, `PHASES.md`, `GAPS.md`, README
    status, all in the same commit.
-
-## The queue
-
-Ordered by how early a session hits them, which is how `GAPS.md`'s tail has
-been ordered since phase 55.
-
-1. **Auto background** (`GAPS.md` §7). Per-scene backgrounds exist
-   (`SceneDto.hasBackground`) and nothing generates one. The media services
-   from phase 41 already draw pictures; this is a background task that reads
-   the scene and asks for one.
-2. **Chat translation** (`GAPS.md` §7). No translation path anywhere. Needs a
-   decision first: a display-only layer (like §14's `display_only` regex
-   stage) or a stored second text. Display-only is almost certainly right —
-   the prompt should keep the language the author is writing in.
-3. **Smooth streaming** (`GAPS.md` §5). No render throttle in
-   `client/lib/generation.ts`. Low priority and explicitly conditional:
-   revisit *if* streaming judders, not on principle.
-4. **Self-responses** (`GAPS.md` §4). A judgement call under the author model
-   rather than a gap — §0.2 rejects independent agents, and "a character
-   replies to itself" may simply be a beat. Worth a conversation before code.
-5. **Web search** (`GAPS.md` §1). Backend-dependent, and the first thing here
-   that needs a provider decision rather than an implementation.
-6. **Usage stats** and **avatar shape/blur/shadow** (`GAPS.md` §3, §6). Both
-   marked low priority by their own rows. Left where they are.
 
 ## One piece of process debt
 
