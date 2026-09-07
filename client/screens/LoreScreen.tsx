@@ -572,13 +572,11 @@ function EntryEditor({
 
             <Toggle
               label={strings.lore.useProbability}
-              hint={strings.lore.useProbabilityHint}
               value={draft.useProbability}
               onChange={(on) => set("useProbability", on)}
             />
             <Toggle
               label={strings.lore.ignoreBudget}
-              hint={strings.lore.ignoreBudgetHint}
               value={draft.ignoreBudget}
               onChange={(on) => set("ignoreBudget", on)}
             />

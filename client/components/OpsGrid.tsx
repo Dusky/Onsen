@@ -280,7 +280,7 @@ export function SteerOp({
             onChange={(event) => setDepth(Math.max(0, Number(event.target.value) || 0))}
           />
           <span className="chrome mt-[4px] block text-[12.5px] text-ink-dim">
-            {strings.chat.steerDepthHint}
+            {strings.chat.steerDepthUnit}
           </span>
         </label>
         <label className="flex-1">
