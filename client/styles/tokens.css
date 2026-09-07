@@ -103,7 +103,8 @@
   );
 
   /* Typefaces */
-  --onsen-font-prose: "Spectral", Georgia, "Times New Roman", serif;
+  --onsen-font-prose: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --onsen-font-sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
   --onsen-font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
   /*

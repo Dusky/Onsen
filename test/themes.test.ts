@@ -241,9 +241,9 @@ describe("the shipped default is the flat original", () => {
     // Deterministic dark, not OS-dependent: a default theme that names no
     // colours follows prefers-color-scheme, and `base` is not wired to
     // data-theme, so it cannot stop that. The default must carry its own
-    // ground — the handoff's warm dark one.
-    expect(tokens["color-bg"]).toBe("#14120f");
-    expect(tokens["color-text"]).toBe("#e8e2d6");
+    // ground — the redesign's cool dark one (§20 phase 88).
+    expect(tokens["color-bg"]).toBe("#0e0f11");
+    expect(tokens["color-text"]).toBe("#e7eaed");
   });
 });
 

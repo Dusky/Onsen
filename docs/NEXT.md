@@ -3,15 +3,15 @@
 A short, honest list, written at the end of phase 65 so work can resume without
 re-deriving it. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 87, on `glm/sillytavern-replacement-dyp30w`. 1400 tests across
+**State:** phase 88, on `glm/sillytavern-replacement-dyp30w`. 1400 tests across
 102 files, typecheck clean, working tree clean. Feature complete against
 `SPEC.md` §20 apart from the deferred phase 42.
 
-**The desktop shell is a workbench** — a collapsible left rail holds the
-configuration (the prompt edits in place), and a global, collapsible right rail
-holds the entities (cast, author, lore, persona, and the scene's context)
-(§20 phases 85–87). Next: profiles and the persona inline in the left rail,
-then the conditional set.
+**The redesign** (`docs/REDESIGN.md`, from the user's mockup) is underway. The
+foundation shipped (§20 phase 88): Source Serif 4 prose, IBM Plex Sans labels,
+and a `Midnight` cool-dark default. Next, in order: the left icon rail with the
+Prompt / Preset / Lore / Guides sections, the right panel's In-scene /
+Characters / Authors, the header, then the composer and turns.
 
 ## How to pick up
 

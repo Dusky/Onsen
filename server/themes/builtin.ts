@@ -59,6 +59,51 @@ function withDepth(
 
 export const BUILTIN_THEMES: readonly BuiltinTheme[] = [
   {
+    // The redesign's cool dark ground (§20 phase 88). Sharp, hairline, no
+    // shadows, with the live/writing state in amber and the interactive in
+    // blue — the mockup's palette.
+    name: "Midnight",
+    base: "dark",
+    tokens: {
+      ...DEPTH.flat,
+      "color-bg": "#0e0f11",
+      "color-bg-sunken": "#111317",
+      "color-bg-raised": "#14161a",
+      "color-bg-inset": "#1c2026",
+      "color-bg-input": "#0e0f11",
+      "color-rule": "#1c2026",
+      "color-rule-strong": "#303740",
+      "color-border-quiet": "#23282f",
+      "color-text": "#e7eaed",
+      "color-text-bright": "#f2f4f6",
+      "color-text-label": "#c9ccd0",
+      "color-text-muted": "#a2aab3",
+      "color-text-dim": "#6f7883",
+      "color-text-prose-muted": "#8f98a2",
+      "color-text-placeholder": "#5c646d",
+      "color-red": "#d05540",
+      "color-red-bg": "#1f1514",
+      "color-red-border": "#3a231f",
+      "color-red-text": "#e08070",
+      "color-blue": "#4d86c9",
+      "color-blue-bg": "#141a20",
+      "color-blue-bg-sheet": "#141a20",
+      "color-blue-border": "#2a3440",
+      "color-blue-border-strong": "#2f3d4a",
+      "color-blue-text": "#7fa8d8",
+      "color-blue-text-muted": "#5c7a9e",
+      "color-blue-prose": "#c2ccd6",
+      "color-green": "#6ba05f",
+      "color-green-text": "#9cc08f",
+      "color-green-text-muted": "#6f8265",
+      "color-amber": "#d99a3f",
+      "color-amber-text": "#e0b878",
+      "color-amber-text-muted": "#8c774e",
+      "color-ooc-reader-bg": "#241d12",
+      "color-ooc-reader-text": "#e0cba4",
+    },
+  },
+  {
     // The original handoff palette, flat, exactly as it was.
     //
     // The colours are named explicitly rather than left to the stylesheet's
@@ -285,11 +330,8 @@ export const BUILTIN_THEMES: readonly BuiltinTheme[] = [
 /**
  * What a fresh install opens on.
  *
- * `Ledger` is the design handoff's own palette — flat, warm, hairline, no
- * shadows — which is what DESIGN.md's third rule ("everything is a page being
- * marked up") describes. It sat off the default since phase 45, when "the app
- * read flat" was answered with rounded cards and drop shadows instead of with
- * the real cause (surfaces two lightness points apart, fixed in phase 49).
- * The flat identity is the brand; the rounded themes remain, pickable by hand.
+ * `Midnight` is the redesign's cool dark ground (§20 phase 88): sharp, hairline,
+ * no shadows, with the live state in amber and the interactive in blue. The
+ * warm `Ledger` palette and the rounded themes stay, pickable by hand.
  */
-export const DEFAULT_THEME_NAME = "Ledger";
+export const DEFAULT_THEME_NAME = "Midnight";

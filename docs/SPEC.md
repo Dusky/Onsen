@@ -3508,6 +3508,11 @@ Each phase ends in a working, usable application.
     the cast (characters), the author, the lore and the persona, each editable
     in place, with a *Scene* tab carrying the scene's context, cast and persona
     while a roleplay is open. See §16 and `test/rightrail.test.ts`.
+88. **The redesign foundation** — the mockup's visual identity: prose in
+    Source Serif 4, labels in IBM Plex Sans (numbers stay mono), and a new
+    `Midnight` default theme — cool dark ground `#0e0f11`, hairlines, no
+    shadows. The warm `Ledger` and the rounded themes stay pickable. See §16
+    and `test/themes.test.ts`.
 
 Settled while building phase 15.
 

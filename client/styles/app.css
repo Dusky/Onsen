@@ -168,11 +168,11 @@
 
   /* The app speaking: labels, attribution, state, buttons — all chrome. */
   .chrome {
-    font-family: var(--onsen-font-mono);
+    font-family: var(--onsen-font-sans);
   }
 
   .section-label {
-    font-family: var(--onsen-font-mono);
+    font-family: var(--onsen-font-sans);
     font-size: var(--onsen-text-section-label);
     letter-spacing: var(--onsen-tracking-label);
     color: var(--onsen-color-text-muted);
@@ -193,7 +193,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    font-family: var(--onsen-font-mono);
+    font-family: var(--onsen-font-sans);
     font-size: var(--onsen-text-group-heading);
     font-weight: 600;
     letter-spacing: var(--onsen-tracking-label);
@@ -256,7 +256,7 @@
   }
 
   .screen-kicker {
-    font-family: var(--onsen-font-mono);
+    font-family: var(--onsen-font-sans);
     font-size: 12.5px;
     letter-spacing: var(--onsen-tracking-label);
     color: var(--onsen-color-text-dim);
@@ -290,7 +290,7 @@
   .btn {
     min-height: var(--onsen-tap-target);
     padding: 0 16px;
-    font-family: var(--onsen-font-mono);
+    font-family: var(--onsen-font-sans);
     font-size: var(--onsen-text-button);
     font-weight: 500;
     letter-spacing: var(--onsen-tracking-label);

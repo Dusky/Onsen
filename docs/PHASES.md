@@ -6245,3 +6245,19 @@ people and the world.
 
 **Verified in a browser** at 1440×900: the rail's tabs appear on the scenes
 list with no scene open, and a *Scene* tab joins them inside a roleplay.
+
+## Phase 88 — The redesign foundation
+
+The mockup's visual identity, laid down first so the structural rebuild that
+follows re-skins on top of it. Two changes:
+
+- **Fonts.** Prose moves from Spectral to Source Serif 4, and the labels and
+  buttons move from mono to IBM Plex Sans — numbers and state stay mono. The
+  fetch script now pulls all three, bundled locally as before.
+- **A `Midnight` theme.** The mockup's cool dark ground — `#0e0f11` page,
+  `#14161a` panels, hairlines, no shadows — becomes the default. The warm
+  `Ledger` and the rounded themes stay, pickable by hand.
+
+**Verified in a browser** at 1440×900: the computed ground is `#0e0f11`, the
+prose resolves to Source Serif 4, and a section label resolves to IBM Plex
+Sans.
