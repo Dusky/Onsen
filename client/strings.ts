@@ -518,6 +518,7 @@ export const strings = {
       generation: "Generation",
       tasks: "Background tasks",
       reading: "Reading",
+      branding: "Branding",
       media: "Pictures & voices",
       data: "Data bank",
       automation: "Automation",
@@ -526,6 +527,15 @@ export const strings = {
       migrate: "Moving in",
     } as Record<string, string>,
     categoryEmpty: "Nothing here matches that.",
+
+    /** The app mark (§20 phase 94): the logo, replaceable and switchable. */
+    branding: "Branding",
+    brandingHint: "The mark beside the wordmark. Upload a new one, put the built-in back, or turn it off.",
+    brandingUpload: "Upload a new mark",
+    brandingUploading: "Uploading…",
+    brandingDefault: "Use the default",
+    brandingShown: "Shown beside the wordmark",
+    brandingHidden: "Hidden — wordmark only",
 
     /** Connections group (design handoff, screen 3i). */
     providers: "Providers",

@@ -2260,6 +2260,49 @@ export function useSetPreferences() {
   });
 }
 
+/* ---------------- the app mark (SPEC §16, §20 phase 94) ---------------- */
+
+export interface BrandingDto {
+  showLogo: boolean;
+  isCustom: boolean;
+  logoUrl: string;
+}
+
+export function useBranding() {
+  return useQuery({
+    queryKey: ["branding"] as const,
+    queryFn: () => api.get<BrandingDto>("/branding"),
+  });
+}
+
+export function useUpdateBranding() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { showLogo: boolean }) => api.patch<BrandingDto>("/branding", body),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["branding"] }),
+  });
+}
+
+export function useUploadBrandingLogo() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      return api.upload<BrandingDto>("/branding/logo", form);
+    },
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["branding"] }),
+  });
+}
+
+export function useResetBrandingLogo() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.delete<BrandingDto>("/branding/logo"),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["branding"] }),
+  });
+}
+
 /* ------------------------------------------------------------------ */
 /* The outbound OpenAI-compatible API (SPEC §19)                       */
 /* ------------------------------------------------------------------ */

@@ -6356,3 +6356,17 @@ the `Midnight` ground, replacing the serif `O`.
 
 **Verified in a browser** at 1440×900 and 390×844: the mark renders beside the
 wordmark on both, and the icon files serve.
+
+## Phase 94 — Branding
+
+The mark becomes the reader's, not the build's. A *Branding* category in
+Settings shows the logo at the size it is read, and lets the reader replace it
+with an upload, put the built-in back, or turn it off beside the wordmark. The
+uploaded file lives in `brandingDir` like every other user file and serves from
+`/branding/logo`; the built-in stays a static `/logo.png`. The show/hide is an
+`app_settings` row, read by the shell's `Logo` so a toggle takes effect
+everywhere at once.
+
+**Verified in a browser** at 1440×900: the section renders with the full-size
+mark, the toggle hides and restores the header mark, and the endpoints
+round-trip an upload, a reset and a rejection of non-images.

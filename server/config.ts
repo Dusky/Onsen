@@ -14,6 +14,8 @@ export interface Config {
   avatarsDir: string;
   spritesDir: string;
   mediaDir: string;
+  /** The app's own mark, uploaded and toggled in Settings (§20 phase 94). */
+  brandingDir: string;
   port: number;
   host: string;
   /** Cookies get the Secure attribute only when we know we are behind TLS. */
@@ -39,6 +41,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     avatarsDir: join(dataDir, "avatars"),
     spritesDir: join(dataDir, "sprites"),
     mediaDir: join(dataDir, "media"),
+    brandingDir: join(dataDir, "branding"),
     port: Number(env.ONSEN_PORT ?? env.PORT ?? 8787),
     host: env.ONSEN_HOST ?? "0.0.0.0",
     secureCookies: envFlag("ONSEN_SECURE_COOKIES", false),
@@ -55,6 +58,7 @@ export function ensureDataDirs(config: Config): void {
     config.avatarsDir,
     config.spritesDir,
     config.mediaDir,
+    config.brandingDir,
   ]) {
     mkdirSync(dir, { recursive: true });
   }

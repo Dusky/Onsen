@@ -64,6 +64,7 @@ import { ModelPicker } from "../components/ModelPicker.tsx";
 import { MediaSettings } from "../components/MediaSettings.tsx";
 import { MigrationSection } from "../components/MigrationSection.tsx";
 import { ThemeSection } from "../components/ThemeSection.tsx";
+import { BrandingSection } from "../components/BrandingSection.tsx";
 
 /**
  * Settings (design handoff, screen 3i).
@@ -1600,6 +1601,7 @@ const CATEGORIES = [
   { id: "generation", words: ["preset", "sampler", "temperature", "context", "reasoning", "prefill"] },
   { id: "tasks", words: ["routing", "ops", "background", "guide", "summariser", "classifier"] },
   { id: "reading", words: ["font", "size", "theme", "prose", "light", "dark"] },
+  { id: "branding", words: ["logo", "mark", "icon", "wordmark", "silhouette", "branding"] },
   { id: "media", words: ["picture", "voice", "image", "speech", "tts", "draw", "caption"] },
   { id: "data", words: ["embedding", "document", "retrieval", "rag", "data bank"] },
   { id: "automation", words: ["trigger", "script", "regex", "action", "event"] },
@@ -1981,6 +1983,8 @@ export function SettingsScreen() {
           <div className="h-[20px]" />
 
           {show("reading") ? <ReadingSection /> : null}
+
+          {show("branding") ? <BrandingSection /> : null}
 
           {show("outward") ? (
             <>

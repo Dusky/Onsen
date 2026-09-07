@@ -3540,6 +3540,11 @@ Each phase ends in a working, usable application.
     one amber shape on a transparent ground. It stands beside the mono `onsen`
     on both widths, and the launcher icons are redrawn from it on the `Midnight`
     ground. See `client/components/Logo.tsx`.
+94. **Branding** — the mark is now owned by the reader, not the build: a
+    *Branding* category in Settings shows it at full size and can replace it
+    with an upload, put the built-in back, or turn it off beside the wordmark.
+    The uploaded file lives in the data directory and serves from
+    `/branding/logo`. See §16, `test/branding.test.ts`.
 
 Settled while building phase 15.
 

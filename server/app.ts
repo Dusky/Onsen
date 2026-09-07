@@ -37,6 +37,7 @@ import { openAiRoutes } from "./routes/openai.ts";
 import { apiKeyRoutes, sceneApiRoutes } from "./routes/api-keys.ts";
 import { memoryRoutes } from "./routes/memory.ts";
 import { mediaRoutes } from "./routes/media.ts";
+import { brandingRoutes } from "./routes/branding.ts";
 import { createRateLimiter } from "./middleware/rate-limit.ts";
 import { hashToken } from "./db/queries/api-keys.ts";
 import { WebhookSender } from "./webhooks/sender.ts";
@@ -213,6 +214,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   api.route("/scene-api", sceneApiRoutes(ctx));
   api.route("/memory", memoryRoutes(ctx, memory, authorMemory));
   api.route("/media", mediaRoutes(ctx, media));
+  api.route("/branding", brandingRoutes(ctx));
   api.route("/lorebooks", loreRoutes(ctx));
   api.route("/dossiers", dossierRoutes(ctx));
 
