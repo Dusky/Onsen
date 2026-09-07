@@ -82,7 +82,7 @@ const LABELS: Record<BoundedSampler, string> = {
  * the scene it is built for — the Inspector is where a real prompt's per-block
  * costs are read, and a number invented here would be worse than the blank.
  */
-function PromptManager({ preset }: { preset: PresetDto }) {
+export function PromptManager({ preset }: { preset: PresetDto }) {
   const update = useUpdatePreset();
   const createBlock = useCreatePresetBlock();
   const updateBlock = useUpdatePresetBlock();

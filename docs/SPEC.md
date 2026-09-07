@@ -3498,6 +3498,11 @@ Each phase ends in a working, usable application.
     configuration: the prompt (the default preset), the profiles, the persona
     and Settings, above the recent scenes and the new roleplay. Both rails are
     now collapsible, their state in memory. See §16 and `test/sidebar.test.ts`.
+86. **The prompt, edited in the rail** — the left rail's prompt section
+    expands to the prompt manager inline, so block order and enable toggles
+    edit without leaving the chat; the rail widens to make room. Profiles,
+    persona and the right rail's global reach follow. See §16 and
+    `test/sidebar.test.ts`.
 
 Settled while building phase 15.
 

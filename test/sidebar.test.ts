@@ -48,4 +48,10 @@ describe("the rail is the config, not just recent", () => {
     expect(SIDEBAR).toContain("useUiStore");
     expect(SIDEBAR).toContain("leftRailOpen");
   });
+
+  test("the prompt is edited inline, not linked", () => {
+    // §20 phase 86: the prompt manager lives in the rail, not behind a
+    // navigation away from the chat.
+    expect(SIDEBAR).toContain("<PromptManager");
+  });
 });

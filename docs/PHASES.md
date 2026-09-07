@@ -6212,3 +6212,19 @@ global on every screen is the one after.
 
 **Verified in a browser** at 1440×900: the left rail lists config then recent,
 collapses to a strip and back, and the right rail shows its four tabs.
+
+## Phase 86 — The prompt, edited in the rail
+
+The left rail's prompt section stops being a link and becomes the editor: the
+default preset's row expands in place to the prompt manager — the ordered
+blocks, with their enable toggles and move controls — so the setting a power
+user reaches for most edits without leaving the chat. The rail widens from
+232px to 340px to hold it.
+
+Profiles and the persona are the next sections to get the same treatment, and
+the right rail's global reach — present on every desktop screen, not only the
+chat — is the slice after that.
+
+**Verified in a browser** at 1440×900: expanding the preset in the left rail
+lists the prompt blocks with their controls, and the right rail's four tabs
+remain.

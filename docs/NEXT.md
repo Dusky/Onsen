@@ -3,15 +3,14 @@
 A short, honest list, written at the end of phase 65 so work can resume without
 re-deriving it. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 85, on `glm/sillytavern-replacement-dyp30w`. 1397 tests across
+**State:** phase 86, on `glm/sillytavern-replacement-dyp30w`. 1398 tests across
 101 files, typecheck clean, working tree clean. Feature complete against
 `SPEC.md` §20 apart from the deferred phase 42.
 
 **The desktop shell is a workbench** — a collapsible left rail carries the
-configuration (prompt, profiles, persona, settings, recent), and a collapsible
-right rail carries the inspector's Context / Cast / You / Lore panes (§20
-phases 80–85). Next: make the prompt manager and profiles editable in the left
-rail, then make the right rail global on every screen.
+configuration, and the prompt now edits in the rail itself (§20 phases 85–86).
+Next: profiles and the persona inline in the rail, then the right rail global
+on every screen.
 
 ## How to pick up
 

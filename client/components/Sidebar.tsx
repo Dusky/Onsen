@@ -12,6 +12,7 @@ import {
 } from "../lib/queries.ts";
 import { useGeneration } from "../lib/generation.ts";
 import { useUiStore } from "../state/ui.ts";
+import { PromptManager } from "./PresetEditor.tsx";
 
 /**
  * The desktop config rail (design `4a`, §20 phase 85).
@@ -42,6 +43,7 @@ export function Sidebar() {
   const presets = usePresets();
   const personas = usePersonas();
   const { leftRailOpen, toggleLeftRail } = useUiStore();
+  const [promptOpen, setPromptOpen] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null);
 
   // A new roleplay needs somewhere to generate, the same way the roleplay list
@@ -76,7 +78,7 @@ export function Sidebar() {
   }
 
   return (
-    <nav className="flex w-[232px] flex-none flex-col border-r border-rule bg-bg-sunken">
+    <nav className="flex w-[340px] flex-none flex-col border-r border-rule bg-bg-sunken">
       <div className="hairline flex flex-none items-center justify-between px-[14px] py-[9px]">
         <p className="section-label">{strings.settings.config}</p>
         <button
@@ -90,20 +92,33 @@ export function Sidebar() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {/* The prompt: what the next generation is assembled from. */}
+        {/* The prompt, edited right here — the one setting a power user
+            reaches for mid-scene (§20 phase 86). */}
         <p className="section-label mt-[14px] mb-[2px] px-[18px]">
           {strings.settings.promptOrder}
         </p>
-        <button
-          type="button"
-          onClick={() => navigate({ name: "settings" })}
-          className="row flex w-full items-baseline gap-[10px] px-[18px] text-left"
-        >
-          <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
-            {defaultPreset?.name ?? strings.settings.presetDefault}
-          </span>
-          <span className="chrome flex-none text-[13px] text-ink-dim">{"\u203a"}</span>
-        </button>
+        {defaultPreset === null ? (
+          <p className="meta px-[18px] py-[6px]">{strings.settings.presetDefault}</p>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setPromptOpen(!promptOpen)}
+            aria-expanded={promptOpen}
+            className="row flex w-full items-baseline gap-[10px] px-[18px] text-left"
+          >
+            <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
+              {defaultPreset.name}
+            </span>
+            <span className="chrome flex-none text-[13px] text-ink-dim">
+              {promptOpen ? "\u25b4" : "\u25be"}
+            </span>
+          </button>
+        )}
+        {promptOpen && defaultPreset !== null ? (
+          <div className="px-[16px] pt-[4px]">
+            <PromptManager preset={defaultPreset} />
+          </div>
+        ) : null}
 
         {/* The profiles: which model answers, switchable per operation. */}
         <p className="section-label mt-[12px] mb-[2px] px-[18px]">
