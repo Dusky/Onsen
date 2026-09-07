@@ -2315,6 +2315,9 @@ export function useResetBrandingLogo() {
 export interface BackgroundDto {
   id: string;
   prompt: string | null;
+  name: string;
+  tags: string[];
+  folder: string | null;
   isDefault: boolean;
   createdAt: number;
 }
@@ -2362,6 +2365,15 @@ export function useDeleteBackground() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.delete<void>(`/backgrounds/${id}`),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["backgrounds"] }),
+  });
+}
+
+export function useUpdateBackground() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...patch }: { id: string; name?: string; prompt?: string; tags?: string[]; folder?: string | null }) =>
+      api.patch<{ background: BackgroundDto }>(`/backgrounds/${id}`, patch),
     onSuccess: () => void client.invalidateQueries({ queryKey: ["backgrounds"] }),
   });
 }

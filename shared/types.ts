@@ -2639,6 +2639,9 @@ export interface AuthorDto {
   oocVoice: string | null;
   /** Content it steers toward or away from. */
   boundaries: string | null;
+  /** Organisation (§20 phase 111). */
+  tags: string[];
+  folder: string | null;
   /** Opt-in cross-scene memory (§11). Off by default and not yet read. */
   memoryEnabled: boolean;
   isDefault: boolean;

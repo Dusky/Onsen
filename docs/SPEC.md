@@ -3622,6 +3622,11 @@ Each phase ends in a working, usable application.
     samplers, an optional `apply` that runs in the extension after the model
     answers). Installed extensions reload at startup, and their post-generation
     tasks run after each turn. See §15, `test/extensions.test.ts`.
+111. **The backdrop library as a screen** — Backgrounds is now a top-bar
+    destination with the main display: a thumbnail grid, search, tags, folders
+    and sort, and an editor for the name, prompt, tags and folder. Authors gain
+    tags and folders too, so every entity manages the same way. See §12,
+    `test/backgrounds.test.ts`.
 
 Settled while building phase 15.
 

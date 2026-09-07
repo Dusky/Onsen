@@ -21,6 +21,7 @@ const ITEMS: readonly { key: string; label: string; route: Route }[] = [
   { key: "characters", label: strings.nav.characters, route: { name: "characters" } },
   { key: "authors", label: strings.nav.authors, route: { name: "authors" } },
   { key: "lorebooks", label: strings.nav.lore, route: { name: "lorebooks" } },
+  { key: "backgrounds", label: strings.nav.backgrounds, route: { name: "backgrounds" } },
   { key: "settings", label: strings.nav.settings, route: { name: "settings" } },
 ];
 

@@ -6552,3 +6552,11 @@ An extension is now data plus code. A `server.ts` in a repository exports
 answers. Installing by URL loads the module, persists the extension and its
 tasks, and startup reloads every installed extension so the callbacks exist
 again. Post-generation tasks run after each turn.
+
+## Phase 111 — The backdrop library as a screen
+
+Backgrounds became a top-bar destination: a full-screen grid with real
+thumbnails, search, tag and folder filters, and sort, plus an editor for the
+name, the prompt, the tags and the folder. Authors gained tags and folders too,
+so every entity now manages the same way. The opacity and generate moved onto
+the screen; the Settings section is superseded.

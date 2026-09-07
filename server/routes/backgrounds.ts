@@ -29,13 +29,25 @@ function opacityOf(ctx: AppContext): number {
   return Number.isFinite(parsed) ? Math.min(1, Math.max(0, parsed)) : 0.8;
 }
 
-function toDto(row: { ulid: string; prompt: string | null; is_default: number; created_at: number }) {
+function toDto(row: { ulid: string; prompt: string | null; name: string | null; tags: string; folder: string | null; is_default: number; created_at: number }) {
   return {
     id: row.ulid,
     prompt: row.prompt,
+    name: row.name ?? row.prompt ?? "Background",
+    tags: parseTags(row.tags),
+    folder: row.folder,
     isDefault: row.is_default === 1,
     createdAt: row.created_at,
   };
+}
+
+function parseTags(raw: string): string[] {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((tag): tag is string => typeof tag === "string") : [];
+  } catch {
+    return [];
+  }
 }
 
 export function backgroundRoutes(ctx: AppContext, media: MediaRunner | null): Hono<AppEnv> {
@@ -95,6 +107,41 @@ export function backgroundRoutes(ctx: AppContext, media: MediaRunner | null): Ho
       backgrounds: rows.map(toDto),
       defaultId: rows.find((r) => r.is_default === 1)?.ulid ?? null,
     });
+  });
+
+  /** Edit a background's name, prompt, tags or folder (§20 phase 111). */
+  app.patch("/:id", async (c) => {
+    const row = findBackground(ctx.db, c.req.param("id"));
+    if (row === null) return c.json(notFound("background"), 404);
+    const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null ?? {};
+    const assignments: string[] = [];
+    const params: Record<string, string | null> = { id: row.ulid };
+    if (typeof body["name"] === "string") {
+      assignments.push("name = $name");
+      params["name"] = body["name"].trim() === "" ? null : (body["name"] as string).trim();
+    }
+    if (typeof body["prompt"] === "string") {
+      assignments.push("prompt = $prompt");
+      params["prompt"] = body["prompt"].trim() === "" ? null : (body["prompt"] as string).trim();
+    }
+    if (Array.isArray(body["tags"])) {
+      assignments.push("tags = $tags");
+      params["tags"] = JSON.stringify([...new Set((body["tags"] as unknown[]).filter((t): t is string => typeof t === "string"))]);
+    }
+    if ("folder" in body) {
+      assignments.push("folder = $folder");
+      params["folder"] = body["folder"] === null || body["folder"] === "" ? null : String(body["folder"]);
+    }
+    if (assignments.length === 0) {
+      const current = findBackground(ctx.db, c.req.param("id"))!;
+      return c.json({ background: toDto(current) });
+    }
+    ctx.db.query(`UPDATE backgrounds SET ${assignments.join(", ")}, updated_at = $now WHERE ulid = $id`).run({
+      ...params,
+      now: Date.now(),
+    });
+    const updated = findBackground(ctx.db, c.req.param("id"))!;
+    return c.json({ background: toDto(updated) });
   });
 
   app.delete("/:id", (c) => {

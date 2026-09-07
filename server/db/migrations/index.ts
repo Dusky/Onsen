@@ -54,6 +54,7 @@ import presetProfile from "./0053_preset_profile.sql" with { type: "text" };
 import presetUtilityPrompts from "./0054_preset_utility_prompts.sql" with { type: "text" };
 import backgrounds from "./0055_backgrounds.sql" with { type: "text" };
 import extensions from "./0056_extensions.sql" with { type: "text" };
+import entityLists from "./0057_entity_lists.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -125,4 +126,5 @@ export const migrations: readonly Migration[] = [
   { version: 54, name: "preset_utility_prompts", sql: presetUtilityPrompts },
   { version: 55, name: "backgrounds", sql: backgrounds },
   { version: 56, name: "extensions", sql: extensions },
+  { version: 57, name: "entity_lists", sql: entityLists },
 ];

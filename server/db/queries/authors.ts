@@ -29,6 +29,8 @@ export interface AuthorRow {
   boundaries: string | null;
   memory_enabled: number;
   is_default: number;
+  tags: string;
+  folder: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -73,12 +75,23 @@ export function toAuthorDto(row: AuthorRow): AuthorDto {
     directingStyle: row.directing_style,
     oocVoice: row.ooc_voice,
     boundaries: row.boundaries,
+    tags: parseTags(row.tags),
+    folder: row.folder,
     memoryEnabled: row.memory_enabled === 1,
     isDefault: row.is_default === 1,
     tokens: tokenCostsFor(row),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function parseTags(raw: string): string[] {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((tag): tag is string => typeof tag === "string") : [];
+  } catch {
+    return [];
+  }
 }
 
 export function toPersonaDto(row: PersonaRow): PersonaDto {

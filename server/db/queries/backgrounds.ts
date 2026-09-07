@@ -14,6 +14,9 @@ export interface BackgroundRow {
   ulid: string;
   path: string;
   prompt: string | null;
+  name: string | null;
+  tags: string;
+  folder: string | null;
   is_default: number;
   created_at: number;
 }
@@ -38,10 +41,10 @@ export function insertBackground(
   const isFirst = (db.query("SELECT count(*) AS n FROM backgrounds").get() as { n: number }).n === 0;
   return db
     .query(
-      `INSERT INTO backgrounds (ulid, path, prompt, is_default, created_at)
-       VALUES ($ulid, $path, $prompt, $default, $now) RETURNING *`,
+      `INSERT INTO backgrounds (ulid, path, prompt, name, is_default, created_at)
+       VALUES ($ulid, $path, $prompt, $name, $default, $now) RETURNING *`,
     )
-    .get({ ulid: ulid(), path: input.path, prompt: input.prompt, default: isFirst ? 1 : 0, now }) as BackgroundRow;
+    .get({ ulid: ulid(), path: input.path, prompt: input.prompt, name: input.prompt, default: isFirst ? 1 : 0, now }) as BackgroundRow;
 }
 
 export function setDefaultBackground(db: Database, id: number): BackgroundRow {

@@ -106,6 +106,17 @@ export function Header() {
         </button>
       )}
 
+      {/* The backdrop library, its own screen (§20 phase 111). */}
+      <button
+        type="button"
+        onClick={() => navigate({ name: "backgrounds" })}
+        aria-current={route.name === "backgrounds" ? "page" : undefined}
+        className="chrome flex items-center border-l border-rule px-[12px] text-[12px]"
+        style={{ color: route.name === "backgrounds" ? "var(--onsen-color-blue-text)" : "var(--onsen-color-text-muted)" }}
+      >
+        {strings.nav.backgrounds}
+      </button>
+
       <div className="min-w-0 flex-1" />
 
       {/* Prose size: two A's, the mockup's control in the reading surface's own
