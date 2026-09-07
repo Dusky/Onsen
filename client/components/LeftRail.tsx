@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   BoundedSampler,
   GuideDto,
@@ -15,8 +15,12 @@ import {
   useAddBan,
   useAnalyseBans,
   useBans,
+  useConnectionProfiles,
+  useCreatePreset,
+  useDeletePreset,
   useEditGuide,
   useFlushGuides,
+  useImportPreset,
   useLoreActivation,
   usePresets,
   usePreviewPrompt,
@@ -28,9 +32,10 @@ import {
   useUpdateScene,
 } from "../lib/queries.ts";
 import { useUiStore } from "../state/ui.ts";
-import { LABELS, Slider, PromptManager } from "./PresetEditor.tsx";
+import { LABELS, Slider, PromptManager, download } from "./PresetEditor.tsx";
 import { GuidesBody } from "./GuidesPanel.tsx";
 import { LorePane } from "./LorePane.tsx";
+import { useConfirm } from "./ConfirmSheet.tsx";
 
 /**
  * The left icon rail and its section panel (the redesign, phase 89).
@@ -448,9 +453,15 @@ const PANEL_SAMPLERS: BoundedSampler[] = ["temperature", "min_p", "repetition_pe
 
 function PresetPanel({ sceneId }: { sceneId: string | null }) {
   const presets = usePresets();
+  const profiles = useConnectionProfiles();
   const update = useUpdatePreset();
-  const rows = presets.data ?? [];
+  const create = useCreatePreset();
+  const remove = useDeletePreset();
+  const importPreset = useImportPreset();
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [confirmNode, confirm] = useConfirm();
   const [presetId, setPresetId] = useState<string | null>(null);
+  const rows = presets.data ?? [];
   const preset =
     rows.find((row) => row.id === presetId) ??
     rows.find((row) => row.isDefault) ??
@@ -474,13 +485,109 @@ function PresetPanel({ sceneId }: { sceneId: string | null }) {
         {strings.leftRail.presetTitle}
       </label>
       <select
-        className="field mb-[16px]"
+        className="field mb-[8px]"
         value={preset.id}
         onChange={(event) => setPresetId(event.target.value)}
       >
         {rows.map((row) => (
           <option key={row.id} value={row.id}>
             {row.name}
+          </option>
+        ))}
+      </select>
+
+      {/* The lifecycle, all in one row: a preset is made, imported, saved,
+          promoted and removed here rather than behind Settings (§20 phase 105). */}
+      <div className="mb-[8px] flex flex-wrap gap-[6px]">
+        <button
+          type="button"
+          className="btn flex-1 px-[8px]"
+          disabled={create.isPending}
+          onClick={() =>
+            create.mutate(strings.settings.addPreset, { onSuccess: (made) => setPresetId(made.id) })
+          }
+        >
+          {strings.settings.addPreset}
+        </button>
+        <button
+          type="button"
+          className="btn flex-1 px-[8px]"
+          disabled={importPreset.isPending}
+          onClick={() => fileInput.current?.click()}
+        >
+          {importPreset.isPending ? strings.settings.importingPreset : strings.settings.importPreset}
+        </button>
+        <button
+          type="button"
+          className="btn flex-1 px-[8px]"
+          onClick={() => void download(preset, "onsen")}
+        >
+          {strings.settings.exportPresetOwn}
+        </button>
+        <button
+          type="button"
+          className="btn flex-1 px-[8px]"
+          onClick={() => void download(preset, "sillytavern")}
+        >
+          {strings.settings.exportPresetSt}
+        </button>
+        {preset.isDefault ? null : (
+          <button
+            type="button"
+            className="btn flex-1 px-[8px]"
+            onClick={() => update.mutate({ id: preset.id, isDefault: true })}
+          >
+            {strings.settings.presetMakeDefault}
+          </button>
+        )}
+        {preset.isDefault ? null : (
+          <button
+            type="button"
+            className="btn flex-1 px-[8px]"
+            style={{ color: "var(--onsen-color-red)", borderColor: "var(--onsen-color-red-border)" }}
+            onClick={() =>
+              confirm(strings.settings.presetDeleteConfirm, () => {
+                setPresetId(null);
+                remove.mutate(preset.id);
+              })
+            }
+          >
+            {strings.common.delete}
+          </button>
+        )}
+      </div>
+      <input
+        ref={fileInput}
+        type="file"
+        hidden
+        accept=".json,application/json"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file === undefined) return;
+          importPreset.mutate(file, { onSuccess: (report) => setPresetId(report.presetId) });
+        }}
+      />
+      {importPreset.error !== null ? (
+        <p className="explain explain-alert mb-[8px]">{importPreset.error.message}</p>
+      ) : null}
+
+      {/* The model this preset answers with, when the scene names none (§20
+          phase 105). */}
+      <label className="chrome mb-[6px] block text-[12.5px] text-ink-muted">
+        {strings.leftRail.presetModel}
+      </label>
+      <select
+        className="field mb-[16px]"
+        value={preset.connectionProfileId ?? ""}
+        onChange={(event) =>
+          update.mutate({ id: preset.id, connectionProfileId: event.target.value || null })
+        }
+      >
+        <option value="">{strings.leftRail.presetModelNone}</option>
+        {(profiles.data ?? []).map((profile) => (
+          <option key={profile.id} value={profile.id}>
+            {profile.name}
           </option>
         ))}
       </select>
@@ -508,6 +615,7 @@ function PresetPanel({ sceneId }: { sceneId: string | null }) {
       {/* The ban list is per scene, so it sits here only while a roleplay is
           open (§13.6). */}
       {sceneId === null ? null : <BanList sceneId={sceneId} />}
+      {confirmNode}
     </div>
   );
 }

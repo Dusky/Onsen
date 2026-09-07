@@ -3593,6 +3593,11 @@ Each phase ends in a working, usable application.
     YES/NO; a YES draws and files a background through the picture service.
     Fire-and-forget, so an image service never delays a reply. See §12,
     `test/auto-background.test.ts`.
+105. **Preset management, first class** — the Preset tab is now a manager: New,
+    Import (SillyTavern), Save (Onsen and SillyTavern), Make-default and Delete
+    all live in the rail, and a preset can name the model it answers with
+    (`presets.connection_profile_id`), so picking a preset is one choice. See
+    §13, `test/leftrail.test.ts`.
 
 Settled while building phase 15.
 

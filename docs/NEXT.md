@@ -3,7 +3,7 @@
 A short, honest list, written at the end of phase 65 so work can resume without
 re-deriving it. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 104, on `glm/sillytavern-replacement-dyp30w`. 1426 tests across
+**State:** phase 105, on `glm/sillytavern-replacement-dyp30w`. 1427 tests across
 105 files, typecheck clean, working tree clean. Feature complete against
 `SPEC.md` §20 apart from the deferred phase 42.
 
@@ -12,22 +12,11 @@ re-deriving it. `GAPS.md` is the evidence; this is the order.
 Ordered by what the user asked for most recently, which is the thread to
 follow.
 
-1. **Prompt preset management** — *the next ask.* Onsen has presets (multiple,
-   a selector, import via `POST /connections/presets/import`, export in the
-   preset editor), but the surface is buried and incomplete:
-   - A first-class manager: the left rail's Preset tab (or a dedicated screen)
-     with the whole lifecycle visible — New, Import (SillyTavern *and* Onsen),
-     Export, Delete, Set-default — not behind Settings.
-   - **Presets bundle a model**: add a `connectionProfileId` to presets so
-     picking a preset also picks the model; a scene's preset+profile becomes one
-     choice when the preset names one.
-   - Import/export parity: round-trip the utility prompts (impersonation,
-     continue nudge, new-chat) and the full sampler set in the SillyTavern
-     format — the import currently maps samplers + blocks and reports the rest
-     as unmapped.
-   - Reference: SillyTavern's "Chat Completion" panel (presets dropdown +
-     samplers + utility prompts, with save/new/delete/import/export). Example
-     preset: the Celia V5.4 JSON the user linked; UI screenshot in Downloads.
+1. **Prompt preset management** — *the current ask, mostly shipped (§20 phase
+   105).* The Preset tab is a manager and a preset can name its model. Remaining:
+   the import/export parity for the SillyTavern utility prompts (impersonation,
+   continue nudge, new-chat) and the unmapped samplers, so a Celia-style preset
+   round-trips whole.
 
 2. **Megumin Suite — Story Config + Blocks.** The preset's prompt blocks are
    already imported. What remains: the Story Config dropdowns (genre, POV,

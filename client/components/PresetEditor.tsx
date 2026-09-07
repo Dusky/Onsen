@@ -583,7 +583,7 @@ export function PresetFields({ preset, onClose }: { preset: PresetDto; onClose()
  * Through fetch rather than a plain link because the endpoint is behind the
  * session cookie and returns JSON: a link would open it in a tab.
  */
-async function download(preset: PresetDto, format: "onsen" | "sillytavern"): Promise<void> {
+export async function download(preset: PresetDto, format: "onsen" | "sillytavern"): Promise<void> {
   const response = await fetch(`/api/connections/presets/${preset.id}/export?format=${format}`);
   if (!response.ok) return;
   const text = JSON.stringify(await response.json(), null, 2);

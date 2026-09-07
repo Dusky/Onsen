@@ -190,6 +190,9 @@ export interface PresetDto {
   /** How reasoning is handled for scenes on this preset (SPEC §13). */
   reasoning: ReasoningConfigDto;
   isDefault: boolean;
+  /** The model this preset answers with, when the scene names none (§20 phase 105). */
+  connectionProfileId: string | null;
+  connectionProfileName: string | null;
   /** The assembly order, or null while this preset runs on §3's default. */
   blockOrder: PromptOrderEntry[] | null;
   /** This preset's own blocks (§20 phase 56). */
@@ -310,6 +313,8 @@ export interface UpdatePresetRequest {
   /** What happens to the examples as a scene fills up (§20 phase 64). */
   exampleEviction?: ExampleEvictionName;
   squashSystem?: boolean;
+  /** The model this preset answers with, when the scene names none (§20 phase 105). */
+  connectionProfileId?: string | null;
 }
 
 /**

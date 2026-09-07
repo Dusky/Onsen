@@ -272,6 +272,23 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
     const name = text(body["name"], 120);
     if (name !== null) patch.name = name;
 
+    // The model this preset answers with, when the scene names none (§20
+    // phase 105).
+    if ("connectionProfileId" in body) {
+      const value = body["connectionProfileId"];
+      if (value === null) {
+        patch.connectionProfileId = null;
+      } else if (typeof value === "string") {
+        const profile = ctx.db
+          .query("SELECT id FROM connection_profiles WHERE ulid = $ulid")
+          .get({ ulid: value }) as { id: number } | null;
+        if (profile === null) return c.json(badRequest("No such connection profile."), 400);
+        patch.connectionProfileId = profile.id;
+      } else {
+        return c.json(badRequest("connectionProfileId must be a profile id, or null."), 400);
+      }
+    }
+
     // The flag that decides which preset runs when a scene and its profile
     // both name none. Written once at setup until phase 54, which meant an
     // imported preset could never be the one in force.

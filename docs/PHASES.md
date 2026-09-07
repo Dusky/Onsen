@@ -6500,3 +6500,14 @@ runner does the drawing, wired in `app.ts`.
 
 **Verified** by the round-trip test (settings persist through the scene) and the
 registry test (the detection is a registered side call).
+
+## Phase 105 — Preset management, first class
+
+The Preset tab is now a manager. New, Import (SillyTavern), Save (Onsen and
+SillyTavern), Make-default and Delete all sit in the rail beside the sampler
+sliders, and a preset can name the model it answers with — a
+`connection_profile_id` on the preset, shown as a model dropdown, so "this
+preset" carries the whole answer. The scene still wins when it names a profile.
+
+**Verified in a browser** at 1440×900: the Preset tab shows the manager buttons
+and the model dropdown, and the round-trip test pins the model persisting.

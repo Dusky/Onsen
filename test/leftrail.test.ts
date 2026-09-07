@@ -64,6 +64,14 @@ describe("the other sections are real, not placeholders", () => {
     expect(RAIL).toContain("useAddBan");
   });
 
+  test("the preset tab is a manager: make, import, save, promote, remove, and a model", () => {
+    expect(RAIL).toContain("useCreatePreset");
+    expect(RAIL).toContain("useImportPreset");
+    expect(RAIL).toContain("useDeletePreset");
+    expect(RAIL).toContain("download(preset");
+    expect(RAIL).toContain("connectionProfileId");
+  });
+
   test("lore is editable without a scene, and guides can be written, reordered and flushed", () => {
     expect(RAIL).toContain("useLoreActivation");
     expect(RAIL).toContain("<LorePane");

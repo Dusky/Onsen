@@ -1056,6 +1056,8 @@ export const strings = {
     banList: "Ban list",
     banAnalyse: "Suggest from this scene",
     banEmpty: "Nothing banned. The model has written everything so far.",
+    presetModel: "Model",
+    presetModelNone: "(use the scene's own)",
   },
 
   /** The right rail's three tabs (§20 phase 90). */

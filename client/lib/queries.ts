@@ -215,7 +215,7 @@ export function useDeletePreset() {
 export function useImportPreset() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (file: File): Promise<{ presetName: string; blocksImported: number; blocksDisabled: number; unmappedSamplers: string[]; unsupportedMacros: string[] }> => {
+    mutationFn: async (file: File): Promise<{ presetId: string; presetName: string; blocksImported: number; blocksDisabled: number; unmappedSamplers: string[]; unsupportedMacros: string[] }> => {
       const form = new FormData();
       form.append("file", file);
       const response = await fetch("/api/connections/presets/import", { method: "POST", body: form });
@@ -224,7 +224,7 @@ export function useImportPreset() {
         const error = (body as { error?: { message?: string } })?.error;
         throw new Error(error?.message ?? "The preset could not be imported.");
       }
-      return body as { presetName: string; blocksImported: number; blocksDisabled: number; unmappedSamplers: string[]; unsupportedMacros: string[] };
+      return body as { presetId: string; presetName: string; blocksImported: number; blocksDisabled: number; unmappedSamplers: string[]; unsupportedMacros: string[] };
     },
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: connectionKeys.presets });

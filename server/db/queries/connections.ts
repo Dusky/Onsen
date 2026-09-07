@@ -58,6 +58,8 @@ interface PresetRow {
   squash_system: number;
   system_prompt: string | null;
   jailbreak: string | null;
+  /** The profile this preset answers with, when the scene names none (§20 phase 105). */
+  connection_profile_id: number | null;
   is_default: number;
   created_at: number;
   updated_at: number;
@@ -170,6 +172,12 @@ export function listPresetBlocks(db: Database, presetId: number): PresetBlockDto
 }
 
 export function toPresetDto(db: Database, row: PresetRow): PresetDto {
+  const profile =
+    row.connection_profile_id === null
+      ? null
+      : (db
+          .query("SELECT ulid, name FROM connection_profiles WHERE id = $id")
+          .get({ id: row.connection_profile_id }) as { ulid: string; name: string } | null);
   return {
     id: row.ulid,
     name: row.name,
@@ -179,6 +187,9 @@ export function toPresetDto(db: Database, row: PresetRow): PresetDto {
     prefill: row.prefill,
     reasoning: parseReasoningConfig(row.reasoning_config),
     isDefault: row.is_default === 1,
+    /** The model this preset answers with, when the scene names none (§20 phase 105). */
+    connectionProfileId: profile?.ulid ?? null,
+    connectionProfileName: profile?.name ?? null,
     blockOrder: parsePromptOrder(row.prompt_order),
     blocks: listPresetBlocks(db, row.id),
     autoContinue: row.auto_continue,
@@ -546,6 +557,8 @@ export interface PresetPatch {
   maxResponseTokens?: number;
   prefill?: string | null;
   reasoningConfig?: string;
+  /** The model this preset answers with, or null for none (§20 phase 105). */
+  connectionProfileId?: number | null;
   /** The whole assembly order as JSON, or null for §3's default (phase 56). */
   promptOrder?: string | null;
   /** The two automatic retries (§20 phase 63). */
@@ -631,6 +644,7 @@ export function updatePreset(db: Database, id: number, patch: PresetPatch): Pres
           SET name = $name, sampler_settings = $samplers, context_size = $context,
               max_response_tokens = $max, prefill = $prefill,
               reasoning_config = $reasoning, prompt_order = $order,
+              connection_profile_id = $profile,
               auto_continue = $auto_continue,
               auto_swipe_min_chars = $auto_swipe_min_chars,
               auto_swipe_attempts = $auto_swipe_attempts,
@@ -652,6 +666,10 @@ export function updatePreset(db: Database, id: number, patch: PresetPatch): Pres
       prefill: patch.prefill === undefined ? current.prefill : patch.prefill,
       reasoning: patch.reasoningConfig ?? current.reasoning_config,
       order: patch.promptOrder === undefined ? current.prompt_order : patch.promptOrder,
+      profile:
+        patch.connectionProfileId === undefined
+          ? current.connection_profile_id
+          : patch.connectionProfileId,
       auto_continue: patch.autoContinue ?? current.auto_continue,
       auto_swipe_min_chars: patch.autoSwipeMinChars ?? current.auto_swipe_min_chars,
       auto_swipe_attempts: patch.autoSwipeAttempts ?? current.auto_swipe_attempts,
