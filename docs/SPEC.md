@@ -3695,6 +3695,12 @@ Each phase ends in a working, usable application.
     homes and the Settings one lacked the new editor. The Settings category is
     gone and the screen is the single surface. See §12,
     `test/backgrounds.test.ts`.
+123. **The lore page** — the lorebook list and the editor were two routes; they
+    are now one `LoreScreen`, SillyTavern-style. On a desktop the books are a
+    rail beside the editor, with the book's settings, bindings and the open
+    entry all on one pane; on a phone the list and editor swap in place. The
+    `/lorebooks/:id` deep link still works and follows its book. See §10, §16,
+    `test/lore-screen.test.ts`.
 
 Settled while building phase 15.
 

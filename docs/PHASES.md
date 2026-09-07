@@ -6699,3 +6699,18 @@ deleting backdrops.
 
 **Verified** by the backgrounds guard, which pins that the screen carries the
 library hooks and that Settings no longer references the old section.
+
+## Phase 123 — The lore page
+
+The lorebook list and the editor were two routes — browse books on one screen,
+leave to edit on another. SillyTavern keeps world info on a single surface, and
+the request was to do the same. The two screens are now one `LoreScreen`: on a
+desktop the books are a 280px rail beside the editor, with the book's settings,
+bindings and the open entry all on one pane (the dense "everything visible"
+reading); on a phone the list and the editor swap in place rather than
+navigating. The `/lorebooks/:id` deep link still works, and a change of book in
+that link follows the new book rather than showing the first.
+
+**Verified** by a new `test/lore-screen.test.ts` pinning that the list and the
+editor are one component, both routes render it, and the old two screens are
+gone. Full suite green.

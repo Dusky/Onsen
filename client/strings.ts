@@ -1637,6 +1637,7 @@ export const strings = {
      * attention and nothing else to compete with.
      */
     empty: "No lorebooks yet",
+    pickBook: "Pick a lorebook to edit.",
     /*
      * The entry list inside a book used `lore.empty` — "No lorebooks yet",
      * inside a lorebook. Nobody noticed until phase 51 rewrote that string

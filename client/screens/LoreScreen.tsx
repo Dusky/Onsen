@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
+  LoreBindingDto,
   LoreBindingScope,
   LoreDelayFrom,
   LoreEntryDto,
@@ -13,15 +14,18 @@ import { INJECTION_ROLES, LORE_BINDING_SCOPES, LORE_POSITIONS } from "@shared/ty
 import { strings } from "../strings.ts";
 import { EmptyState } from "../components/EmptyState.tsx";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
-import { navigate } from "../lib/router.ts";
-import { bindingLabel } from "./LorebooksScreen.tsx";
+import { Notice } from "../components/Notice.tsx";
+import { useIsDesktop } from "../lib/breakpoint.ts";
 import {
   useBindLorebook,
   useCharacters,
   useCreateLoreEntry,
+  useCreateLorebook,
   useDeleteLoreEntry,
   useDeleteLorebook,
+  useImportLorebook,
   useLorebook,
+  useLorebooks,
   usePersonas,
   useScenes,
   useUnbindLorebook,
@@ -46,6 +50,136 @@ import {
  * half-written rule — and §10 clears timed effects on every edit, so a save per
  * keystroke would also reset a sticky window per keystroke.
  */
+
+/** What a binding says, in the book list and the bindings panel. */
+export function bindingLabel(binding: LoreBindingDto): string {
+  switch (binding.scope) {
+    case "global":
+      return strings.lore.bindingGlobal;
+    case "scene":
+      return strings.lore.bindingScene(binding.targetName ?? "\u2014");
+    case "character":
+      return strings.lore.bindingCharacter(binding.targetName ?? "\u2014");
+    case "persona":
+      return strings.lore.bindingPersona(binding.targetName ?? "\u2014");
+  }
+}
+
+/**
+ * The book list, with create and import (§20 phase 123).
+ *
+ * Rendered as a rail on a desktop and as the whole page on a phone, so it
+ * owns the actions that make a book and leaves the editor to own the book
+ * itself.
+ */
+function BookList({
+  selectedId,
+  onSelect,
+}: {
+  selectedId: string | null;
+  onSelect(id: string): void;
+}) {
+  const books = useLorebooks();
+  const create = useCreateLorebook();
+  const importBook = useImportLorebook();
+  const [notice, setNotice] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  function onFile(file: File | undefined) {
+    if (file === undefined) return;
+    setNotice(null);
+    importBook.mutate(file, {
+      onSuccess: (result) => {
+        setNotice(strings.lore.imported(result.lorebook.name, result.entries));
+        onSelect(result.lorebook.id);
+      },
+      onError: (error) => setNotice(error.message),
+    });
+  }
+
+  const none = books.data !== undefined && books.data.length === 0;
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      {notice !== null ? <Notice>{notice}</Notice> : null}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {none ? (
+          <EmptyState
+            title={strings.lore.empty}
+            actions={[
+              {
+                label: strings.lore.create,
+                onClick: () =>
+                  create.mutate({ name: "New lorebook" }, { onSuccess: (book) => onSelect(book.id) }),
+              },
+              {
+                label: importBook.isPending ? strings.lore.importing : strings.lore.import,
+                onClick: () => fileInput.current?.click(),
+                disabled: importBook.isPending,
+              },
+            ]}
+          />
+        ) : (
+          (books.data ?? []).map((book) => (
+            <button
+              key={book.id}
+              type="button"
+              onClick={() => onSelect(book.id)}
+              className="row flex w-full items-baseline gap-[10px] text-left"
+              style={book.id === selectedId ? { background: "var(--onsen-color-bg-inset)" } : undefined}
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[15px] font-medium">{book.name}</span>
+                <span className="meta mt-[4px] block truncate">
+                  {book.ownerAuthorName !== null
+                    ? strings.lore.ownedBy(book.ownerAuthorName)
+                    : book.bindings.length === 0
+                      ? strings.lore.unbound
+                      : book.bindings.map(bindingLabel).join(" · ")}
+                </span>
+              </span>
+              <span className="meta flex-none">{strings.lore.entries(book.entryCount)}</span>
+            </button>
+          ))
+        )}
+      </div>
+
+      {none ? null : (
+        <div className="flex-none border-t border-rule px-[16px] py-[10px]">
+          <input
+            ref={fileInput}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(event) => {
+              onFile(event.target.files?.[0]);
+              event.target.value = "";
+            }}
+          />
+          <div className="flex gap-[8px]">
+            <button
+              type="button"
+              className="btn flex-1"
+              disabled={importBook.isPending}
+              onClick={() => fileInput.current?.click()}
+            >
+              {importBook.isPending ? strings.lore.importing : strings.lore.import}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary flex-1"
+              onClick={() =>
+                create.mutate({ name: "New lorebook" }, { onSuccess: (book) => onSelect(book.id) })
+              }
+            >
+              {strings.lore.create}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function labelForPosition(position: LorePosition): string {
   switch (position) {
@@ -884,7 +1018,8 @@ function Bindings({ book }: { book: LorebookDto }) {
   );
 }
 
-export function LorebookEditorScreen({ bookId }: { bookId: string }) {
+/** The selected book's editor: settings, bindings, entries and the open entry. */
+function BookEditor({ bookId, onBack }: { bookId: string; onBack?: () => void }) {
   const query = useLorebook(bookId);
   const updateBook = useUpdateLorebook(bookId);
   const deleteBook = useDeleteLorebook();
@@ -897,7 +1032,7 @@ export function LorebookEditorScreen({ bookId }: { bookId: string }) {
   const book = query.data?.lorebook;
   if (book === undefined) {
     return (
-      <div className="flex screen-height items-center justify-center">
+      <div className="flex min-h-0 flex-1 items-center justify-center">
         <p className="chrome text-[12.5px] text-ink-dim">
           {strings.common.working}
         </p>
@@ -910,20 +1045,22 @@ export function LorebookEditorScreen({ bookId }: { bookId: string }) {
   const total = entries.reduce((sum, entry) => sum + entry.tokenCount, 0);
 
   return (
-    <div className="flex screen-height flex-col bg-bg">
+    <div className="flex min-h-0 flex-1 flex-col bg-bg">
       <header
         className="screen-header hairline flex-none px-[22px] pb-[12px]"
         style={{ paddingTop: "18px" }}
       >
         <div className="flex w-full items-baseline gap-[12px]">
-          <button
-            type="button"
-            onClick={() => navigate({ name: "lorebooks" })}
-            aria-label={strings.common.back}
-            className="chrome -ml-[6px] flex h-[34px] w-[24px] items-center text-[18px] text-ink-muted"
-          >
-            {strings.chat.back}
-          </button>
+          {onBack === undefined ? null : (
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label={strings.common.back}
+              className="chrome -ml-[6px] flex h-[34px] w-[24px] items-center text-[18px] text-ink-muted"
+            >
+              {strings.chat.back}
+            </button>
+          )}
           <div className="min-w-0 flex-1">
             <p className="screen-kicker">{strings.lore.editorKicker}</p>
             <h1 className="truncate text-[19px] font-medium tracking-[-0.01em]">{book.name}</h1>
@@ -1050,7 +1187,7 @@ export function LorebookEditorScreen({ bookId }: { bookId: string }) {
                 strings.lore.deleteBookConfirm(book.name),
                 () =>
                   deleteBook.mutate(book.id, {
-                    onSuccess: () => navigate({ name: "lorebooks" }),
+                    onSuccess: () => onBack?.(),
                   }),
                 { confirmLabel: strings.lore.deleteBook },
               )
@@ -1070,6 +1207,76 @@ export function LorebookEditorScreen({ bookId }: { bookId: string }) {
         </p>
       </footer>
       {bookConfirmNode}
+    </div>
+  );
+}
+
+/**
+ * The lore library and its editor on one page (SPEC §10, §16, §20 phase 123).
+ *
+ * SillyTavern keeps world info on a single surface; this does the same. On a
+ * desktop the books are a rail beside the editor; on a phone the books list
+ * and the editor swap in place, so a lorebook is edited where it is browsed
+ * rather than behind a second route.
+ */
+export function LoreScreen({ bookId }: { bookId?: string | null }) {
+  const isDesktop = useIsDesktop();
+  const [selectedId, setSelectedId] = useState<string | null>(bookId ?? null);
+
+  // A deep link into a book changes the prop, not the component instance;
+  // follow it so a link to one book then another does not show the first.
+  useEffect(() => {
+    if (bookId !== undefined && bookId !== null) setSelectedId(bookId);
+  }, [bookId]);
+
+  if (isDesktop) {
+    return (
+      <div className="flex screen-height flex-col bg-bg">
+        <header
+          className="screen-header screen-header-wide hairline flex-none px-[22px] pb-[14px]"
+          style={{ paddingTop: "22px" }}
+        >
+          <p className="screen-kicker">{strings.lore.kicker}</p>
+          <h1 className="screen-title mt-[6px]">{strings.lore.title}</h1>
+        </header>
+        <div className="flex min-h-0 flex-1">
+          <aside className="w-[280px] flex-none border-r border-rule">
+            <BookList selectedId={selectedId} onSelect={setSelectedId} />
+          </aside>
+          {selectedId === null ? (
+            <main className="flex min-h-0 flex-1 items-center justify-center">
+              <p className="explain">{strings.lore.pickBook}</p>
+            </main>
+          ) : (
+            <BookEditor bookId={selectedId} />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (selectedId === null) {
+    return (
+      <div className="flex screen-height flex-col bg-bg">
+        <header
+          className="screen-header screen-header-wide hairline flex-none px-[22px] pb-[14px]"
+          style={{ paddingTop: "22px" }}
+        >
+          <p className="screen-kicker">{strings.lore.kicker}</p>
+          <h1 className="screen-title mt-[6px]">{strings.lore.title}</h1>
+        </header>
+        <div className="min-h-0 flex-1 px-[22px] py-[14px]">
+          <div className="mx-auto h-full w-full max-w-[var(--onsen-list-measure)]">
+            <BookList selectedId={null} onSelect={setSelectedId} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex screen-height flex-col">
+      <BookEditor bookId={selectedId} onBack={() => setSelectedId(null)} />
     </div>
   );
 }

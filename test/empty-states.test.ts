@@ -36,8 +36,7 @@ const CAN_BE_EMPTY = [
   "screens/ScenesScreen.tsx",
   "screens/CharactersScreen.tsx",
   "screens/AuthorsScreen.tsx",
-  "screens/LorebooksScreen.tsx",
-  "screens/LorebookEditorScreen.tsx",
+  "screens/LoreScreen.tsx",
   "screens/SceneSetupScreen.tsx",
   "screens/ChatScreen.tsx",
 ];
