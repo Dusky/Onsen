@@ -24,10 +24,29 @@ interface SubmitResponse {
 
 interface JobStatus {
   status?: string;
+  error_message?: string;
   outputs?: Record<
     string,
     { images?: { filename: string; subfolder: string; type: string }[] }
   >;
+}
+
+/** The error a failed job carries, in words rather than a stack trace. */
+function failureOf(status: JobStatus): string {
+  const raw = status.error_message;
+  if (typeof raw === "string" && raw !== "") {
+    try {
+      const parsed = JSON.parse(raw) as { exception_message?: string; node_type?: string };
+      if (typeof parsed.exception_message === "string" && parsed.exception_message !== "") {
+        const where = parsed.node_type === undefined ? "" : `${parsed.node_type}: `;
+        return `${where}${parsed.exception_message.trim()}`;
+      }
+    } catch {
+      /* Not JSON; the raw message is still the most useful thing to show. */
+    }
+    return raw.slice(0, 300);
+  }
+  return "The workflow failed.";
 }
 
 /** Inject the prompt and a fresh seed into a workflow in API format. */
@@ -39,7 +58,14 @@ function inject(workflow: Record<string, unknown>, prompt: string): Record<strin
     if (typeof inputs !== "object" || inputs === null) continue;
     for (const [key, value] of Object.entries(inputs)) {
       if (typeof value === "string") {
-        inputs[key] = value.replace(/\{\{prompt\}\}/g, prompt);
+        if (value.includes("{{prompt}}")) {
+          // The workflow keeps its own wording around the placeholder.
+          inputs[key] = value.replace(/\{\{prompt\}\}/g, prompt);
+        } else if (key === "prompt") {
+          // A text field named `prompt` is the positive prompt whatever the
+          // node is — Krea2, Flux, etc. Replace it outright.
+          inputs[key] = prompt;
+        }
       }
       // A sampler's seed is a number; rolling it is what makes two portraits
       // differ rather than two identical cards.
@@ -107,7 +133,7 @@ export function comfyuiAdapter(config: MediaServiceConfig): ImageAdapter {
         if (!response.ok) throw await failed(response, "Reading the job status");
         status = (await response.json()) as JobStatus;
         if (status.status === "error" || status.status === "failed") {
-          throw new Error("The workflow failed.");
+          throw new Error(failureOf(status));
         }
         if (status.status === "success" || status.status === "completed" || status.outputs !== undefined) {
           break;

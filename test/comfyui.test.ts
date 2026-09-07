@@ -92,4 +92,79 @@ describe("the comfyui adapter", () => {
     ).rejects.toThrow(/No workflow/);
     expect(calls).toBe(0);
   });
+
+  test("a node with a `prompt` field takes the prompt outright, and the seed rolls", async () => {
+    // The Krea2/Flux shape: the positive prompt is an input named `prompt`,
+    // not a CLIPTextEncode text field (§20 phase 79).
+    let submitted: { prompt: Record<string, unknown> } | null = null;
+    const stub = (async (url: string | URL, init: RequestInit | undefined) => {
+      const path = String(url);
+      if (path.includes("/api/prompt")) {
+        submitted = JSON.parse(String(init?.body)) as { prompt: Record<string, unknown> };
+        return Response.json({ prompt_id: "p1" });
+      }
+      if (path.includes("/api/job/p1/status")) {
+        return Response.json({
+          status: "success",
+          outputs: { "2": { images: [{ filename: "out.png", subfolder: "", type: "output" }] } },
+        });
+      }
+      if (path.includes("/api/view")) {
+        return new Response(null, { status: 302, headers: { Location: "https://storage/out.png" } });
+      }
+      return new Response(Uint8Array.from(atob(PIXEL), (c) => c.charCodeAt(0)));
+    }) as unknown as typeof globalThis.fetch;
+
+    const adapter = comfyuiAdapter({
+      baseUrl: "https://cloud.comfy.org",
+      apiKey: "k",
+      model: null,
+      options: {
+        workflow: JSON.stringify({
+          "1": {
+            class_type: "Krea2ImageNode",
+            inputs: { prompt: "the default look", seed: 1981045336 },
+          },
+          "2": { class_type: "SaveImage", inputs: { images: ["1", 0] } },
+        }),
+      },
+      fetch: stub,
+    });
+
+    await adapter.draw({ prompt: "a tracker on the treeline" }, new AbortController().signal);
+    const node = (submitted!.prompt["1"] as { inputs: { prompt: string; seed: number } }).inputs;
+    expect(node.prompt).toBe("a tracker on the treeline");
+    expect(typeof node.seed).toBe("number");
+    expect(node.seed).not.toBe(1981045336);
+  });
+
+  test("a failed job reports the node's own error, not a stack trace", async () => {
+    const stub = (async (url: string | URL, init: RequestInit | undefined) => {
+      const path = String(url);
+      if (path.includes("/api/prompt")) {
+        return Response.json({ prompt_id: "p1" });
+      }
+      if (path.includes("/api/job/p1/status")) {
+        return Response.json({
+          status: "error",
+          error_message: JSON.stringify({
+            exception_message: "Unauthorized: Please login first to use this node.\n",
+            node_type: "Krea2ImageNode",
+          }),
+        });
+      }
+      return new Response("unexpected", { status: 500 });
+    }) as unknown as typeof globalThis.fetch;
+
+    const adapter = comfyuiAdapter({
+      baseUrl: "https://cloud.comfy.org",
+      apiKey: "k",
+      model: null,
+      options: { workflow: JSON.stringify({ "1": { class_type: "Krea2ImageNode", inputs: { prompt: "x", seed: 1 } } }) },
+      fetch: stub,
+    });
+    await expect(adapter.draw({ prompt: "x" }, new AbortController().signal)).rejects.toThrow(
+      /Krea2ImageNode.*Please login first/,
+    );
+  });
 });
