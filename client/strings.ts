@@ -495,6 +495,7 @@ export const strings = {
     mute: "Mute",
     unmute: "Let them speak",
     statusMuted: "Muted",
+    editCard: "Edit card",
     viewCard: "View card",
     castMember: "Cast member",
 
@@ -1117,6 +1118,7 @@ export const strings = {
     tabGreetings: "Greetings",
     tabSprites: "Sprites",
     tabAdvanced: "Advanced",
+    openEditor: "Open full editor",
 
     name: "Name",
     description: "Description",

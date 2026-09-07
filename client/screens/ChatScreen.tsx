@@ -35,6 +35,7 @@ import { Deck, Readouts } from "../components/Deck.tsx";
 import { OpsGrid, OpsRow, OpPrompt, type Op } from "../components/OpsGrid.tsx";
 import { QuickReplyRow, QuickReplySheet } from "../components/QuickReplies.tsx";
 import { CastRail } from "../components/CastRail.tsx";
+import { CastEditPane } from "../components/CastEditPane.tsx";
 import { VnStage } from "../components/VnStage.tsx";
 import { TrackerPanel } from "../components/TrackerPanel.tsx";
 import { VirtualizedLog } from "../components/VirtualizedLog.tsx";
@@ -201,6 +202,8 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const [opWorking, setOpWorking] = useState(false);
   /** A message being corrected, once the user has said which one. */
   const [correcting, setCorrecting] = useState<MessageDto | null>(null);
+  /** The cast member whose card is open in the right pane (desktop, §20 phase 82). */
+  const [editingCastId, setEditingCastId] = useState<string | null>(null);
   const [castActing, setCastActing] = useState<SceneMemberDto | null>(null);
   /**
    * Who the user cued for this turn. Client-side and one-shot: a cue is a
@@ -1292,7 +1295,15 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           <div className="flex min-w-0 flex-1 flex-col">{body}</div>
           {/* §20 phase 43: the third pane. Context is on screen while you read
               rather than a sheet you go and fetch, which is the argument for
-              spending the width on it at all. */}
+              spending the width on it at all. Editing a cast member swaps the
+              pane for their card (§20 phase 82) so a mid-scene correction
+              never leaves the log. */}
+          {editingCastId !== null ? (
+            <CastEditPane
+              characterId={editingCastId}
+              onClose={() => setEditingCastId(null)}
+            />
+          ) : (
           <Inspector
             tab={inspectorTab}
             onTab={setInspectorTab}
@@ -1336,6 +1347,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
               </>
             }
           />
+          )}
         </div>
       ) : (
         body
@@ -1535,6 +1547,17 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                 isActive: !castActing.isActive,
               });
               setCastActing(null);
+            }}
+          />
+          <SheetAction
+            label={strings.chat.editCard}
+            onClick={() => {
+              if (isDesktop) {
+                setEditingCastId(castActing.characterId);
+                setCastActing(null);
+              } else {
+                navigate({ name: "character", characterId: castActing.characterId });
+              }
             }}
           />
           <SheetAction

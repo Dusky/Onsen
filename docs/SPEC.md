@@ -2531,6 +2531,10 @@ toggle.
 - Sticky composer above the keyboard.
 - **Director bar**: cast chips (tap to make that character speak next), autopilot
   toggle, steer indicator, active-guides indicator with token cost.
+- **Mid-scene editing** (§20 phase 82): on a desktop, the right pane swaps for
+  a cast member's card — name, description, personality, speech, scenario — so
+  a correction never leaves the log; on a phone the same action opens the full
+  editor.
 - **Op buttons** beside send, user-configurable: nudge, guided swipe,
   impersonate, guides menu, tools menu, simple send.
 - Message gestures: swipe left to reroll, swipe right for the swipe carousel,
@@ -3475,6 +3479,11 @@ Each phase ends in a working, usable application.
     the character editor's body sits on a raised surface, its card fields are
     grouped (*Who they are* / *Scene*), and the card total appears in the
     header rather than only the footer. See §16 and `EditorField.tsx`.
+82. **Mid-scene editing** — on a desktop, editing a cast member swaps the
+    chat's right pane for their card, so a mid-scene correction never leaves
+    the log; on a phone the same action opens the full editor. The pane renders
+    the same `EditorField`s the screen does. See §16 and
+    `test/cast-edit-pane.test.ts`.
 
 Settled while building phase 15.
 

@@ -6143,3 +6143,22 @@ same `EditorField`s the screen does.
 
 **Verified in a browser** at 1440×900: the surface, both group headings and the
 header total render.
+
+## Phase 82 — Mid-scene editing
+
+The right sidebar the content editors were missing. On a desktop, editing a
+cast member swaps the chat's right pane for their card — the fields a reader
+actually changes mid-scene — so a correction never leaves the log. On a phone
+there is no pane, so the same *Edit card* action opens the full editor.
+
+The pane renders the same `EditorField`s the screen does, which is the
+load-bearing part: it is the same single-component contract the settings
+editors took in phases 71–73, and the same reason — a pane and a screen that
+drift into two editors is the defect this codebase keeps having.
+
+The cast member sheet gains *Edit card* between mute/bench and view card. The
+full editor, with its tabs, sprites and greetings, stays a screen; *Open full
+editor* reaches it.
+
+**Verified in a browser** at 1440×900: right-clicking a cast card, choosing
+*Edit card*, and the pane opens with the name field and *Open full editor*.

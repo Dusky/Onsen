@@ -3,13 +3,14 @@
 A short, honest list, written at the end of phase 65 so work can resume without
 re-deriving it. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 81, on `glm/sillytavern-replacement-dyp30w`. 1387 tests across
-100 files, typecheck clean, working tree clean. Feature complete against
+**State:** phase 82, on `glm/sillytavern-replacement-dyp30w`. 1391 tests across
+101 files, typecheck clean, working tree clean. Feature complete against
 `SPEC.md` §20 apart from the deferred phase 42.
 
 **In progress** — the content editors are becoming panes so they can be edited
-mid-scene without leaving the chat, SillyTavern's shape (§20 phase 81 unified
-and surfaced the fields). Next: the right-sidebar editor.
+mid-scene without leaving the chat (§20 phases 81–82: the fields are unified
+and surfaced, and a cast member's card opens in the right pane). Next: the same
+pane treatment for the scene's lorebook and the persona.
 
 ## How to pick up
 
