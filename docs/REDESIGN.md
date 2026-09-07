@@ -26,6 +26,7 @@ records the shape and the build order.
 
 1. **Foundation** — fonts and palette. *(done, phase 88)*
 2. **The left icon rail and its four sections** — Prompt, Preset, Lore, Guides.
+   *(done, phase 89)*
 3. **The right panel** — In this scene / Characters / Authors, with the inline
    editors.
 4. **The header** — scene title, model chip, prose size, theme, toggles.

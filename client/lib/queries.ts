@@ -467,13 +467,14 @@ export function useStartLikeScene() {
  * "Show more" uses and needs no prepend logic to get the order right.
  * Undefined leaves the window to the reading preference.
  */
-export function useScene(sceneId: string, limit?: number) {
+export function useScene(sceneId: string, limit?: number, enabled = true) {
   return useQuery({
     queryKey: limit === undefined ? keys.scene(sceneId) : [...keys.scene(sceneId), limit],
     queryFn: () =>
       api.get<SceneWithHistoryDto>(
         limit === undefined ? `/scenes/${sceneId}` : `/scenes/${sceneId}?limit=${limit}`,
       ),
+    enabled,
     // The window only ever grows within a visit, so the turns already on screen
     // stay there while the wider fetch is in flight.
     placeholderData: (previous) => previous,

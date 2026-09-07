@@ -43,7 +43,7 @@ import { useConfirm } from "./ConfirmSheet.tsx";
  */
 
 /** The order the sliders read in: what a model does, then the two modern tools. */
-const GROUPS: { hint?: string; keys: BoundedSampler[] }[] = [
+export const GROUPS: { hint?: string; keys: BoundedSampler[] }[] = [
   { keys: ["temperature", "min_p", "top_p", "top_k", "repetition_penalty"] },
   {
     hint: strings.settings.dryHint,
@@ -52,7 +52,7 @@ const GROUPS: { hint?: string; keys: BoundedSampler[] }[] = [
   { hint: strings.settings.xtcHint, keys: ["xtc_threshold", "xtc_probability"] },
 ];
 
-const LABELS: Record<BoundedSampler, string> = {
+export const LABELS: Record<BoundedSampler, string> = {
   temperature: strings.settings.samplerTemperature,
   min_p: strings.settings.samplerMinP,
   top_p: strings.settings.samplerTopP,
@@ -600,7 +600,7 @@ async function download(preset: PresetDto, format: "onsen" | "sillytavern"): Pro
  * One sampler. A slider because these are felt rather than calculated, with the
  * number beside it because "0.85" is what gets pasted into a forum post.
  */
-function Slider({
+export function Slider({
   label,
   bound,
   value,

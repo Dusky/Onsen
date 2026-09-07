@@ -14,8 +14,8 @@ import { join } from "node:path";
 
 const TOP = readFileSync(join(import.meta.dir, "..", "client", "components", "TopBar.tsx"), "utf8");
 const APP = readFileSync(join(import.meta.dir, "..", "client", "App.tsx"), "utf8");
-const SIDEBAR = readFileSync(
-  join(import.meta.dir, "..", "client", "components", "Sidebar.tsx"),
+const RAIL = readFileSync(
+  join(import.meta.dir, "..", "client", "components", "LeftRail.tsx"),
   "utf8",
 );
 
@@ -32,8 +32,9 @@ describe("the top bar", () => {
     expect(TOP).toContain("showWriting");
   });
 
-  test("the rail shrank to the recent list", () => {
-    expect(SIDEBAR).not.toContain("strings.nav.roleplays");
-    expect(SIDEBAR).toContain("strings.nav.recent");
+  test("the rail is the icon rail, not the old destination list", () => {
+    expect(RAIL).not.toContain("strings.nav.roleplays");
+    expect(RAIL).not.toContain("strings.nav.recent");
+    expect(RAIL).toContain("id: \"prompt\"");
   });
 });

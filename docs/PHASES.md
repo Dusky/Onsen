@@ -6261,3 +6261,27 @@ follows re-skins on top of it. Two changes:
 **Verified in a browser** at 1440×900: the computed ground is `#0e0f11`, the
 prose resolves to Source Serif 4, and a section label resolves to IBM Plex
 Sans.
+
+## Phase 89 — The left icon rail
+
+The mockup's left side replaces the config sidebar the workbench built. A 46px
+rail of five icons — Prompt, Preset, Lore, Guides, Settings — and a panel
+beside it carrying the chosen section:
+
+- **Prompt** shows the window being assembled: the next turn's prompt, block by
+  block, with a segmented budget bar and what the window could not carry. It
+  reuses the inspector's debug record, fetched by `POST /scenes/:id/preview`.
+- **Preset** carries the three samplers the mockup leads with (temperature,
+  min-p, repetition penalty), plus a preset selector and a link to the full
+  editor.
+- **Lore** shows what fired, **Guides** what is injected.
+
+Three of the four are scene-scoped, so the rail reads the scene from the route
+rather than a slot — simpler than the right rail's slot, because nothing here
+needs unsaved client state. Outside a roleplay they explain themselves and
+wait. The recent-scenes list and the new-roleplay button stay on the scenes
+screen, where they always were.
+
+**Verified in a browser** at 1440×900: the icon rail renders, and each section
+fills the panel — Prompt with a real 445-token assembly, Preset with working
+sliders, Lore and Guides with their empty states.

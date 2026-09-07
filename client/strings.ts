@@ -1027,6 +1027,25 @@ export const strings = {
     removeConfirm: "Remove this? Anything using it falls back to nothing.",
   },
 
+  /** The left icon rail and its sections (§20 phase 89). */
+  leftRail: {
+    prompt: "Prompt",
+    preset: "Preset",
+    lore: "Lore",
+    guides: "Guides",
+    settings: "Settings",
+    promptTitle: "Context",
+    presetTitle: "Preset",
+    loreTitle: "Lore",
+    guidesTitle: "Guides",
+    noScene: "Open a roleplay to read it.",
+    refresh: "Refresh",
+    fullEditor: "Full editor",
+    free: (n: number) => `Free ${n} tok`,
+    loreEmpty: "Nothing fired \u2014 no lore matched.",
+    guidesEmpty: "Nothing injected. Writing a guide reads the scene so far.",
+  },
+
   characters: {
     kicker: "Library",
     title: "Cast",

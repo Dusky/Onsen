@@ -3513,6 +3513,12 @@ Each phase ends in a working, usable application.
     `Midnight` default theme — cool dark ground `#0e0f11`, hairlines, no
     shadows. The warm `Ledger` and the rounded themes stay pickable. See §16
     and `test/themes.test.ts`.
+89. **The left icon rail** — the mockup's left side replaces the config
+    sidebar: a 46px rail of five icons (Prompt, Preset, Lore, Guides,
+    Settings) beside a section panel. Prompt shows the window being assembled
+    (the budget bar, the blocks, the evictions), Preset the samplers, Lore what
+    fired, Guides what is injected. Three of the four read the scene from the
+    route. See §16, `docs/REDESIGN.md` and `test/leftrail.test.ts`.
 
 Settled while building phase 15.
 
