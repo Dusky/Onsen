@@ -2605,10 +2605,12 @@ toggle.
   lives in a row beside the message, read only when the log's DTO is built.
 - **Top bar** — the wordmark, the five destinations and the cross-screen
   writing indicator live in one global bar, on every screen and every width
-  (§20 phase 80): SillyTavern's shape. On a desktop the rail below it shrank to
-  a `RECENT` list of real rows — title, the newest line of prose, the cast's
-  initials, the message count — with a red `writing` while that scene is
-  generating.
+  (§20 phase 80): SillyTavern's shape.
+- **The desktop rails** — the left rail is the configuration (§20 phase 85):
+  the prompt (the default preset), the profiles, the persona and Settings,
+  above a `RECENT` list of real rows. The right rail is the inspector's
+  Context / Cast / You / Lore panes. Both are collapsible, their state in
+  memory.
 
 ### Empty states
 
@@ -3492,6 +3494,10 @@ Each phase ends in a working, usable application.
     book, pick an entry, edit its title, keys and content without leaving the
     log. The full lorebook editor — bindings, timed effects, the activation
     test — stays a screen. See §16 and `test/cast-edit-pane.test.ts`.
+85. **The config rail, collapsible** — the desktop left rail becomes the
+    configuration: the prompt (the default preset), the profiles, the persona
+    and Settings, above the recent scenes and the new roleplay. Both rails are
+    now collapsible, their state in memory. See §16 and `test/sidebar.test.ts`.
 
 Settled while building phase 15.
 

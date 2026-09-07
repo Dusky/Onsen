@@ -34,3 +34,18 @@ describe("the sidebar's recent rows are real rows", () => {
     expect(SIDEBAR).toMatch(/className="row /);
   });
 });
+
+describe("the rail is the config, not just recent", () => {
+  test("surfaces the prompt, profiles, persona and settings", () => {
+    // §20 phase 85: the rail carries what the Settings screen buried.
+    expect(SIDEBAR).toContain("strings.settings.promptOrder");
+    expect(SIDEBAR).toContain("strings.settings.profiles");
+    expect(SIDEBAR).toContain("strings.sceneSetup.personaTitle");
+    expect(SIDEBAR).toContain("strings.nav.settings");
+  });
+
+  test("is collapsible", () => {
+    expect(SIDEBAR).toContain("useUiStore");
+    expect(SIDEBAR).toContain("leftRailOpen");
+  });
+});

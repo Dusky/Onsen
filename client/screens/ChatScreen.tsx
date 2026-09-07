@@ -42,6 +42,7 @@ import { VnStage } from "../components/VnStage.tsx";
 import { TrackerPanel } from "../components/TrackerPanel.tsx";
 import { VirtualizedLog } from "../components/VirtualizedLog.tsx";
 import { useIsDesktop } from "../lib/breakpoint.ts";
+import { useUiStore } from "../state/ui.ts";
 import { ContextSheet, type ContextTab } from "../components/ContextSheet.tsx";
 import {
   useBenchMember,
@@ -228,6 +229,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   // The cast becomes a rail and the ops flatten (design `4a`). Everything
   // else about this screen is the same components at a different width.
   const isDesktop = useIsDesktop();
+  const { rightRailOpen, toggleRightRail } = useUiStore();
   // §5's held view. While another device has moved the head somewhere this one
   // is not, the log keeps showing what the reader was reading — the whole point
   // of the prompt is that the scene does not change under them, and a client
@@ -1295,18 +1297,27 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       {isDesktop ? (
         <div className="flex min-h-0 flex-1">
           <div className="flex min-w-0 flex-1 flex-col">{body}</div>
-          {/* §20 phase 43: the third pane. Context is on screen while you read
-              rather than a sheet you go and fetch, which is the argument for
-              spending the width on it at all. Editing a cast member swaps the
-              pane for their card (§20 phase 82) so a mid-scene correction
-              never leaves the log. */}
-          {editingCastId !== null ? (
-            <CastEditPane
-              characterId={editingCastId}
-              onClose={() => setEditingCastId(null)}
-            />
-          ) : (
-          <Inspector
+          {/* §20 phase 43: the third pane, collapsible since phase 85. Context
+              is on screen while you read rather than a sheet you go and fetch;
+              editing a cast member swaps the pane for their card (§20 phase
+              82) so a mid-scene correction never leaves the log. */}
+          {rightRailOpen ? (
+            <div className="flex flex-none">
+              <button
+                type="button"
+                aria-label={strings.settings.railClose}
+                onClick={toggleRightRail}
+                className="chrome flex w-[24px] flex-none items-center justify-center border-l border-rule bg-bg-sunken text-[13px] text-ink-muted"
+              >
+                {"\u203a"}
+              </button>
+              {editingCastId !== null ? (
+                <CastEditPane
+                  characterId={editingCastId}
+                  onClose={() => setEditingCastId(null)}
+                />
+              ) : (
+                <Inspector
             tab={inspectorTab}
             onTab={setInspectorTab}
             context={contextBody()}
@@ -1356,6 +1367,17 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
               </>
             }
           />
+          )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              aria-label={strings.settings.railOpen}
+              onClick={toggleRightRail}
+              className="chrome flex w-[24px] flex-none items-center justify-center border-l border-rule bg-bg-sunken text-[13px] text-ink-muted"
+            >
+              {"\u2039"}
+            </button>
           )}
         </div>
       ) : (

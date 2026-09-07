@@ -3,18 +3,24 @@ import type { ConnectionProfileDto } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { api } from "../lib/api.ts";
 import { navigate, useRoute } from "../lib/router.ts";
-import { useCreateScene, useScenes } from "../lib/queries.ts";
+import {
+  useConnectionProfiles,
+  useCreateScene,
+  usePersonas,
+  usePresets,
+  useScenes,
+} from "../lib/queries.ts";
 import { useGeneration } from "../lib/generation.ts";
+import { useUiStore } from "../state/ui.ts";
 
 /**
- * The desktop rail (design `4a`, §20 phases 67 and 80).
+ * The desktop config rail (design `4a`, §20 phase 85).
  *
- * The destinations moved to the global top bar in phase 80; what stays here is
- * the thing that justified a desktop rail in the first place — the recent
- * roleplay list, so switching scenes is not a screen change on a desktop the
- * way it is on a phone. A recent row is a real row: the newest line of prose,
- * the cast's initials, the message count, and a red `writing` while the scene
- * is generating.
+ * After the destinations moved to the top bar, this rail had only the recent
+ * scenes. It now carries what the Settings screen buried: the prompt, the
+ * profiles, the persona, and the way to Settings itself — the configuration a
+ * power user reaches for mid-session — with the recent scenes and the new
+ * roleplay below. Collapsible; the state lives in memory, not the browser.
  */
 
 /** Initials of up to three cast members, with a surplus count past that. */
@@ -32,6 +38,10 @@ export function Sidebar() {
   const scenes = useScenes();
   const create = useCreateScene();
   const generation = useGeneration();
+  const profiles = useConnectionProfiles();
+  const presets = usePresets();
+  const personas = usePersonas();
+  const { leftRailOpen, toggleLeftRail } = useUiStore();
   const [profileId, setProfileId] = useState<string | null>(null);
 
   // A new roleplay needs somewhere to generate, the same way the roleplay list
@@ -39,27 +49,115 @@ export function Sidebar() {
   useEffect(() => {
     void api
       .get<ConnectionProfileDto[]>("/connections/profiles")
-      .then((profiles) =>
-        setProfileId(profiles.find((row) => row.isDefault)?.id ?? profiles[0]?.id ?? null),
+      .then((rows) =>
+        setProfileId(rows.find((row) => row.isDefault)?.id ?? rows[0]?.id ?? null),
       )
       .catch(() => setProfileId(null));
   }, []);
 
   const openSceneId = route.name === "chat" ? route.sceneId : null;
-  // The scene generating right now, wherever it is (§5): the recent row wears
-  // a red dot and a red `writing` so the sidebar is a live map, not a list.
   const writingSceneId = generation.active?.sceneId ?? null;
+  const defaultPreset = (presets.data ?? []).find((preset) => preset.isDefault) ?? null;
+  const defaultPersona = (personas.data ?? []).find((persona) => persona.isDefault) ?? null;
+
+  if (!leftRailOpen) {
+    return (
+      <nav className="flex w-[34px] flex-none flex-col items-center border-r border-rule bg-bg-sunken py-[10px]">
+        <button
+          type="button"
+          aria-label={strings.settings.railOpen}
+          onClick={toggleLeftRail}
+          className="chrome flex h-[34px] w-[30px] items-center justify-center text-[13px] text-ink-muted"
+        >
+          {"\u203a"}
+        </button>
+      </nav>
+    );
+  }
 
   return (
     <nav className="flex w-[232px] flex-none flex-col border-r border-rule bg-bg-sunken">
-      <p className="section-label px-[18px] pt-[16px] pb-[2px]">{strings.nav.recent}</p>
-      <div className="min-h-0 flex-1 overflow-y-auto pb-[10px]">
+      <div className="hairline flex flex-none items-center justify-between px-[14px] py-[9px]">
+        <p className="section-label">{strings.settings.config}</p>
+        <button
+          type="button"
+          aria-label={strings.settings.railClose}
+          onClick={toggleLeftRail}
+          className="chrome flex h-[28px] w-[28px] items-center justify-center text-[13px] text-ink-muted"
+        >
+          {"\u2039"}
+        </button>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {/* The prompt: what the next generation is assembled from. */}
+        <p className="section-label mt-[14px] mb-[2px] px-[18px]">
+          {strings.settings.promptOrder}
+        </p>
+        <button
+          type="button"
+          onClick={() => navigate({ name: "settings" })}
+          className="row flex w-full items-baseline gap-[10px] px-[18px] text-left"
+        >
+          <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
+            {defaultPreset?.name ?? strings.settings.presetDefault}
+          </span>
+          <span className="chrome flex-none text-[13px] text-ink-dim">{"\u203a"}</span>
+        </button>
+
+        {/* The profiles: which model answers, switchable per operation. */}
+        <p className="section-label mt-[12px] mb-[2px] px-[18px]">
+          {strings.settings.profiles}
+        </p>
+        {(profiles.data ?? []).map((profile) => (
+          <button
+            key={profile.id}
+            type="button"
+            onClick={() => navigate({ name: "settings" })}
+            className="row flex w-full items-baseline gap-[10px] px-[18px] text-left"
+          >
+            <span className="min-w-0 flex-1 truncate text-[13px]">
+              {profile.name}
+            </span>
+            <span className="meta flex-none truncate">{profile.model}</span>
+          </button>
+        ))}
+
+        {/* The reader. */}
+        <p className="section-label mt-[12px] mb-[2px] px-[18px]">
+          {strings.sceneSetup.personaTitle}
+        </p>
+        <button
+          type="button"
+          onClick={() => navigate({ name: "personas" })}
+          className="row flex w-full items-baseline gap-[10px] px-[18px] text-left"
+        >
+          <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
+            {defaultPersona?.name ?? strings.sceneSetup.personaNone}
+          </span>
+          <span className="chrome flex-none text-[13px] text-ink-dim">{"\u203a"}</span>
+        </button>
+
+        <p className="section-label mt-[12px] mb-[2px] px-[18px]">
+          {strings.nav.settings}
+        </p>
+        <button
+          type="button"
+          onClick={() => navigate({ name: "settings" })}
+          className="row flex w-full items-baseline gap-[10px] px-[18px] text-left"
+        >
+          <span className="min-w-0 flex-1 truncate text-[13px]">
+            {strings.settings.kicker}
+          </span>
+          <span className="chrome flex-none text-[13px] text-ink-dim">{"\u203a"}</span>
+        </button>
+
+        <p className="section-label mt-[14px] mb-[2px] px-[18px]">{strings.nav.recent}</p>
         {(scenes.data ?? []).map((scene) => {
           const isOpen = scene.id === openSceneId;
           const isWriting = scene.id === writingSceneId;
           const cast = castInitials(scene.cast.map((member) => member.name));
-          const title =
-            scene.title === "" ? strings.scenes.untitled : scene.title;
+          const title = scene.title === "" ? strings.scenes.untitled : scene.title;
           return (
             <button
               key={scene.id}

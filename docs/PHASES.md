@@ -6193,3 +6193,22 @@ took.
 
 **Verified in a browser** at 1440×900: the *Lore* tab lists the books with
 their entry counts; opening a book lists its entries.
+
+## Phase 85 — The config rail, collapsible
+
+The desktop shell takes its workbench shape. The left rail, which had shrunk to
+a recent-scenes list after the destinations moved to the top bar, becomes the
+configuration: the prompt (the default preset), the profiles (which model
+answers), the persona, and Settings — the things a power user reaches for
+mid-session and the Settings screen had buried — with the recent scenes and the
+new roleplay below.
+
+Both rails are collapsible. The state lives in a small in-memory store, like the
+generation store — chrome, not data, so it does not belong on the server.
+
+The rail sections are surfaces and links for now; making the prompt manager and
+the profiles editable *in* the rail is the next slice, and the right rail going
+global on every screen is the one after.
+
+**Verified in a browser** at 1440×900: the left rail lists config then recent,
+collapses to a strip and back, and the right rail shows its four tabs.

@@ -3,15 +3,15 @@
 A short, honest list, written at the end of phase 65 so work can resume without
 re-deriving it. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 84, on `glm/sillytavern-replacement-dyp30w`. 1395 tests across
+**State:** phase 85, on `glm/sillytavern-replacement-dyp30w`. 1397 tests across
 101 files, typecheck clean, working tree clean. Feature complete against
 `SPEC.md` §20 apart from the deferred phase 42.
 
-**The content editors are panes now** — the inspector's Cast, You and Lore tabs
-edit a cast member, the persona and the lore mid-scene without leaving the log
-(§20 phases 81–84), all on the same `EditorField` contract. Next: back to the
-conditional set — smooth streaming only if it judders, web search after a
-provider decision, self-responses after a conversation.
+**The desktop shell is a workbench** — a collapsible left rail carries the
+configuration (prompt, profiles, persona, settings, recent), and a collapsible
+right rail carries the inspector's Context / Cast / You / Lore panes (§20
+phases 80–85). Next: make the prompt manager and profiles editable in the left
+rail, then make the right rail global on every screen.
 
 ## How to pick up
 

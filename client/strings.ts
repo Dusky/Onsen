@@ -507,6 +507,10 @@ export const strings = {
 
   settings: {
     kicker: "Settings",
+    /** The desktop config rail (§20 phase 85). */
+    config: "Config",
+    railOpen: "Open the rail",
+    railClose: "Close the rail",
     /* There was no way out of a signed-in install until now. */
     signOut: "Sign out",
     /* §20 phase 43: eight places instead of one 1,596-line scroll. */
