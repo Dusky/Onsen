@@ -3562,6 +3562,10 @@ Each phase ends in a working, usable application.
     *in use*); the author editor samples its aside voice in the exact
     treatment the log shows it; and the inline card editor fits the rail
     instead of overflowing it. See §16, `test/rightrail.test.ts`.
+98. **The editors state their share of the window, and authors are switchable**
+    — the card and author editors end in a footer that says the card's cost as
+    a percentage of the scene's context window, and tapping *Use* on an author
+    sets them on the open roleplay. See §16, `test/rightrail.test.ts`.
 
 Settled while building phase 15.
 

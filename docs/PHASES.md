@@ -6422,3 +6422,14 @@ all six kinds with write, reorder and rebuild.
 
 **Verified in a browser** at 1440×900: the Characters tab shows the in-scene
 mark, and the Authors tab shows the empty state and the new button.
+
+## Phase 98 — Editors state their share, authors are switchable
+
+- The card editor and the author editor end in a footer: `Card N tok · X% of
+  context`, the card's cost as a share of the open scene's window — the same
+  arithmetic the prompt panel shows, so the two agree.
+- The Authors tab's *Use* button sets an author on the open roleplay, closing
+  what the *in use* mark only reported.
+
+**Verified in a browser**: the authors tab shows the Use affordance and the in-use
+mark, and the editors render the share-of-window footer.

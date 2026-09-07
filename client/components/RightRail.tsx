@@ -11,6 +11,7 @@ import {
   useCreateCharacter,
   useScenes,
   useUpdateAuthor,
+  useUpdateScene,
 } from "../lib/queries.ts";
 import { useUiStore } from "../state/ui.ts";
 import type { AuthorDto } from "@shared/types.ts";
@@ -104,8 +105,19 @@ function CharacterPane({ sceneId }: { sceneId: string | null }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [needle, setNeedle] = useState("");
 
+  const sceneContext =
+    sceneId === null
+      ? null
+      : ((scenes.data ?? []).find((scene) => scene.id === sceneId)?.contextSize ?? null);
+
   if (editingId !== null) {
-    return <CastEditPane characterId={editingId} onClose={() => setEditingId(null)} />;
+    return (
+      <CastEditPane
+        characterId={editingId}
+        onClose={() => setEditingId(null)}
+        contextSize={sceneContext}
+      />
+    );
   }
 
   const all = characters.data ?? [];
@@ -213,18 +225,29 @@ function AuthorPane({ sceneId }: { sceneId: string | null }) {
   const authors = useAuthors();
   const scenes = useScenes();
   const create = useCreateAuthor();
+  const updateScene = useUpdateScene(sceneId ?? "");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [needle, setNeedle] = useState("");
 
+  const sceneContext =
+    sceneId === null
+      ? null
+      : ((scenes.data ?? []).find((scene) => scene.id === sceneId)?.contextSize ?? null);
+
   const author = (authors.data ?? []).find((candidate) => candidate.id === editingId) ?? null;
   if (author !== null) {
-    return <AuthorEdit author={author} onClose={() => setEditingId(null)} />;
+    return (
+      <AuthorEdit author={author} onClose={() => setEditingId(null)} contextSize={sceneContext} />
+    );
   }
 
   const rows = (authors.data ?? []).filter(
     (candidate) => needle === "" || candidate.name.toLowerCase().includes(needle.toLowerCase()),
   );
-  const sceneAuthorId = sceneId === null ? null : (scenes.data ?? []).find((scene) => scene.id === sceneId)?.authorId ?? null;
+  const sceneAuthorId =
+    sceneId === null
+      ? null
+      : ((scenes.data ?? []).find((scene) => scene.id === sceneId)?.authorId ?? null);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -250,15 +273,14 @@ function AuthorPane({ sceneId }: { sceneId: string | null }) {
           <p className="explain">{strings.authors.empty}</p>
         ) : (
           rows.map((candidate) => (
-            <button
-              key={candidate.id}
-              type="button"
-              onClick={() => setEditingId(candidate.id)}
-              className="row flex w-full items-baseline gap-[10px] text-left"
-            >
-              <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">
+            <div key={candidate.id} className="row flex items-baseline gap-[10px]">
+              <button
+                type="button"
+                onClick={() => setEditingId(candidate.id)}
+                className="min-w-0 flex-1 truncate text-left text-[13.5px] font-medium"
+              >
                 {candidate.name}
-              </span>
+              </button>
               {candidate.id === sceneAuthorId ? (
                 <span
                   className="chrome flex-none text-[11px]"
@@ -270,7 +292,17 @@ function AuthorPane({ sceneId }: { sceneId: string | null }) {
               <span className="meta flex-none">
                 {strings.characters.tokens(candidate.tokens.total)}
               </span>
-            </button>
+              {sceneId === null || candidate.id === sceneAuthorId ? null : (
+                <button
+                  type="button"
+                  className="chrome flex-none text-[12px]"
+                  style={{ color: "var(--onsen-color-blue-text)" }}
+                  onClick={() => updateScene.mutate({ authorId: candidate.id })}
+                >
+                  {strings.authors.use}
+                </button>
+              )}
+            </div>
           ))
         )}
       </div>
@@ -278,7 +310,15 @@ function AuthorPane({ sceneId }: { sceneId: string | null }) {
   );
 }
 
-function AuthorEdit({ author, onClose }: { author: AuthorDto; onClose(): void }) {
+function AuthorEdit({
+  author,
+  onClose,
+  contextSize,
+}: {
+  author: AuthorDto;
+  onClose(): void;
+  contextSize?: number | null;
+}) {
   const update = useUpdateAuthor(author.id);
   return (
     <div className="px-[16px] py-[14px]">
@@ -353,6 +393,16 @@ function AuthorEdit({ author, onClose }: { author: AuthorDto; onClose(): void })
           </div>
         </div>
       </div>
+
+      {/* The author's cost as a share of the window (§20 phase 98). */}
+      {contextSize !== null && contextSize !== undefined && contextSize > 0 ? (
+        <p className="meta mt-[16px] border-t border-rule pt-[10px]">
+          {strings.characters.cardContext(
+            author.tokens.total,
+            Math.round((author.tokens.total / contextSize) * 100),
+          )}
+        </p>
+      ) : null}
     </div>
   );
 }

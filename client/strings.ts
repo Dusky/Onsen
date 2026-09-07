@@ -1211,6 +1211,8 @@ export const strings = {
     version: "Version",
 
     cardTotal: "Card total",
+    /** The editor footer: the card's cost as a share of the window (§20 phase 98). */
+    cardContext: (tokens: number, pct: number) => `Card ${tokens} tok · ${pct}% of context`,
     preserved: "Preserved from the original card but not editable here",
     format: (format: string) => `Imported as ${format.replace("_", " ")}`,
     exportAs: "Export",
@@ -1311,6 +1313,8 @@ export const strings = {
       `Delete every note ${name} has written? The roleplays they came from are untouched.`,
     makeDefault: "Use by default",
     isDefault: "Default",
+    /** Set this author on the open roleplay (§20 phase 98). */
+    use: "Use",
     cardTotal: "Author total",
     deleteAuthor: "Delete author",
     deleteConfirm: (name: string) =>

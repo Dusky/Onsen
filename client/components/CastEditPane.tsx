@@ -16,9 +16,12 @@ import { useCharacter, useUpdateCharacter } from "../lib/queries.ts";
 export function CastEditPane({
   characterId,
   onClose,
+  contextSize,
 }: {
   characterId: string;
   onClose(): void;
+  /** The open scene's window, for the card's share of it (§20 phase 98). */
+  contextSize?: number | null;
 }) {
   const query = useCharacter(characterId);
   const update = useUpdateCharacter(characterId);
@@ -93,6 +96,17 @@ export function CastEditPane({
             onCommit={(scenario) => update.mutate({ scenario: scenario || null })}
           />
         </EditorField>
+
+        {/* The card's cost as a share of the window, the same arithmetic the
+            prompt panel shows, so the two agree (§20 phase 98). */}
+        {contextSize !== null && contextSize !== undefined && contextSize > 0 ? (
+          <p className="meta mt-[16px] border-t border-rule pt-[10px]">
+            {strings.characters.cardContext(
+              tokens.total,
+              Math.round((tokens.total / contextSize) * 100),
+            )}
+          </p>
+        ) : null}
       </div>
     </aside>
   );

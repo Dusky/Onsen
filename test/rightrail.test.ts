@@ -47,6 +47,12 @@ describe("the global right rail", () => {
   test("the author editor samples the aside voice", () => {
     expect(RAIL).toContain("strings.authors.sampleVoice");
   });
+
+  test("the editors state the card's share of the window, and an author can be set on the scene", () => {
+    expect(RAIL).toContain("strings.characters.cardContext");
+    expect(RAIL).toContain("strings.authors.use");
+    expect(RAIL).toContain("useUpdateScene");
+  });
 });
 
 describe("the scene pane carries the cast and the scene's people", () => {

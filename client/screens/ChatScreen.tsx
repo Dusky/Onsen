@@ -1201,7 +1201,11 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   );
 
   const scenePane = editingCastId !== null ? (
-    <CastEditPane characterId={editingCastId} onClose={() => setEditingCastId(null)} />
+    <CastEditPane
+      characterId={editingCastId}
+      onClose={() => setEditingCastId(null)}
+      contextSize={scene.data?.scene.contextSize ?? null}
+    />
   ) : personaEditing ? (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex-none px-[16px] pt-[12px]">
