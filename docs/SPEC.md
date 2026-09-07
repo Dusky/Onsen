@@ -3627,6 +3627,10 @@ Each phase ends in a working, usable application.
     and sort, and an editor for the name, prompt, tags and folder. Authors gain
     tags and folders too, so every entity manages the same way. See §12,
     `test/backgrounds.test.ts`.
+112. **Characters, fully manageable from the rail** — the rail's list shows each
+    card's picture as a thumbnail, and the pane can change the picture (upload
+    or clear), import a card (PNG, CharX or JSON) and export one (PNG or JSON).
+    See §9, `test/cast-edit-pane.test.ts`.
 
 Settled while building phase 15.
 

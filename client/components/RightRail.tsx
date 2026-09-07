@@ -9,6 +9,7 @@ import {
   useCharacters,
   useCreateAuthor,
   useCreateCharacter,
+  useImportCharacter,
   useScenes,
   useUpdateAuthor,
   useUpdateScene,
@@ -102,6 +103,7 @@ function CharacterPane({ sceneId }: { sceneId: string | null }) {
   const characters = useCharacters();
   const scenes = useScenes();
   const create = useCreateCharacter();
+  const importCharacter = useImportCharacter();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [needle, setNeedle] = useState("");
 
@@ -152,6 +154,28 @@ function CharacterPane({ sceneId }: { sceneId: string | null }) {
         >
           {strings.characters.create}
         </button>
+        <input
+          id={`character-import-${sceneId ?? "library"}`}
+          type="file"
+          hidden
+          accept=".png,.json,.charx,application/json,image/png"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (file === undefined) return;
+            importCharacter.mutate(file, {
+              onSuccess: (result) => setEditingId(result.character.id),
+            });
+          }}
+        />
+        <button
+          type="button"
+          className="btn flex-none px-[10px]"
+          disabled={importCharacter.isPending}
+          onClick={() => document.getElementById(`character-import-${sceneId ?? "library"}`)?.click()}
+        >
+          {importCharacter.isPending ? strings.characters.importing : strings.characters.import}
+        </button>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-[10px] py-[8px]">
@@ -197,7 +221,7 @@ function CharacterRow({
   badge,
   onOpen,
 }: {
-  character: { id: string; name: string; tokens: { total: number } };
+  character: { id: string; name: string; hasAvatar: boolean; tokens: { total: number } };
   badge?: string;
   onOpen(): void;
 }) {
@@ -205,8 +229,19 @@ function CharacterRow({
     <button
       type="button"
       onClick={onOpen}
-      className="row flex w-full items-baseline gap-[10px] text-left"
+      className="row flex w-full items-center gap-[10px] text-left"
     >
+      {/* The card's own picture, small — a list of cards should look like cards
+          (§20 phase 112). */}
+      <span
+        aria-hidden="true"
+        className="h-[36px] w-[28px] flex-none border border-rule bg-cover bg-center"
+        style={
+          character.hasAvatar
+            ? { backgroundImage: `url(/api/characters/${character.id}/avatar)` }
+            : { background: "var(--onsen-stripe)" }
+        }
+      />
       <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">{character.name}</span>
       {badge === undefined ? null : (
         <span

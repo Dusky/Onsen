@@ -892,6 +892,25 @@ export function useImportCharacter() {
   });
 }
 
+/** Change a character's picture (§20 phase 112). `null` clears it. */
+export function useSetCharacterAvatar(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File | null) => {
+      if (file === null) return api.delete<unknown>(`/characters/${id}/avatar`);
+      const form = new FormData();
+      form.append("file", file);
+      const response = await fetch(`/api/characters/${id}/avatar`, { method: "PUT", body: form });
+      if (!response.ok) throw new Error("That picture could not be saved.");
+      return response.json();
+    },
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: characterKeys.all });
+      void client.invalidateQueries({ queryKey: characterKeys.one(id) });
+    },
+  });
+}
+
 /**
  * Bulk import (SPEC §9): a multi-select, or a whole folder. Reports per file
  * rather than throwing, because a folder is not clean and one unreadable file

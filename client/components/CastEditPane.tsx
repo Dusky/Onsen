@@ -1,8 +1,9 @@
+import { useRef, useState } from "react";
 import { strings } from "../strings.ts";
 import { EditorField } from "./EditorField.tsx";
 import { TextField } from "./TextField.tsx";
 import { navigate } from "../lib/router.ts";
-import { useCharacter, useUpdateCharacter } from "../lib/queries.ts";
+import { useCharacter, useSetCharacterAvatar, useUpdateCharacter } from "../lib/queries.ts";
 
 /**
  * A character's card, editable in the right pane of the chat (SPEC §16,
@@ -51,6 +52,21 @@ export function CastEditPane({
         <span className="min-w-0 flex-1 truncate text-[15px] font-medium">
           {character.name}
         </span>
+        {/* Export, both shapes the format knows (§20 phase 112). */}
+        <a
+          className="chrome flex-none text-[12px] text-ink-muted"
+          href={`/api/characters/${character.id}/export?format=png`}
+          download
+        >
+          PNG
+        </a>
+        <a
+          className="chrome flex-none text-[12px] text-ink-muted"
+          href={`/api/characters/${character.id}/export?format=json`}
+          download
+        >
+          JSON
+        </a>
         <button
           type="button"
           className="btn flex-none"
@@ -61,6 +77,9 @@ export function CastEditPane({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-[16px] py-[14px]">
+        {/* The card's own picture, changeable here (§20 phase 112). */}
+        <CharacterAvatar characterId={character.id} hasAvatar={character.hasAvatar} />
+
         <EditorField label={strings.characters.name}>
           <TextField value={character.name} onCommit={(name) => update.mutate({ name })} />
         </EditorField>
@@ -109,5 +128,47 @@ export function CastEditPane({
         ) : null}
       </div>
     </aside>
+  );
+}
+
+/** The card's picture, changeable in the pane (§20 phase 112). */
+function CharacterAvatar({ characterId, hasAvatar }: { characterId: string; hasAvatar: boolean }) {
+  const set = useSetCharacterAvatar(characterId);
+  const input = useRef<HTMLInputElement>(null);
+  const [version, setVersion] = useState(0);
+  const url = hasAvatar ? `/api/characters/${characterId}/avatar?v=${version}` : null;
+
+  return (
+    <div className="mb-[14px] flex items-center gap-[12px]">
+      <span
+        aria-hidden="true"
+        className="h-[76px] w-[57px] flex-none border border-rule bg-cover bg-center"
+        style={url !== null ? { backgroundImage: `url(${url})` } : { background: "var(--onsen-stripe)" }}
+      />
+      <div className="flex flex-col gap-[6px]">
+        <button type="button" className="btn" onClick={() => input.current?.click()}>
+          {strings.characters.changePicture}
+        </button>
+        {hasAvatar ? (
+          <button type="button" className="btn" onClick={() => set.mutate(null)}>
+            {strings.characters.removePicture}
+          </button>
+        ) : null}
+      </div>
+      <input
+        ref={input}
+        type="file"
+        hidden
+        accept="image/*"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file !== undefined) {
+            set.mutate(file);
+            setVersion((v) => v + 1);
+          }
+        }}
+      />
+    </div>
   );
 }

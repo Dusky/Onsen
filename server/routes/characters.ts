@@ -549,6 +549,40 @@ export function characterRoutes(ctx: AppContext, tasks: TaskRunner, media: Media
     return c.body(file.stream(), 200, { "Content-Type": file.type });
   });
 
+  /** Change a character's picture, the reader's own upload (§20 phase 112). */
+  app.put("/:characterId/avatar", async (c) => {
+    const row = findCharacter(ctx.db, c.req.param("characterId"));
+    if (row === null) return c.json(notFound(), 404);
+    let file: File | null = null;
+    try {
+      const candidate = (await c.req.formData()).get("file");
+      if (candidate instanceof File) file = candidate;
+    } catch {
+      return c.json(badRequest("Expected an image."), 400);
+    }
+    if (file === null) return c.json(badRequest("No image was uploaded."), 400);
+    if (file.size > 8 * 1024 * 1024) return c.json(badRequest("That picture is too large."), 413);
+    const path = `${row.id}-${ulid()}.${extensionOf(file.name)}`;
+    await Bun.write(join(ctx.config.avatarsDir, path), new Uint8Array(await file.arrayBuffer()));
+    ctx.db.query("UPDATE characters SET avatar_path = $path WHERE id = $id").run({ id: row.id, path });
+    return c.json({ ok: true });
+  });
+
+  app.delete("/:characterId/avatar", (c) => {
+    const row = findCharacter(ctx.db, c.req.param("characterId"));
+    if (row === null) return c.json(notFound(), 404);
+    const path = avatarFile(row);
+    if (path !== null) {
+      try {
+        unlinkSync(path);
+      } catch {
+        /* Already gone. */
+      }
+    }
+    ctx.db.query("UPDATE characters SET avatar_path = NULL WHERE id = $id").run({ id: row.id });
+    return c.body(null, 204);
+  });
+
   /**
    * Generate a character portrait (SPEC §20 phase 79).
    *

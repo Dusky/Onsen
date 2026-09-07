@@ -1160,6 +1160,8 @@ export const strings = {
     derive: "Make a variant",
     /* Portrait generation (§20 phase 79). */
     generatePortrait: "Generate portrait",
+    changePicture: "Change picture",
+    removePicture: "Remove picture",
     portraitWorking: "Drawing…",
     /** Version history (SPEC §9). */
     versions: "Versions",

@@ -6560,3 +6560,10 @@ thumbnails, search, tag and folder filters, and sort, plus an editor for the
 name, the prompt, the tags and the folder. Authors gained tags and folders too,
 so every entity now manages the same way. The opacity and generate moved onto
 the screen; the Settings section is superseded.
+
+## Phase 112 — Characters, fully manageable from the rail
+
+The rail's character list shows each card's picture as a thumbnail, and the
+pane can change the picture (upload or clear), import a card (PNG, CharX or
+JSON, opening it for editing) and export one (PNG or JSON). The avatar upload
+route joins the persona/author pattern.
