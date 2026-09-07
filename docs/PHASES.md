@@ -6307,3 +6307,24 @@ are gone.
 **Verified in a browser** at 1440×900: the three tabs render, the scene pane
 carries the cast and the reader/author footer, Characters lists the library,
 and the persona editor opens from the footer.
+
+## Phase 91 — The desktop header
+
+The mockup's top bar replaces the navigation strip on desktop. The five
+destinations moved into the two rails — wordmark to the roleplays, characters
+and authors to the right rail, lore and settings to the left — so the header is
+free to be the scene's identity and the reading surface's controls:
+
+- a mono `onsen` wordmark;
+- the open scene's title and turn count, amber while it is writing;
+- the model chip — a green dot, the profile's name and model;
+- prose size as the two A's, the reading surface's own serif;
+- the Dark/Light base switch, mapped onto the two flat builtin themes;
+- the two panel toggles, mirroring the rail glyphs.
+
+The phone keeps the navigation top bar; the split is the width. The wordmark
+uses the app's one tracking token rather than a local one, so the "one tracking
+value" guard still holds.
+
+**Verified in a browser** at 1440×900 (header with the scene, model, prose,
+base and toggles) and at 390×844 (navigation top bar unchanged).

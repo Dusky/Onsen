@@ -1051,6 +1051,20 @@ export const strings = {
     nextTurn: "Next turn",
   },
 
+  /** The desktop header (§20 phase 91). */
+  header: {
+    sceneMenu: "Open the roleplays",
+    turns: (n: number) => `${n} turns`,
+    text: "Text",
+    proseSmaller: "Smaller prose",
+    proseLarger: "Larger prose",
+    dark: "Dark",
+    light: "Light",
+    leftPanel: "Toggle prompt panel",
+    rightPanel: "Toggle cast panel",
+    noModel: "No model",
+  },
+
   characters: {
     kicker: "Library",
     title: "Cast",

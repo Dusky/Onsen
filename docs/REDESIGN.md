@@ -30,6 +30,7 @@ records the shape and the build order.
 3. **The right panel** — In this scene / Characters / Authors, with the inline
    editors. *(done, phase 90)*
 4. **The header** — scene title, model chip, prose size, theme, toggles.
+   *(done, phase 91)*
 5. **The composer and the turns** — the Direct chips, the Send button, the turn
    gutter and reasoning.
 

@@ -3526,6 +3526,11 @@ Each phase ends in a working, usable application.
     persona into the scene pane's footer, and the guides/memory/summaries
     management opens as a sheet from the readouts. See §16 and
     `test/rightrail.test.ts`.
+91. **The desktop header** — the mockup's top bar replaces the navigation strip
+    on desktop: a mono wordmark, the open scene's title and turn count, the
+    model chip, prose size, the dark/light base switch and the two panel
+    toggles. The destinations moved into the two rails; the phone keeps the
+    navigation top bar. See §16 and `test/topbar.test.ts`.
 
 Settled while building phase 15.
 

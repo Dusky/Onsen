@@ -3,24 +3,25 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * The global top bar (SPEC §16, §20 phase 80).
+ * The top bar and the desktop header (SPEC §16, §20 phases 80, 91).
  *
- * The destinations used to live in the desktop rail and the mobile tab bar, two
- * places for the same five things. Phase 80 puts them in one top bar, on every
- * screen and every width, with the wordmark and the cross-screen writing
- * indicator — SillyTavern's shape. This pins that the nav moved and the rail
- * shrank, so the two cannot quietly diverge again.
+ * Phase 80 put the five destinations in one top bar on every width. The
+ * redesign split the width again: the phone keeps the navigation top bar, and
+ * the desktop gets the mockup's header — wordmark, scene, model, prose size,
+ * base and the panel toggles — because the destinations moved into the two
+ * rails. This pins that split, so the two cannot quietly diverge.
  */
 
 const TOP = readFileSync(join(import.meta.dir, "..", "client", "components", "TopBar.tsx"), "utf8");
 const APP = readFileSync(join(import.meta.dir, "..", "client", "App.tsx"), "utf8");
+const HEADER = readFileSync(join(import.meta.dir, "..", "client", "components", "Header.tsx"), "utf8");
 const RAIL = readFileSync(
   join(import.meta.dir, "..", "client", "components", "LeftRail.tsx"),
   "utf8",
 );
 
 describe("the top bar", () => {
-  test("is rendered in the shell, on both layouts", () => {
+  test("the phone keeps the navigation top bar", () => {
     expect(APP).toContain("<TopBar />");
     // The old cross-screen strip is gone; the top bar's indicator replaced it.
     expect(APP).not.toContain("WritingElsewhere");
@@ -36,5 +37,20 @@ describe("the top bar", () => {
     expect(RAIL).not.toContain("strings.nav.roleplays");
     expect(RAIL).not.toContain("strings.nav.recent");
     expect(RAIL).toContain("id: \"prompt\"");
+  });
+});
+
+describe("the desktop header", () => {
+  test("the desktop renders it instead of the navigation bar", () => {
+    expect(APP).toContain("<Header />");
+  });
+
+  test("carries the scene, the model, prose, base and the toggles", () => {
+    expect(HEADER).toContain("strings.header.turns");
+    expect(HEADER).toContain("useConnectionProfiles");
+    expect(HEADER).toContain("setScale");
+    expect(HEADER).toContain("setBase");
+    expect(HEADER).toContain("toggleLeftRail");
+    expect(HEADER).toContain("toggleRightRail");
   });
 });

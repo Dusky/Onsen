@@ -18,6 +18,7 @@ import { useRoute } from "./lib/router.ts";
 import { useIsDesktop } from "./lib/breakpoint.ts";
 import { LeftRail } from "./components/LeftRail.tsx";
 import { TopBar } from "./components/TopBar.tsx";
+import { Header } from "./components/Header.tsx";
 import { RightRail } from "./components/RightRail.tsx";
 import { setChimeWanted, unlockAudio } from "./lib/chime.ts";
 import { usePreferences, useReading } from "./lib/queries.ts";
@@ -163,7 +164,7 @@ function Shell() {
     <div className="flex screen-height bg-bg">
       <LeftRail />
       <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar />
+        <Header />
         <div className="flex min-h-0 flex-1 flex-col">
           <Routed />
         </div>
