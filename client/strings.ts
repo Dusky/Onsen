@@ -1063,6 +1063,9 @@ export const strings = {
     opensAs: "Opens as",
     opensAsDefault: "The default persona",
     derive: "Make a variant",
+    /* Portrait generation (§20 phase 79). */
+    generatePortrait: "Generate portrait",
+    portraitWorking: "Drawing…",
     /** Version history (SPEC §9). */
     versions: "Versions",
     noVersions: "No versions yet.",
@@ -1166,6 +1169,10 @@ export const strings = {
     serviceKey: "API key",
     serviceKeyKept: (mask: string) => `Stored: ${mask}. Leave empty to keep it.`,
     serviceKeyNotNeeded: "Usually blank for a local service.",
+    workflow: "Workflow",
+    workflowPlaceholder: "Paste the workflow JSON (API format)…",
+    workflowHint:
+      "Put {{prompt}} in the positive text node; the seed is rolled for you. Leave blank to keep the stored workflow.",
     serviceDefault: "Use this one",
     serviceIsDefault: "In use",
     /** A badge on the row: state. The buttons below say the action instead. */

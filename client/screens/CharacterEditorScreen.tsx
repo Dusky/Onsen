@@ -10,6 +10,7 @@ import {
   useRestoreVersion,
   useSuggestTags,
   useUpdateCharacter,
+  useGenerateCharacterPortrait,
   useAuthorRevise,
   useAuthorVoice,
   useExpressionPack,
@@ -161,6 +162,7 @@ function GreetingList({
 export function CharacterEditorScreen({ characterId }: { characterId: string }) {
   const query = useCharacter(characterId);
   const update = useUpdateCharacter(characterId);
+  const portrait = useGenerateCharacterPortrait(characterId);
   const remove = useDeleteCharacter();
   const versions = useCharacterVersions(characterId);
   const restore = useRestoreVersion(characterId);
@@ -263,6 +265,19 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                   <FieldRow label={strings.characters.name}>
                     <TextField value={character.name} onCommit={(name) => save({ name })} />
                   </FieldRow>
+                  <button
+                    type="button"
+                    className="btn mt-[8px] w-full"
+                    disabled={portrait.isPending}
+                    onClick={() => portrait.mutate(undefined)}
+                  >
+                    {portrait.isPending
+                      ? strings.characters.portraitWorking
+                      : strings.characters.generatePortrait}
+                  </button>
+                  {portrait.error !== null ? (
+                    <p className="explain explain-alert mt-[6px]">{portrait.error.message}</p>
+                  ) : null}
                 </div>
               </div>
 

@@ -363,6 +363,14 @@ export function updateCharacter(
     params["persona_id"] = typeof value === "number" ? value : null;
     organisational++;
   }
+  // A generated or uploaded portrait is filing, not editing (§20 phase 79):
+  // it changes no prose, so it takes the same no-snapshot exemption.
+  if ("avatarPath" in patch) {
+    const value = patch["avatarPath"];
+    assignments.push("avatar_path = $avatar_path");
+    params["avatar_path"] = typeof value === "string" ? value : null;
+    organisational++;
+  }
 
   if (assignments.length === 0) {
     return db.query("SELECT * FROM characters WHERE id = $id").get({ id }) as CharacterRow;

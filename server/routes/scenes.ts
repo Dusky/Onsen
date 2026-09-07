@@ -593,7 +593,7 @@ export function sceneRoutes(
     if (chosen === "") return c.json(badRequest("There is nothing here to describe."), 400);
 
     try {
-      const drawn = await media.drawBackground({ prompt: chosen });
+      const drawn = await media.drawImage({ prompt: chosen });
       const path = `${row.id}-${ulid()}.${extensionOfName(drawn.mime)}`;
       await Bun.write(join(ctx.config.dataDir, "backgrounds", path), drawn.bytes);
       ctx.db.query("UPDATE scenes SET background_path = $path WHERE id = $id").run({

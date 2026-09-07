@@ -143,6 +143,7 @@ function ServiceEditor({
           event.preventDefault();
           const form = new FormData(event.currentTarget);
           const apiKey = String(form.get("apiKey") ?? "");
+          const workflow = String(form.get("workflow") ?? "").trim();
           const body = {
             name: String(form.get("name") ?? "").trim(),
             baseUrl: String(form.get("baseUrl") ?? "").trim(),
@@ -150,6 +151,8 @@ function ServiceEditor({
             // Blank leaves the stored key alone. A form that came back empty
             // must not delete a credential nobody touched (§17).
             ...(apiKey === "" ? {} : { apiKey }),
+            // The workflow is the one option the ComfyUI kind carries.
+            ...((service?.kind ?? kind) === "comfyui" ? { options: { workflow } } : {}),
           };
           if (service === null) {
             create.mutate({ ...body, purpose, kind }, { onSuccess: () => onClose() });
@@ -207,6 +210,25 @@ function ServiceEditor({
               ? ""
               : strings.media.serviceKeyNotNeeded}
         </p>
+
+        {(service?.kind ?? kind) === "comfyui" ? (
+          <>
+            <p className="section-label mb-[6px]">{strings.media.workflow}</p>
+            <textarea
+              name="workflow"
+              rows={8}
+              className="field chrome mb-[6px] resize-y text-[12px] leading-[1.6]"
+              defaultValue={
+                typeof service?.options["workflow"] === "string"
+                  ? service.options["workflow"]
+                  : ""
+              }
+              placeholder={strings.media.workflowPlaceholder}
+              spellCheck={false}
+            />
+            <p className="explain mb-[16px]">{strings.media.workflowHint}</p>
+          </>
+        ) : null}
 
         <button type="submit" className="btn btn-primary w-full">
           {strings.media.save}

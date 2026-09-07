@@ -2041,9 +2041,16 @@ attached. All three are off until a service is configured.
 
 `media_services` carries a **purpose** (`image` or `speech`) and a **kind**, and
 is otherwise shaped like `providers` — a name, a base URL, an encrypted key, a
-model. Two image adapters ship: the OpenAI shape, and A1111's `/sdapi/v1/txt2img`
-for the local WebUIs. Speech is the OpenAI shape only, because that is the one
-the local TTS servers chose to emulate.
+model. Three image adapters ship: the OpenAI shape, A1111's `/sdapi/v1/txt2img`
+for the local WebUIs, and ComfyUI/ComfyCloud's workflow API (§20 phase 79),
+which runs a workflow the reader pastes in with `{{prompt}}` as the text
+placeholder. Speech is the OpenAI shape only, because that is the one the
+local TTS servers chose to emulate.
+
+A character portrait can be **generated** as well as imported (§20 phase 79):
+the editor's *Generate portrait* draws from the card's name, description and
+personality through the configured picture service, filed exactly where an
+imported card's portrait goes.
 
 Captions do **not** use a media service. A caption comes from a language model
 that can see, so it runs on an ordinary connection profile, through the ops
@@ -3451,6 +3458,12 @@ Each phase ends in a working, usable application.
     read only into the log's DTO, while the stored text and the prompt keep the
     author's language. The decision was display-only, not stored. See §16 and
     `test/translation.test.ts`.
+79. **ComfyUI, and generated portraits** — a `comfyui` image kind runs a
+    reader-pasted workflow (`{{prompt}}` as the text placeholder, the seed
+    rolled) through ComfyUI/ComfyCloud's workflow API, and a character editor's
+    *Generate portrait* draws from the card's description through the configured
+    picture service, filed where an imported card's portrait goes. See §12 and
+    `test/comfyui.test.ts`, `test/portrait.test.ts`.
 
 Settled while building phase 15.
 

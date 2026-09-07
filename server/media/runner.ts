@@ -258,13 +258,13 @@ export class MediaRunner {
   }
 
   /**
-   * Draw a scene background (SPEC §12, §20 phase 77).
+   * Draw a raw image for a scene property (a background, a character portrait).
    *
-   * Returns the raw image rather than storing it: a background is a scene
-   * property (`scenes.background_path`), not a message asset, so the caller
-   * files it under the data directory and points the scene at it.
+   * Returns the image rather than storing it: the caller files it where it
+   * belongs and points the row at it — `scenes.background_path` or
+   * `characters.avatar_path` (§20 phases 77 and 79).
    */
-  async drawBackground(input: {
+  async drawImage(input: {
     prompt: string;
     signal?: AbortSignal;
   }): Promise<{ bytes: Uint8Array; mime: string }> {

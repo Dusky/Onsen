@@ -1777,6 +1777,18 @@ export function useTranslateMessage(sceneId: string) {
   });
 }
 
+/** Generate a character portrait from the card (§20 phase 79). */
+export function useGenerateCharacterPortrait(characterId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<CharacterDto>(`/characters/${characterId}/portrait/generate`, {}),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: characterKeys.one(characterId) });
+      void client.invalidateQueries({ queryKey: characterKeys.all });
+    },
+  });
+}
+
 /* ---------------- the data bank (SPEC §11, phase 30) ---------------- */
 
 export function useEmbeddingsConfig() {

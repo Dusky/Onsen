@@ -41,6 +41,7 @@ import {
   toPackDto,
 } from "../db/queries/expressions.ts";
 import type { TaskRunner } from "../tasks/runner.ts";
+import type { MediaRunner } from "../media/runner.ts";
 import { SUGGEST_TAGS, taskKind } from "../tasks/registry.ts";
 import {
   buildSuggestTagsPrompt,
@@ -79,6 +80,18 @@ function extensionOf(name: string): string {
   return /^[a-z0-9]{1,5}$/.test(extension) ? extension : "png";
 }
 
+/** A portrait prompt from what the card is, when the reader gave none. */
+function portraitPrompt(row: CharacterRow): string {
+  const parts = [`A character portrait of ${row.name}.`];
+  if (row.description !== null && row.description.trim() !== "") {
+    parts.push(row.description.trim());
+  }
+  if (row.personality !== null && row.personality.trim() !== "") {
+    parts.push(row.personality.trim());
+  }
+  return parts.join(" ");
+}
+
 function badRequest(message: string) {
   return { error: { code: "bad_request", message } } as const;
 }
@@ -87,7 +100,7 @@ function notFound() {
   return { error: { code: "not_found", message: "No such character." } } as const;
 }
 
-export function characterRoutes(ctx: AppContext, tasks: TaskRunner): Hono<AppEnv> {
+export function characterRoutes(ctx: AppContext, tasks: TaskRunner, media: MediaRunner | null = null): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
   app.use("*", requireAuth());
 
@@ -534,6 +547,50 @@ export function characterRoutes(ctx: AppContext, tasks: TaskRunner): Hono<AppEnv
     // Content-addressed by hash, so it can be cached indefinitely.
     c.header("Cache-Control", "public, max-age=31536000, immutable");
     return c.body(file.stream(), 200, { "Content-Type": file.type });
+  });
+
+  /**
+   * Generate a character portrait (SPEC §20 phase 79).
+   *
+   * Draws from the card's name, description and personality through the
+   * configured picture service, and files it exactly where an imported card's
+   * portrait goes — `characters.avatar_path` — so the library and the log pick
+   * it up with no second path.
+   */
+  app.post("/:characterId/portrait/generate", async (c) => {
+    const row = findCharacter(ctx.db, c.req.param("characterId"));
+    if (row === null) return c.json(notFound(), 404);
+    if (media === null) return c.json(badRequest("Picture services are not available."), 400);
+
+    const prompt = portraitPrompt(row);
+    if (prompt === "") return c.json(badRequest("This card has nothing to draw a portrait from."), 400);
+
+    try {
+      const drawn = await media.drawImage({ prompt });
+      const previous = avatarFile(row);
+      const subtype = drawn.mime.split("/")[1];
+      const ext = subtype !== undefined && /^[a-z0-9]{1,5}$/.test(subtype) ? subtype : "png";
+      const path = `character-${row.id}-${ulid()}.${ext}`;
+      await Bun.write(join(ctx.config.avatarsDir, path), drawn.bytes);
+      updateCharacter(ctx.db, row.id, { avatarPath: path });
+      // After the write, so a failed draw leaves the old picture in place.
+      if (previous !== null) {
+        try {
+          await Bun.file(previous).delete();
+        } catch {
+          /* A missing file is the state we wanted anyway. */
+        }
+      }
+      return c.json(toCharacterDto(ctx.db, findCharacter(ctx.db, row.ulid)!));
+    } catch (caught) {
+      const detail =
+        caught instanceof Error && /ECONNREFUSED|fetch failed|Unable to connect/i.test(caught.message)
+          ? "Could not reach the picture service. Check that it is running and the address is right."
+          : caught instanceof Error
+            ? caught.message
+            : "The picture service failed.";
+      return c.json({ error: { code: "service_failed", message: detail } }, 502);
+    }
   });
 
   /** The character's expression pack — the tag-to-sprite binding (§12). */

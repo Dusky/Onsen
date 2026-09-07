@@ -6049,3 +6049,38 @@ v1 is on demand, which is what the incumbent's translate extension does too.
 
 **Verified in a browser** at 390×844: a translated turn renders in the target
 language while the stored text stays original.
+
+## Phase 79 — ComfyUI, and generated portraits
+
+Two halves of the same "make pictures" thread, both answered with the existing
+image path rather than a new one.
+
+### A workflow adapter for ComfyCloud
+
+ComfyUI's API is workflow-based, nothing like the OpenAI image shape. A new
+`comfyui` media kind submits the reader's own workflow — pasted into the
+service's settings, with `{{prompt}}` in the positive text node — polls the job,
+and downloads the output. The seed is rolled on every draw, which is what makes
+two generated portraits differ. The signed download URL is fetched *without*
+the API key, so a credential never reaches the storage hop.
+
+### Generate portrait, in the editor
+
+The character editor showed a portrait with no way to make one — a card's
+picture came only from import. A *Generate portrait* button now draws from the
+card's name, description and personality and files it where an imported card's
+portrait goes, so the library and the log pick it up with no second path.
+`characters.avatar_path` gained an update as **filing, not editing**: it changes
+no prose, so it takes the same no-version-snapshot exemption a star or a
+persona lock takes.
+
+### Surprises
+
+**The ComfyCloud API key arrived in the clear, and it must not ship.** It is
+validated against `GET /api/user` and the user will store it in Settings →
+Pictures & voices, where the app encrypts it like every other credential. No
+key is committed, and the adapter reads it the way every other service does —
+decrypted at call time, never serialised back to the client.
+
+**Verified in a browser** at 390×844 against a stub A1111 service: *Generate
+portrait* flips `hasAvatar` true and the file serves as `image/png`.

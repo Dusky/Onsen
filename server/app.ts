@@ -187,7 +187,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
     sceneGenerationRoutes(ctx, generation, tasks, passes, guides, trackers, summaries, bans, autopilot),
   );
   api.route("/generations", generationRoutes(generation));
-  api.route("/characters", characterRoutes(ctx, tasks));
+  api.route("/characters", characterRoutes(ctx, tasks, media));
   api.route("/authors", authorRoutes(ctx));
   api.route("/personas", personaRoutes(ctx));
   api.route("/tasks", taskRoutes(ctx));

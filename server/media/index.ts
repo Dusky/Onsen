@@ -1,5 +1,6 @@
 import { a1111Adapter } from "./a1111.ts";
 import { openaiImageAdapter } from "./openai-image.ts";
+import { comfyuiAdapter } from "./comfyui.ts";
 import { openaiSpeechAdapter } from "./openai-speech.ts";
 import type { ImageAdapter, MediaServiceConfig, SpeechAdapter } from "./types.ts";
 
@@ -31,6 +32,14 @@ export const MEDIA_KINDS = [
     needsKey: false,
   },
   {
+    purpose: "image" as const,
+    kind: "comfyui" as const,
+    label: "ComfyUI / ComfyCloud",
+    hint: "Runs a workflow you paste in. Put {{prompt}} in the positive text node.",
+    defaultBaseUrl: "https://cloud.comfy.org",
+    needsKey: true,
+  },
+  {
     purpose: "speech" as const,
     kind: "openai" as const,
     label: "OpenAI-compatible",
@@ -46,6 +55,8 @@ export function imageAdapterFor(kind: string, config: MediaServiceConfig): Image
       return openaiImageAdapter(config);
     case "a1111":
       return a1111Adapter(config);
+    case "comfyui":
+      return comfyuiAdapter(config);
     default:
       throw new Error(`No image service of kind "${kind}".`);
   }
