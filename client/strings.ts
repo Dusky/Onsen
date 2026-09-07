@@ -254,6 +254,7 @@ export const strings = {
     inspectorTabContext: "Context",
     inspectorTabCast: "Cast",
     inspectorTabPersona: "You",
+    inspectorTabLore: "Lore",
     checkpointName: "Call it",
     checkpointNamePlaceholder: "before she opens the ledger",
     checkpointSave: "Mark it",
@@ -1567,6 +1568,8 @@ export const strings = {
 
     editorKicker: "Lorebook",
     editing: "Editing",
+    books: "Books",
+    keysHint: "Comma separated. A mention of any one of these brings the entry in.",
     name: "Name",
     description: "Description",
     addEntry: "New entry",

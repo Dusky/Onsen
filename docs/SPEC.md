@@ -3488,6 +3488,10 @@ Each phase ends in a working, usable application.
     scene's persona — name, description, picture, position — editable without
     leaving the log, and a list to pick one when the scene has none yet. See
     §16 and `test/cast-edit-pane.test.ts`.
+84. **The lore, editable in place** — the inspector gains a *Lore* tab: pick a
+    book, pick an entry, edit its title, keys and content without leaving the
+    log. The full lorebook editor — bindings, timed effects, the activation
+    test — stays a screen. See §16 and `test/cast-edit-pane.test.ts`.
 
 Settled while building phase 15.
 

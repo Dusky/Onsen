@@ -6177,3 +6177,19 @@ earlier.
 
 **Verified in a browser** at 1440×900: the *You* tab opens the persona's name,
 description and position controls in the pane.
+
+## Phase 84 — The lore, editable in place
+
+The last of the content editors to become a pane. The inspector gains a *Lore*
+tab: pick a book, pick an entry, and edit its title, keys and content without
+leaving the log — the three fields a reader actually touches mid-scene. The
+full lorebook editor (bindings, timed effects, the activation test) stays a
+screen, and *Open full editor* is not offered here because the pane is the quick
+path, not a replacement.
+
+The pane renders the same `EditorField`s and the same `useUpdateLoreEntry` the
+screen does, so the two cannot drift — the contract every pane in phases 71–84
+took.
+
+**Verified in a browser** at 1440×900: the *Lore* tab lists the books with
+their entry counts; opening a book lists its entries.

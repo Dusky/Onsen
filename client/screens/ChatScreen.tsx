@@ -37,6 +37,7 @@ import { QuickReplyRow, QuickReplySheet } from "../components/QuickReplies.tsx";
 import { CastRail } from "../components/CastRail.tsx";
 import { CastEditPane } from "../components/CastEditPane.tsx";
 import { PersonaEditPane } from "../components/PersonaEditPane.tsx";
+import { LorePane } from "../components/LorePane.tsx";
 import { VnStage } from "../components/VnStage.tsx";
 import { TrackerPanel } from "../components/TrackerPanel.tsx";
 import { VirtualizedLog } from "../components/VirtualizedLog.tsx";
@@ -1315,6 +1316,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                 personaId={scene.data?.scene.personaId ?? null}
               />
             }
+            lore={<LorePane />}
             cast={
               <>
                 {/* The same row the phone's deck carries (§20 phase 50): four

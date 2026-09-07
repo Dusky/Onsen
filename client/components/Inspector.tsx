@@ -17,7 +17,7 @@ import { strings } from "../strings.ts";
  * would cost the log a third of its width to show what a tap already reaches.
  */
 
-export type InspectorTab = "context" | "cast" | "persona";
+export type InspectorTab = "context" | "cast" | "persona" | "lore";
 
 export function Inspector({
   tab,
@@ -25,6 +25,7 @@ export function Inspector({
   context,
   cast,
   persona,
+  lore,
 }: {
   tab: InspectorTab;
   onTab(tab: InspectorTab): void;
@@ -32,6 +33,8 @@ export function Inspector({
   cast: ReactNode;
   /** The reader in this scene, editable without leaving the log (§20 phase 83). */
   persona: ReactNode;
+  /** The lorebooks, editable without leaving the log (§20 phase 84). */
+  lore: ReactNode;
 }) {
   return (
     <aside
@@ -44,6 +47,7 @@ export function Inspector({
             ["context", strings.chat.inspectorTabContext],
             ["cast", strings.chat.inspectorTabCast],
             ["persona", strings.chat.inspectorTabPersona],
+            ["lore", strings.chat.inspectorTabLore],
           ] as const
         ).map(([id, label]) => (
           <button
@@ -70,7 +74,7 @@ export function Inspector({
           tab === "context" ? "px-[16px] pb-[16px]" : ""
         }`}
       >
-        {tab === "context" ? context : tab === "cast" ? cast : persona}
+        {tab === "context" ? context : tab === "cast" ? cast : tab === "persona" ? persona : lore}
       </div>
     </aside>
   );
