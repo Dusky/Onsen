@@ -6767,3 +6767,15 @@ filter — a tag editor (the shared TagEditor) plus an exclude switch, so the
 filter can match by tag and can flip to "everyone but these".
 
 **Verified** by a new lore-screen case pinning that all six controls render.
+
+## Phase 128 — Scene stats, and swipe-delete
+
+Two smalls. A scene now rolls up as a stats readout — messages, your turns
+versus the cast's, total words, and who has carried the conversation by speaker
+— behind a "Stats" chip in the chat header, fed by `GET /scenes/:id/stats`
+(counting visible messages only). And the versions sheet can delete a sibling,
+not only jump to it, so a swipe that was a dead end can be removed rather than
+left in the carousel forever.
+
+**Verified** by a new stats endpoint test and a turn-surface guard pinning the
+delete affordance and the stats sheet.

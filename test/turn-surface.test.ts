@@ -24,6 +24,7 @@ const TOKENIZER = readFileSync(
   "utf8",
 );
 const STRINGS = readFileSync(join(import.meta.dir, "..", "client", "strings.ts"), "utf8");
+const CHAT = readFileSync(join(import.meta.dir, "..", "client", "screens", "ChatScreen.tsx"), "utf8");
 
 describe("the turn surface", () => {
   test("the story actions say their names, the utilities stay glyphs", () => {
@@ -57,5 +58,12 @@ describe("the composer", () => {
 
   test("the placeholder invites a turn or none", () => {
     expect(STRINGS).toContain("Write your turn, or send nothing and let the scene run");
+  });
+
+  test("the versions sheet can delete a sibling, and the scene rolls up as stats", () => {
+    expect(CHAT).toContain("deleteVersionConfirm");
+    expect(CHAT).toContain("remove.mutate(sibling.id)");
+    expect(CHAT).toContain("StatsSheet");
+    expect(CHAT).toContain("useSceneStats");
   });
 });

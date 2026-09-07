@@ -575,6 +575,15 @@ export interface GenerationMeta {
   samplers: SamplerSettings;
 }
 
+/** A scene rolled up: messages, words, and who carried it (§20 phase 128). */
+export interface SceneStatsDto {
+  messages: number;
+  userMessages: number;
+  aiMessages: number;
+  words: number;
+  byCharacter: { name: string; messages: number; words: number }[];
+}
+
 export interface MessageDto {
   id: string;
   sceneId: string;

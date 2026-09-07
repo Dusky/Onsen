@@ -37,6 +37,7 @@ import type {
   MemoryEntityDto,
   AuthorMemoryDto,
   CheckpointDto,
+  SceneStatsDto,
   MediaAssetDto,
   MediaKindDto,
   MediaServiceDto,
@@ -799,6 +800,15 @@ export function useCheckpoints(sceneId: string) {
   return useQuery({
     queryKey: checkpointKeys.scene(sceneId),
     queryFn: () => api.get<CheckpointDto[]>(`/scenes/${sceneId}/checkpoints`),
+  });
+}
+
+/** A scene rolled up for the stats sheet (§20 phase 128). */
+export function useSceneStats(sceneId: string) {
+  return useQuery({
+    queryKey: ["scene-stats", sceneId],
+    queryFn: () => api.get<SceneStatsDto>(`/scenes/${sceneId}/stats`),
+    enabled: sceneId !== "",
   });
 }
 

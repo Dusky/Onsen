@@ -56,6 +56,7 @@ import { findCharacter, type CharacterRow } from "../db/queries/characters.ts";
 import { seedGreeting } from "../scenes/greeting.ts";
 import { scriptText } from "../scripts/runtime.ts";
 import { getSetting } from "../db/queries/settings.ts";
+import { sceneStats } from "../db/queries/stats.ts";
 import type { TriggerRunner } from "../triggers/runner.ts";
 import type { WebhookSender } from "../webhooks/sender.ts";
 import type { MediaRunner } from "../media/runner.ts";
@@ -1124,6 +1125,13 @@ export function sceneRoutes(
     const sceneRow = scene(c.req.param("sceneId"));
     if (sceneRow === null) return c.json(notFound("scene"), 404);
     return c.json(checkpointDtos(sceneRow));
+  });
+
+  /** The scene rolled up: messages, words, and who has carried it (§20 phase 128). */
+  app.get("/:sceneId/stats", (c) => {
+    const sceneRow = scene(c.req.param("sceneId"));
+    if (sceneRow === null) return c.json(notFound("scene"), 404);
+    return c.json(sceneStats(ctx.db, sceneRow.id));
   });
 
   app.post("/:sceneId/checkpoints", async (c) => {

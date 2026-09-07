@@ -3723,6 +3723,10 @@ Each phase ends in a working, usable application.
     delay-until-recursion number, an always-wins-group toggle inside the
     inclusion group, and a tag editor plus an exclude switch on the character
     filter. See §10, §16, `test/lore-screen.test.ts`.
+128. **Scene stats, and swipe-delete** — a scene rolls up as a stats readout
+    (messages, words, and who has carried the conversation) reachable from the
+    chat header, and the versions sheet can delete a sibling, not only jump to
+    it. See §16, `test/stats.test.ts`, `test/turn-surface.test.ts`.
 
 Settled while building phase 15.
 

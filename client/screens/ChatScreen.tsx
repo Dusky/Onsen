@@ -17,6 +17,7 @@ import {
   useIllustrate,
   useSpeak,
   useCheckpoints,
+  useSceneStats,
   useSignOut,
 } from "../lib/queries.ts";
 import { useGeneration } from "../lib/generation.ts";
@@ -73,6 +74,7 @@ import type {
   NextSpeakerDto,
   ReviseMode,
   SceneMemberDto,
+  SceneStatsDto,
   TurnScope,
 } from "@shared/types.ts";
 import { api } from "../lib/api.ts";
@@ -496,6 +498,8 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
 
   const [marksOpen, setMarksOpen] = useState(false);
   const checkpoints = useCheckpoints(sceneId);
+  const stats = useSceneStats(sceneId);
+  const [statsOpen, setStatsOpen] = useState(false);
   const illustrate = useIllustrate(sceneId);
   const speak = useSpeak(sceneId);
   const attach = useAttachImage(sceneId);
@@ -1379,6 +1383,13 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         ) : null}
         <button
           type="button"
+          onClick={() => setStatsOpen(true)}
+          className="chrome flex-none border border-border-quiet px-[9px] py-[6px] text-[12.5px] text-ink-muted"
+        >
+          {strings.chat.stats}
+        </button>
+        <button
+          type="button"
           onClick={() => navigate({ name: "setup", sceneId })}
           className="chrome flex-none border border-border-quiet px-[9px] py-[6px] text-[12.5px] text-ink-muted"
         >
@@ -1490,6 +1501,10 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
 
       {marksOpen ? (
         <CheckpointsSheet sceneId={sceneId} onClose={() => setMarksOpen(false)} />
+      ) : null}
+
+      {statsOpen ? (
+        <StatsSheet stats={stats.data ?? null} onClose={() => setStatsOpen(false)} />
       ) : null}
 
       {guidesOpen ? (
@@ -1668,26 +1683,50 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       {versionsFor !== null ? (
         <Sheet title={strings.chat.versions} onClose={() => setVersionsFor(null)}>
           {(siblings.data ?? []).map((sibling) => (
-            <button
+            <div
               key={sibling.id}
-              type="button"
-              onClick={() => {
-                setLeaf.mutate({ messageId: sibling.id });
-                setVersionsFor(null);
-              }}
-              className="row w-full text-left"
+              className="flex items-start gap-[8px]"
               style={{
                 borderTop:
                   sibling.id === versionsFor.id ? "2px solid var(--onsen-color-red)" : undefined,
               }}
             >
-              <span className="chrome text-[12.5px] text-ink-dim">
-                {sibling.siblingIndex + 1} / {sibling.siblingCount}
-              </span>
-              <p className="mt-[6px] line-clamp-3 text-[length:var(--onsen-text-prose-excerpt)] leading-[1.5] text-ink-prose-muted">
-                {sibling.content}
-              </p>
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLeaf.mutate({ messageId: sibling.id });
+                  setVersionsFor(null);
+                }}
+                className="min-w-0 flex-1 py-[12px] text-left"
+              >
+                <span className="chrome text-[12.5px] text-ink-dim">
+                  {sibling.siblingIndex + 1} / {sibling.siblingCount}
+                </span>
+                <p className="mt-[6px] line-clamp-3 text-[length:var(--onsen-text-prose-excerpt)] leading-[1.5] text-ink-prose-muted">
+                  {sibling.content}
+                </p>
+              </button>
+              {sibling.siblingCount <= 1 ? null : (
+                <button
+                  type="button"
+                  aria-label={strings.common.delete}
+                  className="chrome flex-none py-[12px] text-[13px]"
+                  style={{ color: "var(--onsen-color-red)" }}
+                  onClick={() =>
+                    confirm(
+                      strings.chat.deleteVersionConfirm,
+                      () => {
+                        remove.mutate(sibling.id);
+                        setVersionsFor(null);
+                      },
+                      { confirmLabel: strings.common.delete },
+                    )
+                  }
+                >
+                  {"\u00d7"}
+                </button>
+              )}
+            </div>
           ))}
         </Sheet>
       ) : null}
@@ -1695,6 +1734,55 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         <QuickReplySheet onClose={() => setQuickRepliesOpen(false)} />
       ) : null}
       {confirmNode}
+    </div>
+  );
+}
+
+/**
+ * A scene rolled up (§20 phase 128): messages, words, and who carried them.
+ * A plain readout, no charts — the per-message gutter already carries the
+ * fine-grained numbers.
+ */
+function StatsSheet({ stats, onClose }: { stats: SceneStatsDto | null; onClose(): void }) {
+  return (
+    <Sheet title={strings.chat.stats} onClose={onClose}>
+      {stats === null ? (
+        <p className="meta py-[10px]">{strings.common.working}</p>
+      ) : (
+        <div className="pb-[6px]">
+          <div className="flex flex-wrap gap-[6px] py-[8px]">
+            <Stat label={strings.chat.statsMessages} value={String(stats.messages)} />
+            <Stat label={strings.chat.statsUser} value={String(stats.userMessages)} />
+            <Stat label={strings.chat.statsAi} value={String(stats.aiMessages)} />
+            <Stat label={strings.chat.statsWords} value={String(stats.words)} />
+          </div>
+          {stats.byCharacter.length === 0 ? null : (
+            <>
+              <p className="section-label mt-[10px] mb-[6px]">{strings.chat.statsByCharacter}</p>
+              {stats.byCharacter.map((row) => (
+                <div
+                  key={row.name}
+                  className="flex items-baseline gap-[10px] border-b border-rule py-[9px]"
+                >
+                  <span className="min-w-0 flex-1 truncate text-[13.5px]">{row.name}</span>
+                  <span className="meta flex-none">
+                    {strings.chat.statsCharacterLine(row.messages, row.words)}
+                  </span>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+    </Sheet>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex-1 border border-rule px-[10px] py-[8px]">
+      <p className="section-label mb-[4px]">{label}</p>
+      <p className="meta tabular-nums text-[15px]">{value}</p>
     </div>
   );
 }
