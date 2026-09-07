@@ -450,8 +450,8 @@ function TurnRow({
 }) {
   const [copied, setCopied] = useState(false);
 
-  const items: { glyph: string; name: string; run(): void; on?: boolean }[] = [
-    { glyph: strings.chat.turnReroll, name: strings.chat.reroll, run: onReroll },
+  const items: { glyph: string; name: string; run(): void; on?: boolean; text?: boolean }[] = [
+    { glyph: strings.chat.turnReroll, name: strings.chat.reroll, run: onReroll, text: true },
     ...(message.siblingCount > 1
       ? [
           {
@@ -461,8 +461,8 @@ function TurnRow({
           },
         ]
       : []),
-    { glyph: strings.chat.turnBranch, name: strings.chat.branch, run: actions.onBranch },
-    { glyph: strings.chat.turnEdit, name: strings.chat.edit, run: actions.onEdit },
+    { glyph: strings.chat.turnBranch, name: strings.chat.branch, run: actions.onBranch, text: true },
+    { glyph: strings.chat.turnEdit, name: strings.chat.edit, run: actions.onEdit, text: true },
     {
       glyph: strings.chat.turnCopy,
       name: copied ? strings.chat.turnCopied : strings.chat.copy,
@@ -484,7 +484,7 @@ function TurnRow({
   ];
 
   return (
-    <span className="turn-actions order-last ml-auto flex flex-none items-center">
+    <span className="turn-actions order-last ml-auto flex flex-none items-center gap-[2px]">
       {items.map((item) => (
         <button
           key={item.name}
@@ -495,7 +495,14 @@ function TurnRow({
           className="chrome flex items-center justify-center text-[13px] text-ink-muted hover:text-ink-label"
           style={item.on === false ? { color: "var(--onsen-color-text-dim)" } : undefined}
         >
-          {item.glyph}
+          {/* The three story actions say their names — the mockup's words
+              rather than the proofreading glyphs — while the utilities (copy,
+              hide, more) stay compact glyphs. */}
+          {item.text === true ? (
+            <span className="px-[4px] text-[11.5px]">{item.name}</span>
+          ) : (
+            item.glyph
+          )}
         </button>
       ))}
     </span>
@@ -644,9 +651,17 @@ export function MessageBlock({
             </span>
             <span className="chrome text-[13.5px] text-ink-dim"> &middot; </span>
             {text}
+            {streamingText === undefined ? null : (
+              <span aria-hidden="true" style={{ color: "var(--onsen-color-amber)" }}>{"\u258c"}</span>
+            )}
           </p>
         ) : segments === null ? (
-          <Prose text={text} />
+          <>
+            <Prose text={text} />
+            {streamingText === undefined ? null : (
+              <span aria-hidden="true" style={{ color: "var(--onsen-color-amber)" }}>{"\u258c"}</span>
+            )}
+          </>
         ) : (
           segments.map((segment) => (
             // The spacing lives on the wrapper, not the part: each part now has

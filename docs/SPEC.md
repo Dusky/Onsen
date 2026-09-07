@@ -3566,6 +3566,11 @@ Each phase ends in a working, usable application.
     — the card and author editors end in a footer that says the card's cost as
     a percentage of the scene's context window, and tapping *Use* on an author
     sets them on the open roleplay. See §16, `test/rightrail.test.ts`.
+99. **The turn surface and the composer** — the turn's story actions (reroll,
+    branch, edit) say their names in words rather than glyphs; a streaming turn
+    ends in an amber cursor; reasoning is labelled *model reasoning, not sent
+    back*; and the composer states the draft's rough token cost as it is typed,
+    with the mockup's placeholder. See §16, `test/turn-surface.test.ts`.
 
 Settled while building phase 15.
 

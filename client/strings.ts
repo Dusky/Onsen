@@ -140,7 +140,9 @@ export const strings = {
     opOoc: "Off script",
     opOocKey: "OOC",
     kicker: "Roleplay",
-    composerPlaceholder: "Direct the scene…",
+    composerPlaceholder: "Write your turn, or send nothing and let the scene run…",
+    /** The draft's rough cost, shown as it is typed (§20 phase 99). */
+    draftTokens: (n: number) => `~${n} tok`,
     send: "Send",
     continueWithout: "Reply without me",
     writing: (speaker: string) => `${speaker} is writing`,
@@ -161,7 +163,7 @@ export const strings = {
     } as Record<string, string>,
     edited: "Edited",
     /** The reasoning strip (SPEC §13), collapsed by default. */
-    reasoning: (chars: number) => `Thought · ${chars} chars`,
+    reasoning: (chars: number) => `Model reasoning · ${chars} chars · not sent back`,
     save: "Save",
     versionCounter: (index: number, total: number) => `◂ ${index}/${total} ▸`,
     versions: "Versions",

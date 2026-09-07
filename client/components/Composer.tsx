@@ -231,6 +231,14 @@ export function Composer({
         )}
       </div>
 
+      {/* The draft's rough cost, as it is typed — the same "every cost is
+          visible" rule the rails carry (§20 phase 99). */}
+      {draft.trim() === "" ? null : (
+        <p className="meta mt-[8px] text-right tabular-nums">
+          {strings.chat.draftTokens(Math.max(1, Math.round(draft.length / 4)))}
+        </p>
+      )}
+
       {/* Asking for a reply without saying anything is how you let a scene run on. */}
       <button
         type="button"

@@ -6433,3 +6433,17 @@ mark, and the Authors tab shows the empty state and the new button.
 
 **Verified in a browser**: the authors tab shows the Use affordance and the in-use
 mark, and the editors render the share-of-window footer.
+
+## Phase 99 — The turn surface and the composer
+
+- The turn's story actions — reroll, branch, edit — say their names in words
+  rather than proofreading glyphs; the utilities (copy, hide, more) stay
+  compact glyphs.
+- A streaming turn ends in an amber cursor, the live state's own colour.
+- Reasoning is labelled `Model reasoning · N chars · not sent back`, so a
+  collapsed strip says what it is rather than just "Thought".
+- The composer states the draft's rough token cost as it is typed, and its
+  placeholder invites a turn or none — the mockup's line.
+
+**Verified in a browser**: the composer shows `~6 tok` under a typed draft, the
+placeholder and the named send button, and the tests pin the rest.
