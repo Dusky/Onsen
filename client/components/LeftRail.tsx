@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type {
   BoundedSampler,
   GuideDto,
+  GuideKind,
   LoreActivationDto,
   PromptBlock,
   PromptDebugInfo,
@@ -11,10 +12,16 @@ import { MODERN_SAMPLER_DEFAULTS, SAMPLER_BOUNDS, samplerProblem } from "@shared
 import { strings } from "../strings.ts";
 import { navigate, useRoute } from "../lib/router.ts";
 import {
+  useAddBan,
+  useAnalyseBans,
+  useBans,
+  useFlushGuides,
   useLoreActivation,
   usePresets,
   usePreviewPrompt,
+  useRebuildGuides,
   useScene,
+  useUpdateBan,
   useUpdatePreset,
 } from "../lib/queries.ts";
 import { useUiStore } from "../state/ui.ts";
@@ -49,6 +56,18 @@ function blockColor(block: PromptBlock): string {
   if (block.placement.kind === "prefix") return "var(--onsen-color-amber)";
   if (block.placement.kind === "outlet") return "var(--onsen-color-blue)";
   return "var(--onsen-color-text-dim)"; // depth: the history
+}
+
+/** Where a block lands, for the provenance line under its name. */
+function placementOf(block: PromptBlock): string {
+  switch (block.placement.kind) {
+    case "prefix":
+      return strings.chat.inspectorPrefix;
+    case "depth":
+      return strings.chat.inspectorDepth(block.placement.depth);
+    case "outlet":
+      return strings.chat.inspectorOutlet(block.placement.name);
+  }
 }
 
 export function LeftRail() {
@@ -137,7 +156,7 @@ export function LeftRail() {
           {leftSection === "prompt" ? (
             <PromptPanel sceneId={sceneId} />
           ) : leftSection === "preset" ? (
-            <PresetPanel />
+            <PresetPanel sceneId={sceneId} />
           ) : leftSection === "lore" ? (
             <LorePanel sceneId={sceneId} />
           ) : (
@@ -167,6 +186,7 @@ function NoScene() {
 function PromptPanel({ sceneId }: { sceneId: string | null }) {
   const preview = usePreviewPrompt(sceneId ?? "");
   const [debug, setDebug] = useState<PromptDebugInfo | null>(null);
+  const [rawOpen, setRawOpen] = useState(false);
 
   // The panel mounts when the section is chosen, so choosing it is the fetch:
   // the next turn's prompt, block by block, with what the window could not
@@ -201,47 +221,116 @@ function PromptPanel({ sceneId }: { sceneId: string | null }) {
         <span className="meta">
           {strings.chat.inspectorTotal(debug.totalTokens, debug.available)}
         </span>
-        <button
-          type="button"
-          className="chrome text-[12.5px]"
-          style={{ color: "var(--onsen-color-blue-text)" }}
-          onClick={() => preview.mutate({}, { onSuccess: (dto) => setDebug(dto.debug) })}
-        >
-          {strings.leftRail.refresh}
-        </button>
+        <span className="flex items-center gap-[12px]">
+          <button
+            type="button"
+            className="chrome text-[12.5px]"
+            aria-pressed={rawOpen}
+            style={{ color: rawOpen ? "var(--onsen-color-amber)" : "var(--onsen-color-blue-text)" }}
+            onClick={() => setRawOpen(!rawOpen)}
+          >
+            {strings.leftRail.viewRaw}
+          </button>
+          <button
+            type="button"
+            className="chrome text-[12.5px]"
+            style={{ color: "var(--onsen-color-blue-text)" }}
+            onClick={() => preview.mutate({}, { onSuccess: (dto) => setDebug(dto.debug) })}
+          >
+            {strings.leftRail.refresh}
+          </button>
+        </span>
       </div>
 
-      {/* The budget bar: one segment per block, the free headroom as the empty
-          tail — the whole argument in a single stripe. */}
-      <BudgetBar debug={debug} />
-
-      <p className="section-label mt-[16px] mb-[6px]">{strings.chat.inspectorBlocks}</p>
-      <BlockList debug={debug} />
-
-      {debug.evicted.length > 0 ? (
+      {rawOpen ? (
+        <pre className="chrome mt-[10px] max-h-[360px] overflow-auto border border-rule bg-bg-sunken px-[10px] py-[8px] text-[12.5px] leading-[1.6] whitespace-pre-wrap">
+          {debug.blocks.map((block) => block.content).join("\n\n")}
+        </pre>
+      ) : (
         <>
-          <p className="section-label mt-[16px] mb-[6px]">{strings.chat.inspectorEvicted}</p>
-          {debug.evicted.map((item, index) => (
-            <div
-              key={`${item.blockId}-${index}`}
-              className="flex items-baseline gap-[9px] border-b border-rule py-[8px]"
-            >
-              <span className="chrome min-w-0 flex-1 truncate text-[12.5px] text-ink-dim">
-                {item.label}
-              </span>
-              <span
-                className="chrome flex-none text-[12.5px]"
-                style={{ color: "var(--onsen-color-red)" }}
-              >
-                {strings.chat.inspectorEviction[item.reason]}
-              </span>
-              <span className="chrome flex-none text-[12.5px] text-ink-muted">
-                {strings.chat.inspectorTokens(item.tokens)}
-              </span>
-            </div>
-          ))}
+          {/* The budget bar: one segment per block, the free headroom as the
+              empty tail — the whole argument in a single stripe. */}
+          <BudgetBar debug={debug} />
+
+          <p className="section-label mt-[16px] mb-[6px]">{strings.chat.inspectorBlocks}</p>
+          <BlockList debug={debug} />
+
+          {debug.evicted.length > 0 ? (
+            <>
+              <p className="section-label mt-[16px] mb-[6px]">{strings.chat.inspectorEvicted}</p>
+              {debug.evicted.map((item, index) => (
+                <div
+                  key={`${item.blockId}-${index}`}
+                  className="flex items-baseline gap-[9px] border-b border-rule py-[8px]"
+                >
+                  <span className="chrome min-w-0 flex-1 truncate text-[12.5px] text-ink-dim">
+                    {item.label}
+                  </span>
+                  <span
+                    className="chrome flex-none text-[12.5px]"
+                    style={{ color: "var(--onsen-color-red)" }}
+                  >
+                    {strings.chat.inspectorEviction[item.reason]}
+                  </span>
+                  <span className="chrome flex-none text-[12.5px] text-ink-muted">
+                    {strings.chat.inspectorTokens(item.tokens)}
+                  </span>
+                </div>
+              ))}
+            </>
+          ) : null}
+
+          {/* The lore verdicts for this prompt: every entry considered, and
+              what decided it. */}
+          {debug.loreTrace.length > 0 ? (
+            <>
+              <p className="section-label mt-[16px] mb-[6px]">{strings.chat.inspectorLore}</p>
+              {debug.loreTrace.map((entry) => (
+                <div
+                  key={entry.entryId}
+                  className="flex items-baseline gap-[9px] border-b border-rule py-[8px]"
+                >
+                  <span
+                    className="h-[7px] w-[7px] flex-none self-center"
+                    style={{
+                      background:
+                        entry.skipped === null
+                          ? "var(--onsen-color-green)"
+                          : "var(--onsen-color-rule-strong)",
+                    }}
+                  />
+                  <span className="chrome min-w-0 flex-1 truncate text-[12.5px] text-ink-dim">
+                    {entry.title}
+                  </span>
+                  <span
+                    className="chrome flex-none text-[12.5px]"
+                    style={{
+                      color: entry.skipped === null ? undefined : "var(--onsen-color-text-dim)",
+                    }}
+                  >
+                    {entry.skipped === null
+                      ? entry.matchedKey === null
+                        ? strings.chat.inspectorLoreConstant
+                        : strings.chat.inspectorLoreFired(entry.matchedKey)
+                      : strings.chat.inspectorSkip[entry.skipped]}
+                  </span>
+                </div>
+              ))}
+            </>
+          ) : null}
+
+          {debug.unresolvedOutlets.length > 0 ? (
+            <p className="chrome mt-[14px] text-[12.5px] leading-[1.5] text-ink-dim">
+              {strings.chat.inspectorOutlets(debug.unresolvedOutlets.join(", "))}
+            </p>
+          ) : null}
+          {debug.unknownMacros.length > 0 ? (
+            <p className="chrome mt-[8px] text-[12.5px] leading-[1.5] text-ink-dim">
+              {strings.chat.inspectorMacros(debug.unknownMacros.join(", "))}
+            </p>
+          ) : null}
         </>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -249,6 +338,7 @@ function PromptPanel({ sceneId }: { sceneId: string | null }) {
 function BudgetBar({ debug }: { debug: PromptDebugInfo }) {
   const free = Math.max(debug.headroom, 0);
   const total = Math.max(debug.totalTokens + free, 1);
+  const pct = Math.round((free / total) * 100);
   return (
     <div className="mt-[10px]">
       <div className="flex h-[8px] w-full overflow-hidden" aria-hidden="true">
@@ -271,7 +361,7 @@ function BudgetBar({ debug }: { debug: PromptDebugInfo }) {
               className="mr-[5px] inline-block h-[7px] w-[7px] align-middle"
               style={{ background: blockColor(block) }}
             />
-            {strings.chat.inspectorTokens(block.tokens)}
+            {block.label}
           </span>
         ))}
         <span className="meta">
@@ -279,7 +369,7 @@ function BudgetBar({ debug }: { debug: PromptDebugInfo }) {
             className="mr-[5px] inline-block h-[7px] w-[7px] align-middle"
             style={{ background: "var(--onsen-color-rule-strong)" }}
           />
-          {strings.leftRail.free(free)}
+          {strings.leftRail.free(free)} · {pct}%
         </span>
       </div>
     </div>
@@ -306,6 +396,11 @@ function BlockList({ debug }: { debug: PromptDebugInfo }) {
               />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[13px] font-medium">{block.label}</span>
+                <span className="meta block truncate">
+                  {[block.source, placementOf(block), block.role]
+                    .filter((part) => part !== "")
+                    .join(" · ")}
+                </span>
               </span>
               <span className="chrome flex-none text-[12.5px] text-ink-muted">
                 {strings.chat.inspectorTokens(block.tokens)}
@@ -330,7 +425,7 @@ function BlockList({ debug }: { debug: PromptDebugInfo }) {
 /** The three the mockup leads with; the rest live in the full editor. */
 const PANEL_SAMPLERS: BoundedSampler[] = ["temperature", "min_p", "repetition_penalty"];
 
-function PresetPanel() {
+function PresetPanel({ sceneId }: { sceneId: string | null }) {
   const presets = usePresets();
   const update = useUpdatePreset();
   const rows = presets.data ?? [];
@@ -387,6 +482,102 @@ function PresetPanel() {
         onClick={() => navigate({ name: "settings" })}
       >
         {strings.leftRail.fullEditor}
+      </button>
+
+      {/* The ban list is per scene, so it sits here only while a roleplay is
+          open (§13.6). */}
+      {sceneId === null ? null : <BanList sceneId={sceneId} />}
+    </div>
+  );
+}
+
+/**
+ * The ban list (SPEC §13.6): what the scene has stopped the model from
+ * writing, editable in the rail the same way the prompt is.
+ */
+function BanList({ sceneId }: { sceneId: string }) {
+  const bans = useBans(sceneId, true);
+  const add = useAddBan(sceneId);
+  const analyse = useAnalyseBans(sceneId);
+  const update = useUpdateBan(sceneId);
+  const [draft, setDraft] = useState("");
+
+  const phrases = bans.data?.phrases ?? [];
+  const active = phrases.filter((phrase) => phrase.enabled);
+  const proposed = phrases.filter((phrase) => !phrase.enabled && phrase.origin === "proposed");
+
+  return (
+    <div className="mt-[22px]">
+      <p className="section-label mb-[8px]">
+        {strings.leftRail.banList} · {strings.chat.inspectorTokens(bans.data?.tokenCount ?? 0)}
+      </p>
+
+      {active.length === 0 && proposed.length === 0 ? (
+        <p className="explain mb-[10px]">{strings.leftRail.banEmpty}</p>
+      ) : null}
+
+      {active.map((phrase) => (
+        <div key={phrase.id} className="flex items-center gap-[8px] border-b border-rule py-[7px]">
+          <span className="min-w-0 flex-1 truncate text-[13px]">{phrase.phrase}</span>
+          {phrase.hits > 0 ? (
+            <span className="meta flex-none">{strings.sceneSetup.bansHits(phrase.hits)}</span>
+          ) : null}
+          <button
+            type="button"
+            aria-label={strings.settings.remove}
+            className="chrome flex-none text-[13px] text-ink-dim"
+            onClick={() => update.mutate({ banId: phrase.id, enabled: false })}
+          >
+            {"\u00d7"}
+          </button>
+        </div>
+      ))}
+
+      {/* Proposals the analyser made, awaiting a decision (§13.6). */}
+      {proposed.map((phrase) => (
+        <div key={phrase.id} className="flex items-center gap-[8px] border-b border-rule py-[7px]">
+          <span className="min-w-0 flex-1 truncate text-[13px]" style={{ color: "var(--onsen-color-text-dim)" }}>
+            {phrase.phrase}
+          </span>
+          <button
+            type="button"
+            className="chrome flex-none text-[12.5px]"
+            style={{ color: "var(--onsen-color-green)" }}
+            onClick={() => update.mutate({ banId: phrase.id, accept: true })}
+          >
+            {strings.sceneSetup.bansAccept}
+          </button>
+        </div>
+      ))}
+
+      <form
+        className="mt-[10px] flex gap-[6px]"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const value = draft.trim();
+          if (value === "") return;
+          add.mutate({ phrase: value });
+          setDraft("");
+        }}
+      >
+        <input
+          className="field min-h-0 flex-1 py-[8px] text-[13px]"
+          placeholder={strings.sceneSetup.bansPlaceholder}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+        />
+        <button type="submit" className="btn flex-none px-[12px]" disabled={draft.trim() === ""}>
+          {strings.sceneSetup.bansAdd}
+        </button>
+      </form>
+
+      <button
+        type="button"
+        className="btn mt-[8px] w-full"
+        disabled={analyse.isPending}
+        onClick={() => analyse.mutate(undefined)}
+      >
+        {strings.leftRail.banAnalyse}
       </button>
     </div>
   );
@@ -447,6 +638,8 @@ function LoreRow({ entry }: { entry: LoreActivationDto }) {
 
 function GuidesPanel({ sceneId }: { sceneId: string | null }) {
   const scene = useScene(sceneId ?? "", undefined, sceneId !== null);
+  const flushGuides = useFlushGuides(sceneId ?? "");
+  const rebuildGuides = useRebuildGuides(sceneId ?? "");
 
   if (sceneId === null) return <NoScene />;
   const guides: GuideDto[] = scene.data?.guides ?? [];
@@ -458,15 +651,54 @@ function GuidesPanel({ sceneId }: { sceneId: string | null }) {
         <p className="explain">{strings.leftRail.guidesEmpty}</p>
       ) : (
         guides.map((guide) => (
-          <div key={guide.id} className="flex items-baseline gap-[9px] border-b border-rule py-[8px]">
+          <div key={guide.id} className="flex items-center gap-[8px] border-b border-rule py-[8px]">
             <span className="min-w-0 flex-1 truncate text-[13px]">
               {guide.isPinned ? `${guide.label} · ${strings.chat.guidesPinned}` : guide.label}
             </span>
             <span className="chrome flex-none text-[12.5px] text-ink-muted">
               {strings.chat.inspectorTokens(guide.tokenCount)}
             </span>
+            <button
+              type="button"
+              aria-label={strings.chat.guidesRebuild}
+              className="chrome flex-none text-[12.5px]"
+              style={{ color: "var(--onsen-color-blue-text)" }}
+              onClick={() => rebuildGuides.mutate({ kind: guide.kind })}
+            >
+              {strings.chat.guidesRebuild}
+            </button>
+            <button
+              type="button"
+              aria-label={strings.chat.guidesFlush}
+              className="chrome flex-none text-[12.5px]"
+              style={{ color: "var(--onsen-color-red)" }}
+              onClick={() => flushGuides.mutate(guide.kind)}
+            >
+              {strings.chat.guidesFlush}
+            </button>
           </div>
         ))
+      )}
+
+      {guides.length === 0 ? null : (
+        <div className="mt-[12px] flex gap-[6px]">
+          <button
+            type="button"
+            className="btn flex-1"
+            disabled={rebuildGuides.isPending}
+            onClick={() => rebuildGuides.mutate({})}
+          >
+            {strings.chat.guidesRebuildAll}
+          </button>
+          <button
+            type="button"
+            className="btn flex-1"
+            disabled={flushGuides.isPending}
+            onClick={() => flushGuides.mutate("all")}
+          >
+            {strings.chat.guidesFlushAll}
+          </button>
+        </div>
       )}
     </div>
   );

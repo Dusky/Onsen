@@ -3,16 +3,16 @@
 A short, honest list, written at the end of phase 65 so work can resume without
 re-deriving it. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 94, on `glm/sillytavern-replacement-dyp30w`. 1411 tests across
+**State:** phase 95, on `glm/sillytavern-replacement-dyp30w`. 1412 tests across
 103 files, typecheck clean, working tree clean. Feature complete against
 `SPEC.md` §20 apart from the deferred phase 42.
 
 **The redesign is done** (`docs/REDESIGN.md`, from the user's mockup): the
 foundation (§20 phase 88), the left icon rail (§20 phase 89), the right panel's
-three tabs (§20 phase 90), the desktop header (§20 phase 91), and the composer
-with the Direct row and the named send button (§20 phase 92). The wordmark
-carries the app mark — a generated silhouette of a woman in a bikini (§20 phase
-93) — and Settings → Branding can replace or hide it (§20 phase 94).
+three tabs (§20 phase 90), the desktop header (§20 phase 91), the composer
+(§20 phase 92), the app mark (§20 phase 93) and Settings → Branding (§20 phase
+94). The left rail's sections grew their tools — provenance, lore trace, raw
+prompt, the ban list, and guide rebuild/flush (§20 phase 95).
 
 ## How to pick up
 

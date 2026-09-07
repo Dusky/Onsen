@@ -3545,6 +3545,12 @@ Each phase ends in a working, usable application.
     with an upload, put the built-in back, or turn it off beside the wordmark.
     The uploaded file lives in the data directory and serves from
     `/branding/logo`. See §16, `test/branding.test.ts`.
+95. **The left rail grows teeth** — the Prompt panel now carries each block's
+    provenance, the lore trace, the unresolved outlets and macros, and a raw
+    view of the assembled prompt; the Preset panel gains the scene's ban list
+    (add, remove, accept proposals, suggest from the scene); and the Guides
+    panel can rebuild or flush each guide, or all of them. See §16 and
+    `test/leftrail.test.ts`.
 
 Settled while building phase 15.
 

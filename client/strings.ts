@@ -1051,6 +1051,10 @@ export const strings = {
     free: (n: number) => `Free ${n} tok`,
     loreEmpty: "Nothing fired \u2014 no lore matched.",
     guidesEmpty: "Nothing injected. Writing a guide reads the scene so far.",
+    viewRaw: "View raw",
+    banList: "Ban list",
+    banAnalyse: "Suggest from this scene",
+    banEmpty: "Nothing banned. The model has written everything so far.",
   },
 
   /** The right rail's three tabs (§20 phase 90). */

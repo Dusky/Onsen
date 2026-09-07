@@ -48,16 +48,26 @@ describe("the prompt panel shows the window, not a link", () => {
     expect(RAIL).toContain("debug.evicted");
     expect(RAIL).toContain("strings.chat.inspectorEvicted");
   });
+
+  test("blocks carry their provenance, and the lore trace and raw view are there", () => {
+    expect(RAIL).toContain("placementOf");
+    expect(RAIL).toContain("debug.loreTrace");
+    expect(RAIL).toContain("strings.leftRail.viewRaw");
+  });
 });
 
 describe("the other sections are real, not placeholders", () => {
-  test("preset carries the samplers", () => {
+  test("preset carries the samplers and the scene's ban list", () => {
     expect(RAIL).toContain("PANEL_SAMPLERS");
     expect(RAIL).toContain("<Slider");
+    expect(RAIL).toContain("useBans");
+    expect(RAIL).toContain("useAddBan");
   });
 
-  test("lore shows what fired, guides what is injected", () => {
+  test("lore shows what fired, guides what is injected and can be rebuilt or flushed", () => {
     expect(RAIL).toContain("useLoreActivation");
     expect(RAIL).toContain("guide.tokenCount");
+    expect(RAIL).toContain("useRebuildGuides");
+    expect(RAIL).toContain("useFlushGuides");
   });
 });

@@ -6370,3 +6370,20 @@ everywhere at once.
 **Verified in a browser** at 1440×900: the section renders with the full-size
 mark, the toggle hides and restores the header mark, and the endpoints
 round-trip an upload, a reset and a rejection of non-images.
+
+## Phase 95 — The left rail grows teeth
+
+The four sections stop being read-only listings and become the tools the
+mockup drew them as:
+
+- **Prompt** carries each block's provenance (source · placement · role), the
+  lore trace, the unresolved outlets and macros, and a raw view of the whole
+  assembled prompt; the budget legend names its blocks and the free share as a
+  percentage of the window.
+- **Preset** gains the scene's ban list: add a phrase, remove one, accept the
+  analyser's proposals, and ask it to suggest from the scene.
+- **Guides** can rebuild or flush one guide, or all of them.
+
+**Verified in a browser** at 1440×900: the Prompt panel shows provenance under
+every block and the 99%-free legend, the Preset panel lists the scene's bans
+with the add/suggest affordances, and the Guides panel offers rebuild/flush.
