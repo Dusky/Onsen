@@ -334,7 +334,7 @@ function Stats({
 }) {
   const meta = message.generation;
   const parts: string[] = [];
-  if (ordinal !== undefined) parts.push(`#${ordinal}`);
+  if (ordinal !== undefined) parts.push(`turn ${ordinal}`);
   if (meta !== null) {
     // Milliseconds under a second: a fast local model reading `0.0s` says
     // nothing, and "how long before it started" is the number people compare

@@ -32,7 +32,7 @@ records the shape and the build order.
 4. **The header** — scene title, model chip, prose size, theme, toggles.
    *(done, phase 91)*
 5. **The composer and the turns** — the Direct chips, the Send button, the turn
-   gutter and reasoning.
+   gutter and reasoning. *(done, phase 92)*
 
 Each phase re-skins on top of the previous, and each lands a guard so the shape
-cannot quietly drift back.
+cannot quietly drift back. All five are in as of phase 92.

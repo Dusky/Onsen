@@ -3,14 +3,14 @@
 A short, honest list, written at the end of phase 65 so work can resume without
 re-deriving it. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 91, on `glm/sillytavern-replacement-dyp30w`. 1405 tests across
+**State:** phase 92, on `glm/sillytavern-replacement-dyp30w`. 1405 tests across
 102 files, typecheck clean, working tree clean. Feature complete against
 `SPEC.md` §20 apart from the deferred phase 42.
 
-**The redesign** (`docs/REDESIGN.md`, from the user's mockup) is underway. The
-foundation shipped (§20 phase 88), the left side is the icon rail (§20 phase
-89), the right panel is In this scene / Characters / Authors (§20 phase 90),
-and the desktop header is in (§20 phase 91). Next: the composer and the turns.
+**The redesign is done** (`docs/REDESIGN.md`, from the user's mockup): the
+foundation (§20 phase 88), the left icon rail (§20 phase 89), the right panel's
+three tabs (§20 phase 90), the desktop header (§20 phase 91), and the composer
+with the Direct row and the named send button (§20 phase 92).
 
 ## How to pick up
 

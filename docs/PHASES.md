@@ -6328,3 +6328,19 @@ value" guard still holds.
 
 **Verified in a browser** at 1440×900 (header with the scene, model, prose,
 base and toggles) and at 390×844 (navigation top bar unchanged).
+
+## Phase 92 — The composer and the turn gutter
+
+The last piece of the redesign: the composer's Direct row and a send button that
+names who will reply.
+
+- The desktop ops row gains the mockup's `Direct:` label, and the steer note
+  sits inline beside it — `Steering: keep the freight a secret · clear` — rather
+  than on its own strip. The strip stays on the phone, where there is no row.
+- The send button, with room, is the mockup's blue pill: `Send / then Sister
+  Bell replies`, naming the speaker instead of showing initials. The phone keeps
+  the compact initials + arrow.
+- The turn gutter now spells `turn N` rather than `#N`.
+
+**Verified in a browser** at 1440×900: the Direct row renders with the ops and
+the steer note, and the send button names the next speaker.

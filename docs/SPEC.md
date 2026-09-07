@@ -3531,6 +3531,10 @@ Each phase ends in a working, usable application.
     model chip, prose size, the dark/light base switch and the two panel
     toggles. The destinations moved into the two rails; the phone keeps the
     navigation top bar. See §16 and `test/topbar.test.ts`.
+92. **The composer and the turn gutter** — the mockup's Direct row (the `Direct:`
+    label, the ops, and the steer note inline with a clear), and a send button
+    that names who will reply — blue, `Send / then Sister Bell replies`. The
+    turn gutter now says `turn N` rather than `#N`. See §16.
 
 Settled while building phase 15.
 

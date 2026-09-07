@@ -431,6 +431,10 @@ export const strings = {
     opCorrectPlaceholder: "she should refuse…",
     opApply: "Go",
     steerActive: "Steer",
+    /** The composer's Direct row (the redesign phase 92). */
+    direct: "Direct:",
+    steering: "Steering:",
+    sendThen: (name: string) => `then ${name} replies`,
     /** One line replacing the cast strip while the ops grid is open. */
     cueAuto: (name: string) => `Cued: auto · ${name}`,
     cueYours: (name: string) => `Cued: you · ${name}`,

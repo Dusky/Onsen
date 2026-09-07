@@ -1056,9 +1056,10 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           </div>
         ) : null}
 
-        {/* Steer, when it is set: a hairline strip above the composer, so a note
-            that changes every turn is visible while you write (design handoff). */}
-        {steer !== null && opsPanel === null ? (
+        {/* Steer, when it is set, on the phone: a hairline strip above the
+            composer. On the desktop the same note sits inline in the Direct
+            row, where the mockup keeps it. */}
+        {steer !== null && opsPanel === null && !isDesktop ? (
           <button
             type="button"
             onClick={() => setOpsPanel("steer")}
@@ -1106,11 +1107,35 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           </div>
         ) : null}
 
-        {/* Always visible with room for it, and no OPS key (design `4a`). */}
+        {/* Always visible with room for it, and no OPS key (design `4a`). The
+            mockup's Direct row: a label, the ops, and the steer note inline. */}
         {isDesktop ? (
           <div className="flex-none border-t border-rule bg-bg-raised px-[16px] py-[9px]">
             <div className="mx-auto w-full max-w-[var(--onsen-prose-measure)]">
-              <OpsRow ops={shownOps} hint={strings.chat.keyHints} />
+              <div className="flex flex-wrap items-center gap-[6px]">
+                <span className="chrome text-[11px]" style={{ color: "var(--onsen-color-text-dim)" }}>
+                  {strings.chat.direct}
+                </span>
+                <OpsRow ops={shownOps} />
+                {steer === null ? null : (
+                  <span className="chrome ml-auto flex min-w-0 items-center gap-[6px] text-[11px]">
+                    <span className="flex-none" style={{ color: "var(--onsen-color-text-dim)" }}>
+                      {strings.chat.steering}
+                    </span>
+                    <span className="min-w-0 truncate" style={{ color: "var(--onsen-color-text-label)" }}>
+                      {steer}
+                    </span>
+                    <button
+                      type="button"
+                      className="flex-none"
+                      style={{ color: "var(--onsen-color-red)" }}
+                      onClick={() => setup.mutate({ directorNote: null })}
+                    >
+                      {strings.chat.opSteerClear}
+                    </button>
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         ) : null}
@@ -1126,6 +1151,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                 ? strings.chat.chooseInitials
                 : initialsOf(speakerName)
           }
+          speakerName={scope === "beat" ? null : speakerName}
           draft={draft}
           onDraftChange={setDraft}
           onAttach={(file) =>

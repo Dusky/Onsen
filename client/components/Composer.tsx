@@ -22,6 +22,11 @@ interface ComposerProps {
   /** Initials of the speaker the send button will produce. */
   speakerInitials: string;
   /**
+   * Who will reply, named on the send button (the redesign phase 92): the
+   * button says "then Sister Bell replies" rather than only showing initials.
+   */
+  speakerName?: string | null;
+  /**
    * The draft lives above this component because the ops read it: "no reply"
    * posts it, and "as me" replaces it with a turn written from it.
    */
@@ -58,6 +63,7 @@ export function Composer({
   onGenerate,
   disabled,
   speakerInitials,
+  speakerName,
   draft,
   onDraftChange,
   onAttach,
@@ -192,7 +198,24 @@ export function Composer({
         </button>
         )}
 
-        {/* Send posts the message and asks for a reply. */}
+        {/* Send posts the message and asks for a reply. With room it names who
+            will reply; on a phone it stays the compact initials + arrow. */}
+        {wide ? (
+          <button
+            type="button"
+            onClick={send}
+            disabled={disabled || draft.trim() === ""}
+            className="flex h-[46px] min-w-[124px] flex-none flex-col items-start justify-center gap-[1px] px-[13px]"
+            style={{ background: "var(--onsen-color-blue)", color: "#0b1219" }}
+          >
+            <span className="text-[12px] leading-none font-semibold">{strings.chat.send}</span>
+            <span className="text-[11px] leading-none opacity-80">
+              {speakerName === null || speakerName === undefined || speakerName === ""
+                ? strings.chat.chooseInitials
+                : strings.chat.sendThen(speakerName)}
+            </span>
+          </button>
+        ) : (
         <button
           type="button"
           onClick={send}
@@ -205,6 +228,7 @@ export function Composer({
           </span>
           <span className="text-[12px] leading-none">↑</span>
         </button>
+        )}
       </div>
 
       {/* Asking for a reply without saying anything is how you let a scene run on. */}
