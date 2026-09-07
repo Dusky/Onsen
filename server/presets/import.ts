@@ -52,6 +52,7 @@ export function importStPreset(db: Database, parsed: StPresetParse): ImportRepor
     maxResponseTokens: parsed.maxResponseTokens ?? 1_024,
     systemPrompt: mainMarker?.enabled === false ? null : (mainMarker?.content ?? null),
     jailbreak: jailbreakMarker?.enabled === false ? null : (jailbreakMarker?.content ?? null),
+    utilityPrompts: JSON.stringify(parsed.utilityPrompts),
   });
 
   const markersOverridden = parsed.markers

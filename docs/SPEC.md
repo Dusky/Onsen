@@ -3602,6 +3602,11 @@ Each phase ends in a working, usable application.
     expands the whole `PresetFields` in the rail, and on a desktop the Settings
     screen drops its Generation category — the rail is now the one surface for
     presets. The phone keeps the sheet. See §13, `test/leftrail.test.ts`.
+107. **Preset import/export parity** — `frequency_penalty` and
+    `presence_penalty` join the sampler set (mapped, not reported as unmapped),
+    and a preset carries the ops' utility prompts (impersonation, continue
+    nudge, new-chat, group nudge) — imported, editable, and round-tripped whole
+    in the SillyTavern export. See §13, `test/preset-import.test.ts`.
 
 Settled while building phase 15.
 

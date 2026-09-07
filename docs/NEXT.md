@@ -3,7 +3,7 @@
 A short, honest list, written at the end of phase 65 so work can resume without
 re-deriving it. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 105, on `glm/sillytavern-replacement-dyp30w`. 1427 tests across
+**State:** phase 107, on `glm/sillytavern-replacement-dyp30w`. 1428 tests across
 105 files, typecheck clean, working tree clean. Feature complete against
 `SPEC.md` §20 apart from the deferred phase 42.
 
@@ -12,24 +12,18 @@ re-deriving it. `GAPS.md` is the evidence; this is the order.
 Ordered by what the user asked for most recently, which is the thread to
 follow.
 
-1. **Prompt preset management** — *the current ask, mostly shipped (§20 phase
-   105).* The Preset tab is a manager and a preset can name its model. Remaining:
-   the import/export parity for the SillyTavern utility prompts (impersonation,
-   continue nudge, new-chat) and the unmapped samplers, so a Celia-style preset
-   round-trips whole.
+1. **Megumin Suite — Story Config + Blocks.** The preset's prompt blocks are
+   already imported, and its samplers and utility prompts now round-trip. What
+   remains: the Story Config dropdowns (genre, POV, friction, pace → scene
+   prompt options) and the Blocks (tracker cards under a reply).
 
-2. **Megumin Suite — Story Config + Blocks.** The preset's prompt blocks are
-   already imported. What remains: the Story Config dropdowns (genre, POV,
-   friction, pace → scene prompt options) and the Blocks (tracker cards under a
-   reply).
-
-3. **Multihog** — the RPG engine and the long pole. State Tracker first, then
+2. **Multihog** — the RPG engine and the long pole. State Tracker first, then
    the RNG, then World Progression and Map Evolution.
 
-4. **Web search** — explicitly *not* core; the user said it could be an
+3. **Web search** — explicitly *not* core; the user said it could be an
    extension. Left off the core list.
 
-5. **Self-responses** (`GAPS.md` §4). Still a product conversation, not a gap.
+4. **Self-responses** (`GAPS.md` §4). Still a product conversation, not a gap.
 
 ## How to pick up
 

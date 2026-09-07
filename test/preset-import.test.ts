@@ -106,6 +106,27 @@ describe("the preset parser (pure)", () => {
     expect(parsed.unsupportedMacros).toContain("setvar");
   });
 
+  test("maps the penalty samplers and the utility prompts", () => {
+    const parsed = parseStPreset(
+      JSON.stringify({
+        name: "Celia",
+        temperature: 1,
+        frequency_penalty: 0.3,
+        presence_penalty: 0.2,
+        impersonation_prompt: "[impersonate {{user}}]",
+        continue_nudge_prompt: "[continue]",
+        prompts: [],
+      }),
+      "celia.json",
+    );
+    expect(parsed.samplers.frequency_penalty).toBe(0.3);
+    expect(parsed.samplers.presence_penalty).toBe(0.2);
+    expect(parsed.unmappedSamplers).not.toContain("frequency_penalty");
+    expect(parsed.unmappedSamplers).not.toContain("presence_penalty");
+    expect(parsed.utilityPrompts.impersonation).toBe("[impersonate {{user}}]");
+    expect(parsed.utilityPrompts.continueNudge).toBe("[continue]");
+  });
+
   test("detects a text-completion preset", () => {
     const parsed = parseStPreset(
       JSON.stringify({ name: "Text", temperature: 1, prompt_order: [], context_template: {} }),

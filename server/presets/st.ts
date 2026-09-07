@@ -24,6 +24,13 @@ export interface StPresetParse {
   blocks: StBlock[];
   /** Markers, by their reserved identifier, with whatever content they held. */
   markers: StMarker[];
+  /** The utility prompts a preset carries: impersonation, continue, the opener. */
+  utilityPrompts: {
+    impersonation: string | null;
+    continueNudge: string | null;
+    newChat: string | null;
+    groupNudge: string | null;
+  };
   /** Macros in any block's content that this app's engine does not implement. */
   unsupportedMacros: string[];
 }
@@ -87,6 +94,8 @@ const SAMPLER_MAP: Record<string, keyof SamplerSettings> = {
   top_k: "top_k",
   min_p: "min_p",
   repetition_penalty: "repetition_penalty",
+  frequency_penalty: "frequency_penalty",
+  presence_penalty: "presence_penalty",
   dry_multiplier: "dry_multiplier",
   dry_base: "dry_base",
   dry_allowed_length: "dry_allowed_length",
@@ -100,8 +109,6 @@ const KNOWN_UNMAPPED = new Set([
   "top_a",
   "typical_p",
   "tail_free_sampling",
-  "frequency_penalty",
-  "presence_penalty",
   "repetition_penalty_range",
   "frequency_penalty_range",
   "presence_penalty_range",
@@ -190,6 +197,12 @@ export function parseStPreset(bytes: string | Uint8Array, filename: string): StP
 
   const contextSize = number(value["max_context"]);
   const maxResponseTokens = number(value["max_length"]);
+  const utilityPrompts = {
+    impersonation: string(value["impersonation_prompt"]),
+    continueNudge: string(value["continue_nudge_prompt"]),
+    newChat: string(value["new_chat_prompt"]),
+    groupNudge: string(value["group_nudge_prompt"]),
+  };
 
   const blocks: StBlock[] = [];
   const markers: StMarker[] = [];
@@ -237,6 +250,7 @@ export function parseStPreset(bytes: string | Uint8Array, filename: string): StP
     maxResponseTokens,
     blocks,
     markers,
+    utilityPrompts,
     unsupportedMacros: [...macroSet].sort(),
   };
 }

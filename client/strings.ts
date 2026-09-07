@@ -608,6 +608,8 @@ export const strings = {
     samplerTopP: "Top-P",
     samplerTopK: "Top-K",
     samplerRepetitionPenalty: "Repetition penalty",
+    samplerFrequencyPenalty: "Frequency penalty",
+    samplerPresencePenalty: "Presence penalty",
     samplerDryMultiplier: "DRY multiplier",
     samplerDryBase: "DRY base",
     samplerDryAllowedLength: "DRY allowed length",
@@ -1004,6 +1006,13 @@ export const strings = {
     prefillUnsupported:
       "No provider is set to accept a prefill. Turn it on for the provider that does.",
     providerPrefill: "Accepts a prefill",
+
+    /** The ops' prompts (SPEC §7, §20 phase 107), carried by the preset. */
+    utilityPrompts: "Utility prompts",
+    utilityImpersonation: "Impersonation",
+    utilityContinue: "Continue",
+    utilityNewChat: "New chat",
+    utilityGroupNudge: "Group nudge",
     providerPrefillAuto: "Adapter decides",
     providerPrefillYes: "Yes",
     providerPrefillNo: "No",

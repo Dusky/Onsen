@@ -31,6 +31,8 @@ export interface SamplerSettings {
   top_p?: number;
   top_k?: number;
   repetition_penalty?: number;
+  frequency_penalty?: number;
+  presence_penalty?: number;
   dry_multiplier?: number;
   dry_base?: number;
   dry_allowed_length?: number;
@@ -54,6 +56,8 @@ export const SAMPLER_BOUNDS = {
   top_p: { min: 0, max: 1, step: 0.01 },
   top_k: { min: 0, max: 500, step: 1, integer: true },
   repetition_penalty: { min: 0.5, max: 2, step: 0.01 },
+  frequency_penalty: { min: -2, max: 2, step: 0.01 },
+  presence_penalty: { min: -2, max: 2, step: 0.01 },
   dry_multiplier: { min: 0, max: 5, step: 0.05 },
   dry_base: { min: 0, max: 5, step: 0.05 },
   dry_allowed_length: { min: 0, max: 20, step: 1, integer: true },
@@ -110,6 +114,8 @@ export const MODERN_SAMPLER_DEFAULTS: SamplerSettings = {
   temperature: 1.0,
   min_p: 0.05,
   repetition_penalty: 1.0,
+  frequency_penalty: 0,
+  presence_penalty: 0,
   dry_multiplier: 0.8,
   dry_base: 1.75,
   dry_allowed_length: 2,
@@ -193,6 +199,8 @@ export interface PresetDto {
   /** The model this preset answers with, when the scene names none (§20 phase 105). */
   connectionProfileId: string | null;
   connectionProfileName: string | null;
+  /** The ops' prompts, imported and round-tripped whole (§20 phase 107). */
+  utilityPrompts: UtilityPromptsDto;
   /** The assembly order, or null while this preset runs on §3's default. */
   blockOrder: PromptOrderEntry[] | null;
   /** This preset's own blocks (§20 phase 56). */
@@ -242,6 +250,14 @@ export interface ReasoningConfigDto {
   suffix: string;
   /** Strip inline `<think>` tags from the prose. On by default. */
   parseInline: boolean;
+}
+
+/** The prompts a preset carries for the ops (SPEC §7, §20 phase 107). */
+export interface UtilityPromptsDto {
+  impersonation: string | null;
+  continueNudge: string | null;
+  newChat: string | null;
+  groupNudge: string | null;
 }
 
 /**
@@ -315,6 +331,8 @@ export interface UpdatePresetRequest {
   squashSystem?: boolean;
   /** The model this preset answers with, when the scene names none (§20 phase 105). */
   connectionProfileId?: string | null;
+  /** The ops' prompts (§20 phase 107). */
+  utilityPrompts?: UtilityPromptsDto;
 }
 
 /**

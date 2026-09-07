@@ -19,6 +19,7 @@ import {
   insertProvider,
   listConnectionProfiles,
   listPresets,
+  parseUtilityPrompts,
   setDefaultPreset,
   listProviders,
   toConnectionProfileDto,
@@ -214,6 +215,7 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
     const format = c.req.query("format") ?? "onsen";
     if (format === "sillytavern") {
       const samplers = JSON.parse(row.sampler_settings) as Record<string, unknown>;
+      const utility = parseUtilityPrompts(row.utility_prompts);
       const body = {
         name: row.name,
         temperature: samplers["temperature"] ?? 1,
@@ -221,6 +223,8 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
         top_k: samplers["top_k"] ?? 0,
         min_p: samplers["min_p"] ?? 0,
         repetition_penalty: samplers["repetition_penalty"] ?? 1,
+        frequency_penalty: samplers["frequency_penalty"] ?? 0,
+        presence_penalty: samplers["presence_penalty"] ?? 0,
         dry_multiplier: samplers["dry_multiplier"] ?? 0,
         dry_base: samplers["dry_base"] ?? 0,
         dry_allowed_length: samplers["dry_allowed_length"] ?? 2,
@@ -229,6 +233,10 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
         xtc_probability: samplers["xtc_probability"] ?? 0,
         max_context: row.context_size,
         max_length: row.max_response_tokens,
+        impersonation_prompt: utility.impersonation,
+        continue_nudge_prompt: utility.continueNudge,
+        new_chat_prompt: utility.newChat,
+        group_nudge_prompt: utility.groupNudge,
         prompts: [],
         // The honest part of a lossy export: what the app could not carry back.
         _onsen_lossy: {
@@ -287,6 +295,15 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
       } else {
         return c.json(badRequest("connectionProfileId must be a profile id, or null."), 400);
       }
+    }
+
+    // The ops' prompts (§20 phase 107).
+    if ("utilityPrompts" in body) {
+      const value = body["utilityPrompts"];
+      if (value !== null && (typeof value !== "object" || Array.isArray(value))) {
+        return c.json(badRequest("utilityPrompts must be an object, or null."), 400);
+      }
+      patch.utilityPrompts = value === null ? null : JSON.stringify(value);
     }
 
     // The flag that decides which preset runs when a scene and its profile

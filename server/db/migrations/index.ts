@@ -51,6 +51,7 @@ import translation from "./0050_translation.sql" with { type: "text" };
 import guideOrder from "./0051_guide_order.sql" with { type: "text" };
 import autoBackground from "./0052_auto_background.sql" with { type: "text" };
 import presetProfile from "./0053_preset_profile.sql" with { type: "text" };
+import presetUtilityPrompts from "./0054_preset_utility_prompts.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -119,4 +120,5 @@ export const migrations: readonly Migration[] = [
   { version: 51, name: "guide_order", sql: guideOrder },
   { version: 52, name: "auto_background", sql: autoBackground },
   { version: 53, name: "preset_profile", sql: presetProfile },
+  { version: 54, name: "preset_utility_prompts", sql: presetUtilityPrompts },
 ];

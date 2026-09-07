@@ -44,7 +44,9 @@ import { useConfirm } from "./ConfirmSheet.tsx";
 
 /** The order the sliders read in: what a model does, then the two modern tools. */
 export const GROUPS: { hint?: string; keys: BoundedSampler[] }[] = [
-  { keys: ["temperature", "min_p", "top_p", "top_k", "repetition_penalty"] },
+  {
+    keys: ["temperature", "min_p", "top_p", "top_k", "repetition_penalty", "frequency_penalty", "presence_penalty"],
+  },
   {
     hint: strings.settings.dryHint,
     keys: ["dry_multiplier", "dry_base", "dry_allowed_length"],
@@ -58,6 +60,8 @@ export const LABELS: Record<BoundedSampler, string> = {
   top_p: strings.settings.samplerTopP,
   top_k: strings.settings.samplerTopK,
   repetition_penalty: strings.settings.samplerRepetitionPenalty,
+  frequency_penalty: strings.settings.samplerFrequencyPenalty,
+  presence_penalty: strings.settings.samplerPresencePenalty,
   dry_multiplier: strings.settings.samplerDryMultiplier,
   dry_base: strings.settings.samplerDryBase,
   dry_allowed_length: strings.settings.samplerDryAllowedLength,
@@ -464,6 +468,38 @@ export function PresetFields({ preset, onClose }: { preset: PresetDto; onClose()
         <p className="explain mb-[22px]">
           {strings.settings.prefillHint}
         </p>
+
+        {/* The ops' prompts, carried by the preset so an imported one keeps
+            what it was asked to say (§20 phase 107). */}
+        <p className="section-label mb-[8px]">{strings.settings.utilityPrompts}</p>
+        {(
+          [
+            ["impersonation", strings.settings.utilityImpersonation],
+            ["continueNudge", strings.settings.utilityContinue],
+            ["newChat", strings.settings.utilityNewChat],
+            ["groupNudge", strings.settings.utilityGroupNudge],
+          ] as const
+        ).map(([field, label]) => (
+          <div key={field} className="mb-[10px]">
+            <p className="meta mb-[4px]">{label}</p>
+            <textarea
+              rows={2}
+              className="field resize-none py-[10px]"
+              defaultValue={preset.utilityPrompts[field] ?? ""}
+              onBlur={(event) => {
+                const value = event.target.value.trim();
+                if (value === (preset.utilityPrompts[field] ?? "")) return;
+                update.mutate({
+                  id: preset.id,
+                  utilityPrompts: {
+                    ...preset.utilityPrompts,
+                    [field]: value === "" ? null : value,
+                  },
+                });
+              }}
+            />
+          </div>
+        ))}
 
         <p className="section-label mb-[8px]">{strings.settings.reasoningTitle}</p>
         <button

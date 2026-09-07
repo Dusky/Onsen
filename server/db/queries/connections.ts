@@ -12,6 +12,7 @@ import {
   type ProviderDto,
   type ProviderKind,
   type SamplerSettings,
+  type UtilityPromptsDto,
 } from "../../../shared/types.ts";
 import { parseReasoningConfig } from "../../generation/reasoning.ts";
 import { createEstimatingTokenizer } from "../../prompt/tokenizer.ts";
@@ -60,6 +61,8 @@ interface PresetRow {
   jailbreak: string | null;
   /** The profile this preset answers with, when the scene names none (§20 phase 105). */
   connection_profile_id: number | null;
+  /** The ops' prompts, as JSON (§20 phase 107). */
+  utility_prompts: string | null;
   is_default: number;
   created_at: number;
   updated_at: number;
@@ -146,6 +149,29 @@ export function parsePromptOrder(raw: string | null): PromptOrderEntry[] | null 
   }
 }
 
+/** The ops' prompts, as JSON, or the empty set (§20 phase 107). */
+export function parseUtilityPrompts(raw: string | null): UtilityPromptsDto {
+  const fallback: UtilityPromptsDto = {
+    impersonation: null,
+    continueNudge: null,
+    newChat: null,
+    groupNudge: null,
+  };
+  if (raw === null) return fallback;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const pick = (key: string) => (typeof parsed[key] === "string" ? (parsed[key] as string) : null);
+    return {
+      impersonation: pick("impersonation"),
+      continueNudge: pick("continueNudge"),
+      newChat: pick("newChat"),
+      groupNudge: pick("groupNudge"),
+    };
+  } catch {
+    return fallback;
+  }
+}
+
 export function listPresetBlocks(db: Database, presetId: number): PresetBlockDto[] {
   const rows = db
     .query(
@@ -190,6 +216,7 @@ export function toPresetDto(db: Database, row: PresetRow): PresetDto {
     /** The model this preset answers with, when the scene names none (§20 phase 105). */
     connectionProfileId: profile?.ulid ?? null,
     connectionProfileName: profile?.name ?? null,
+    utilityPrompts: parseUtilityPrompts(row.utility_prompts),
     blockOrder: parsePromptOrder(row.prompt_order),
     blocks: listPresetBlocks(db, row.id),
     autoContinue: row.auto_continue,
@@ -299,15 +326,16 @@ export function insertPreset(
     maxResponseTokens: number;
     systemPrompt?: string | null;
     jailbreak?: string | null;
+    utilityPrompts?: string | null;
   },
 ): PresetRow {
   const now = Date.now();
   return db
     .query(
       `INSERT INTO presets
-         (ulid, name, sampler_settings, system_prompt, jailbreak,
+         (ulid, name, sampler_settings, system_prompt, jailbreak, utility_prompts,
           context_size, max_response_tokens, is_default, created_at, updated_at)
-       VALUES ($ulid, $name, $samplers, $system, $jailbreak, $context, $max, 0, $now, $now)
+       VALUES ($ulid, $name, $samplers, $system, $jailbreak, $utility, $context, $max, 0, $now, $now)
        RETURNING *`,
     )
     .get({
@@ -316,6 +344,7 @@ export function insertPreset(
       samplers: JSON.stringify(input.samplers),
       system: input.systemPrompt ?? null,
       jailbreak: input.jailbreak ?? null,
+      utility: input.utilityPrompts ?? null,
       context: input.contextSize,
       max: input.maxResponseTokens,
       now,
@@ -559,6 +588,8 @@ export interface PresetPatch {
   reasoningConfig?: string;
   /** The model this preset answers with, or null for none (§20 phase 105). */
   connectionProfileId?: number | null;
+  /** The ops' prompts, as a JSON string, or null for none (§20 phase 107). */
+  utilityPrompts?: string | null;
   /** The whole assembly order as JSON, or null for §3's default (phase 56). */
   promptOrder?: string | null;
   /** The two automatic retries (§20 phase 63). */
@@ -645,6 +676,7 @@ export function updatePreset(db: Database, id: number, patch: PresetPatch): Pres
               max_response_tokens = $max, prefill = $prefill,
               reasoning_config = $reasoning, prompt_order = $order,
               connection_profile_id = $profile,
+              utility_prompts = $utility,
               auto_continue = $auto_continue,
               auto_swipe_min_chars = $auto_swipe_min_chars,
               auto_swipe_attempts = $auto_swipe_attempts,
@@ -670,6 +702,7 @@ export function updatePreset(db: Database, id: number, patch: PresetPatch): Pres
         patch.connectionProfileId === undefined
           ? current.connection_profile_id
           : patch.connectionProfileId,
+      utility: patch.utilityPrompts ?? current.utility_prompts,
       auto_continue: patch.autoContinue ?? current.auto_continue,
       auto_swipe_min_chars: patch.autoSwipeMinChars ?? current.auto_swipe_min_chars,
       auto_swipe_attempts: patch.autoSwipeAttempts ?? current.auto_swipe_attempts,

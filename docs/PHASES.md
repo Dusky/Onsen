@@ -6518,3 +6518,11 @@ The Preset tab's *Full editor* now expands the whole `PresetFields` in the rail
 rather than navigating away, and on a desktop the Settings screen drops its
 Generation category — the rail is the one surface for presets. The phone keeps
 the sheet, because it has no rail.
+
+## Phase 107 — Preset import/export parity
+
+`frequency_penalty` and `presence_penalty` join the sampler set — mapped rather
+than reported as unmapped — and a preset carries the ops' utility prompts
+(impersonation, continue nudge, new-chat, group nudge) as a JSON column,
+imported, editable in the full editor, and round-tripped whole in the
+SillyTavern export. A Celia-style preset now comes back out the way it went in.
