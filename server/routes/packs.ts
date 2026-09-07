@@ -7,6 +7,7 @@ import type { AppContext, AppEnv } from "../context.ts";
 import { requireAuth } from "../middleware/session.ts";
 import { readPack } from "../packs/archive.ts";
 import { installExtensionCode } from "../extensions/install.ts";
+import { removePackExtension } from "../extensions/remove.ts";
 import { HOST_API_VERSION, PackError, type PackManifest } from "../packs/manifest.ts";
 import { installPack, planInstall, uninstallPack, uninstallPreview } from "../packs/install.ts";
 import { buildPack, emptySelection, type PackSelection } from "../packs/build.ts";
@@ -217,7 +218,19 @@ export function packRoutes(ctx: AppContext): Hono<AppEnv> {
     const preview = uninstallPreview(ctx.db, c.req.param("packId"));
     if (preview === null) return c.json(notFound("pack"), 404);
     const removed = uninstallPack(ctx.db, c.req.param("packId"));
-    return c.json({ removed, of: preview.rows.length });
+    // The code half of the same uninstall (phase 113): the pack's data rows are
+    // gone above; this removes its extension's directory, rows and callbacks.
+    const extensionRemoved =
+      preview.extension === null
+        ? false
+        : removePackExtension(ctx.db, ctx.config.extensionsDir, {
+            name: preview.name,
+            version: preview.version,
+          });
+    return c.json({
+      removed: removed + (extensionRemoved ? 1 : 0),
+      of: preview.rows.length + (extensionRemoved ? 1 : 0),
+    });
   });
 
   /**

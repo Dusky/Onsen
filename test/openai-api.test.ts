@@ -175,6 +175,31 @@ describe("what it answers to", () => {
     expect(body.error.message).toContain("/v1/models");
   });
 
+  test("the two unbuilt targets are refused cleanly, never advertised (§20 phase 121)", async () => {
+    const t = await signedIn();
+    const key = await mintKey(t);
+
+    // Not in the list — a model id a client can read and then be refused by is
+    // worse than one never advertised.
+    const listed = (await (await call(t, "/v1/models", key.token)).json()) as {
+      data: { id: string }[];
+    };
+    expect(listed.data.map((model) => model.id)).not.toContain("author/kestrel");
+    expect(listed.data.map((model) => model.id)).not.toContain("passthrough/local");
+
+    // But named directly, they refuse in OpenAI's error shape rather than
+    // silently doing the wrong thing.
+    for (const model of ["author/kestrel", "passthrough/local"]) {
+      const response = await call(t, "/v1/chat/completions", key.token, {
+        model,
+        messages: [{ role: "user", content: "hello" }],
+      });
+      expect(response.status).toBe(400);
+      const body = (await response.json()) as { error: { message: string } };
+      expect(body.error.message).toContain("not built");
+    }
+  });
+
   test("a key scoped elsewhere cannot open this roleplay", async () => {
     const t = await signedIn();
     const mine = await scene(t);

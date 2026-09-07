@@ -20,6 +20,7 @@ import {
 } from "../lib/queries.ts";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
 import { EditorField } from "../components/EditorField.tsx";
+import { TagEditor } from "../components/TagEditor.tsx";
 
 /**
  * The character editor.
@@ -144,7 +145,6 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
   const uploadSprite = useUploadExpression(characterId);
   const removeSprite = useDeleteExpression(characterId);
   const [tab, setTab] = useState<Tab>("card");
-  const [tagDraft, setTagDraft] = useState("");
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [spriteLabel, setSpriteLabel] = useState("");
   const [reviseOpen, setReviseOpen] = useState(false);
@@ -457,6 +457,26 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                 />
               </EditorField>
 
+              <EditorField label={strings.characters.depthPromptRole}>
+                <div className="flex flex-wrap gap-[6px]">
+                  {(["system", "user", "assistant"] as const).map((role) => (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => save({ depthPromptRole: role })}
+                      aria-pressed={character.depthPromptRole === role}
+                      className={`btn flex-none ${character.depthPromptRole === role ? "btn-primary" : ""}`}
+                    >
+                      {role === "system"
+                        ? strings.lore.roleSystem
+                        : role === "user"
+                          ? strings.lore.roleUser
+                          : strings.lore.roleAssistant}
+                    </button>
+                  ))}
+                </div>
+              </EditorField>
+
               <EditorField label={strings.characters.systemPrompt}>
                 <TextField
                   value={character.systemPrompt ?? ""}
@@ -483,58 +503,47 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                 />
               </EditorField>
 
+              {/* The card's own provenance (SPEC §9): read-only, it round-trips
+                  through import and export rather than being set here. Shown so a
+                  card's origin is legible. */}
+              <EditorField label={strings.characters.creator}>
+                <p className="text-[15px] leading-[1.55]">
+                  {character.creator ?? strings.common.none}
+                </p>
+              </EditorField>
+              <EditorField label={strings.characters.version}>
+                <p className="text-[15px] leading-[1.55]">
+                  {character.characterVersion ?? strings.common.none}
+                </p>
+              </EditorField>
+
               {/* Tags (SPEC §9): chips of what the card has, an add box, and the
                   background task that proposes more from the library's own
-                  vocabulary. */}
+                  vocabulary. The chips and add box are the shared TagEditor. */}
               <p className="section-label mb-[8px]">{strings.characters.tagFilter}</p>
-              <div className="mb-[8px] flex flex-wrap gap-[6px]">
-                {character.tags.map((existing) => (
+              <TagEditor
+                tags={character.tags}
+                onChange={(tags) => save({ tags })}
+                placeholder={strings.characters.tagPrompt}
+                normalize={(tag) => tag.toLowerCase()}
+                extra={
                   <button
-                    key={existing}
                     type="button"
+                    className="btn flex-none"
+                    disabled={suggest.isPending}
                     onClick={() =>
-                      save({ tags: character.tags.filter((tag) => tag !== existing) })
+                      suggest.mutate(undefined, {
+                        onSuccess: ({ tags }) => {
+                          const added = tags.filter((tag) => !character.tags.includes(tag));
+                          if (added.length > 0) save({ tags: [...character.tags, ...added] });
+                        },
+                      })
                     }
-                    className="chrome border px-[10px] py-[6px] text-[12.5px]"
-                    style={{
-                      borderColor: "var(--onsen-color-border-quiet)",
-                      color: "var(--onsen-color-text-muted)",
-                    }}
                   >
-                    {existing} ×
+                    {suggest.isPending ? strings.characters.suggestingTags : strings.characters.suggestTags}
                   </button>
-                ))}
-              </div>
-              <div className="mb-[8px] flex gap-[6px]">
-                <input
-                  className="field flex-1"
-                  placeholder={strings.characters.tagPrompt}
-                  value={tagDraft}
-                  onChange={(event) => setTagDraft(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key !== "Enter") return;
-                    const next = tagDraft.trim().toLowerCase();
-                    if (next === "" || character.tags.includes(next)) return;
-                    save({ tags: [...character.tags, next] });
-                    setTagDraft("");
-                  }}
-                />
-                <button
-                  type="button"
-                  className="btn flex-none"
-                  disabled={suggest.isPending}
-                  onClick={() =>
-                    suggest.mutate(undefined, {
-                      onSuccess: ({ tags }) => {
-                        const added = tags.filter((tag) => !character.tags.includes(tag));
-                        if (added.length > 0) save({ tags: [...character.tags, ...added] });
-                      },
-                    })
-                  }
-                >
-                  {suggest.isPending ? strings.characters.suggestingTags : strings.characters.suggestTags}
-                </button>
-              </div>
+                }
+              />
 
               {/* Version history (SPEC §9): every save left one behind, and
                   restore takes the card back through them. */}

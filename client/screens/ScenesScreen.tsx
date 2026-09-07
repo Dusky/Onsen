@@ -3,6 +3,7 @@ import { strings } from "../strings.ts";
 import { EmptyState } from "../components/EmptyState.tsx";
 import { Sheet } from "../components/Sheet.tsx";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
+import { TagEditor } from "../components/TagEditor.tsx";
 import { navigate } from "../lib/router.ts";
 import { useIsDesktop } from "../lib/breakpoint.ts";
 import {
@@ -35,12 +36,12 @@ import type { ConnectionProfileDto } from "@shared/types.ts";
 
 function relativeTime(at: number): string {
   const seconds = Math.round((Date.now() - at) / 1000);
-  if (seconds < 60) return "just now";
+  if (seconds < 60) return strings.time.justNow;
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) return strings.time.minutesAgo(minutes);
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.round(hours / 24)}d ago`;
+  if (hours < 24) return strings.time.hoursAgo(hours);
+  return strings.time.daysAgo(Math.round(hours / 24));
 }
 
 /**
@@ -172,47 +173,12 @@ function OrganiseSheet({
 }) {
   const [tags, setTags] = useState(scene.tags);
   const [folder, setFolder] = useState(scene.folder ?? "");
-  const [draft, setDraft] = useState("");
-
-  function add() {
-    const value = draft.trim();
-    setDraft("");
-    if (value === "" || tags.includes(value)) return;
-    setTags([...tags, value]);
-  }
 
   return (
     <Sheet title={strings.scenes.organise} meta={scene.title} onClose={onClose}>
       <div className="pt-[8px] pb-[14px]">
         <p className="section-label mb-[6px]">{strings.scenes.tagsLabel}</p>
-        <div className="mb-[10px] flex flex-wrap items-center gap-[6px]">
-          {tags.map((name) => (
-            <button
-              key={name}
-              type="button"
-              onClick={() => setTags(tags.filter((t) => t !== name))}
-              aria-label={`${strings.scenes.tagsLabel}: ${name}`}
-              className="chrome flex items-center gap-[6px] border border-rule-strong px-[8px] py-[6px] text-[13px] text-ink-label"
-            >
-              {name}
-              <span className="text-ink-dim">×</span>
-            </button>
-          ))}
-        </div>
-        <input
-          className="field mb-[14px]"
-          value={draft}
-          placeholder={strings.scenes.tagAdd}
-          aria-label={strings.scenes.tagAdd}
-          onChange={(event) => setDraft(event.target.value)}
-          onBlur={add}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              add();
-            }
-          }}
-        />
+        <TagEditor tags={tags} onChange={setTags} placeholder={strings.scenes.tagAdd} />
 
         <p className="section-label mb-[6px]">{strings.scenes.folderLabel}</p>
         <input

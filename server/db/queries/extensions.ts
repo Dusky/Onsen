@@ -33,3 +33,33 @@ export function insertExtension(
     )
     .get({ ulid: ulid(), name: input.name, version: input.version, author: input.author, dir: input.dir, now }) as ExtensionRow;
 }
+
+/**
+ * The extension a pack installed, matched by the name and version the pack was
+ * installed under. `installExtensionCode` and `installPack` are handed the same
+ * manifest, so the join is exact; `packs` rejects a second install of the same
+ * name and version, so at most one row can match.
+ */
+export function findExtensionByNameVersion(
+  db: Database,
+  name: string,
+  version: string,
+): ExtensionRow | null {
+  return (db
+    .query("SELECT * FROM extensions WHERE name = $name AND version = $version ORDER BY id LIMIT 1")
+    .get({ name, version }) as ExtensionRow | null) ?? null;
+}
+
+export function deleteExtension(db: Database, id: number): void {
+  db.query("DELETE FROM extensions WHERE id = $id").run({ id });
+}
+
+/**
+ * Remove an extension's task rows. Keys are `ext:<name>:<taskKey>`, so they are
+ * addressed by prefix; the name is escaped because a `%` or `_` in a pack name
+ * must not turn into a wildcard and swallow another extension's rows.
+ */
+export function deleteExtensionTasks(db: Database, name: string): void {
+  const prefix = `ext:${name.replace(/[\\%_]/g, "\\$&")}:%`;
+  db.query("DELETE FROM tasks WHERE key LIKE $prefix ESCAPE '\\'").run({ prefix });
+}

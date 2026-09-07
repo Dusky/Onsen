@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
 import { strings } from "../strings.ts";
 import { navigate } from "../lib/router.ts";
+import { useIsDesktop } from "../lib/breakpoint.ts";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
+import { Sheet } from "../components/Sheet.tsx";
+import { TagEditor } from "../components/TagEditor.tsx";
 import {
   useBackgrounds,
   useDeleteBackground,
@@ -29,6 +32,7 @@ export function BackgroundsScreen() {
   const update = useUpdateBackground();
   const setOpacity = useUpdateBackgroundOpacity();
   const [confirmNode, confirm] = useConfirm();
+  const isDesktop = useIsDesktop();
 
   const [needle, setNeedle] = useState("");
   const [tag, setTag] = useState("");
@@ -66,7 +70,7 @@ export function BackgroundsScreen() {
   return (
     <div className="flex screen-height flex-col bg-bg">
       <header
-        className="hairline flex flex-none items-baseline gap-[12px] px-[22px] pb-[12px]"
+        className="hairline flex flex-none flex-wrap items-center gap-x-[12px] gap-y-[8px] px-[22px] pb-[12px]"
         style={{ paddingTop: "18px" }}
       >
         <button
@@ -90,7 +94,7 @@ export function BackgroundsScreen() {
           }}
         >
           <input
-            className="field min-h-0 w-[260px] py-[8px] text-[13px]"
+            className="field min-h-0 w-[200px] py-[8px] text-[13px] sm:w-[260px]"
             placeholder={strings.settings.backgroundPrompt}
             value={prompt}
             onChange={(event) => setPrompt(event.target.value)}
@@ -118,9 +122,9 @@ export function BackgroundsScreen() {
         <p className="explain explain-alert mx-[22px] mb-[10px]">{generate.error.message}</p>
       ) : null}
 
-      <div className="flex flex-none items-center gap-[8px] px-[22px] pb-[10px]">
+      <div className="flex flex-none flex-wrap items-center gap-[8px] px-[22px] pb-[10px]">
         <input
-          className="field min-h-0 flex-1 py-[8px] text-[13px]"
+          className="field min-h-0 min-w-[140px] flex-1 py-[8px] text-[13px]"
           placeholder={strings.characters.searchPlaceholder}
           value={needle}
           onChange={(event) => setNeedle(event.target.value)}
@@ -188,115 +192,155 @@ export function BackgroundsScreen() {
         )}
       </div>
 
-      {editing !== null ? (
-        <BackgroundEditor
-          background={editing}
-          onClose={() => setEditingId(null)}
-          onSave={(patch) => update.mutate({ id: editing.id, ...patch })}
-          onDefault={() => setDefault.mutate(editing.id)}
-          onDelete={() =>
-            confirm(
-              strings.settings.backgroundDelete,
-              () => {
-                setEditingId(null);
-                remove.mutate(editing.id);
-              },
-            )
-          }
-        />
-      ) : null}
+      {editing === null ? null : isDesktop ? (
+        <aside className="flex w-[420px] flex-none flex-col border-l border-rule bg-bg-sunken">
+          <div className="hairline flex flex-none items-center gap-[10px] px-[16px] py-[12px]">
+            <button type="button" aria-label={strings.common.back} className="chrome text-[14px] text-ink-muted" onClick={() => setEditingId(null)}>
+              {strings.chat.back}
+            </button>
+            <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{editing.name}</span>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-[16px] py-[14px]">
+            <BackgroundEditorBody
+              key={editing.id}
+              background={editing}
+              onSave={(patch) => update.mutate({ id: editing.id, ...patch })}
+              onDefault={() => setDefault.mutate(editing.id)}
+              onDelete={() =>
+                confirm(
+                  strings.settings.backgroundDelete,
+                  () => {
+                    setEditingId(null);
+                    remove.mutate(editing.id);
+                  },
+                )
+              }
+            />
+          </div>
+        </aside>
+      ) : (
+        <Sheet title={strings.settings.backgrounds} meta={editing.name} onClose={() => setEditingId(null)}>
+          <BackgroundEditorBody
+            key={editing.id}
+            background={editing}
+            onSave={(patch) => update.mutate({ id: editing.id, ...patch })}
+            onDefault={() => setDefault.mutate(editing.id)}
+            onDelete={() =>
+              confirm(
+                strings.settings.backgroundDelete,
+                () => {
+                  setEditingId(null);
+                  remove.mutate(editing.id);
+                },
+              )
+            }
+          />
+        </Sheet>
+      )}
       {confirmNode}
     </div>
   );
 }
 
-function BackgroundEditor({
+function BackgroundEditorBody({
   background,
-  onClose,
   onSave,
   onDefault,
   onDelete,
 }: {
   background: { id: string; name: string; prompt: string | null; tags: string[]; folder: string | null; isDefault: boolean };
-  onClose(): void;
   onSave(patch: { name?: string; prompt?: string; tags?: string[]; folder?: string | null }): void;
   onDefault(): void;
   onDelete(): void;
 }) {
   const [name, setName] = useState(background.name);
   const [prompt, setPrompt] = useState(background.prompt ?? "");
-  const [tags, setTags] = useState(background.tags.join(", "));
+  const [tags, setTags] = useState<string[]>(background.tags);
   const [folder, setFolder] = useState(background.folder ?? "");
+  const [saved, setSaved] = useState(false);
+
+  const nextName = name.trim();
+  const nextPrompt = prompt.trim();
+  const nextFolder = folder.trim() === "" ? null : folder.trim();
+  const dirty =
+    (nextName !== "" && nextName !== background.name) ||
+    nextPrompt !== (background.prompt ?? "") ||
+    tags.length !== background.tags.length ||
+    tags.some((tag, index) => tag !== background.tags[index]) ||
+    nextFolder !== background.folder;
+
+  function save() {
+    const patch: { name?: string; prompt?: string; tags?: string[]; folder?: string | null } = {};
+    if (nextName !== "" && nextName !== background.name) patch.name = nextName;
+    if (nextPrompt !== (background.prompt ?? "")) patch.prompt = nextPrompt;
+    if (tags.length !== background.tags.length || tags.some((tag, index) => tag !== background.tags[index])) {
+      patch.tags = tags;
+    }
+    if (nextFolder !== background.folder) patch.folder = nextFolder;
+    if (Object.keys(patch).length === 0) return;
+    onSave(patch);
+    setSaved(true);
+    window.setTimeout(() => setSaved(false), 1500);
+  }
 
   return (
-    <aside className="flex w-[420px] flex-none flex-col border-l border-rule bg-bg-sunken">
-      <div className="hairline flex flex-none items-center gap-[10px] px-[16px] py-[12px]">
-        <button type="button" aria-label={strings.common.back} className="chrome text-[14px] text-ink-muted" onClick={onClose}>
-          {strings.chat.back}
+    <>
+      <div className="mb-[14px] overflow-hidden border border-rule">
+        <img src={`/api/backgrounds/${background.id}/image`} alt="" className="h-[180px] w-full object-cover" />
+      </div>
+
+      <p className="section-label mb-[6px]">{strings.characters.name}</p>
+      <input
+        className="field mb-[12px]"
+        value={name}
+        onChange={(event) => setName(event.target.value)}
+      />
+
+      <p className="section-label mb-[6px]">{strings.settings.backgroundPrompt}</p>
+      <textarea
+        rows={3}
+        className="field mb-[12px] resize-none py-[10px]"
+        value={prompt}
+        onChange={(event) => setPrompt(event.target.value)}
+      />
+
+      <p className="section-label mb-[6px]">{strings.characters.tagFilter}</p>
+      <TagEditor tags={tags} onChange={setTags} placeholder={strings.characters.tagPrompt} />
+
+      <p className="section-label mb-[6px]">{strings.characters.folderFilter}</p>
+      <input
+        className="field mb-[16px]"
+        value={folder}
+        onChange={(event) => setFolder(event.target.value)}
+      />
+
+      {/* One save for the whole editor, rather than a silent save per field on
+          blur (§20 phase 118): the button is disabled until something changed,
+          and a brief "Saved" confirms it landed. */}
+      <button
+        type="button"
+        className="btn btn-primary w-full"
+        disabled={!dirty}
+        onClick={save}
+      >
+        {saved ? strings.characters.saved : strings.settings.save}
+      </button>
+
+      {background.isDefault ? null : (
+        <button type="button" className="btn mt-[8px] w-full" onClick={onDefault}>
+          {strings.settings.backgroundSetDefault}
         </button>
-        <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{background.name}</span>
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-[16px] py-[14px]">
-        <div className="mb-[14px] overflow-hidden border border-rule">
-          <img src={`/api/backgrounds/${background.id}/image`} alt="" className="h-[180px] w-full object-cover" />
-        </div>
-
-        <p className="section-label mb-[6px]">{strings.characters.name}</p>
-        <input
-          className="field mb-[12px]"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          onBlur={() => { if (name.trim() !== "" && name !== background.name) onSave({ name: name.trim() }); }}
-        />
-
-        <p className="section-label mb-[6px]">{strings.settings.backgroundPrompt}</p>
-        <textarea
-          rows={3}
-          className="field mb-[12px] resize-none py-[10px]"
-          value={prompt}
-          onChange={(event) => setPrompt(event.target.value)}
-          onBlur={() => { if (prompt.trim() !== (background.prompt ?? "")) onSave({ prompt: prompt.trim() }); }}
-        />
-
-        <p className="section-label mb-[6px]">{strings.characters.tagFilter}</p>
-        <input
-          className="field mb-[12px]"
-          value={tags}
-          placeholder={strings.characters.tagPrompt}
-          onChange={(event) => setTags(event.target.value)}
-          onBlur={() => {
-            const next = [...new Set(tags.split(",").map((t) => t.trim()).filter((t) => t !== ""))];
-            if (next.join(",") !== background.tags.join(",")) onSave({ tags: next });
-          }}
-        />
-
-        <p className="section-label mb-[6px]">{strings.characters.folderFilter}</p>
-        <input
-          className="field mb-[16px]"
-          value={folder}
-          onChange={(event) => setFolder(event.target.value)}
-          onBlur={() => {
-            const next = folder.trim() === "" ? null : folder.trim();
-            if (next !== background.folder) onSave({ folder: next });
-          }}
-        />
-
-        {background.isDefault ? null : (
-          <button type="button" className="btn w-full" onClick={onDefault}>
-            {strings.settings.backgroundSetDefault}
-          </button>
-        )}
-        {background.isDefault ? null : (
-          <button
-            type="button"
-            className="btn mt-[8px] w-full"
-            style={{ color: "var(--onsen-color-red)", borderColor: "var(--onsen-color-red-border)" }}
-            onClick={onDelete}
-          >
-            {strings.settings.backgroundDelete}
-          </button>
-        )}
-      </div>
-    </aside>
+      )}
+      {background.isDefault ? null : (
+        <button
+          type="button"
+          className="btn mt-[8px] w-full"
+          style={{ color: "var(--onsen-color-red)", borderColor: "var(--onsen-color-red-border)" }}
+          onClick={onDelete}
+        >
+          {strings.settings.backgroundDelete}
+        </button>
+      )}
+    </>
   );
 }

@@ -16,8 +16,12 @@ const BACKGROUND = readFileSync(
   "utf8",
 );
 const CSS = readFileSync(join(import.meta.dir, "..", "client", "styles", "app.css"), "utf8");
-const SECTION = readFileSync(
-  join(import.meta.dir, "..", "client", "components", "BackgroundsSection.tsx"),
+const SCREEN = readFileSync(
+  join(import.meta.dir, "..", "client", "screens", "BackgroundsScreen.tsx"),
+  "utf8",
+);
+const SETTINGS = readFileSync(
+  join(import.meta.dir, "..", "client", "screens", "SettingsScreen.tsx"),
   "utf8",
 );
 
@@ -66,9 +70,31 @@ describe("the backdrop", () => {
   });
 
   test("the manager generates, picks and sets opacity", () => {
-    expect(SECTION).toContain("useGenerateBackground");
-    expect(SECTION).toContain("useSetDefaultBackground");
-    expect(SECTION).toContain("useUpdateBackgroundOpacity");
+    // The backdrop manager is one screen, not a Settings section plus a screen
+    // (§20 phase 122): the library and these controls live on the screen alone.
+    expect(SCREEN).toContain("useGenerateBackground");
+    expect(SCREEN).toContain("useSetDefaultBackground");
+    expect(SCREEN).toContain("useUpdateBackgroundOpacity");
+    expect(SETTINGS).not.toContain("BackgroundsSection");
+  });
+
+  test("the editor is a pane on desktop and a sheet on a phone", () => {
+    // One body, two containers (§20 phase 116): the screen picks by pointer,
+    // so the fixed 420px pane cannot squeeze onto a phone.
+    expect(SCREEN).toContain("useIsDesktop");
+    expect(SCREEN).toContain("isDesktop ?");
+    expect(SCREEN).toContain("<aside");
+    expect(SCREEN).toContain("<Sheet");
+    // The header wraps instead of overflowing at 390px.
+    expect(SCREEN).toContain("flex-wrap");
+  });
+
+  test("the editor saves behind one button, not per field on blur", () => {
+    // The dirty state gates a single Save (§20 phase 118); the silent per-field
+    // blur-save is gone, and a "Saved" note confirms the write landed.
+    expect(SCREEN).toContain("disabled={!dirty}");
+    expect(SCREEN).toContain("strings.characters.saved");
+    expect(SCREEN).not.toContain("onBlur={() => { if (name.trim()");
   });
 
   test("the opacity round-trips", async () => {

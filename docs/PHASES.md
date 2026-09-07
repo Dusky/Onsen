@@ -6567,3 +6567,135 @@ The rail's character list shows each card's picture as a thumbnail, and the
 pane can change the picture (upload or clear), import a card (PNG, CharX or
 JSON, opening it for editing) and export one (PNG or JSON). The avatar upload
 route joins the persona/author pattern.
+
+## Phase 113 — The extension uninstall lifecycle
+
+Uninstalling a pack that carried code now uninstalls the code too. Before this
+phase, `DELETE /packs/:id` removed the pack's data rows and left four things
+behind: the copied code directory, the `extensions` row, the extension's `tasks`
+rows, and its live `apply` callbacks in the running process — the callbacks kept
+firing until the next restart rebuilt the registry. `removePackExtension`
+undoes all four, in that order: unregister the callbacks first, delete the rows
+in one transaction, then remove the directory (guarded to the extensions root,
+so a `dir` that has drifted out of it is left as an orphan rather than deleted).
+The remove-preview now lists the extension beside the data rows, and the
+uninstall sheet names it, so a reader sees the code going too.
+
+**Verified** by the round-trip test: install a repository with `server.ts`,
+assert the code directory, the rows and the callback exist, then `DELETE` the
+pack and assert all four are gone — including the callback in the *current*
+process, not merely after a restart.
+
+## Phase 114 — The composer prices drafts like the server does
+
+The composer's live draft cost counted four characters per token while the
+server's fallback estimator counted at 3.6 — so the number a reader saw while
+typing was about ten percent lower than the inspector reported for the same
+text a second later. The ratio now lives once, as `CHARS_PER_TOKEN` in
+`shared/types.ts`, and both the composer and the estimator import it, so the
+two numbers cannot drift apart again. The composer also matches the estimator's
+`Math.ceil`, where it previously rounded.
+
+**Verified** by the turn-surface guard, which now pins that the composer and the
+tokenizer both use the shared constant and that the old hardcoded `/ 4` is gone.
+
+## Phase 115 — The last three unreachable fields
+
+Three request fields the server accepted and no screen could set, held in
+`reachable-fields`' `DELIBERATE` map since phase 55, are now closed, leaving
+that map empty. A lorebook's `recursionDepth` — the cap on how many levels of
+recursive activation its entries may trigger — gains a number field beside the
+scan depth and token budget. A character's depth note gains its
+`depthPromptRole`, a three-way choice of how the note is sent (system, you, or
+the author), reusing the lore editor's role labels. And a card's
+`characterVersion` is shown read-only in the advanced tab, so the provenance of
+a variant is legible without being editable — it round-trips through import and
+export, which is the thing a read-only field exists to say.
+
+**Verified** by `test/reachable-fields.test.ts`: the `DELIBERATE` map is empty,
+so the sweep over every `*Request` field and the client source now holds with
+nothing excused.
+
+## Phase 116 — The backdrop editor on a phone
+
+The backdrop library's editor was a fixed 420px pane with no phone shape: it is
+a top-bar destination on both widths, but on a 390px screen the pane was wider
+than the window. The field body now renders in a bottom sheet on a phone and in
+the pane on a desktop — the same one-body-two-containers pattern the settings
+editors use — and the screen header wraps instead of running off the edge, with
+the generate input shrinking rather than pushing the opacity slider out of
+reach.
+
+**Verified** by the backgrounds guard, which pins that the screen picks by
+`useIsDesktop`, renders both the `<aside>` and the `<Sheet>`, and wraps its
+header.
+
+## Phase 117 — One tag editor everywhere
+
+Tagging had three implementations: chips in the character editor, chips in the
+roleplay organise sheet, and a comma-separated string in the backdrop editor —
+so a reader who learned "tap × to remove" in one library hit a raw comma list
+in the next. The shared `TagEditor` is now the one chip editor for all three,
+with a caller-supplied normaliser so the character library keeps its lowercase
+behaviour while the other two preserve what is typed. The backdrop editor's
+comma string is gone.
+
+**Verified** by a new `test/tags.test.ts`, which pins that the three surfaces
+all render `<TagEditor>` and that the component is chips rather than a
+comma-parse.
+
+## Phase 118 — The backdrop editor saves behind one button
+
+The backdrop editor's fields used to save silently on blur — no save button, no
+feedback, no way to see whether an edit landed, and a navigate-away could drop
+the change. The four fields now track a dirty state and save together behind
+one button, disabled until something changed, with a brief "Saved" confirmation
+afterwards. Tags, which had briefly saved immediately in the previous phase,
+now join the same single-save flow as the name, prompt and folder.
+
+**Verified** by the backgrounds guard, which pins the `disabled={!dirty}` gate,
+the "Saved" state, and that the old per-field blur-save is gone.
+
+## Phase 119 — Relative time, one place
+
+Two small consistency fixes. The roleplay list's `relativeTime` was the one
+user-facing string living outside `strings.ts` — "just now" and the `m/h/d ago`
+forms — which is exactly the thing that file exists to prevent. It now reads
+from a `time` section there. And the router's header said the app "has two
+routes" when it has thirteen; it now describes the closed route set it actually
+owns.
+
+## Phase 120 — The top bar's overflow
+
+Six destinations did not fit a 390px bar, and the bar scrolled them with no
+affordance — so Backdrops and Settings sat off the edge, the two least-used but
+most-needed destinations. The last two now live behind a pinned "more" button
+on a phone and join the visible row once there is room, and the button carries
+the red underline when the open destination is one it hides. A destination is
+now never more than two taps away, and nothing is silently clipped.
+
+**Verified** by the topbar guard, which pins the primary/overflow split and the
+"more" affordance.
+
+## Phase 121 — The outbound API's honest boundary
+
+§19 documented four model targets, three history-reconciliation modes and a
+text endpoint, when only `scene/<slug>`, its forced-speaker form, and the
+`last_message` mode were built. The two unbuilt targets — `author/<slug>` and
+`passthrough/<profile>` — already refused cleanly and were never advertised in
+`/v1/models`, so the code was honest and the spec was not. §19 now marks each
+target and mode as built or specified-but-not-built, with the reasons, so the
+boundary is a decision rather than an omission. A guard pins that the unbuilt
+targets refuse in OpenAI's error shape and never appear in the model list.
+
+## Phase 122 — The backdrop manager is one screen
+
+Phase 111 moved backdrops to a top-bar screen but left the Settings section
+behind, so the library had two homes — and the Settings one, frozen at phase
+108, lacked the name, tag, folder and search the screen gained. The Settings
+category is gone, the now-dead `BackgroundsSection` component is deleted, and
+the screen is the single surface for generating, picking, naming, tagging and
+deleting backdrops.
+
+**Verified** by the backgrounds guard, which pins that the screen carries the
+library hooks and that Settings no longer references the old section.

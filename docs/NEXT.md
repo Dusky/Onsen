@@ -1,41 +1,60 @@
 # What is left
 
-A short, honest list, written at the end of phase 65 so work can resume without
-re-deriving it. `GAPS.md` is the evidence; this is the order.
+A short, honest list. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 108, on `glm/sillytavern-replacement-dyp30w`. 1432 tests across
-106 files, typecheck clean, working tree clean. Feature complete against
-`SPEC.md` §20 apart from the deferred phase 42.
+**State:** phase 122, on `glm/sillytavern-replacement-dyp30w`. 1442 tests across
+108 files, typecheck clean. Feature complete against `SPEC.md` §20 apart from
+the deferred phase 42.
 
 ## The queue
 
-Ordered by what the user asked for most recently, which is the thread to
-follow.
+Ordered by what is ready to build without a decision, then by the decisions
+that gate the rest. Each line is a todo; check one off by closing its phase in
+`SPEC.md` §20 and `PHASES.md` in the same commit.
 
-1. **Backgrounds as a screen.** The backdrop manager is a Settings section
-   now; it should be a top-bar destination — a screen that takes over the main
-   display so a potentially large library gets real thumbnails. Backgrounds
-   already keep their prompt; add user-editable **tags and folders**, search,
-   and the ability to name/rename a background. The default, the opacity and
-   generate stay; they move out of Settings into this screen.
+### Ready to build
 
-2. **Megumin Suite — Story Config + Blocks.** The preset's prompt blocks are
-   already imported, and its samplers and utility prompts now round-trip. What
-   remains: the Story Config dropdowns (genre, POV, friction, pace → scene
-   prompt options) and the Blocks (tracker cards under a reply).
+1. **ChatScreen extraction.** `client/screens/ChatScreen.tsx` is a 69KB
+   monolith with ~40 `useState` hooks — the highest-traffic file in the app,
+   and the one every future "server has it / screen can't reach it" defect will
+   be born in. Extract in small, behaviour-preserving steps (turn commands →
+   a hook, the sheet collection → a component, the log → a component, the
+   composer wiring → a hook), each committed separately, suite green after
+   each. Do it in its own session, not the tail of another.
 
-3. **Multihog** — the RPG engine and the long pole. State Tracker first, then
-   the RNG, then World Progression and Map Evolution.
+2. **Smooth streaming throttle.** Add a render throttle in
+   `client/lib/generation.ts` — **only if** streaming judders on a phone.
+   Reproduce the judder first; this is a conditional, not a default.
 
-4. **Web search** — explicitly *not* core; the user said it could be an
-   extension. Left off the core list.
+### Gated on a decision
 
-5. **Self-responses** (`GAPS.md` §4). Still a product conversation, not a gap.
+3. **Web search.** Needs a provider/backend decision. Build as an **extension**
+   (not core), per the earlier product note.
+
+4. **Self-responses.** A product conversation under the author model — how the
+   author may answer itself without a second inference path. Decide first;
+   nothing to build until it is decided.
+
+5. **Tabletop module** (§20 phase 40). SPEC's own note splits it: rolls and
+   checks as recorded events first (server-side, deterministic — `{{roll}}`
+   already does), stats only if the checks actually get used.
+
+6. **Chub import / community browsing** (§20 phase 42, deferred). Gated on the
+   app's stance toward third-party services.
+
+### Carried forward from the phase-108 queue
+
+7. **Megumin Suite — Story Config + Blocks.** Story Config dropdowns (genre,
+   POV, friction, pace → scene prompt options) and the Blocks (tracker cards
+   under a reply).
+
+8. **Multihog** — the RPG engine. State Tracker first, then the RNG, then
+   World Progression and Map Evolution.
 
 ## How to pick up
 
 1. Read `HANDOFF.md` — the ten non-negotiables and the guards behind them.
-2. Pick the top item below, or whatever the user asks for instead.
+2. Pick the top ready item, or whatever the user asks for instead.
 3. Re-run its `GAPS.md` evidence command **before** building. Three rows have
    now turned out to be wrong or stale when re-run (phases 61, 62), and one of
    those was written the phase before.

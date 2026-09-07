@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { strings } from "../strings.ts";
 import { navigate, useRoute, type Route } from "../lib/router.ts";
 import { useGeneration } from "../lib/generation.ts";
 import { Logo } from "./Logo.tsx";
+import { Sheet } from "./Sheet.tsx";
 
 /**
  * The global top bar (SPEC §16, §20 phase 80).
@@ -11,6 +13,11 @@ import { Logo } from "./Logo.tsx";
  * for from anywhere — which scene is writing right now. The bar is the
  * navigation on every screen and every width; on a desktop the sidebar shrinks
  * to a recent-scenes rail, and on a phone the bottom tab bar is gone.
+ *
+ * Six destinations do not fit a 390px bar. Rather than scroll them (a
+ * destination off the edge is a destination nobody finds), the last two live
+ * behind a "more" button on a phone and join the visible row once there is
+ * room (§20 phase 120).
  *
  * The scene's own readouts (token count, model, the prompt preview) stay in the
  * chat screen's status bar, where they have the scene to read from.
@@ -25,9 +32,14 @@ const ITEMS: readonly { key: string; label: string; route: Route }[] = [
   { key: "settings", label: strings.nav.settings, route: { name: "settings" } },
 ];
 
+/** Always on the bar; the rest go behind "more" until the bar is wide enough. */
+const PRIMARY = ITEMS.slice(0, 4);
+const OVERFLOW = ITEMS.slice(4);
+
 export function TopBar() {
   const route = useRoute();
   const generation = useGeneration();
+  const [moreOpen, setMoreOpen] = useState(false);
 
   // A chat, a scene's setup, and the roleplays list are all "roleplays" as far
   // as the nav is concerned; an editor names its list.
@@ -52,6 +64,27 @@ export function TopBar() {
   const showWriting =
     writing !== null && !(route.name === "chat" && route.sceneId === writing.sceneId);
 
+  const overflowActive = OVERFLOW.some((item) => item.key === activeKey);
+
+  function itemButton(item: (typeof ITEMS)[number]) {
+    const active = item.key === activeKey;
+    return (
+      <button
+        key={item.key}
+        type="button"
+        onClick={() => navigate(item.route)}
+        aria-current={active ? "page" : undefined}
+        className="chrome flex-none px-[10px] py-[14px] text-[12px]"
+        style={{
+          color: active ? "var(--onsen-color-red)" : "var(--onsen-color-text-muted)",
+          borderBottom: `2px solid ${active ? "var(--onsen-color-red)" : "transparent"}`,
+        }}
+      >
+        {item.label}
+      </button>
+    );
+  }
+
   return (
     <header
       className="flex flex-none items-center gap-[2px] border-b border-rule bg-bg-sunken px-[12px]"
@@ -72,26 +105,27 @@ export function TopBar() {
       <span aria-hidden="true" className="mx-[4px] h-[16px] w-px flex-none bg-rule" />
 
       {/* The destinations. Active takes the red pencil and a red underline, the
-          same two signals the settings categories use. */}
+          same two signals the settings categories use. The last two stay behind
+          "more" on a phone, where six labels would not fit. */}
       <nav className="flex min-w-0 flex-1 items-center overflow-x-auto">
-        {ITEMS.map((item) => {
-          const active = item.key === activeKey;
-          return (
-            <button
-              key={item.key}
-              type="button"
-              onClick={() => navigate(item.route)}
-              aria-current={active ? "page" : undefined}
-              className="chrome flex-none px-[10px] py-[14px] text-[12px]"
-              style={{
-                color: active ? "var(--onsen-color-red)" : "var(--onsen-color-text-muted)",
-                borderBottom: `2px solid ${active ? "var(--onsen-color-red)" : "transparent"}`,
-              }}
-            >
-              {item.label}
-            </button>
-          );
-        })}
+        {PRIMARY.map(itemButton)}
+        {OVERFLOW.map((item) => (
+          <span key={item.key} className="hidden sm:contents">
+            {itemButton(item)}
+          </span>
+        ))}
+        <button
+          type="button"
+          onClick={() => setMoreOpen(true)}
+          aria-label={strings.nav.more}
+          className="chrome flex-none px-[10px] py-[14px] text-[13px] sm:hidden"
+          style={{
+            color: overflowActive ? "var(--onsen-color-red)" : "var(--onsen-color-text-muted)",
+            borderBottom: `2px solid ${overflowActive ? "var(--onsen-color-red)" : "transparent"}`,
+          }}
+        >
+          {"\u22ef"}
+        </button>
       </nav>
 
       {/* Which scene is writing, from anywhere (SPEC §5). A red dot, the title,
@@ -111,6 +145,32 @@ export function TopBar() {
           <span className="max-w-[180px] truncate">{writing!.sceneTitle}</span>
           <span className="hidden sm:inline">{strings.nav.writing}</span>
         </button>
+      ) : null}
+
+      {moreOpen ? (
+        <Sheet title={strings.nav.more} onClose={() => setMoreOpen(false)}>
+          <div className="flex flex-col pb-[6px]">
+            {OVERFLOW.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => {
+                  setMoreOpen(false);
+                  navigate(item.route);
+                }}
+                className="chrome flex w-full items-center border-b border-rule py-[15px] text-left text-[13.5px]"
+                style={{
+                  color:
+                    item.key === activeKey
+                      ? "var(--onsen-color-red)"
+                      : "var(--onsen-color-text-label)",
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </Sheet>
       ) : null}
     </header>
   );

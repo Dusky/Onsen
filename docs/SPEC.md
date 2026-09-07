@@ -3056,7 +3056,6 @@ feature.
 ```
 GET  /v1/models
 POST /v1/chat/completions
-POST /v1/completions        -- optional, text mode
 ```
 
 Standard shapes, standard SSE streaming format (`data: {chunk}` with
@@ -3064,32 +3063,45 @@ Standard shapes, standard SSE streaming format (`data: {chunk}` with
 `max_tokens`, `temperature`, and `stop`; ignore unsupported params rather than
 erroring.
 
+`POST /v1/completions` (the raw text mode) is **not built** (§20 phase 121): a
+chat-shaped surface is what every modern client speaks, and the text-completion
+adapter already exists inside the app where the scene pipeline needs it.
+
 ### Model naming
 
-`/v1/models` enumerates addressable targets:
+`/v1/models` enumerates addressable targets — and only what is actually built.
+A model id a client can read out of the list and then be refused by is worse
+than one that was never advertised (§20 phase 37).
 
-| Model ID | Behavior |
-| --- | --- |
-| `scene/<slug>` | Run that scene. Spotlight chosen by the scene's turn director. |
-| `scene/<slug>/<character>` | Run that scene, forcing a specific speaker. |
-| `author/<slug>` | Stateless: apply the author persona to whatever history the client sends. No scene, no stored state. |
-| `passthrough/<profile>` | Raw proxy to a connection profile, no prompt assembly. |
+| Model ID | Behavior | Built |
+| --- | --- | --- |
+| `scene/<slug>` | Run that scene. Spotlight chosen by the scene's turn director. | **yes** |
+| `scene/<slug>/<character>` | Run that scene, forcing a specific speaker. | **yes** |
+| `author/<slug>` | Stateless: apply the author persona to whatever history the client sends. No scene, no stored state. | no — needs the `stateless` history mode below |
+| `passthrough/<profile>` | Raw proxy to a connection profile, no prompt assembly. | no |
+
+The two unbuilt targets are deliberately absent from `/v1/models` and are
+refused with a clear 400. They remain in this table as the shape of a future
+addition, not as pending work: `author/<slug>` is the stateless mode's only
+reason to exist, and `passthrough/<profile>` is a key-vaulting proxy whose
+security surface is its own phase.
 
 ### History reconciliation
 
 The core impedance mismatch: chat completions is stateless and the client sends
-full history; your app owns an authoritative history tree. Configurable per
-scene, default first:
+full history; your app owns an authoritative history tree. Only one mode is
+built (§20 phase 121); the other two are specified here so the decision not to
+build them is a decision, not an omission:
 
-- **`last_message`** (default) — take only the final user message from the
-  incoming array, ignore the rest, use stored history. Works with any client,
-  keeps the tree canonical.
+- **`last_message`** (built, default) — take only the final user message from
+  the incoming array, ignore the rest, use stored history. Works with any
+  client, keeps the tree canonical.
 - **`sync`** — diff the incoming array against stored history; treat truncation
   as a rewind to that point, append anything new. Better with smart clients,
-  more failure modes.
+  more failure modes. **Not built.**
 - **`stateless`** — the incoming array is the entire history. Apply author and
   cast, persist nothing. For bots and one-off calls; the only mode that works
-  for `author/<slug>`.
+  for `author/<slug>`. **Not built.**
 
 ### Double-assembly protection
 
@@ -3631,6 +3643,58 @@ Each phase ends in a working, usable application.
     card's picture as a thumbnail, and the pane can change the picture (upload
     or clear), import a card (PNG, CharX or JSON) and export one (PNG or JSON).
     See §9, `test/cast-edit-pane.test.ts`.
+113. **The extension uninstall lifecycle** — uninstalling a pack that carried
+    code now removes the code directory, the `extensions` row, its `tasks`
+    rows, and the live `apply` callbacks in the running process, not merely at
+    the next restart. The remove-preview lists the extension beside the data
+    rows. See §15, `test/extensions.test.ts`.
+114. **The composer prices drafts like the server does** — the live draft cost
+    under the composer used four characters per token while the server's
+    estimator used 3.6, so the number a reader saw while typing was ~10% lower
+    than the inspector's for the same text. Both now share
+    `CHARS_PER_TOKEN` from `shared/types.ts`. See §3,
+    `test/turn-surface.test.ts`.
+115. **The last three unreachable fields** — a lorebook's `recursionDepth` now
+    has a control beside its scan depth and token budget; a character's depth
+    note gains its `depthPromptRole` (system / you / the author); and a card's
+    `characterVersion` is shown read-only so a variant's provenance is legible.
+    `test/reachable-fields.test.ts`'s `DELIBERATE` map is now empty. See §9,
+    §10.
+116. **The backdrop editor on a phone** — the backdrop library's editor was a
+    fixed 420px pane with no phone shape, so on a 390px screen it overflowed.
+    The field body now renders in a bottom sheet on a phone and the pane on a
+    desktop, and the screen header wraps instead of running off the edge. See
+    §12, `test/backgrounds.test.ts`.
+117. **One tag editor everywhere** — tagging had three implementations: chips in
+    the character editor, chips in the roleplay organise sheet, and a
+    comma-separated string in the backdrop editor. The shared `TagEditor` is
+    now the one chip editor, with a caller-supplied case normaliser for the
+    character library. See §9, §12, `test/tags.test.ts`.
+118. **The backdrop editor saves behind one button** — its fields used to save
+    silently on blur, with no feedback and no way to see whether an edit
+    landed. They now track a dirty state and save together behind one button,
+    disabled until something changed, with a brief "Saved" confirmation. See
+    §12, `test/backgrounds.test.ts`.
+119. **Relative time, one place** — the roleplay list's `relativeTime` was the
+    one user-facing string living outside `strings.ts` ("just now", "m ago").
+    It now reads from a `time` section, and the router's header no longer says
+    the app "has two routes" when it has thirteen. See §16.
+120. **The top bar's overflow** — six destinations did not fit a 390px bar, and
+    the bar scrolled them with no affordance, so Backdrops and Settings sat off
+    the edge. The last two now live behind a pinned "more" button on a phone,
+    joining the visible row once there is room; the button carries the active
+    underline when a hidden destination is open. See §16, `test/topbar.test.ts`.
+121. **The outbound API's honest boundary** — §19 listed four model targets,
+    three history modes and a text endpoint when only `scene/<slug>` and
+    `last_message` were built. §19 now marks what is built against what is
+    specified but not built, and a guard pins that the two unbuilt targets are
+    refused cleanly and never advertised in `/v1/models`. See §19,
+    `test/openai-api.test.ts`.
+122. **The backdrop manager is one screen** — phase 111 moved backdrops to a
+    top-bar screen but left the Settings section behind, so the library had two
+    homes and the Settings one lacked the new editor. The Settings category is
+    gone and the screen is the single surface. See §12,
+    `test/backgrounds.test.ts`.
 
 Settled while building phase 15.
 

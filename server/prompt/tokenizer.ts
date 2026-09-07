@@ -1,4 +1,5 @@
 import type { Tokenizer } from "./types.ts";
+import { CHARS_PER_TOKEN } from "../../shared/types.ts";
 
 /**
  * The fallback token counter (SPEC §3): a character-ratio estimate with a
@@ -9,9 +10,10 @@ import type { Tokenizer } from "./types.ts";
  * English prose runs near four characters per token, so counting at 3.6 leaves
  * roughly a ten percent margin, and prose with heavy punctuation or markup —
  * which roleplay has a lot of — tokenizes worse than plain text.
+ *
+ * The constant lives in `shared/types.ts` so the composer's live draft cost and
+ * this counter cannot drift apart (§20 phase 114).
  */
-const CHARS_PER_TOKEN = 3.6;
-
 export function createEstimatingTokenizer(id = "estimate"): Tokenizer {
   return {
     id,

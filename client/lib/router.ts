@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 
 /**
- * A two-screen router over the History API.
+ * A small fixed-set router over the History API.
  *
- * Written rather than pulled in because the app has two routes and needs
- * exactly two things from a router: real URLs, so a deep link into a scene
- * survives a reload, and back-button behaviour that matches a phone's. The
- * server already falls back to index.html for unknown paths, so both work.
+ * Written rather than pulled in because the app has a closed set of routes and
+ * needs exactly two things from a router: real URLs, so a deep link into a
+ * scene survives a reload, and back-button behaviour that matches a phone's.
+ * The server already falls back to index.html for unknown paths, so both work.
  *
  * No route state is persisted anywhere: the URL is the state.
  */

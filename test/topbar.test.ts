@@ -33,6 +33,15 @@ describe("the top bar", () => {
     expect(TOP).toContain("showWriting");
   });
 
+  test("the destinations that do not fit a phone hide behind a more menu", () => {
+    // Six labels do not fit a 390px bar; the tail goes behind a pinned "more"
+    // button rather than scrolling off the edge (§20 phase 120).
+    expect(TOP).toContain("PRIMARY");
+    expect(TOP).toContain("OVERFLOW");
+    expect(TOP).toContain("strings.nav.more");
+    expect(TOP).toContain("sm:hidden");
+  });
+
   test("the rail is the icon rail, not the old destination list", () => {
     expect(RAIL).not.toContain("strings.nav.roleplays");
     expect(RAIL).not.toContain("strings.nav.recent");

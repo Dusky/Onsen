@@ -542,7 +542,6 @@ export const strings = {
 
     /** The backdrop behind everything (§20 phase 108). */
     backgrounds: "Backdrop",
-    backgroundsHint: "One picture behind the whole app. A scene's own background wins over this; it shows everywhere else.",
     backgroundOpacity: "Opacity",
     backgroundGenerate: "Generate a backdrop",
     backgroundPrompt: "What to draw (optional)",
@@ -948,6 +947,7 @@ export const strings = {
       regex: "Regex scripts",
       triggers: "Triggers",
       banlists: "Ban list",
+      extensions: "Extension",
     } as Record<string, string>,
 
     /** Moving in from SillyTavern (SPEC §20 phase 44). */
@@ -1230,6 +1230,7 @@ export const strings = {
     depthPrompt: "Depth note",
     depthPromptHint: "Injected this many turns from the end, whenever this character is present.",
     depth: "Depth",
+    depthPromptRole: "Sent as",
     systemPrompt: "System prompt override",
     postHistory: "Post-history instructions",
     creatorNotes: "Creator notes",
@@ -1727,6 +1728,8 @@ export const strings = {
     bookScanDepthUnit: "messages every entry scans",
     tokenBudget: "Token budget",
     tokenBudgetUnit: "0 for no budget",
+    recursionDepth: "Recursion depth",
+    recursionDepthUnit: "levels, 0 stops recursion",
     sticky: "Sticky",
     stickyUnit: "messages it stays",
     cooldown: "Cooldown",
@@ -1834,6 +1837,8 @@ export const strings = {
     authors: "Author",
     lore: "Lore",
     backgrounds: "Backdrops",
+    /** The overflow menu for destinations that do not fit a phone's bar. */
+    more: "More",
     /** A roleplay in the recent list that is generating right now (§5). */
     writing: "writing",
   },
@@ -1842,6 +1847,14 @@ export const strings = {
     network: "Could not reach the server.",
     unexpected: "Something went wrong.",
     generationFailed: "Generation failed",
+  },
+
+  /** Relative time, one implementation for every list that shows it. */
+  time: {
+    justNow: "just now",
+    minutesAgo: (n: number) => `${n}m ago`,
+    hoursAgo: (n: number) => `${n}h ago`,
+    daysAgo: (n: number) => `${n}d ago`,
   },
 } as const;
 

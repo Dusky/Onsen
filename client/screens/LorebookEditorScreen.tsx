@@ -968,6 +968,16 @@ export function LorebookEditorScreen({ bookId }: { bookId: string }) {
                 value === null ? undefined : updateBook.mutate({ tokenBudget: value })
               }
             />
+            <NumberInput
+              label={strings.lore.recursionDepth}
+              unit={strings.lore.recursionDepthUnit}
+              value={book.recursionDepth}
+              min={0}
+              max={20}
+              onChange={(value) =>
+                value === null ? undefined : updateBook.mutate({ recursionDepth: value })
+              }
+            />
           </div>
 
           <Bindings book={book} />

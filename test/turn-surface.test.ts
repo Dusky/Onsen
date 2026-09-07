@@ -19,6 +19,10 @@ const COMPOSER = readFileSync(
   join(import.meta.dir, "..", "client", "components", "Composer.tsx"),
   "utf8",
 );
+const TOKENIZER = readFileSync(
+  join(import.meta.dir, "..", "server", "prompt", "tokenizer.ts"),
+  "utf8",
+);
 const STRINGS = readFileSync(join(import.meta.dir, "..", "client", "strings.ts"), "utf8");
 
 describe("the turn surface", () => {
@@ -42,7 +46,13 @@ describe("the turn surface", () => {
 describe("the composer", () => {
   test("states the draft's cost as it is typed", () => {
     expect(COMPOSER).toContain("strings.chat.draftTokens");
-    expect(COMPOSER).toContain("draft.length / 4");
+    // Priced with the same characters-per-token ratio the server's estimator
+    // uses (§20 phase 114), never a second hardcoded number the two could
+    // disagree on.
+    expect(COMPOSER).toContain("CHARS_PER_TOKEN");
+    expect(COMPOSER).not.toContain("draft.length / 4");
+    expect(TOKENIZER).toContain("CHARS_PER_TOKEN");
+    expect(TOKENIZER).toContain("shared/types.ts");
   });
 
   test("the placeholder invites a turn or none", () => {

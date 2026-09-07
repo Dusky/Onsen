@@ -152,10 +152,10 @@ export function openAiRoutes({ ctx, generation }: OpenAiRouteOptions): Hono<AppE
       }
     }
 
-    // `author/<slug>` and `passthrough/<profile>` are §19 targets this phase did
-    // not build, and they are deliberately not listed: a model id a client can
-    // read out of `/v1/models` and then be refused by is worse than one that
-    // was never advertised.
+    // `author/<slug>` and `passthrough/<profile>` are §19 targets that are still
+    // not built (§20 phase 121), and they are deliberately not listed: a model
+    // id a client can read out of `/v1/models` and then be refused by is worse
+    // than one that was never advertised.
     return c.json({ object: "list", data });
   });
 

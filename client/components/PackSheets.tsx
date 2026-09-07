@@ -162,6 +162,15 @@ export function RemovePackSheet({ pack, onClose }: { pack: InstalledPackDto; onC
             <span className="text-[14px]">{row.label}</span>
           </div>
         ))}
+        {/* The code half of the uninstall, listed beside the data rows so the
+            reader knows removing the pack also removes its extension (§113). */}
+        {preview.data?.extension === null || preview.data?.extension === undefined ? null : (
+          <div className="border-b border-rule py-[8px]">
+            <span className="text-[14px]">
+              {strings.settings.packKind.extensions}: {preview.data.extension.name}
+            </span>
+          </div>
+        )}
         <button
           type="button"
           className="btn btn-primary mt-[18px] w-full"

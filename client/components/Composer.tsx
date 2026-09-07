@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { strings } from "../strings.ts";
+import { CHARS_PER_TOKEN } from "@shared/types.ts";
 
 /**
  * The composer stack.
@@ -259,7 +260,7 @@ export function Composer({
           )}
           {draft.trim() === "" ? null : (
             <span className="meta tabular-nums">
-              {strings.chat.draftTokens(Math.max(1, Math.round(draft.length / 4)))}
+              {strings.chat.draftTokens(Math.max(1, Math.ceil(draft.length / CHARS_PER_TOKEN)))}
             </span>
           )}
         </div>

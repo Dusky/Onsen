@@ -12,6 +12,7 @@ import { insertTrigger } from "../db/queries/triggers.ts";
 import { addBan, listBans } from "../db/queries/options.ts";
 import { PackError, satisfiesHost, type PackKind, type PackManifest } from "./manifest.ts";
 import type { PackContents, PackDocument } from "./archive.ts";
+import { findExtensionByNameVersion } from "../db/queries/extensions.ts";
 
 /**
  * Installing a pack (SPEC §15 tier 2).
@@ -679,6 +680,8 @@ export interface UninstallPreview {
   name: string;
   version: string;
   rows: { table: string; label: string }[];
+  /** The extension this pack installed, listed so the preview is honest. */
+  extension: { name: string } | null;
 }
 
 export function uninstallPreview(db: Database, packUlid: string): UninstallPreview | null {
@@ -689,11 +692,13 @@ export function uninstallPreview(db: Database, packUlid: string): UninstallPrevi
   const rows = db
     .query("SELECT table_name, label FROM pack_rows WHERE pack_id = $pack ORDER BY id")
     .all({ pack: pack.id }) as { table_name: string; label: string }[];
+  const extension = findExtensionByNameVersion(db, pack.name, pack.version);
   return {
     packId: pack.ulid,
     name: pack.name,
     version: pack.version,
     rows: rows.map((row) => ({ table: row.table_name, label: row.label })),
+    extension: extension === null ? null : { name: extension.name },
   };
 }
 

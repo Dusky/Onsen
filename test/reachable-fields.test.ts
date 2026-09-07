@@ -58,20 +58,7 @@ function clientSource(): string {
  * `reachable.test.ts`: a reason each, checked for staleness below, so an excuse
  * cannot outlive the field it excuses.
  */
-const DELIBERATE = new Map<string, string>([
-  [
-    "UpdateLorebookRequest.recursionDepth",
-    "§10: book-level recursion depth. Phase 55, with the book's description.",
-  ],
-  [
-    "UpdateCharacterRequest.depthPromptRole",
-    "§9: the depth prompt has a control for its text and its depth but not its role. Phase 55.",
-  ],
-  [
-    "UpdateCharacterRequest.characterVersion",
-    "§9: round-tripped through import and export and never shown. Phase 55.",
-  ],
-]);
+const DELIBERATE = new Map<string, string>([]);
 
 describe("every field the server accepts", () => {
   const fields = requestFields();

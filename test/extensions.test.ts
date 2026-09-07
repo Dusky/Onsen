@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { completeSetup, createHarness, type TestHarness } from "./helpers.ts";
@@ -89,6 +89,42 @@ describe("the extension code API", () => {
         .get() as { key: string; stage: string } | undefined;
       expect(row?.key).toBe("ext:Dice:roll");
       expect(row?.stage).toBe("post_generation");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("uninstalling the pack removes the extension's code, rows and callbacks", async () => {
+    const t = await signedIn();
+    const dir = repoWith({
+      "pack.json": JSON.stringify({ name: "Dice", version: "1.0.0", author: "me", description: "" }),
+      "server.ts": SERVER_TS,
+    });
+    try {
+      const installed = await t.fetch("/api/packs/install-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: dir }),
+      });
+      expect(installed.status).toBe(201);
+      const packId = (await installed.json()).packId as string;
+
+      // The code directory landed under the extensions root, and the callback
+      // is live in this process.
+      const codeDir = join(t.config.extensionsDir, "dice");
+      expect(existsSync(join(codeDir, "server.ts"))).toBe(true);
+      expect(postGenerationExtensionTasks().map((entry) => entry.task.key)).toContain("roll");
+
+      const removed = await t.fetch(`/api/packs/${packId}`, { method: "DELETE" });
+      expect(removed.status).toBe(200);
+
+      // The extension row and its tasks are gone.
+      expect(t.ctx.db.query("SELECT id FROM extensions WHERE name = 'Dice'").get()).toBeNull();
+      expect(t.ctx.db.query("SELECT key FROM tasks WHERE key = 'ext:Dice:roll'").get()).toBeNull();
+      // The callback is gone now, not merely after a restart.
+      expect(postGenerationExtensionTasks().map((entry) => entry.task.key)).not.toContain("roll");
+      // The code directory is gone.
+      expect(existsSync(codeDir)).toBe(false);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

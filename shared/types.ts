@@ -346,6 +346,19 @@ export const AUTO_CONTINUE_MAX = 5;
 export const AUTO_SWIPE_MAX_CHARS = 2000;
 export const AUTO_SWIPE_MAX_ATTEMPTS = 5;
 
+/**
+ * Characters per token in the fallback estimator (SPEC §3). Shared so the
+ * composer's draft cost and the server's tokenizer cannot disagree: a draft
+ * the composer prices at one number and the inspector prices at another is a
+ * number the reader will notice and stop trusting.
+ *
+ * The ratio over-counts on purpose — an underestimate overflows the provider's
+ * context and fails the request, an overestimate costs a little unused
+ * headroom. English prose runs near four characters per token; 3.6 leaves
+ * roughly a ten percent margin.
+ */
+export const CHARS_PER_TOKEN = 3.6;
+
 export interface ConnectionProfileDto {
   id: string;
   name: string;
@@ -1022,6 +1035,8 @@ export interface PackUninstallPreviewDto {
   name: string;
   version: string;
   rows: { table: string; label: string }[];
+  /** The extension this pack installed, if it carried code (§20 phase 113). */
+  extension: { name: string } | null;
 }
 
 /* ------------------------------------------------------------------ */
