@@ -36,3 +36,10 @@ records the shape and the build order.
 
 Each phase re-skins on top of the previous, and each lands a guard so the shape
 cannot quietly drift back. All five are in as of phase 92.
+
+**After the shell** the same pass reached the rails and the surface: the left
+rail's sections became tools (provenance, prompt chunks, the ban list, guide
+weighting), the right rail gained search, new buttons, scene markers, the
+aside-voice sample and share-of-window footers, and the turns and composer
+picked up named actions, an amber cursor, labelled reasoning and a live draft
+cost (§20 phases 95–99).

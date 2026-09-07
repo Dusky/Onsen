@@ -45,6 +45,22 @@ Imagery (character portraits, sprites, scene backgrounds, the VN stage) is repre
 
 ## The design system
 
+> **Superseded in part by the redesign (phases 88–99).** The user's mockup
+> (`Onsen Redesign.dc.html`) replaced the desktop shell and part of the visual
+> identity; `docs/REDESIGN.md` records the target and the build order. Where the
+> two disagree, the redesign wins:
+>
+> - **Typefaces** — the three-voice table below becomes four: Source Serif 4
+>   (prose), IBM Plex Sans (labels), IBM Plex Mono (numbers and state). The
+>   mono-chrome rule below is retired for labels.
+> - **Palette** — the default is now `Midnight` (cool dark `#0e0f11`), not the
+>   warm `Ledger`; amber marks the live/writing state, blue the interactive, red
+>   the destructive. The "two pencils" below is amended accordingly.
+> - **Desktop shell** — the sidebar + cast rail became a 46px icon rail and a
+>   section panel on the left, a three-tab rail on the right, and a header
+>   (scene, model, prose size, base, toggles). The phone's screens are
+>   unchanged.
+
 Everything below follows from three rules. If a new screen is needed that isn't in this bundle, these rules should generate it.
 
 ### 1. Two voices, two typefaces

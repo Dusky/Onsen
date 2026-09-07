@@ -74,8 +74,9 @@ running a table, while you direct.
 > like to be written for — but only when you ask it to, note by note, and every
 > note is one you can read, edit or throw away. Built
 > for a phone first, and on a
-> wide screen the same pieces unroll into a sidebar, a capped prose column and a
-> cast rail. See
+> wide screen the same pieces unroll into a workbench: a left icon rail for the
+> prompt, preset, lore and guides, a right rail for the cast, characters and
+> authors, and a header carrying the scene, the model and the reading controls. See
 > [`docs/SPEC.md` §20](docs/SPEC.md) for the build order and
 > [`docs/PHASES.md`](docs/PHASES.md) for what exists today.
 
@@ -111,7 +112,7 @@ bun run start          # http://localhost:8787
 Open the app and the setup wizard asks for a password and one connection
 profile. There is no second account and no registration.
 
-Themes are yours: seven ship, every colour and the four values that decide
+Themes are yours: eight ship, every colour and the four values that decide
 depth are editable by hex, and you can save, export and import them. They live
 on the server, so the phone and the desktop agree. An imported theme's own CSS
 is shown to you before any of it runs.

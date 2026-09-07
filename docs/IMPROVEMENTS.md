@@ -2,7 +2,9 @@
 
 **Status:** items 1–7 done (phases 71–78). Item 8 is the conditional set:
 smooth streaming only if it judders, web search after a provider decision, and
-self-responses after a conversation.
+self-responses after a conversation. The redesign (phases 88–99, `REDESIGN.md`)
+superseded the shell work this plan assumed, so nothing here beyond item 8 is
+a live gap.
 
 Written at phase 71. Ordered by felt improvement per hour of work, which has
 been the thread of every review since phase 65. Each item is its own phase —
