@@ -3576,6 +3576,13 @@ Each phase ends in a working, usable application.
     Lore tab shows the lorebooks — browse and edit entries in place — with the
     fired/missed verdicts above them only while a roleplay is open. See §16,
     `test/leftrail.test.ts`.
+101. **Bigger rail icons, model beside the input** — the left rail's glyphs
+    grow to 20px, and the model chip moves from the header down beside the
+    composer, where the answer actually happens. See §16.
+102. **ComfyUI model selection** — a saved ComfyUI service can list the
+    checkpoints its endpoint offers, the reader picks one, and the adapter
+    writes it into the workflow's checkpoint loader. See §12,
+    `test/comfyui.test.ts`.
 
 Settled while building phase 15.
 

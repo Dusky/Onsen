@@ -2527,6 +2527,15 @@ export function useDeleteMediaService() {
   return useMediaServiceMutation((id: string) => api.delete<void>(`/media/services/${id}`));
 }
 
+/** The checkpoints a saved ComfyUI service offers (§20 phase 102). */
+export function useComfyuiModels(serviceId: string | null) {
+  return useQuery({
+    queryKey: ["media", "comfyui-models", serviceId] as const,
+    queryFn: () => api.get<{ models: string[] }>(`/media/services/${serviceId}/models`),
+    enabled: serviceId !== null,
+  });
+}
+
 /**
  * Everything that changes a message's media invalidates the scene.
  *

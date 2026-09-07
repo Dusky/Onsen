@@ -100,7 +100,7 @@ export function LeftRail() {
       {/* The icon rail: five glyphs, a label under each, the active one picked
           out in the interactive blue rather than the warm red the workbench
           used — the mockup's live state is amber, its interactive is blue. */}
-      <div className="flex w-[46px] flex-none flex-col items-stretch border-r border-rule py-[8px]">
+      <div className="flex w-[54px] flex-none flex-col items-stretch border-r border-rule py-[8px]">
         {ICONS.map((icon) => {
           const active = leftSection === icon.id;
           return (
@@ -116,7 +116,7 @@ export function LeftRail() {
               }}
             >
               <span
-                className="chrome text-[14px] leading-none"
+                className="chrome text-[20px] leading-none"
                 style={{ color: active ? "var(--onsen-color-blue-text)" : "var(--onsen-color-text-dim)" }}
               >
                 {icon.glyph}
@@ -137,7 +137,7 @@ export function LeftRail() {
           onClick={() => navigate({ name: "settings" })}
           className="flex min-h-[44px] flex-col items-center justify-center gap-[2px] px-[4px]"
         >
-          <span className="chrome text-[14px] leading-none text-ink-dim">{"\u22ef"}</span>
+          <span className="chrome text-[20px] leading-none text-ink-dim">{"\u22ef"}</span>
           <span className="chrome text-[11px] leading-none text-ink-dim">
             {strings.leftRail.settings}
           </span>

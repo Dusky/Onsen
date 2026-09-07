@@ -167,4 +167,37 @@ describe("the comfyui adapter", () => {
       /Krea2ImageNode.*Please login first/,
     );
   });
+
+  test("the chosen model replaces the checkpoint loader's selector", async () => {
+    let submitted: { prompt: Record<string, unknown> } | null = null;
+    const stub = (async (url: string | URL, init: RequestInit | undefined) => {
+      const path = String(url);
+      if (path.includes("/api/prompt")) {
+        submitted = JSON.parse(String(init?.body)) as { prompt: Record<string, unknown> };
+        return Response.json({ prompt_id: "p1" });
+      }
+      if (path.includes("/api/job/p1/status")) {
+        return Response.json({ status: "error", error_message: "stop" });
+      }
+      return new Response("unexpected", { status: 500 });
+    }) as unknown as typeof globalThis.fetch;
+
+    const adapter = comfyuiAdapter({
+      baseUrl: "https://cloud.comfy.org",
+      apiKey: "k",
+      model: "flux1-dev.safetensors",
+      options: {
+        workflow: JSON.stringify({
+          "1": { class_type: "CheckpointLoaderSimple", inputs: { ckpt_name: "old.safetensors" } },
+          "2": { class_type: "CLIPTextEncode", inputs: { text: "{{prompt}}" } },
+        }),
+      },
+      fetch: stub,
+    });
+
+    await adapter.draw({ prompt: "x" }, new AbortController().signal).catch(() => {});
+    expect((submitted?.prompt as { "1": { inputs: { ckpt_name: string } } })["1"].inputs.ckpt_name).toBe(
+      "flux1-dev.safetensors",
+    );
+  });
 });

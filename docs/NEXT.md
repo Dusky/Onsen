@@ -3,12 +3,18 @@
 A short, honest list, written at the end of phase 65 so work can resume without
 re-deriving it. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 100, on `glm/sillytavern-replacement-dyp30w`. 1421 tests across
+**State:** phase 102, on `glm/sillytavern-replacement-dyp30w`. 1422 tests across
 104 files, typecheck clean, working tree clean. Feature complete against
 `SPEC.md` §20 apart from the deferred phase 42.
 
-**The redesign is done** (`docs/REDESIGN.md`). Both rails are full tools, and
-prompt blocks and lorebooks edit without a roleplay open (§20 phase 100).
+**The redesign is done** (`docs/REDESIGN.md`). Both rails are full tools, prompt
+blocks and lorebooks edit without a roleplay (§20 phase 100), the rail icons
+are bigger and the model chip sits beside the composer (§20 phase 101), and a
+ComfyUI service can pick a checkpoint from its endpoint (§20 phase 102).
+
+**Next on the user's list:** a port of their SillyTavern extensions onto
+Onsen's own extension system — pending the list of extensions and a design for
+what an extension may hook.
 
 ## How to pick up
 

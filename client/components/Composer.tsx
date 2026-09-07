@@ -26,6 +26,8 @@ interface ComposerProps {
    * button says "then Sister Bell replies" rather than only showing initials.
    */
   speakerName?: string | null;
+  /** The model that answers, beside the input (§20 phase 101). */
+  model?: { label: string; hasModel: boolean };
   /**
    * The draft lives above this component because the ops read it: "no reply"
    * posts it, and "as me" replaces it with a turn written from it.
@@ -64,6 +66,7 @@ export function Composer({
   disabled,
   speakerInitials,
   speakerName,
+  model,
   draft,
   onDraftChange,
   onAttach,
@@ -231,12 +234,35 @@ export function Composer({
         )}
       </div>
 
-      {/* The draft's rough cost, as it is typed — the same "every cost is
-          visible" rule the rails carry (§20 phase 99). */}
-      {draft.trim() === "" ? null : (
-        <p className="meta mt-[8px] text-right tabular-nums">
-          {strings.chat.draftTokens(Math.max(1, Math.round(draft.length / 4)))}
-        </p>
+      {/* The model that answers, beside the input, and the draft's rough cost
+          as it is typed (§20 phases 99, 101). */}
+      {model === undefined && draft.trim() === "" ? null : (
+        <div className="mt-[8px] flex items-baseline justify-between gap-[10px]">
+          {model === undefined ? (
+            <span />
+          ) : (
+            <span
+              className="chrome flex items-center gap-[6px] text-[11.5px]"
+              style={{ color: "var(--onsen-color-text-muted)" }}
+            >
+              <span
+                aria-hidden="true"
+                className="h-[6px] w-[6px] flex-none"
+                style={{
+                  background: model.hasModel
+                    ? "var(--onsen-color-green)"
+                    : "var(--onsen-color-red)",
+                }}
+              />
+              {model.label}
+            </span>
+          )}
+          {draft.trim() === "" ? null : (
+            <span className="meta tabular-nums">
+              {strings.chat.draftTokens(Math.max(1, Math.round(draft.length / 4)))}
+            </span>
+          )}
+        </div>
       )}
 
       {/* Asking for a reply without saying anything is how you let a scene run on. */}

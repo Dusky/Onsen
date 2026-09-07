@@ -4,7 +4,6 @@ import { useGeneration } from "../lib/generation.ts";
 import { Logo } from "./Logo.tsx";
 import {
   useActivateTheme,
-  useConnectionProfiles,
   useReading,
   useScenes,
   useSetPreferences,
@@ -19,8 +18,9 @@ import { READING_BOUNDS } from "@shared/types.ts";
  * The mockup's top bar is not the navigation strip the workbench put there —
  * those destinations moved into the two rails. It is the scene's identity and
  * the reading surface's controls: a mono wordmark, the open scene's title and
- * turn count, the model that answers, prose size, the base (dark or light) and
- * the two panel toggles. Desktop only; the phone keeps the navigation top bar.
+ * turn count, prose size, the base (dark or light) and the two panel toggles.
+ * The model that answers moved down beside the composer (phase 101). Desktop
+ * only; the phone keeps the navigation top bar.
  */
 
 /** The prose step the A−/A+ buttons take, matching the settings slider's. */
@@ -33,7 +33,6 @@ export function Header() {
   const route = useRoute();
   const generation = useGeneration();
   const scenes = useScenes();
-  const profiles = useConnectionProfiles();
   const reading = useReading();
   const save = useSetPreferences();
   const themes = useThemes();
@@ -42,10 +41,6 @@ export function Header() {
 
   const sceneId = route.name === "chat" ? route.sceneId : null;
   const scene = (scenes.data ?? []).find((candidate) => candidate.id === sceneId) ?? null;
-  const profile =
-    scene !== null
-      ? (profiles.data ?? []).find((candidate) => candidate.id === scene.connectionProfileId) ?? null
-      : (profiles.data ?? []).find((candidate) => candidate.isDefault) ?? null;
 
   // The scene's title runs amber while it is writing — the same live state the
   // cast cards carry, so the header and the rail agree on what "now" is.
@@ -112,31 +107,6 @@ export function Header() {
       )}
 
       <div className="min-w-0 flex-1" />
-
-      {/* The model that answers. A green dot when one is chosen, red when not —
-          the same two-colour verdict the status bar uses. */}
-      <button
-        type="button"
-        onClick={() => navigate({ name: "settings" })}
-        className="chrome flex items-center gap-[7px] border-l border-rule px-[12px] text-[12px]"
-        style={{ color: "var(--onsen-color-text)" }}
-      >
-        <span
-          aria-hidden="true"
-          className="h-[6px] w-[6px] flex-none"
-          style={{
-            background:
-              profile === null ? "var(--onsen-color-red)" : "var(--onsen-color-green)",
-          }}
-        />
-        <span className="whitespace-nowrap">
-          {profile === null
-            ? strings.header.noModel
-            : profile.model === null
-              ? profile.name
-              : `${profile.name} \u00b7 ${profile.model}`}
-        </span>
-      </button>
 
       {/* Prose size: two A's, the mockup's control in the reading surface's own
           serif. */}

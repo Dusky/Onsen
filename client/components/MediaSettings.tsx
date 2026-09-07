@@ -4,6 +4,7 @@ import { strings } from "../strings.ts";
 import { Sheet } from "./Sheet.tsx";
 import { useConfirm } from "./ConfirmSheet.tsx";
 import {
+  useComfyuiModels,
   useCreateMediaService,
   useDeleteMediaService,
   useMediaKinds,
@@ -198,8 +199,21 @@ function ServiceEditor({
           defaultValue={service?.baseUrl ?? chosen?.defaultBaseUrl ?? ""}
         />
 
-        <p className="section-label mb-[6px]">{strings.media.serviceModel}</p>
-        <input name="model" className="field" defaultValue={service?.model ?? ""} />
+        {(service?.kind ?? kind) === "comfyui" ? (
+          service === null ? (
+            <>
+              <p className="section-label mb-[6px]">{strings.media.serviceModel}</p>
+              <p className="explain">{strings.media.comfyuiModelSaveFirst}</p>
+            </>
+          ) : (
+            <ComfyuiModelField service={service} />
+          )
+        ) : (
+          <>
+            <p className="section-label mb-[6px]">{strings.media.serviceModel}</p>
+            <input name="model" className="field" defaultValue={service?.model ?? ""} />
+          </>
+        )}
 
         <p className="section-label mb-[6px]">{strings.media.serviceKey}</p>
         <input name="apiKey" type="password" className="field" autoComplete="off" />
@@ -279,5 +293,60 @@ function ServiceEditor({
       </form>
       {confirmNode}
     </Sheet>
+  );
+}
+
+/** The checkpoint selector for a saved ComfyUI service (§20 phase 102). */
+function ComfyuiModelField({ service }: { service: MediaServiceDto }) {
+  const models = useComfyuiModels(service.id);
+  const list = models.data?.models ?? [];
+
+  if (models.isError) {
+    return (
+      <>
+        <p className="section-label mb-[6px]">{strings.media.serviceModel}</p>
+        <p className="explain explain-alert mb-[6px]">{strings.media.comfyuiModelsFailed}</p>
+        <input
+          name="model"
+          className="field"
+          defaultValue={service.model ?? ""}
+          placeholder={strings.media.comfyuiModelManual}
+        />
+      </>
+    );
+  }
+
+  if (list.length === 0) {
+    return (
+      <>
+        <p className="section-label mb-[6px]">{strings.media.serviceModel}</p>
+        <p className="explain mb-[6px]">
+          {models.isFetching ? strings.common.working : strings.media.comfyuiModelsNone}
+        </p>
+        <input
+          name="model"
+          className="field"
+          defaultValue={service.model ?? ""}
+          placeholder={strings.media.comfyuiModelManual}
+        />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <p className="section-label mb-[6px]">{strings.media.serviceModel}</p>
+      <select name="model" className="field" defaultValue={service.model ?? ""}>
+        <option value="">{strings.media.serviceModelNone}</option>
+        {service.model !== null && !list.includes(service.model) ? (
+          <option value={service.model}>{service.model}</option>
+        ) : null}
+        {list.map((model) => (
+          <option key={model} value={model}>
+            {model}
+          </option>
+        ))}
+      </select>
+    </>
   );
 }

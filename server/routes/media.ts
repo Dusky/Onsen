@@ -196,6 +196,39 @@ export function mediaRoutes(ctx: AppContext, media: MediaRunner): Hono<AppEnv> {
     return c.body(null, 204);
   });
 
+  /** List the checkpoints a ComfyUI endpoint offers (§20 phase 102). */
+  app.get("/services/:serviceId/models", async (c) => {
+    const row = findService(ctx.db, c.req.param("serviceId"));
+    if (row === null) return c.json(notFound("service"), 404);
+    if (row.kind !== "comfyui") {
+      return c.json(badRequest("Only a ComfyUI service lists models."), 400);
+    }
+    const baseUrl = (row.base_url ?? "").replace(/\/+$/, "");
+    if (baseUrl === "") return c.json({ models: [] });
+    const key =
+      row.api_key_encrypted === null
+        ? ""
+        : (decryptSecret(ctx.keyring, row.api_key_encrypted) ?? "");
+    const response = await fetch(`${baseUrl}/object_info/CheckpointLoaderSimple`, {
+      headers: key === "" ? {} : { "X-API-Key": key },
+    });
+    if (!response.ok) {
+      return c.json(
+        { error: { code: "unreachable", message: "Could not list models from that endpoint." } },
+        502,
+      );
+    }
+    const info = (await response.json()) as Record<
+      string,
+      { input?: { required?: Record<string, unknown> } }
+    >;
+    const required = info["CheckpointLoaderSimple"]?.input?.required;
+    const choices = (required?.["ckpt_name"] as unknown[] | undefined)?.[0];
+    return c.json({
+      models: Array.isArray(choices) ? choices.filter((m): m is string => typeof m === "string") : [],
+    });
+  });
+
   /* ---------------- the files themselves ---------------- */
 
   app.get("/files/:assetId", async (c) => {

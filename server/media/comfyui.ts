@@ -49,8 +49,12 @@ function failureOf(status: JobStatus): string {
   return "The workflow failed.";
 }
 
-/** Inject the prompt and a fresh seed into a workflow in API format. */
-function inject(workflow: Record<string, unknown>, prompt: string): Record<string, unknown> {
+/** Inject the prompt, a fresh seed and the chosen model into a workflow. */
+function inject(
+  workflow: Record<string, unknown>,
+  prompt: string,
+  model: string | null,
+): Record<string, unknown> {
   const seed = Math.floor(Math.random() * 2 ** 31);
   for (const node of Object.values(workflow)) {
     if (typeof node !== "object" || node === null) continue;
@@ -70,6 +74,11 @@ function inject(workflow: Record<string, unknown>, prompt: string): Record<strin
       // A sampler's seed is a number; rolling it is what makes two portraits
       // differ rather than two identical cards.
       if (key === "seed") inputs[key] = seed;
+    }
+    // The checkpoint selector is always a string name; other `model` inputs
+    // are node links and are left alone (§20 phase 102).
+    if (model !== null && model !== "" && "ckpt_name" in inputs) {
+      inputs["ckpt_name"] = model;
     }
   }
   return workflow;
@@ -98,7 +107,7 @@ export function comfyuiAdapter(config: MediaServiceConfig): ImageAdapter {
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
       throw new Error("The workflow must be a JSON object.");
     }
-    return inject(parsed as Record<string, unknown>, prompt);
+    return inject(parsed as Record<string, unknown>, prompt, config.model);
   }
 
   return {

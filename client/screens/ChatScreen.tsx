@@ -149,6 +149,13 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   // Only once the picker is open: this list exists for a failure most sessions
   // never see, and a request per scene open for it would be waste.
   const profiles = useConnectionProfiles(profilePickerOpen);
+  // Always on: the composer's model chip reads the scene's profile for its
+  // model string (§20 phase 101).
+  const modelProfiles = useConnectionProfiles();
+  const sceneProfile =
+    (modelProfiles.data ?? []).find(
+      (candidate) => candidate.id === scene.data?.scene.connectionProfileId,
+    ) ?? null;
   // Per-op configuration (SPEC §7): a hidden button is not a disabled op, so
   // this only decides what the grid shows.
   const tasks = useTasks();
@@ -1152,6 +1159,15 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                 : initialsOf(speakerName)
           }
           speakerName={scope === "beat" ? null : speakerName}
+          model={{
+            label:
+              sceneProfile === null
+                ? strings.header.noModel
+                : sceneProfile.model === null
+                  ? sceneProfile.name
+                  : `${sceneProfile.name} \u00b7 ${sceneProfile.model}`,
+            hasModel: sceneProfile !== null,
+          }}
           draft={draft}
           onDraftChange={setDraft}
           onAttach={(file) =>

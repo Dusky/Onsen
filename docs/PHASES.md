@@ -6462,3 +6462,21 @@ The Prompt tab and the Lore tab no longer need a scene open:
 
 **Verified in a browser** on the roleplays list: the Prompt tab lists every
 prompt block with its controls, and the Lore tab shows the books.
+
+## Phase 101 — Bigger rail icons, model beside the input
+
+The left rail's glyphs grow to 20px, and the model chip moves from the header
+down beside the composer — the model that answers belongs where the answer is
+written, not at the top of the screen. The header keeps the wordmark, the
+scene, prose size, the base and the toggles.
+
+## Phase 102 — ComfyUI model selection
+
+A saved ComfyUI service lists the checkpoints its endpoint offers
+(`GET /media/services/:id/models`, which decrypts the key and reads
+`object_info/CheckpointLoaderSimple`), the reader picks one from a dropdown in
+the service editor, and the adapter writes it into the workflow's checkpoint
+loader — so a model is a choice, not something baked into the pasted workflow.
+
+**Verified in a browser** at 1440×900: the rail glyphs compute to 20px, the
+header no longer carries the model, and the composer shows `Stub · stub-small`.

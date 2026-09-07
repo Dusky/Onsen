@@ -45,9 +45,9 @@ describe("the desktop header", () => {
     expect(APP).toContain("<Header />");
   });
 
-  test("carries the scene, the model, prose, base and the toggles", () => {
+  test("carries the scene, prose, base and the toggles — the model moved to the composer", () => {
     expect(HEADER).toContain("strings.header.turns");
-    expect(HEADER).toContain("useConnectionProfiles");
+    expect(HEADER).not.toContain("useConnectionProfiles");
     expect(HEADER).toContain("setScale");
     expect(HEADER).toContain("setBase");
     expect(HEADER).toContain("toggleLeftRail");
