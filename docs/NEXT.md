@@ -3,7 +3,7 @@
 A short, honest list, written at the end of phase 65 so work can resume without
 re-deriving it. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 103, on `glm/sillytavern-replacement-dyp30w`. 1424 tests across
+**State:** phase 104, on `glm/sillytavern-replacement-dyp30w`. 1426 tests across
 105 files, typecheck clean, working tree clean. Feature complete against
 `SPEC.md` §20 apart from the deferred phase 42.
 
@@ -12,7 +12,7 @@ re-deriving it. `GAPS.md` is the evidence; this is the order.
 Ordered by what the user asked for most recently, which is the thread to
 follow.
 
-1. **Prompt preset management** — *the current ask.* Onsen has presets (multiple,
+1. **Prompt preset management** — *the next ask.* Onsen has presets (multiple,
    a selector, import via `POST /connections/presets/import`, export in the
    preset editor), but the surface is buried and incomplete:
    - A first-class manager: the left rail's Preset tab (or a dedicated screen)
@@ -29,22 +29,18 @@ follow.
      samplers + utility prompts, with save/new/delete/import/export). Example
      preset: the Celia V5.4 JSON the user linked; UI screenshot in Downloads.
 
-2. **AutoBackground — the detection runner.** The schema and the setup-screen
-   settings shipped (phase 103); next is the post-turn detection call ("did the
-   location change?") and the background generation it triggers.
-
-3. **Megumin Suite — Story Config + Blocks.** The preset's prompt blocks are
+2. **Megumin Suite — Story Config + Blocks.** The preset's prompt blocks are
    already imported. What remains: the Story Config dropdowns (genre, POV,
    friction, pace → scene prompt options) and the Blocks (tracker cards under a
    reply).
 
-4. **Multihog** — the RPG engine and the long pole. State Tracker first, then
+3. **Multihog** — the RPG engine and the long pole. State Tracker first, then
    the RNG, then World Progression and Map Evolution.
 
-5. **Web search** — explicitly *not* core; the user said it could be an
+4. **Web search** — explicitly *not* core; the user said it could be an
    extension. Left off the core list.
 
-6. **Self-responses** (`GAPS.md` §4). Still a product conversation, not a gap.
+5. **Self-responses** (`GAPS.md` §4). Still a product conversation, not a gap.
 
 ## How to pick up
 

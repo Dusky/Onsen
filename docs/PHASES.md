@@ -6488,3 +6488,15 @@ location change after each AI reply and draws a background; this slice ships
 the schema and the setup screen — a per-scene switch, a cooldown, a minimum
 message count, and the reader's own detection prompt — ready for the detection
 runner, which is the next slice.
+
+## Phase 104 — Auto-background, the runner
+
+The detection now runs. After a turn, when the scene's switch is on, a
+`background_detect` side call reads the last reply and answers YES/NO; a YES
+draws and files a background through the picture service. It is fire-and-forget
+— an image service must never delay a reply — and it respects the cooldown and
+the minimum message count. The generation service carries the hook; the media
+runner does the drawing, wired in `app.ts`.
+
+**Verified** by the round-trip test (settings persist through the scene) and the
+registry test (the detection is a registered side call).

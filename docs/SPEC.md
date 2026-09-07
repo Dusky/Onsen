@@ -3586,8 +3586,13 @@ Each phase ends in a working, usable application.
 103. **Auto-background (ported)** — the first of the SillyTavern extensions:
     a per-scene switch that, after each reply, asks whether the scene moved and
     draws a background when it has. The four knobs (enabled, cooldown, minimum
-    messages, detection prompt) ship with the schema and the setup screen; the
-    detection runner is the next slice. See §12, `test/auto-background.test.ts`.
+    messages, detection prompt) ship with the schema and the setup screen. See
+    §12, `test/auto-background.test.ts`.
+104. **Auto-background, the runner** — after a turn, when the scene's switch is
+    on, a `background_detect` side call reads the last reply and answers
+    YES/NO; a YES draws and files a background through the picture service.
+    Fire-and-forget, so an image service never delays a reply. See §12,
+    `test/auto-background.test.ts`.
 
 Settled while building phase 15.
 

@@ -2,7 +2,7 @@ import type { Database } from "bun:sqlite";
 import { ulid } from "../lib/ulid.ts";
 import type { Keyring } from "../lib/crypto.ts";
 import { createAdapter as defaultCreateAdapter, AdapterError, type Adapter } from "../adapters/index.ts";
-import { buildPrompt, createEstimatingTokenizer, PromptBudgetError } from "../prompt/index.ts";
+import { buildPrompt, createEstimatingTokenizer, PromptBudgetError, type BuiltPrompt } from "../prompt/index.ts";
 import { DEFAULT_BEAT_BOUND } from "../../shared/types.ts";
 import type {
   BeatBound,
@@ -37,7 +37,7 @@ import {
   type ClassifierCandidate,
 } from "./classifier.ts";
 import { castRowsOf } from "../db/queries/authors.ts";
-import { taskKind, TURN_CLASSIFIER } from "../tasks/registry.ts";
+import { taskKind, TURN_CLASSIFIER, BACKGROUND_DETECT } from "../tasks/registry.ts";
 import type { TaskRunner } from "../tasks/runner.ts";
 import type { PassPipeline } from "../passes/pipeline.ts";
 import type { GuideRunner } from "../guides/runner.ts";
@@ -580,10 +580,18 @@ export class GenerationService {
     this.memory = runner;
   }
 
+  /** Auto-background: draws one when a scene's detection says it moved (§20 phase 103). */
+  setAutoBackground(fn: (sceneId: number, prompt: string) => Promise<void>): void {
+    this.autoBackground = fn;
+  }
+
   private autopilot: AutopilotRunner | null = null;
   private triggers: TriggerRunner | null = null;
   private webhooks: WebhookSender | null = null;
   private memory: MemoryRunner | null = null;
+  private autoBackground: ((sceneId: number, prompt: string) => Promise<void>) | null = null;
+  /** Last auto-background per scene, for the cooldown (milliseconds). */
+  private readonly lastAutoBackground = new Map<number, number>();
 
   /**
    * Resolves when the generation is no longer running — the drain half of
@@ -963,6 +971,51 @@ export class GenerationService {
       if (afterGuides !== null && this.summaries.willRunAutomatically(afterGuides)) {
         await this.summaries.run(afterGuides, { automatic: true });
       }
+      // Auto-background last, and never waits on the turn: a background is a
+      // nice-to-have that a slow image service must not delay the reply by.
+      void this.maybeAutoBackground(sceneId);
+    } catch {
+      /* Never reaches the turn. */
+    }
+  }
+
+  /**
+   * Auto-background (AutoBackground, ported — §20 phase 103): after a turn, ask
+   * whether the scene moved, and draw a background when it did. Fire-and-forget
+   * from the caller's point of view — a background must never delay a reply.
+   */
+  private async maybeAutoBackground(sceneId: number): Promise<void> {
+    if (this.stopped || this.autoBackground === null) return;
+    try {
+      const scene = findSceneById(this.db, sceneId);
+      if (scene === null || scene.auto_background_enabled !== 1) return;
+
+      const path = activePathOf(this.db, sceneId);
+      if (path.length < scene.auto_background_min_messages) return;
+
+      const since = this.now() - (this.lastAutoBackground.get(sceneId) ?? 0);
+      if (since < scene.auto_background_cooldown * 1000) return;
+
+      const text = path[path.length - 1]?.content ?? "";
+      const template = scene.auto_background_prompt ?? DEFAULT_DETECTION;
+      const question = template.replace(/\{\{text\}\}/g, text);
+
+      const kind = taskKind(BACKGROUND_DETECT);
+      if (kind === null) return;
+
+      const outcome = await this.tasks.run({
+        kind,
+        sceneId,
+        prompt: buildDetectionPrompt(question),
+        fallbackProfileId: scene.connection_profile_id,
+      });
+      if (!outcome.ok || !/^\s*yes\b/i.test(outcome.text)) return;
+
+      this.lastAutoBackground.set(sceneId, this.now());
+      await this.autoBackground(
+        sceneId,
+        `A background for a scene titled \u201c${scene.title}\u201d.`,
+      );
     } catch {
       /* Never reaches the turn. */
     }
@@ -2022,6 +2075,63 @@ function recastSpeakerId(
 
 /** How many turns of the scene the classifier is shown. It needs the gist. */
 const CLASSIFIER_HISTORY_TURNS = 8;
+
+/** The default location-change question (AutoBackground, §20 phase 103). */
+const DEFAULT_DETECTION =
+  "Task: Determine if the characters moved to a completely DIFFERENT physical location based ONLY on the text below.\n" +
+  "Ignore mere conversations about places, time of day changes, or weather. Look for actual physical movement (e.g., entered a new building, traveled to a new city, teleported).\n\n" +
+  "Text to analyze:\n\"{{text}}\"\n\n" +
+  "Did the physical location change? Answer with EXACTLY one word: YES or NO.";
+
+function buildDetectionPrompt(question: string): BuiltPrompt {
+  const tokenizer = createEstimatingTokenizer();
+  const system = "You decide one thing about a story in progress, and answer in one word.";
+  const tokens = tokenizer.count(system) + tokenizer.count(question);
+  return {
+    system,
+    messages: [{ role: "user", content: question }],
+    outlets: {},
+    debug: {
+      mode: "author",
+      tokensAreEstimated: tokenizer.isEstimate,
+      tokenizerId: tokenizer.id,
+      budget: tokens,
+      reservedForResponse: 0,
+      available: tokens,
+      fixedTokens: tokenizer.count(system),
+      historyTokens: tokenizer.count(question),
+      totalTokens: tokens,
+      headroom: 0,
+      blocks: [
+        {
+          id: "system_prompt",
+          label: "Location check",
+          source: "guided op",
+          role: "system",
+          content: system,
+          placement: { kind: "prefix" },
+          tokens: tokenizer.count(system),
+        },
+        {
+          id: "background_detect",
+          label: "Question",
+          source: "guided op",
+          role: "user",
+          content: question,
+          placement: { kind: "depth", depth: 0 },
+          tokens: tokenizer.count(question),
+        },
+      ],
+      evicted: [],
+      historyIncluded: [],
+      unresolvedOutlets: [],
+      unknownMacros: [],
+      loreTrace: [],
+      retrievedChunks: [],
+      memoryTrace: [],
+    },
+  };
+}
 
 function activePathOf(db: Database, sceneId: number): MessageRowWithSiblings[] {
   return activePath(db, sceneId);

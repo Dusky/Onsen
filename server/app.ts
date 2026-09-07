@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+import { join } from "node:path";
+import { ulid } from "./lib/ulid.ts";
 import type { AppContext, AppEnv } from "./context.ts";
 import { sessionMiddleware } from "./middleware/session.ts";
 import { withOrigin } from "./sync/channel.ts";
@@ -127,6 +129,16 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
     keyring: ctx.keyring,
     tasks,
     mediaDir: ctx.config.mediaDir,
+  });
+  // Auto-background: the service detects a move, this draws and stores it.
+  generation.setAutoBackground(async (sceneId, prompt) => {
+    const drawn = await media.drawImage({ prompt });
+    const extension = drawn.mime.split("/")[1] ?? "png";
+    const path = `${sceneId}-${ulid()}.${extension}`;
+    await Bun.write(join(ctx.config.dataDir, "backgrounds", path), drawn.bytes);
+    ctx.db
+      .query("UPDATE scenes SET background_path = $path WHERE id = $id")
+      .run({ id: sceneId, path });
   });
   const autopilot = new AutopilotRunner({ db: ctx.db, tasks });
   // Bound both ways, late, because each needs the other: the service reports

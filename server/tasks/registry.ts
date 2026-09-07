@@ -112,6 +112,7 @@ export const SLOP_SCAN = "slop_scan";
 export const ANALYSE_SLOP = "analyse_slop";
 export const SUMMARISE = "summarise";
 export const RESUMMARISE = "resummarise";
+export const BACKGROUND_DETECT = "background_detect";
 
 /** The post-generation pipeline, in the order §7.5 runs it. */
 export const PASS_KEYS: readonly string[] = [VOICE_CHECK, LOCK_CHECK, SLOP_SCAN, PROSE_REFINE];
@@ -252,6 +253,19 @@ export const OP_KINDS: readonly OpKind[] = [
     timeoutMs: 12_000,
     replyLimit: 300,
     variables: ["persona", "speaker", "text"],
+    hideable: false,
+  },
+  {
+    key: BACKGROUND_DETECT,
+    runs: "side_call",
+    label: "Location change check",
+    description:
+      "Reads the last reply and says whether the scene moved to a new location — one word, YES or NO.",
+    stage: "post_generation",
+    samplers: { temperature: 0, top_p: 0.9 },
+    timeoutMs: 15_000,
+    replyLimit: 50,
+    variables: ["text"],
     hideable: false,
   },
   {
