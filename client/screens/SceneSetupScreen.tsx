@@ -819,6 +819,74 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
             }}
           />
 
+          {/* Auto background (AutoBackground, ported — §20 phase 103). The
+              detection itself runs after each reply, server-side. */}
+          <p className="section-label mt-[16px] mb-[6px]">{strings.sceneSetup.autoBackground}</p>
+          <div className="mb-[8px] flex gap-[6px]">
+            {[true, false].map((on) => (
+              <button
+                key={String(on)}
+                type="button"
+                onClick={() => setup.mutate({ autoBackgroundEnabled: on })}
+                className={`btn flex-1 ${scene.autoBackgroundEnabled === on ? "btn-primary" : ""}`}
+              >
+                {on ? strings.sceneSetup.vnModeOn : strings.sceneSetup.vnModeOff}
+              </button>
+            ))}
+          </div>
+          <p className="explain mb-[10px]">{strings.sceneSetup.autoBackgroundHint}</p>
+
+          <div className="mb-[8px] flex gap-[10px]">
+            <label className="min-w-0 flex-1">
+              <span className="section-label mb-[4px] block">
+                {strings.sceneSetup.autoBackgroundCooldown}
+              </span>
+              <input
+                type="number"
+                min={10}
+                max={86400}
+                className="field w-full"
+                defaultValue={scene.autoBackgroundCooldown}
+                onBlur={(event) => {
+                  const value = Number(event.target.value);
+                  if (Number.isFinite(value) && value !== scene.autoBackgroundCooldown) {
+                    setup.mutate({ autoBackgroundCooldown: value });
+                  }
+                }}
+              />
+            </label>
+            <label className="min-w-0 flex-1">
+              <span className="section-label mb-[4px] block">
+                {strings.sceneSetup.autoBackgroundMinMessages}
+              </span>
+              <input
+                type="number"
+                min={1}
+                className="field w-full"
+                defaultValue={scene.autoBackgroundMinMessages}
+                onBlur={(event) => {
+                  const value = Number(event.target.value);
+                  if (Number.isFinite(value) && value !== scene.autoBackgroundMinMessages) {
+                    setup.mutate({ autoBackgroundMinMessages: value });
+                  }
+                }}
+              />
+            </label>
+          </div>
+          <textarea
+            rows={3}
+            className="field mb-[10px] resize-none py-[10px]"
+            aria-label={strings.sceneSetup.autoBackgroundPrompt}
+            placeholder={strings.sceneSetup.autoBackgroundPrompt}
+            defaultValue={scene.autoBackgroundPrompt ?? ""}
+            onBlur={(event) => {
+              if (event.target.value.trim() !== (scene.autoBackgroundPrompt ?? "")) {
+                setup.mutate({ autoBackgroundPrompt: event.target.value.trim() || null });
+              }
+            }}
+          />
+          <p className="explain mb-[14px]">{strings.sceneSetup.autoBackgroundPromptHint}</p>
+
           {/* SPEC §8's sixth guide. It is the only one with nothing built in to
               ask, so its question is scene configuration and lives here; the
               other five are switched on per op in Settings. */}

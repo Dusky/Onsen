@@ -404,6 +404,35 @@ export function sceneRoutes(
         order: order === null ? null : JSON.stringify(order),
       });
     }
+    // Automatic background generation (§20 phase 103).
+    if ("autoBackgroundEnabled" in input) {
+      if (typeof input.autoBackgroundEnabled !== "boolean") {
+        return c.json(badRequest("autoBackgroundEnabled must be a boolean."), 400);
+      }
+      ctx.db
+        .query("UPDATE scenes SET auto_background_enabled = $v WHERE id = $id")
+        .run({ id: row.id, v: input.autoBackgroundEnabled ? 1 : 0 });
+    }
+    for (const [field, column, min, max] of [
+      ["autoBackgroundCooldown", "auto_background_cooldown", 10, 86_400],
+      ["autoBackgroundMinMessages", "auto_background_min_messages", 1, 1_000_000],
+    ] as const) {
+      if (!(field in input)) continue;
+      const value = (input as Record<string, unknown>)[field];
+      if (typeof value !== "number" || !Number.isFinite(value) || value < min || value > max) {
+        return c.json(badRequest(`${field} must be a number between ${min} and ${max}.`), 400);
+      }
+      ctx.db.query(`UPDATE scenes SET ${column} = $v WHERE id = $id`).run({ id: row.id, v: value });
+    }
+    if ("autoBackgroundPrompt" in input) {
+      const prompt = input.autoBackgroundPrompt;
+      if (prompt !== null && typeof prompt !== "string") {
+        return c.json(badRequest("The detection prompt must be text, or null."), 400);
+      }
+      ctx.db
+        .query("UPDATE scenes SET auto_background_prompt = $v WHERE id = $id")
+        .run({ id: row.id, v: prompt === null || prompt.trim() === "" ? null : prompt.trim() });
+    }
     // This scene's own framing, in place of the card's (SPEC §2). Empty clears
     // it, which puts the card's scenario back.
     if ("scenarioOverride" in input) {

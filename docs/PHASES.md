@@ -6480,3 +6480,11 @@ loader — so a model is a choice, not something baked into the pasted workflow.
 
 **Verified in a browser** at 1440×900: the rail glyphs compute to 20px, the
 header no longer carries the model, and the composer shows `Stub · stub-small`.
+
+## Phase 103 — Auto-background (ported), the settings slice
+
+The first SillyTavern extension to come across. AutoBackground detects a
+location change after each AI reply and draws a background; this slice ships
+the schema and the setup screen — a per-scene switch, a cooldown, a minimum
+message count, and the reader's own detection prompt — ready for the detection
+runner, which is the next slice.

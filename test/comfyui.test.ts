@@ -196,8 +196,7 @@ describe("the comfyui adapter", () => {
     });
 
     await adapter.draw({ prompt: "x" }, new AbortController().signal).catch(() => {});
-    expect((submitted?.prompt as { "1": { inputs: { ckpt_name: string } } })["1"].inputs.ckpt_name).toBe(
-      "flux1-dev.safetensors",
-    );
+    const sent = submitted!.prompt as { "1": { inputs: { ckpt_name: string } } };
+    expect(sent["1"].inputs.ckpt_name).toBe("flux1-dev.safetensors");
   });
 });

@@ -1475,6 +1475,13 @@ export const strings = {
     background: "Set a background",
     backgroundGenerate: "Generate",
     backgroundWorking: "Drawing…",
+    /** Auto-background (AutoBackground, ported — §20 phase 103). */
+    autoBackground: "Auto background",
+    autoBackgroundHint: "After each reply, ask whether the scene moved to a new location and draw a background when it has.",
+    autoBackgroundCooldown: "Cooldown, seconds",
+    autoBackgroundMinMessages: "Minimum messages",
+    autoBackgroundPrompt: "Detection prompt",
+    autoBackgroundPromptHint: "Use {{text}} where the last reply goes. Answer YES or NO.",
 
     customGuide: "Custom guide",
     customGuidePlaceholder: "What does the crew believe about the captain?",

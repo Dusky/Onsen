@@ -84,6 +84,11 @@ export interface SceneRow {
   custom_guide_prompt: string | null;
   /** A per-scene order for guides, as a JSON array of kinds (§20 phase 96). */
   guide_order: string | null;
+  /** Automatic background generation (§20 phase 103). */
+  auto_background_enabled: number;
+  auto_background_cooldown: number;
+  auto_background_min_messages: number;
+  auto_background_prompt: string | null;
   /** This scene's own framing, in place of the card's (SPEC §2). */
   scenario_override: string | null;
   /** Rolling summarisation, all of §11's knobs, per scene. */
@@ -305,6 +310,10 @@ function toSceneDto(
     autoPasses: row.auto_passes === 1,
     customGuidePrompt: row.custom_guide_prompt,
     guideOrder: parseGuideOrder(row.guide_order),
+    autoBackgroundEnabled: row.auto_background_enabled === 1,
+    autoBackgroundCooldown: row.auto_background_cooldown,
+    autoBackgroundMinMessages: row.auto_background_min_messages,
+    autoBackgroundPrompt: row.auto_background_prompt,
     scenarioOverride: row.scenario_override,
     summarise: row.summarise === 1,
     summariseEveryMessages: row.summarise_every_messages,

@@ -1230,6 +1230,11 @@ export interface SceneDto {
   customGuidePrompt: string | null;
   /** A per-scene order for guides; null is the default kind order (§20 phase 96). */
   guideOrder: GuideKind[] | null;
+  /** Automatic background generation (§20 phase 103). */
+  autoBackgroundEnabled: boolean;
+  autoBackgroundCooldown: number;
+  autoBackgroundMinMessages: number;
+  autoBackgroundPrompt: string | null;
   /**
    * This scene's own framing, replacing the card's (SPEC §2). A card's scenario
    * is written by whoever made it, for a scene nobody has had yet.
@@ -1341,6 +1346,11 @@ export interface UpdateSceneRequest {
   translateTo?: string | null;
   /** A per-scene order for guides; null resets to the default (§20 phase 96). */
   guideOrder?: GuideKind[] | null;
+  /** Automatic background generation (§20 phase 103). */
+  autoBackgroundEnabled?: boolean;
+  autoBackgroundCooldown?: number;
+  autoBackgroundMinMessages?: number;
+  autoBackgroundPrompt?: string | null;
 }
 
 export interface AppendMessageRequest {
@@ -2792,4 +2802,9 @@ export interface SceneSetupRequest {
   title?: string;
   /** Display-only translation's target language (§20 phase 78). */
   translateTo?: string | null;
+  /** Automatic background generation (§20 phase 103). */
+  autoBackgroundEnabled?: boolean;
+  autoBackgroundCooldown?: number;
+  autoBackgroundMinMessages?: number;
+  autoBackgroundPrompt?: string | null;
 }

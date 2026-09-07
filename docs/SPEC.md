@@ -3583,6 +3583,11 @@ Each phase ends in a working, usable application.
     checkpoints its endpoint offers, the reader picks one, and the adapter
     writes it into the workflow's checkpoint loader. See §12,
     `test/comfyui.test.ts`.
+103. **Auto-background (ported)** — the first of the SillyTavern extensions:
+    a per-scene switch that, after each reply, asks whether the scene moved and
+    draws a background when it has. The four knobs (enabled, cooldown, minimum
+    messages, detection prompt) ship with the schema and the setup screen; the
+    detection runner is the next slice. See §12, `test/auto-background.test.ts`.
 
 Settled while building phase 15.
 
