@@ -53,6 +53,12 @@ export interface LoreEntryRow {
   is_constant: number;
   scan_depth: number | null;
   character_filter: string;
+  character_filter_tags: string;
+  character_filter_exclude: number;
+  ignore_budget: number;
+  use_probability: number;
+  group_override: number;
+  delay_until_recursion: number;
   sticky: number;
   cooldown: number;
   delay: number;
@@ -205,6 +211,12 @@ function toCandidate(row: LoreEntryRow, book: LorebookRow): LoreCandidate {
     isConstant: row.is_constant === 1,
     scanDepth: row.scan_depth,
     characterFilter: parseList(row.character_filter),
+    characterFilterTags: parseList(row.character_filter_tags),
+    characterFilterExclude: row.character_filter_exclude === 1,
+    ignoreBudget: row.ignore_budget === 1,
+    useProbability: row.use_probability === 1,
+    groupOverride: row.group_override === 1,
+    delayUntilRecursion: row.delay_until_recursion,
     sticky: row.sticky,
     cooldown: row.cooldown,
     delay: row.delay,
@@ -376,6 +388,10 @@ export function updateEntry(
          case_sensitive = $case_sensitive, match_whole_words = $match_whole_words,
          use_regex = $use_regex, probability = $probability, is_constant = $is_constant,
          scan_depth = $scan_depth, character_filter = $character_filter,
+         character_filter_tags = $character_filter_tags,
+         character_filter_exclude = $character_filter_exclude,
+         ignore_budget = $ignore_budget, use_probability = $use_probability,
+         group_override = $group_override, delay_until_recursion = $delay_until_recursion,
          sticky = $sticky, cooldown = $cooldown, delay = $delay, delay_from = $delay_from,
          inclusion_group = $inclusion_group, group_weight = $group_weight,
          group_selection = $group_selection, position = $position,
@@ -412,6 +428,12 @@ export function updateEntry(
       is_constant: next.is_constant,
       scan_depth: next.scan_depth,
       character_filter: next.character_filter,
+      character_filter_tags: next.character_filter_tags,
+      character_filter_exclude: next.character_filter_exclude,
+      ignore_budget: next.ignore_budget,
+      use_probability: next.use_probability,
+      group_override: next.group_override,
+      delay_until_recursion: next.delay_until_recursion,
       sticky: next.sticky,
       cooldown: next.cooldown,
       delay: next.delay,
@@ -489,6 +511,12 @@ export function toEntryDto(row: LoreEntryRow, bookUlid: string): LoreEntryDto {
     isConstant: row.is_constant === 1,
     scanDepth: row.scan_depth,
     characterFilter: parseList(row.character_filter),
+    characterFilterTags: parseList(row.character_filter_tags),
+    characterFilterExclude: row.character_filter_exclude === 1,
+    ignoreBudget: row.ignore_budget === 1,
+    useProbability: row.use_probability === 1,
+    groupOverride: row.group_override === 1,
+    delayUntilRecursion: row.delay_until_recursion,
     sticky: row.sticky,
     cooldown: row.cooldown,
     delay: row.delay,

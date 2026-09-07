@@ -34,6 +34,8 @@ export interface SceneActivationOptions {
   history?: MessageRowWithSiblings[];
   /** ULIDs of the characters in play, for §10's character filter. */
   presentCharacterIds: string[];
+  /** Tags of the characters in play, for the filter's tag half (§126). */
+  presentCharacterTags: string[];
   /**
    * Seeded from the generation, so the same turn always activates the same
    * lore. A reroll that quietly matched different entries would be untraceable.
@@ -60,6 +62,7 @@ export function activateForScene(options: SceneActivationOptions): ActivationRes
     // excluded from the prompt: the model never saw them.
     transcript: history.filter((row) => row.is_hidden === 0).map((row) => row.content),
     presentCharacterIds: options.presentCharacterIds,
+    presentCharacterTags: options.presentCharacterTags,
     timed: timedStateFor(options.db, options.scene.id, history),
     messageCount: history.length,
     messagesSinceBranch: messagesSinceBranch(history),

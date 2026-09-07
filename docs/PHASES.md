@@ -6741,3 +6741,18 @@ the remember-last-values behaviour the author-note users expect.
 **Verified** by two new steer tests — depth and role reach the built prompt
 exactly, and an interval of two skips the turns that are not due — plus the
 migration and reachable-fields guards.
+
+## Phase 126 — Lore entry parity, server side
+
+Five SillyTavern world-info fields arrive, stored by migration 0059 and honoured
+by the activation engine: `ignoreBudget` (survives the book's token budget),
+`useProbability` (switch the probability roll off so a match always fires),
+`groupOverride` (win an inclusion group outright), `delayUntilRecursion` (only
+eligible once recursion reaches a round), and a character filter that matches by
+tag and can exclude rather than include. The SillyTavern import/export and the
+pack format round-trip all six columns — the ST character filter persists as its
+one object (`isExclude` / `names` / `tags`), and Onsen's recursion level moves
+to its own `onsen` namespace instead of riding on `delayUntilRecursion`.
+
+**Verified** by five new activation cases and the existing SillyTavern interop
+and pack round-trip tests, all green.

@@ -92,14 +92,14 @@ export function toWorldInfoEntry(row: LoreEntryRow, index: number): Record<strin
     matchWholeWords: row.match_whole_words === 1,
     useRegex: row.use_regex === 1,
     probability: row.probability,
-    useProbability: row.probability < 100,
+    useProbability: row.use_probability === 1,
     scanDepth: row.scan_depth,
     sticky: row.sticky,
     cooldown: row.cooldown,
     delay: row.delay,
     group: row.inclusion_group ?? "",
     groupWeight: row.group_weight,
-    groupOverride: row.group_selection === "prioritize",
+    groupOverride: row.group_override === 1,
     position: POSITION_NUMBERS[row.position],
     order: row.insertion_order,
     depth: row.insertion_depth,
@@ -107,7 +107,15 @@ export function toWorldInfoEntry(row: LoreEntryRow, index: number): Record<strin
     automationId: row.automation_id ?? "",
     excludeRecursion: row.non_recursable === 1,
     preventRecursion: row.prevent_further_recursion === 1,
-    delayUntilRecursion: row.recursion_level,
+    ignoreBudget: row.ignore_budget === 1,
+    delayUntilRecursion: row.delay_until_recursion,
+    // SillyTavern's persisted character filter is one object: exclude, names,
+    // and tags (§20 phase 126).
+    characterFilter: {
+      isExclude: row.character_filter_exclude === 1,
+      names: parseList(row.character_filter),
+      tags: parseList(row.character_filter_tags),
+    },
     /**
      * What this app has and SillyTavern does not.
      *
@@ -120,6 +128,7 @@ export function toWorldInfoEntry(row: LoreEntryRow, index: number): Record<strin
       position: row.position,
       outlet_name: row.outlet_name,
       group_selection: row.group_selection,
+      recursion_level: row.recursion_level,
     },
   };
 }

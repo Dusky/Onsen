@@ -252,6 +252,12 @@ function entryDocument(row: {
   is_constant: number;
   scan_depth: number | null;
   character_filter: string;
+  character_filter_tags: string;
+  character_filter_exclude: number;
+  ignore_budget: number;
+  use_probability: number;
+  group_override: number;
+  delay_until_recursion: number;
   sticky: number;
   cooldown: number;
   delay: number;
@@ -291,6 +297,12 @@ function entryDocument(row: {
     isConstant: row.is_constant === 1,
     scanDepth: row.scan_depth,
     characterFilter: list(row.character_filter),
+    characterFilterTags: list(row.character_filter_tags),
+    characterFilterExclude: row.character_filter_exclude === 1,
+    ignoreBudget: row.ignore_budget === 1,
+    useProbability: row.use_probability === 1,
+    groupOverride: row.group_override === 1,
+    delayUntilRecursion: row.delay_until_recursion,
     sticky: row.sticky,
     cooldown: row.cooldown,
     delay: row.delay,

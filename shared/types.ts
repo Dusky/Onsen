@@ -1945,6 +1945,18 @@ export interface LoreEntryDto {
   scanDepth: number | null;
   /** Character ULIDs; empty means every character (§10). */
   characterFilter: string[];
+  /** Character tags the filter also matches (§20 phase 126). */
+  characterFilterTags: string[];
+  /** Whether the filter excludes rather than includes (§20 phase 126). */
+  characterFilterExclude: boolean;
+  /** Skip the book's token budget for this entry (§20 phase 126). */
+  ignoreBudget: boolean;
+  /** Switch probability off: always fire when matched (§20 phase 126). */
+  useProbability: boolean;
+  /** Win the inclusion group outright (§20 phase 126). */
+  groupOverride: boolean;
+  /** Only eligible once recursion has reached this round (§20 phase 126). */
+  delayUntilRecursion: number;
 
   sticky: number;
   cooldown: number;

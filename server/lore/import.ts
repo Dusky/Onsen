@@ -90,6 +90,28 @@ function positionOf(source: Record<string, unknown>): LoreEntryRow["position"] {
   return "before_history";
 }
 
+/** The character filter, from SillyTavern's one-object shape or its flat editor fields. */
+function characterFilterOf(source: Record<string, unknown>): {
+  names: string[];
+  tags: string[];
+  exclude: boolean;
+} {
+  const obj = source["characterFilter"];
+  if (typeof obj === "object" && obj !== null) {
+    const o = obj as Record<string, unknown>;
+    return {
+      names: asStrings(o["names"]),
+      tags: asStrings(o["tags"]),
+      exclude: asBool(o["isExclude"], false),
+    };
+  }
+  return {
+    names: asStrings(source["characterFilterNames"]),
+    tags: asStrings(source["characterFilterTags"]),
+    exclude: asBool(source["characterFilterExclude"], false),
+  };
+}
+
 function logicOf(source: Record<string, unknown>): LoreEntryRow["secondary_logic"] {
   const value = pick(source, ["selectiveLogic", "secondary_logic"]);
   if (typeof value === "string") {
@@ -126,6 +148,11 @@ function entryFrom(source: Record<string, unknown>): ImportedEntry {
         typeof pick(source, ["scanDepth", "scan_depth"]) === "number"
           ? asInt(pick(source, ["scanDepth", "scan_depth"]), 4)
           : null,
+      // The character filter: SillyTavern persists one object; the flat fields
+      // are its editor's shape. Both are read (§20 phase 126).
+      character_filter: JSON.stringify(characterFilterOf(source).names),
+      character_filter_tags: JSON.stringify(characterFilterOf(source).tags),
+      character_filter_exclude: characterFilterOf(source).exclude ? 1 : 0,
       sticky: Math.max(0, asInt(pick(source, ["sticky"]), 0)),
       cooldown: Math.max(0, asInt(pick(source, ["cooldown"]), 0)),
       delay: Math.max(0, asInt(pick(source, ["delay"]), 0)),
@@ -134,9 +161,18 @@ function entryFrom(source: Record<string, unknown>): ImportedEntry {
         return typeof group === "string" && group.trim() !== "" ? group.trim() : null;
       })(),
       group_weight: Math.max(0, asInt(pick(source, ["groupWeight", "group_weight"]), 100)),
-      group_selection: asBool(pick(source, ["groupOverride", "prioritize"]), false)
-        ? "prioritize"
-        : "weight",
+      group_selection: (() => {
+        const onsen = (source["onsen"] ?? {}) as Record<string, unknown>;
+        const mode = onsen["group_selection"] ?? source["groupSelection"];
+        return mode === "score" || mode === "prioritize" ? mode : "weight";
+      })(),
+      ignore_budget: asBool(pick(source, ["ignoreBudget"]), false) ? 1 : 0,
+      use_probability: asBool(pick(source, ["useProbability"]), true) ? 1 : 0,
+      group_override: asBool(pick(source, ["groupOverride"]), false) ? 1 : 0,
+      delay_until_recursion: Math.max(
+        0,
+        asInt(pick(source, ["delayUntilRecursion", "delay_until_recursion"]), 0),
+      ),
       position,
       insertion_order: asInt(pick(source, ["order", "insertion_order", "insertionOrder"]), 100),
       insertion_depth: Math.max(0, asInt(pick(source, ["depth", "insertion_depth"]), 4)),
@@ -159,7 +195,13 @@ function entryFrom(source: Record<string, unknown>): ImportedEntry {
       )
         ? 1
         : 0,
-      recursion_level: Math.max(0, asInt(pick(source, ["delayUntilRecursion", "recursion_level"]), 0)),
+      recursion_level: Math.max(
+        0,
+        asInt(
+          pick(source, ["recursion_level"]),
+          asInt((source["onsen"] as Record<string, unknown> | undefined)?.["recursion_level"] ?? 0, 0),
+        ),
+      ),
       raw_entry: JSON.stringify(source),
     },
   };

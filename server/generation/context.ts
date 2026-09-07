@@ -498,6 +498,18 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
     scene: options.scene,
     history,
     presentCharacterIds: castRows.filter((row) => row.is_active === 1).map((row) => row.ulid),
+    presentCharacterTags: castRows
+      .filter((row) => row.is_active === 1)
+      .flatMap((row) => {
+        try {
+          const parsed: unknown = JSON.parse(row.tags);
+          return Array.isArray(parsed)
+            ? parsed.filter((tag): tag is string => typeof tag === "string")
+            : [];
+        } catch {
+          return [];
+        }
+      }),
     seed: options.seed,
     tokenizer,
   });

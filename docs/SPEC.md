@@ -3712,6 +3712,12 @@ Each phase ends in a working, usable application.
     interval (1 every turn, a larger one only when the turn count lands on it),
     and a role (system / you / the author). The composer's steer form grows the
     three controls. See §7, `test/guided-ops.test.ts`.
+126. **Lore entry parity, server side** — five SillyTavern world-info fields
+    arrive: `ignoreBudget`, `useProbability`, `groupOverride`,
+    `delayUntilRecursion`, and a character filter that matches by tag and can
+    exclude. Migration 0059 stores them, the activation engine honours them,
+    and the ST import/export and pack formats round-trip them. See §10,
+    `test/lore-activation.test.ts`, `test/lore-api.test.ts`.
 
 Settled while building phase 15.
 

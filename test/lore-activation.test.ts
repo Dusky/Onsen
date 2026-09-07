@@ -30,6 +30,12 @@ function entry(over: Partial<LoreCandidate> = {}): LoreCandidate {
     isConstant: false,
     scanDepth: null,
     characterFilter: [],
+    characterFilterTags: [],
+    characterFilterExclude: false,
+    ignoreBudget: false,
+    useProbability: true,
+    groupOverride: false,
+    delayUntilRecursion: 0,
     sticky: 0,
     cooldown: 0,
     delay: 0,
@@ -57,6 +63,7 @@ function run(entries: LoreCandidate[], over: Partial<ActivationInput> = {}) {
     entries,
     transcript: ["Has anyone counted the lamp oil?"],
     presentCharacterIds: ["bell"],
+    presentCharacterTags: [],
     timed: [],
     messageCount: 10,
     messagesSinceBranch: 10,
@@ -320,6 +327,43 @@ describe("the per-book budget", () => {
     const a = entry({ id: "a", content: long, bookId: "one", bookTokenBudget: 150 });
     const b = entry({ id: "b", content: long, bookId: "two", bookTokenBudget: 150 });
     expect(fired(run([a, b])).sort()).toEqual(["a", "b"]);
+  });
+});
+
+describe("the parity knobs (§20 phase 126)", () => {
+  test("ignoreBudget survives the book budget", () => {
+    const long = "x".repeat(400); // 100 tokens at the estimator's 4 chars
+    const a = entry({ id: "a", content: long, insertionOrder: 10, bookTokenBudget: 150 });
+    const b = entry({ id: "b", content: long, insertionOrder: 20, bookTokenBudget: 150, ignoreBudget: true });
+    expect(fired(run([a, b])).sort()).toEqual(["a", "b"]);
+  });
+
+  test("useProbability off fires regardless of the roll", () => {
+    const e = entry({ probability: 0, useProbability: false, keys: ["oil"] });
+    expect(fired(run([e]))).toEqual(["e1"]);
+  });
+
+  test("groupOverride wins the group outright", () => {
+    const a = entry({ id: "a", inclusionGroup: "g", groupWeight: 100 });
+    const b = entry({ id: "b", inclusionGroup: "g", groupWeight: 1, groupOverride: true });
+    expect(fired(run([a, b]))).toEqual(["b"]);
+  });
+
+  test("delayUntilRecursion holds the entry out of round zero", () => {
+    const e = entry({ id: "e", delayUntilRecursion: 1, keys: ["oil"] });
+    const result = run([e]);
+    expect(fired(result)).toEqual([]);
+    expect(why(result, "e")).toBe("delayed");
+  });
+
+  test("the filter matches by tag, and can exclude", () => {
+    const byTag = entry({ id: "byTag", characterFilterTags: ["crew"], keys: ["oil"] });
+    expect(fired(run([byTag], { presentCharacterTags: ["crew"] }))).toEqual(["byTag"]);
+    expect(fired(run([byTag], { presentCharacterTags: [] }))).toEqual([]);
+
+    const exclude = entry({ id: "exclude", characterFilterExclude: true, characterFilter: ["bell"], keys: ["oil"] });
+    // run()'s default presentCharacterIds is ["bell"], which the exclude filter rules out.
+    expect(fired(run([exclude]))).toEqual([]);
   });
 });
 

@@ -52,6 +52,18 @@ export interface LoreCandidate {
   scanDepth: number | null;
   /** Character ULIDs. Empty means every character. */
   characterFilter: string[];
+  /** Character tags the filter also matches (§20 phase 126). */
+  characterFilterTags: string[];
+  /** Whether the filter excludes rather than includes (§20 phase 126). */
+  characterFilterExclude: boolean;
+  /** Skip the book's token budget (§20 phase 126). */
+  ignoreBudget: boolean;
+  /** Probability off: always fire when matched (§20 phase 126). */
+  useProbability: boolean;
+  /** Win the inclusion group outright (§20 phase 126). */
+  groupOverride: boolean;
+  /** Only eligible once recursion has reached this round (§20 phase 126). */
+  delayUntilRecursion: number;
 
   sticky: number;
   cooldown: number;
@@ -94,6 +106,8 @@ export interface ActivationInput {
   transcript: string[];
   /** ULIDs of characters in play, for the character filter. */
   presentCharacterIds: string[];
+  /** Tags of characters in play, for the tag half of the filter (§126). */
+  presentCharacterTags: string[];
   timed: TimedState[];
   /** Messages in the scene, for `delay`. */
   messageCount: number;
@@ -198,6 +212,10 @@ interface Scored {
 }
 
 function chooseFromGroup(members: Scored[], random: () => number): LoreCandidate {
+  // An entry that overrides its group wins outright, whatever the selection
+  // mode says (§20 phase 126).
+  const overridden = members.find((item) => item.entry.groupOverride);
+  if (overridden !== undefined) return overridden.entry;
   const first = members[0]!;
   switch (first.entry.groupSelection) {
     case "prioritize": {
@@ -304,6 +322,13 @@ export function activateLore(input: ActivationInput): ActivationResult {
           continue;
         }
 
+        // Delay until a recursion round: on the initial pass an entry with this
+        // set is not eligible yet (§20 phase 126).
+        if (entry.delayUntilRecursion > 0 && round < entry.delayUntilRecursion) {
+          if (round === 0) note(entry, round, "delayed");
+          continue;
+        }
+
         const agoValue = timedBy.get(entry.id);
         const isSticky = entry.sticky > 0 && agoValue !== undefined && agoValue < entry.sticky;
 
@@ -335,20 +360,32 @@ export function activateLore(input: ActivationInput): ActivationResult {
           }
         }
 
-        // §10's character filter: the only way two characters in one scene can
-        // hold different knowledge from one shared book.
-        if (
-          entry.characterFilter.length > 0 &&
-          !entry.characterFilter.some((id) => input.presentCharacterIds.includes(id))
-        ) {
-          note(entry, round, "character_filter", matchedKey);
-          continue;
+        // §10's character filter, now with tags and an exclude mode (§20 phase
+        // 126): the filter names characters by id or by tag, and exclude flips
+        // which side passes.
+        if (entry.characterFilter.length > 0 || entry.characterFilterTags.length > 0) {
+          const named = entry.characterFilter.some((id) =>
+            input.presentCharacterIds.includes(id),
+          );
+          const tagged = entry.characterFilterTags.some((tag) =>
+            input.presentCharacterTags.includes(tag),
+          );
+          const passes = entry.characterFilterExclude ? !(named || tagged) : named || tagged;
+          if (!passes) {
+            note(entry, round, "character_filter", matchedKey);
+            continue;
+          }
         }
 
         // Sticky bypasses probability until it expires: an entry that rolled
         // well once should not have to keep rolling well for a duration it was
-        // already granted.
-        if (!isSticky && entry.probability < 100 && input.random() * 100 >= entry.probability) {
+        // already granted. `useProbability` off means the roll never happens.
+        if (
+          !isSticky &&
+          entry.useProbability &&
+          entry.probability < 100 &&
+          input.random() * 100 >= entry.probability
+        ) {
           note(entry, round, "probability", matchedKey);
           continue;
         }
@@ -440,6 +477,11 @@ function applyBookBudgets(
     const ordered = [...members].sort((a, b) => a.insertionOrder - b.insertionOrder);
     let spent = 0;
     for (const entry of ordered) {
+      // An entry that ignores the budget always survives it (§20 phase 126).
+      if (entry.ignoreBudget) {
+        kept.push(entry);
+        continue;
+      }
       const cost = countTokens(entry.content);
       if (spent + cost > budget) {
         const at = trace.get(entry.id);

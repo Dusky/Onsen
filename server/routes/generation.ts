@@ -841,16 +841,26 @@ export function sceneGenerationRoutes(
     }
     const present = ctx.db
       .query(
-        `SELECT c.ulid AS ulid FROM scene_members m
+        `SELECT c.ulid AS ulid, c.tags AS tags FROM scene_members m
            JOIN characters c ON c.id = m.character_id
           WHERE m.scene_id = $scene AND m.is_active = 1`,
       )
-      .all({ scene: scene.id }) as { ulid: string }[];
+      .all({ scene: scene.id }) as { ulid: string; tags: string }[];
 
     const result = activateForScene({
       db: ctx.db,
       scene,
       presentCharacterIds: present.map((row) => row.ulid),
+      presentCharacterTags: present.flatMap((row) => {
+        try {
+          const parsed: unknown = JSON.parse(row.tags);
+          return Array.isArray(parsed)
+            ? parsed.filter((tag): tag is string => typeof tag === "string")
+            : [];
+        } catch {
+          return [];
+        }
+      }),
       // Fixed rather than per-generation: the tool answers "what does this
       // scene do", and a number that changed on every refresh would make a
       // probability entry impossible to reason about.
