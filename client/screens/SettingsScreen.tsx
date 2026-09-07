@@ -65,6 +65,7 @@ import { MediaSettings } from "../components/MediaSettings.tsx";
 import { MigrationSection } from "../components/MigrationSection.tsx";
 import { ThemeSection } from "../components/ThemeSection.tsx";
 import { BrandingSection } from "../components/BrandingSection.tsx";
+import { BackgroundsSection } from "../components/BackgroundsSection.tsx";
 
 /**
  * Settings (design handoff, screen 3i).
@@ -1602,6 +1603,7 @@ const CATEGORIES = [
   { id: "tasks", words: ["routing", "ops", "background", "guide", "summariser", "classifier"] },
   { id: "reading", words: ["font", "size", "theme", "prose", "light", "dark"] },
   { id: "branding", words: ["logo", "mark", "icon", "wordmark", "silhouette", "branding"] },
+  { id: "backgrounds", words: ["background", "backdrop", "image", "onsen", "picture"] },
   { id: "media", words: ["picture", "voice", "image", "speech", "tts", "draw", "caption"] },
   { id: "data", words: ["embedding", "document", "retrieval", "rag", "data bank"] },
   { id: "automation", words: ["trigger", "script", "regex", "action", "event"] },
@@ -1988,6 +1990,8 @@ export function SettingsScreen() {
           {show("reading") ? <ReadingSection /> : null}
 
           {show("branding") ? <BrandingSection /> : null}
+
+          {show("backgrounds") ? <BackgroundsSection /> : null}
 
           {show("outward") ? (
             <>

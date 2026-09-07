@@ -13,6 +13,8 @@ export const SettingKey = {
   brandingShowLogo: "branding.show_logo",
   /** The uploaded mark's filename under `brandingDir`, or null for the built-in. */
   brandingLogoPath: "branding.logo_path",
+  /** How strongly the background shows through the chrome (§20 phase 108). */
+  backgroundOpacity: "background.opacity",
 } as const;
 
 export type SettingKeyName = (typeof SettingKey)[keyof typeof SettingKey];

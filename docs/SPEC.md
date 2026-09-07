@@ -3607,6 +3607,11 @@ Each phase ends in a working, usable application.
     and a preset carries the ops' utility prompts (impersonation, continue
     nudge, new-chat, group nudge) — imported, editable, and round-tripped whole
     in the SillyTavern export. See §13, `test/preset-import.test.ts`.
+108. **The backdrop** — one picture behind the whole app, under the sidebars and
+    the chat: a scene's own background when it has one, else the library's
+    default, else a built-in anime onsen. The chrome goes translucent while it
+    shows, the opacity is the reader's, and a Backgrounds section in Settings
+    generates, picks and deletes. See §12, `test/backgrounds.test.ts`.
 
 Settled while building phase 15.
 

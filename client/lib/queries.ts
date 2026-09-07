@@ -2303,6 +2303,62 @@ export function useResetBrandingLogo() {
   });
 }
 
+/* ---------------- backgrounds (SPEC §12, §20 phase 108) ---------------- */
+
+export interface BackgroundDto {
+  id: string;
+  prompt: string | null;
+  isDefault: boolean;
+  createdAt: number;
+}
+
+export interface BackgroundsDto {
+  backgrounds: BackgroundDto[];
+  defaultId: string | null;
+  opacity: number;
+}
+
+export function useBackgrounds() {
+  return useQuery({
+    queryKey: ["backgrounds"] as const,
+    queryFn: () => api.get<BackgroundsDto>("/backgrounds"),
+  });
+}
+
+function useBackgroundMutation<TArgs>(fn: (args: TArgs) => Promise<BackgroundsDto>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["backgrounds"] }),
+  });
+}
+
+export function useGenerateBackground() {
+  return useBackgroundMutation((body: { prompt?: string }) =>
+    api.post<BackgroundsDto>("/backgrounds/generate", body),
+  );
+}
+
+export function useSetDefaultBackground() {
+  return useBackgroundMutation((id: string) =>
+    api.post<BackgroundsDto>(`/backgrounds/${id}/default`, {}),
+  );
+}
+
+export function useUpdateBackgroundOpacity() {
+  return useBackgroundMutation((opacity: number) =>
+    api.patch<BackgroundsDto>("/backgrounds", { opacity }),
+  );
+}
+
+export function useDeleteBackground() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/backgrounds/${id}`),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["backgrounds"] }),
+  });
+}
+
 /* ------------------------------------------------------------------ */
 /* The outbound OpenAI-compatible API (SPEC §19)                       */
 /* ------------------------------------------------------------------ */

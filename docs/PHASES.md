@@ -6526,3 +6526,12 @@ than reported as unmapped — and a preset carries the ops' utility prompts
 (impersonation, continue nudge, new-chat, group nudge) as a JSON column,
 imported, editable in the full editor, and round-tripped whole in the
 SillyTavern export. A Celia-style preset now comes back out the way it went in.
+
+## Phase 108 — The backdrop
+
+One picture behind the whole app, under the sidebars and the chat: a scene's
+own background when it has one, else the library's default, else a built-in
+anime onsen. The chrome surfaces go translucent (`data-background` flips the
+tokens to `color-mix`), the opacity is the reader's, and a Backgrounds section
+in Settings generates, picks and deletes from the library. The built-in was
+generated with the image API — a high-end anime onsen, no characters.

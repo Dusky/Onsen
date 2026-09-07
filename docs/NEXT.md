@@ -3,8 +3,8 @@
 A short, honest list, written at the end of phase 65 so work can resume without
 re-deriving it. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 107, on `glm/sillytavern-replacement-dyp30w`. 1428 tests across
-105 files, typecheck clean, working tree clean. Feature complete against
+**State:** phase 108, on `glm/sillytavern-replacement-dyp30w`. 1432 tests across
+106 files, typecheck clean, working tree clean. Feature complete against
 `SPEC.md` §20 apart from the deferred phase 42.
 
 ## The queue

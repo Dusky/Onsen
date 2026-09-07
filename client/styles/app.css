@@ -6,7 +6,7 @@
  * utilities reference the custom properties rather than copying their values,
  * so a theme switch on :root re-colours the whole app with no rebuild.
  */
-@theme inline {
+@theme {
   --color-bg: var(--onsen-color-bg);
   --color-bg-sunken: var(--onsen-color-bg-sunken);
   --color-bg-raised: var(--onsen-color-bg-raised);
@@ -46,6 +46,19 @@
 
   /* Everything is a page being marked up: sharp corners by default. */
   --radius-none: 0;
+}
+
+/*
+ * A background is showing (§20 phase 108): the chrome surfaces go translucent
+ * so the picture reads through the rails and the log. The opacity of the
+ * picture itself is the reader's; these percentages are fixed so text stays
+ * readable on the quietest ground.
+ */
+:root[data-background="1"] {
+  --color-bg: color-mix(in srgb, var(--onsen-color-bg) 78%, transparent);
+  --color-bg-sunken: color-mix(in srgb, var(--onsen-color-bg-sunken) 82%, transparent);
+  --color-bg-raised: color-mix(in srgb, var(--onsen-color-bg-raised) 76%, transparent);
+  --color-bg-inset: color-mix(in srgb, var(--onsen-color-bg-inset) 68%, transparent);
 }
 
 @layer base {

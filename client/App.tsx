@@ -19,6 +19,7 @@ import { useIsDesktop } from "./lib/breakpoint.ts";
 import { LeftRail } from "./components/LeftRail.tsx";
 import { TopBar } from "./components/TopBar.tsx";
 import { Header } from "./components/Header.tsx";
+import { Background } from "./components/Background.tsx";
 import { RightRail } from "./components/RightRail.tsx";
 import { setChimeWanted, unlockAudio } from "./lib/chime.ts";
 import { usePreferences, useReading } from "./lib/queries.ts";
@@ -152,24 +153,30 @@ function Shell() {
   // now, beside the destinations (§20 phase 80).
   if (!isDesktop) {
     return (
-      <div className="flex screen-height flex-col bg-bg">
-        <TopBar />
-        <div className="flex min-h-0 flex-1 flex-col">
-          <Routed />
+      <div className="relative screen-height">
+        <Background />
+        <div className="relative z-10 flex h-full flex-col bg-bg">
+          <TopBar />
+          <div className="flex min-h-0 flex-1 flex-col">
+            <Routed />
+          </div>
         </div>
       </div>
     );
   }
   return (
-    <div className="flex screen-height bg-bg">
-      <LeftRail />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Header />
-        <div className="flex min-h-0 flex-1 flex-col">
-          <Routed />
+    <div className="relative screen-height">
+      <Background />
+      <div className="relative z-10 flex h-full bg-bg">
+        <LeftRail />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <Header />
+          <div className="flex min-h-0 flex-1 flex-col">
+            <Routed />
+          </div>
         </div>
+        <RightRail />
       </div>
-      <RightRail />
     </div>
   );
 }

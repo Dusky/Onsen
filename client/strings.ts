@@ -521,6 +521,7 @@ export const strings = {
       tasks: "Background tasks",
       reading: "Reading",
       branding: "Branding",
+      backgrounds: "Background",
       media: "Pictures & voices",
       data: "Data bank",
       automation: "Automation",
@@ -538,6 +539,17 @@ export const strings = {
     brandingDefault: "Use the default",
     brandingShown: "Shown beside the wordmark",
     brandingHidden: "Hidden — wordmark only",
+
+    /** The backdrop behind everything (§20 phase 108). */
+    backgrounds: "Backdrop",
+    backgroundsHint: "One picture behind the whole app. A scene's own background wins over this; it shows everywhere else.",
+    backgroundOpacity: "Opacity",
+    backgroundGenerate: "Generate a backdrop",
+    backgroundPrompt: "What to draw (optional)",
+    backgroundSetDefault: "Set as default",
+    backgroundDelete: "Delete",
+    backgroundNone: "Nothing generated yet. The built-in onsen shows until you draw one.",
+    backgroundWorking: "Drawing…",
 
     /** Connections group (design handoff, screen 3i). */
     providers: "Providers",
