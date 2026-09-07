@@ -8,24 +8,29 @@ import type {
   PromptDebugInfo,
   SamplerSettings,
 } from "@shared/types.ts";
-import { MODERN_SAMPLER_DEFAULTS, SAMPLER_BOUNDS, samplerProblem } from "@shared/types.ts";
+import { MODERN_SAMPLER_DEFAULTS, SAMPLER_BOUNDS, GUIDE_KINDS, samplerProblem } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { navigate, useRoute } from "../lib/router.ts";
 import {
   useAddBan,
   useAnalyseBans,
   useBans,
+  useEditGuide,
   useFlushGuides,
   useLoreActivation,
+  useLorebooks,
   usePresets,
   usePreviewPrompt,
   useRebuildGuides,
   useScene,
+  useTasks,
   useUpdateBan,
   useUpdatePreset,
+  useUpdateScene,
 } from "../lib/queries.ts";
 import { useUiStore } from "../state/ui.ts";
-import { LABELS, Slider } from "./PresetEditor.tsx";
+import { LABELS, Slider, PromptManager } from "./PresetEditor.tsx";
+import { GuidesBody } from "./GuidesPanel.tsx";
 
 /**
  * The left icon rail and its section panel (the redesign, phase 89).
@@ -476,6 +481,10 @@ function PresetPanel({ sceneId }: { sceneId: string | null }) {
         />
       ))}
 
+      {/* The prompt chunks: add, remove, reorder, switch on or off (§20 phase
+          56). The preset owns them, so this is where they are managed. */}
+      <PromptManager preset={preset} />
+
       <button
         type="button"
         className="btn mt-[6px] w-full"
@@ -589,20 +598,29 @@ function BanList({ sceneId }: { sceneId: string }) {
 
 function LorePanel({ sceneId }: { sceneId: string | null }) {
   const lore = useLoreActivation(sceneId ?? "", sceneId !== null);
+  const books = useLorebooks();
 
   if (sceneId === null) return <NoScene />;
   const rows = lore.data ?? [];
+  const noBooks = (books.data ?? []).length === 0;
 
   return (
     <div className="mt-[12px]">
       <p className="meta mb-[8px]">{strings.leftRail.loreTitle}</p>
       {rows.length === 0 ? (
-        <p className="explain">{strings.leftRail.loreEmpty}</p>
+        <p className="explain">
+          {noBooks ? strings.leftRail.loreNoBooks : strings.leftRail.loreNoMatch}
+        </p>
       ) : (
-        rows.map((entry) => (
-          <LoreRow key={entry.entryId} entry={entry} />
-        ))
+        rows.map((entry) => <LoreRow key={entry.entryId} entry={entry} />)
       )}
+      <button
+        type="button"
+        className="btn mt-[12px] w-full"
+        onClick={() => navigate({ name: "lorebooks" })}
+      >
+        {strings.leftRail.loreManage}
+      </button>
     </div>
   );
 }
@@ -638,68 +656,44 @@ function LoreRow({ entry }: { entry: LoreActivationDto }) {
 
 function GuidesPanel({ sceneId }: { sceneId: string | null }) {
   const scene = useScene(sceneId ?? "", undefined, sceneId !== null);
+  const tasks = useTasks();
   const flushGuides = useFlushGuides(sceneId ?? "");
   const rebuildGuides = useRebuildGuides(sceneId ?? "");
+  const editGuide = useEditGuide(sceneId ?? "");
+  const updateScene = useUpdateScene(sceneId ?? "");
 
   if (sceneId === null) return <NoScene />;
   const guides: GuideDto[] = scene.data?.guides ?? [];
+  const order = scene.data?.scene.guideOrder ?? null;
+  const customPrompt = scene.data?.scene.customGuidePrompt ?? null;
+  const working = rebuildGuides.isPending ? (rebuildGuides.variables?.kind ?? "all") : null;
+
+  // Reorder is weighting here: guides injected earlier carry more weight. The
+  // order is the scene's own, and the move writes it straight back.
+  function move(kind: GuideKind, by: number) {
+    const kinds = [...new Set<GuideKind>([...(order ?? GUIDE_KINDS), ...GUIDE_KINDS])];
+    const index = kinds.indexOf(kind);
+    const to = index + by;
+    if (index < 0 || to < 0 || to >= kinds.length) return;
+    const next = [...kinds];
+    const [moved] = next.splice(index, 1);
+    next.splice(to, 0, moved!);
+    updateScene.mutate({ guideOrder: next });
+  }
 
   return (
     <div className="mt-[12px]">
-      <p className="meta mb-[8px]">{strings.chat.guides}</p>
-      {guides.length === 0 ? (
-        <p className="explain">{strings.leftRail.guidesEmpty}</p>
-      ) : (
-        guides.map((guide) => (
-          <div key={guide.id} className="flex items-center gap-[8px] border-b border-rule py-[8px]">
-            <span className="min-w-0 flex-1 truncate text-[13px]">
-              {guide.isPinned ? `${guide.label} · ${strings.chat.guidesPinned}` : guide.label}
-            </span>
-            <span className="chrome flex-none text-[12.5px] text-ink-muted">
-              {strings.chat.inspectorTokens(guide.tokenCount)}
-            </span>
-            <button
-              type="button"
-              aria-label={strings.chat.guidesRebuild}
-              className="chrome flex-none text-[12.5px]"
-              style={{ color: "var(--onsen-color-blue-text)" }}
-              onClick={() => rebuildGuides.mutate({ kind: guide.kind })}
-            >
-              {strings.chat.guidesRebuild}
-            </button>
-            <button
-              type="button"
-              aria-label={strings.chat.guidesFlush}
-              className="chrome flex-none text-[12.5px]"
-              style={{ color: "var(--onsen-color-red)" }}
-              onClick={() => flushGuides.mutate(guide.kind)}
-            >
-              {strings.chat.guidesFlush}
-            </button>
-          </div>
-        ))
-      )}
-
-      {guides.length === 0 ? null : (
-        <div className="mt-[12px] flex gap-[6px]">
-          <button
-            type="button"
-            className="btn flex-1"
-            disabled={rebuildGuides.isPending}
-            onClick={() => rebuildGuides.mutate({})}
-          >
-            {strings.chat.guidesRebuildAll}
-          </button>
-          <button
-            type="button"
-            className="btn flex-1"
-            disabled={flushGuides.isPending}
-            onClick={() => flushGuides.mutate("all")}
-          >
-            {strings.chat.guidesFlushAll}
-          </button>
-        </div>
-      )}
+      <GuidesBody
+        guides={guides}
+        tasks={tasks.data ?? []}
+        customPrompt={customPrompt}
+        working={working}
+        order={order}
+        onMove={move}
+        onRebuild={(kind) => rebuildGuides.mutate(kind === "all" ? {} : { kind })}
+        onEdit={(guideId, content) => editGuide.mutate({ guideId, content })}
+        onFlush={(kind) => flushGuides.mutate(kind)}
+      />
     </div>
   );
 }

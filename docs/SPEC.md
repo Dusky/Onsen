@@ -3551,6 +3551,12 @@ Each phase ends in a working, usable application.
     (add, remove, accept proposals, suggest from the scene); and the Guides
     panel can rebuild or flush each guide, or all of them. See §16 and
     `test/leftrail.test.ts`.
+96. **The Preset, Lore and Guides tabs grow again** — the Preset tab now holds
+    the prompt chunks (add, remove, reorder, switch on or off, edit label and
+    content); the Lore tab points at the lorebooks instead of a bare "nothing
+    fired"; and the Guides tab gains the full guide body — write a missing
+    kind, edit, rebuild, flush — plus a per-scene order whose up/down moves
+    weight one guide above another. See §16, `test/leftrail.test.ts`.
 
 Settled while building phase 15.
 

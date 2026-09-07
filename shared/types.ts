@@ -1228,6 +1228,8 @@ export interface SceneDto {
   autoPasses: boolean;
   /** The question the custom guide asks. Null when it has not been written. */
   customGuidePrompt: string | null;
+  /** A per-scene order for guides; null is the default kind order (§20 phase 96). */
+  guideOrder: GuideKind[] | null;
   /**
    * This scene's own framing, replacing the card's (SPEC §2). A card's scenario
    * is written by whoever made it, for a scene nobody has had yet.
@@ -1337,6 +1339,8 @@ export interface UpdateSceneRequest {
   isFavourite?: boolean;
   /** Display-only translation's target language (§20 phase 78). */
   translateTo?: string | null;
+  /** A per-scene order for guides; null resets to the default (§20 phase 96). */
+  guideOrder?: GuideKind[] | null;
 }
 
 export interface AppendMessageRequest {

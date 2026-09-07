@@ -19,7 +19,23 @@ import type {
 } from "../../../shared/types.ts";
 import { parseBeat, spliceSegment, type ParsedSegment } from "../../generation/segments.ts";
 import { annotationsOf, toAnnotationDto } from "./annotations.ts";
-import { opKind } from "../../tasks/registry.ts";
+import { GUIDE_KINDS, opKind, type GuideKind } from "../../tasks/registry.ts";
+
+/** A scene's stored guide order, as JSON, or null for the default (§20 phase 96). */
+function parseGuideOrder(raw: string | null): GuideKind[] | null {
+  if (raw === null) return null;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return null;
+    const kinds = parsed.filter(
+      (value): value is GuideKind =>
+        typeof value === "string" && (GUIDE_KINDS as readonly string[]).includes(value),
+    );
+    return kinds.length === 0 ? null : kinds;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * The history tree (SPEC §0.3, §2).
@@ -66,6 +82,8 @@ export interface SceneRow {
   auto_passes: number;
   /** The question the custom guide asks (SPEC §8). Null until written. */
   custom_guide_prompt: string | null;
+  /** A per-scene order for guides, as a JSON array of kinds (§20 phase 96). */
+  guide_order: string | null;
   /** This scene's own framing, in place of the card's (SPEC §2). */
   scenario_override: string | null;
   /** Rolling summarisation, all of §11's knobs, per scene. */
@@ -286,6 +304,7 @@ function toSceneDto(
     directorNote: row.director_note,
     autoPasses: row.auto_passes === 1,
     customGuidePrompt: row.custom_guide_prompt,
+    guideOrder: parseGuideOrder(row.guide_order),
     scenarioOverride: row.scenario_override,
     summarise: row.summarise === 1,
     summariseEveryMessages: row.summarise_every_messages,

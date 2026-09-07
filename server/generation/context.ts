@@ -32,7 +32,7 @@ import {
   type PersonaRow,
 } from "../db/queries/authors.ts";
 import type { CharacterRow } from "../db/queries/characters.ts";
-import { activeGuides } from "../db/queries/guides.ts";
+import { activeGuides, parseGuideOrder } from "../db/queries/guides.ts";
 import { injectedSummaries } from "../db/queries/summaries.ts";
 import { activeBans, listGroups, selectedOptions } from "../db/queries/options.ts";
 import { activateForScene } from "../lore/scene.ts";
@@ -603,7 +603,11 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
     })),
     // Written once by a side call and injected every turn until flushed
     // (SPEC §8). Versioned per message, so this follows the active path.
-    guides: activeGuides(options.db, options.scene.id).map((row) => ({
+    guides: activeGuides(
+      options.db,
+      options.scene.id,
+      parseGuideOrder(options.scene.guide_order),
+    ).map((row) => ({
       name: opKind(guideOpKey(row.kind))?.label ?? row.kind,
       content: row.content,
     })),

@@ -6387,3 +6387,23 @@ mockup drew them as:
 **Verified in a browser** at 1440×900: the Prompt panel shows provenance under
 every block and the 99%-free legend, the Preset panel lists the scene's bans
 with the add/suggest affordances, and the Guides panel offers rebuild/flush.
+
+## Phase 96 — Preset, Lore and Guides grow again
+
+- **Preset** holds the prompt chunks: the full `PromptManager` — add, remove,
+  reorder, switch on or off, edit label and content — so the preset that owns
+  them manages them in the rail, not behind a navigation.
+- **Lore** replaces the bare "nothing fired" with a real empty state that
+  distinguishes "no lorebooks yet" from "no match", and a button to the
+  lorebooks.
+- **Guides** swaps in the full `GuidesBody` — write a missing kind, edit,
+  rebuild, flush — and adds a per-scene order: up/down arrows on each guide
+  write `scenes.guide_order`, which the prompt builder honours, so ordering is
+  weighting.
+
+The guide order is a migration (0051): a JSON array of kinds on the scene,
+null for the default order.
+
+**Verified in a browser** at 1440×900: the Preset tab lists every prompt block
+with its controls, the Lore tab offers the lorebooks, and the Guides tab shows
+all six kinds with write, reorder and rebuild.

@@ -33,6 +33,8 @@ export function GuidesBody({
   onEdit,
   onFlush,
   onClose,
+  order,
+  onMove,
 }: {
   guides: GuideDto[];
   tasks: TaskDto[];
@@ -43,14 +45,19 @@ export function GuidesBody({
   onRebuild(kind: GuideKind | "all"): void;
   onEdit(guideId: string, content: string): void;
   onFlush(kind: GuideKind | "all"): void;
-  onClose(): void;
+  /** The sheet's Done; absent in a rail, where there is nothing to dismiss. */
+  onClose?(): void;
+  /** A scene's own order, for the move controls (§20 phase 96). */
+  order?: GuideKind[] | null;
+  onMove?(kind: GuideKind, by: number): void;
 }) {
   const [expanded, setExpanded] = useState<GuideKind | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [confirmNode, confirm] = useConfirm();
 
   const total = guides.reduce((sum, guide) => sum + guide.tokenCount, 0);
-  const rows = GUIDE_KINDS.map((kind) => ({
+  const kinds = [...new Set<GuideKind>([...(order ?? GUIDE_KINDS), ...GUIDE_KINDS])];
+  const rows = kinds.map((kind) => ({
     kind,
     guide: guides.find((row) => row.kind === kind) ?? null,
     label:
@@ -79,10 +86,34 @@ export function GuidesBody({
           return (
             <div
               key={kind}
+              className={onMove === undefined ? undefined : "flex items-stretch"}
               style={{
                 borderBottom: "1px solid var(--onsen-color-blue-border)",
               }}
             >
+              {onMove === undefined ? null : (
+                <span className="flex flex-none flex-col items-center justify-center gap-[3px] pr-[8px]">
+                  <button
+                    type="button"
+                    aria-label={`${strings.settings.blockUp} ${label}`}
+                    className="chrome flex h-[20px] w-[22px] items-center justify-center text-[13px]"
+                    style={{ color: "var(--onsen-color-blue-text-muted)" }}
+                    onClick={() => onMove(kind, -1)}
+                  >
+                    {"\u2191"}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`${strings.settings.blockDown} ${label}`}
+                    className="chrome flex h-[20px] w-[22px] items-center justify-center text-[13px]"
+                    style={{ color: "var(--onsen-color-blue-text-muted)" }}
+                    onClick={() => onMove(kind, 1)}
+                  >
+                    {"\u2193"}
+                  </button>
+                </span>
+              )}
+              <div className="min-w-0 flex-1">
               <button
                 type="button"
                 onClick={() => setExpanded(open ? null : kind)}
@@ -237,6 +268,7 @@ export function GuidesBody({
                   )}
                 </div>
               )}
+              </div>
             </div>
           );
         })}
@@ -251,9 +283,11 @@ export function GuidesBody({
           >
             {working === "all" ? strings.chat.guidesWorking : strings.chat.guidesRebuildAll}
           </button>
-          <button type="button" className="btn flex-1" style={blueSolid} onClick={onClose}>
-            {strings.chat.guidesDone}
-          </button>
+          {onClose === undefined ? null : (
+            <button type="button" className="btn flex-1" style={blueSolid} onClick={onClose}>
+              {strings.chat.guidesDone}
+            </button>
+          )}
         </div>
         {guides.length === 0 ? null : (
           <button

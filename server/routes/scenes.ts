@@ -390,6 +390,20 @@ export function sceneRoutes(
         prompt: prompt === null || prompt.trim() === "" ? null : prompt.trim(),
       });
     }
+    // A per-scene order for guides; null resets to the default (§20 phase 96).
+    if ("guideOrder" in input) {
+      const order = input.guideOrder;
+      if (
+        order !== null &&
+        !(Array.isArray(order) && order.every((kind) => typeof kind === "string"))
+      ) {
+        return c.json(badRequest("The guide order must be a list of kinds, or null."), 400);
+      }
+      ctx.db.query("UPDATE scenes SET guide_order = $order WHERE id = $id").run({
+        id: row.id,
+        order: order === null ? null : JSON.stringify(order),
+      });
+    }
     // This scene's own framing, in place of the card's (SPEC §2). Empty clears
     // it, which puts the card's scenario back.
     if ("scenarioOverride" in input) {

@@ -29,11 +29,31 @@ export interface GuideRow {
   updated_at: number;
 }
 
+/** A scene's stored order, as JSON, or null for the default (§20 phase 96). */
+export function parseGuideOrder(raw: string | null): GuideKind[] | null {
+  if (raw === null) return null;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return null;
+    const kinds = parsed.filter(
+      (value): value is GuideKind =>
+        typeof value === "string" && (GUIDE_KINDS as readonly string[]).includes(value),
+    );
+    return kinds.length === 0 ? null : kinds;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * The guides in force right now: for each kind, the newest version anchored to
  * a message on the active path, or to no message at all.
  */
-export function activeGuides(db: Database, sceneId: number): GuideRow[] {
+export function activeGuides(
+  db: Database,
+  sceneId: number,
+  order: GuideKind[] | null = null,
+): GuideRow[] {
   const onPath = new Set(activePath(db, sceneId).map((row) => row.id));
   const rows = db
     .query("SELECT * FROM guides WHERE scene_id = $scene ORDER BY id DESC")
@@ -48,9 +68,12 @@ export function activeGuides(db: Database, sceneId: number): GuideRow[] {
     found.set(row.kind, row);
   }
   // Stable order, so the panel does not reshuffle itself between refreshes.
-  return GUIDE_KINDS.map((kind) => found.get(kind)).filter(
-    (row): row is GuideRow => row !== undefined,
-  );
+  // A scene's own order wins; kinds it does not name keep their default place
+  // after the ones it did name.
+  const kinds = [...new Set<GuideKind>([...(order ?? GUIDE_KINDS), ...GUIDE_KINDS])];
+  return kinds
+    .map((kind) => found.get(kind))
+    .filter((row): row is GuideRow => row !== undefined);
 }
 
 export function activeGuideOf(db: Database, sceneId: number, kind: GuideKind): GuideRow | null {

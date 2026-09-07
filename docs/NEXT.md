@@ -3,16 +3,14 @@
 A short, honest list, written at the end of phase 65 so work can resume without
 re-deriving it. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 95, on `glm/sillytavern-replacement-dyp30w`. 1412 tests across
+**State:** phase 96, on `glm/sillytavern-replacement-dyp30w`. 1412 tests across
 103 files, typecheck clean, working tree clean. Feature complete against
 `SPEC.md` §20 apart from the deferred phase 42.
 
-**The redesign is done** (`docs/REDESIGN.md`, from the user's mockup): the
-foundation (§20 phase 88), the left icon rail (§20 phase 89), the right panel's
-three tabs (§20 phase 90), the desktop header (§20 phase 91), the composer
-(§20 phase 92), the app mark (§20 phase 93) and Settings → Branding (§20 phase
-94). The left rail's sections grew their tools — provenance, lore trace, raw
-prompt, the ban list, and guide rebuild/flush (§20 phase 95).
+**The redesign is done** (`docs/REDESIGN.md`). The left rail's sections are now
+full tools: the Prompt panel carries provenance, the lore trace and a raw view;
+the Preset tab manages the prompt chunks and the ban list; and the Guides tab
+writes, reorders (weighting by order) and flushes guides (§20 phases 95–96).
 
 ## How to pick up
 

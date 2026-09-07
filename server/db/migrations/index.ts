@@ -48,6 +48,7 @@ import retries from "./0047_retries.sql" with { type: "text" };
 import examples from "./0048_examples.sql" with { type: "text" };
 import quickReplies from "./0049_quick_replies.sql" with { type: "text" };
 import translation from "./0050_translation.sql" with { type: "text" };
+import guideOrder from "./0051_guide_order.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -113,4 +114,5 @@ export const migrations: readonly Migration[] = [
   { version: 48, name: "examples", sql: examples },
   { version: 49, name: "quick_replies", sql: quickReplies },
   { version: 50, name: "translation", sql: translation },
+  { version: 51, name: "guide_order", sql: guideOrder },
 ];
