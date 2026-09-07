@@ -42,4 +42,13 @@ describe("the lore page", () => {
     expect(LORE).toContain("sortPriority");
     expect(LORE).toContain("entry.isConstant");
   });
+
+  test("the entry editor carries the parity knobs", () => {
+    expect(LORE).toContain("useProbability");
+    expect(LORE).toContain("ignoreBudget");
+    expect(LORE).toContain("groupOverride");
+    expect(LORE).toContain("delayUntilRecursion");
+    expect(LORE).toContain("characterFilterTags");
+    expect(LORE).toContain("characterFilterExclude");
+  });
 });

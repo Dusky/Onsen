@@ -3718,6 +3718,11 @@ Each phase ends in a working, usable application.
     exclude. Migration 0059 stores them, the activation engine honours them,
     and the ST import/export and pack formats round-trip them. See §10,
     `test/lore-activation.test.ts`, `test/lore-api.test.ts`.
+127. **Lore entry parity, editor** — the entry editor gains the controls for the
+    five new fields: roll-probability and ignore-budget toggles, a
+    delay-until-recursion number, an always-wins-group toggle inside the
+    inclusion group, and a tag editor plus an exclude switch on the character
+    filter. See §10, §16, `test/lore-screen.test.ts`.
 
 Settled while building phase 15.
 

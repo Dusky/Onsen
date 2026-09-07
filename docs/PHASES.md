@@ -6756,3 +6756,14 @@ to its own `onsen` namespace instead of riding on `delayUntilRecursion`.
 
 **Verified** by five new activation cases and the existing SillyTavern interop
 and pack round-trip tests, all green.
+
+## Phase 127 — Lore entry parity, editor
+
+The entry editor now reaches the five fields phase 126 wired: a
+roll-probability toggle and an ignore-budget toggle beside the probability and
+scan-depth numbers, a delay-until-recursion number beside the message delay, an
+always-wins-group toggle inside the inclusion group, and — on the character
+filter — a tag editor (the shared TagEditor) plus an exclude switch, so the
+filter can match by tag and can flip to "everyone but these".
+
+**Verified** by a new lore-screen case pinning that all six controls render.

@@ -15,6 +15,7 @@ import { strings } from "../strings.ts";
 import { EmptyState } from "../components/EmptyState.tsx";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { Notice } from "../components/Notice.tsx";
+import { TagEditor } from "../components/TagEditor.tsx";
 import { useIsDesktop } from "../lib/breakpoint.ts";
 import {
   useBindLorebook,
@@ -569,6 +570,19 @@ function EntryEditor({
               />
             </div>
 
+            <Toggle
+              label={strings.lore.useProbability}
+              hint={strings.lore.useProbabilityHint}
+              value={draft.useProbability}
+              onChange={(on) => set("useProbability", on)}
+            />
+            <Toggle
+              label={strings.lore.ignoreBudget}
+              hint={strings.lore.ignoreBudgetHint}
+              value={draft.ignoreBudget}
+              onChange={(on) => set("ignoreBudget", on)}
+            />
+
             {/* Timed effects (§10). All three are counted in messages. */}
             <div className="mb-[10px] flex gap-[10px]">
               <NumberInput
@@ -596,6 +610,14 @@ function EntryEditor({
                 min={0}
                 max={500}
                 onChange={(value) => set("delay", value ?? 0)}
+              />
+              <NumberInput
+                label={strings.lore.delayUntilRecursion}
+                unit={strings.lore.delayUntilRecursionUnit}
+                value={draft.delayUntilRecursion}
+                min={0}
+                max={10}
+                onChange={(value) => set("delayUntilRecursion", value ?? 0)}
               />
             </div>
             <Segments
@@ -645,6 +667,11 @@ function EntryEditor({
                   render={labelForSelection}
                   onChange={(selection) => set("groupSelection", selection)}
                 />
+                <Toggle
+                  label={strings.lore.groupOverride}
+                  value={draft.groupOverride}
+                  onChange={(on) => set("groupOverride", on)}
+                />
               </>
             )}
 
@@ -676,6 +703,17 @@ function EntryEditor({
             <p className="explain mb-[14px]">
               {strings.lore.characterFilterHint}
             </p>
+            <Toggle
+              label={strings.lore.filterExclude}
+              value={draft.characterFilterExclude}
+              onChange={(on) => set("characterFilterExclude", on)}
+            />
+            <p className="section-label mb-[6px]">{strings.characters.tagFilter}</p>
+            <TagEditor
+              tags={draft.characterFilterTags}
+              onChange={(tags) => set("characterFilterTags", tags)}
+              placeholder={strings.characters.tagPrompt}
+            />
 
             <Segments
               label={strings.lore.position}
