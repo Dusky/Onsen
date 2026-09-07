@@ -3503,6 +3503,11 @@ Each phase ends in a working, usable application.
     edit without leaving the chat; the rail widens to make room. Profiles,
     persona and the right rail's global reach follow. See §16 and
     `test/sidebar.test.ts`.
+87. **The global right rail** — the right rail moves to the shell, present on
+    every desktop page unless collapsed, and becomes where the entities live:
+    the cast (characters), the author, the lore and the persona, each editable
+    in place, with a *Scene* tab carrying the scene's context, cast and persona
+    while a roleplay is open. See §16 and `test/rightrail.test.ts`.
 
 Settled while building phase 15.
 

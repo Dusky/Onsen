@@ -6228,3 +6228,20 @@ chat — is the slice after that.
 **Verified in a browser** at 1440×900: expanding the preset in the left rail
 lists the prompt blocks with their controls, and the right rail's four tabs
 remain.
+
+## Phase 87 — The global right rail
+
+The right rail stops being the chat's and becomes the shell's. It is on every
+desktop page unless collapsed, and it is where the entities live: **Cast**
+(characters), **Author**, **Lore**, and **You** (the persona), each a list you
+open into an editor in place — the same `EditorField`s and the same mutations
+the screens use. While a roleplay is open a fifth **Scene** tab carries its
+context, cast and persona, fed in by the chat screen through a slot in the
+in-memory UI store.
+
+The division of labour is now the workbench's: the left rail is the
+configuration (the prompt, the profiles, settings), the right rail is the
+people and the world.
+
+**Verified in a browser** at 1440×900: the rail's tabs appear on the scenes
+list with no scene open, and a *Scene* tab joins them inside a roleplay.

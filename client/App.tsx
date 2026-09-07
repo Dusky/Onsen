@@ -18,6 +18,7 @@ import { useRoute } from "./lib/router.ts";
 import { useIsDesktop } from "./lib/breakpoint.ts";
 import { Sidebar } from "./components/Sidebar.tsx";
 import { TopBar } from "./components/TopBar.tsx";
+import { RightRail } from "./components/RightRail.tsx";
 import { setChimeWanted, unlockAudio } from "./lib/chime.ts";
 import { usePreferences, useReading } from "./lib/queries.ts";
 import { useReadingVariables, useViewportHeight } from "./lib/viewport.ts";
@@ -167,6 +168,7 @@ function Shell() {
           <Routed />
         </div>
       </div>
+      <RightRail />
     </div>
   );
 }

@@ -255,6 +255,7 @@ export const strings = {
     inspectorTabCast: "Cast",
     inspectorTabPersona: "You",
     inspectorTabLore: "Lore",
+    inspectorTabScene: "Scene",
     checkpointName: "Call it",
     checkpointNamePlaceholder: "before she opens the ledger",
     checkpointSave: "Mark it",

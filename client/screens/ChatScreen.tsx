@@ -229,7 +229,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   // The cast becomes a rail and the ops flatten (design `4a`). Everything
   // else about this screen is the same components at a different width.
   const isDesktop = useIsDesktop();
-  const { rightRailOpen, toggleRightRail } = useUiStore();
+  const setSceneInspector = useUiStore((state) => state.setSceneInspector);
   // §5's held view. While another device has moved the head somewhere this one
   // is not, the log keeps showing what the reader was reading — the whole point
   // of the prompt is that the scene does not change under them, and a client
@@ -1206,6 +1206,62 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     </>
   );
 
+  const scenePane = editingCastId !== null ? (
+    <CastEditPane characterId={editingCastId} onClose={() => setEditingCastId(null)} />
+  ) : (
+    <Inspector
+      tab={inspectorTab}
+      onTab={setInspectorTab}
+      context={contextBody()}
+      persona={
+        <PersonaEditPane sceneId={sceneId} personaId={scene.data?.scene.personaId ?? null} />
+      }
+      lore={<LorePane />}
+      cast={
+        <>
+          <div className="mb-[14px]" hidden={!layout.readouts}>
+            <Readouts
+              guides={guides}
+              summaryCount={scene.data?.scene.summaryCount ?? 0}
+              mediaOn={scene.data?.scene.vnModeEnabled ?? false}
+              onOpen={(pane) => {
+                setContextTab(pane === "memory" ? "memory" : "guides");
+                setInspectorTab("context");
+              }}
+            />
+          </div>
+          <CastRail
+            embedded
+            cast={cast}
+            nextSpeaker={nextSpeaker}
+            messages={messages}
+            guides={guides}
+            scope={scope}
+            onScope={setScope}
+            onCue={(characterId) => setCued(characterId)}
+            onMember={(member) => setCastActing(member)}
+            writingName={isGenerating ? active.speaker : null}
+            guidesCost={guides.reduce((sum, guide) => sum + guide.tokenCount, 0)}
+            autopilotOn={scene.data?.scene.autopilotEnabled ?? false}
+            onToggleAutopilot={(on) => updateScene.mutate({ autopilotEnabled: on })}
+            onGuides={() => {
+              setContextTab("guides");
+              setInspectorTab("context");
+            }}
+          />
+        </>
+      }
+    />
+  );
+
+  // The scene panes render in the shell's global right rail, not here (§20
+  // phase 87). The node is refreshed every render so it always carries the
+  // live scene state, and cleared when the chat unmounts.
+  useLayoutEffect(() => {
+    setSceneInspector(isDesktop ? scenePane : null);
+    return () => setSceneInspector(null);
+  });
+
   return (
     <div className="flex screen-height flex-col bg-bg">
       <header
@@ -1297,88 +1353,6 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       {isDesktop ? (
         <div className="flex min-h-0 flex-1">
           <div className="flex min-w-0 flex-1 flex-col">{body}</div>
-          {/* §20 phase 43: the third pane, collapsible since phase 85. Context
-              is on screen while you read rather than a sheet you go and fetch;
-              editing a cast member swaps the pane for their card (§20 phase
-              82) so a mid-scene correction never leaves the log. */}
-          {rightRailOpen ? (
-            <div className="flex flex-none">
-              <button
-                type="button"
-                aria-label={strings.settings.railClose}
-                onClick={toggleRightRail}
-                className="chrome flex w-[24px] flex-none items-center justify-center border-l border-rule bg-bg-sunken text-[13px] text-ink-muted"
-              >
-                {"\u203a"}
-              </button>
-              {editingCastId !== null ? (
-                <CastEditPane
-                  characterId={editingCastId}
-                  onClose={() => setEditingCastId(null)}
-                />
-              ) : (
-                <Inspector
-            tab={inspectorTab}
-            onTab={setInspectorTab}
-            context={contextBody()}
-            persona={
-              <PersonaEditPane
-                sceneId={sceneId}
-                personaId={scene.data?.scene.personaId ?? null}
-              />
-            }
-            lore={<LorePane />}
-            cast={
-              <>
-                {/* The same row the phone's deck carries (§20 phase 50): four
-                    systems reading as four things rather than as one list.
-                    Above the cast, because it is scene-wide state and the
-                    cards below it are per-character. */}
-                <div className="mb-[14px]" hidden={!layout.readouts}>
-                  <Readouts
-                    guides={guides}
-                    summaryCount={scene.data?.scene.summaryCount ?? 0}
-                    mediaOn={scene.data?.scene.vnModeEnabled ?? false}
-                    onOpen={(pane) => {
-                      setContextTab(pane === "memory" ? "memory" : "guides");
-                      setInspectorTab("context");
-                    }}
-                  />
-                </div>
-          <CastRail
-            embedded
-            cast={cast}
-            nextSpeaker={nextSpeaker}
-            messages={messages}
-            guides={guides}
-            scope={scope}
-            onScope={setScope}
-            onCue={(characterId) => setCued(characterId)}
-            onMember={(member) => setCastActing(member)}
-            writingName={isGenerating ? active.speaker : null}
-            guidesCost={guides.reduce((sum, guide) => sum + guide.tokenCount, 0)}
-            autopilotOn={scene.data?.scene.autopilotEnabled ?? false}
-            onToggleAutopilot={(on) => updateScene.mutate({ autopilotEnabled: on })}
-            onGuides={() => {
-              setContextTab("guides");
-              setInspectorTab("context");
-            }}
-          />
-              </>
-            }
-          />
-          )}
-            </div>
-          ) : (
-            <button
-              type="button"
-              aria-label={strings.settings.railOpen}
-              onClick={toggleRightRail}
-              className="chrome flex w-[24px] flex-none items-center justify-center border-l border-rule bg-bg-sunken text-[13px] text-ink-muted"
-            >
-              {"\u2039"}
-            </button>
-          )}
         </div>
       ) : (
         body
