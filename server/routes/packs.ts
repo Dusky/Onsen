@@ -1,4 +1,8 @@
 import { Hono } from "hono";
+import { mkdtempSync, rmSync, readdirSync, statSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, relative } from "node:path";
+import { zipSync } from "fflate";
 import type { AppContext, AppEnv } from "../context.ts";
 import { requireAuth } from "../middleware/session.ts";
 import { readPack } from "../packs/archive.ts";
@@ -150,6 +154,46 @@ export function packRoutes(ctx: AppContext): Hono<AppEnv> {
     } catch (caught) {
       if (caught instanceof PackError) return c.json(badRequest(caught.message), 400);
       throw caught;
+    }
+  });
+
+  app.post("/install-url", async (c) => {
+    const body = (await c.req.json().catch(() => null)) as { url?: unknown } | null;
+    const url = typeof body?.url === "string" ? body.url.trim() : "";
+    if (url === "") return c.json(badRequest("A repository URL is required."), 400);
+
+    const dir = mkdtempSync(join(tmpdir(), "onsen-ext-"));
+    try {
+      const cloned = Bun.spawnSync(["git", "clone", "--depth", "1", "--quiet", url, dir]);
+      if (cloned.exitCode !== 0) {
+        return c.json(badRequest("Could not clone that repository. Check the URL."), 400);
+      }
+
+      // An extension is a directory in the pack layout; zip it and read it the
+      // same way an uploaded archive is read.
+      const files: Record<string, Uint8Array> = {};
+      const walk = (path: string) => {
+        for (const entry of readdirSync(path)) {
+          const full = join(path, entry);
+          if (statSync(full).isDirectory()) {
+            if (entry === ".git") continue;
+            walk(full);
+          } else {
+            files[relative(dir, full)] = new Uint8Array(readFileSync(full));
+          }
+        }
+      };
+      walk(dir);
+      const result = await installPack(
+        { db: ctx.db, avatarsDir: ctx.config.avatarsDir },
+        readPack(zipSync(files)),
+      );
+      return c.json(result, 201);
+    } catch (caught) {
+      if (caught instanceof PackError) return c.json(badRequest(caught.message), 400);
+      throw caught;
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 

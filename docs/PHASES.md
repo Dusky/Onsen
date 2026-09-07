@@ -6535,3 +6535,10 @@ anime onsen. The chrome surfaces go translucent (`data-background` flips the
 tokens to `color-mix`), the opacity is the reader's, and a Backgrounds section
 in Settings generates, picks and deletes from the library. The built-in was
 generated with the image API — a high-end anime onsen, no characters.
+
+## Phase 109 — Extensions install from a URL
+
+The extension framework is the pack system; now a repository installs by URL.
+`POST /packs/install-url` clones the repo, reads the pack layout and installs
+it transactionally, and the Packs section gains an *Install from a URL* box —
+the SillyTavern-shaped flow: publish a repository, paste its URL.

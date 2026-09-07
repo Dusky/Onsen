@@ -44,6 +44,7 @@ import {
   useTriggers,
   usePacks,
   usePreviewPack,
+  useInstallPackFromUrl,
   useWebhooks,
   useScenes,
   usePreferences,
@@ -1317,11 +1318,14 @@ function WebhooksSection() {
 function PacksSection() {
   const packs = usePacks();
   const preview = usePreviewPack();
+  const installUrl = useInstallPackFromUrl();
   const fileInput = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<{ file: File; plan: PackPlanDto } | null>(null);
   const [removing, setRemoving] = useState<InstalledPackDto | null>(null);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [url, setUrl] = useState("");
+  const [urlError, setUrlError] = useState<string | null>(null);
 
   const installed = packs.data?.packs ?? [];
 
@@ -1382,6 +1386,35 @@ function PacksSection() {
       >
         {preview.isPending ? strings.settings.packInstalling : strings.settings.packInstall}
       </button>
+
+      {/* An extension is a repository; install it by URL, the way SillyTavern
+          installs extensions (§20 phase 109). */}
+      <form
+        className="mt-[8px] flex gap-[6px]"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (url.trim() === "") return;
+          setUrlError(null);
+          installUrl.mutate(url.trim(), {
+            onSuccess: () => setUrl(""),
+            onError: (caught) => setUrlError(caught.message),
+          });
+        }}
+      >
+        <input
+          className="field min-h-0 flex-1 py-[8px] text-[13px]"
+          placeholder={strings.settings.packUrlPlaceholder}
+          value={url}
+          onChange={(event) => setUrl(event.target.value)}
+        />
+        <button type="submit" className="btn flex-none px-[12px]" disabled={installUrl.isPending || url.trim() === ""}>
+          {installUrl.isPending ? strings.settings.packInstalling : strings.settings.packInstallUrl}
+        </button>
+      </form>
+      {urlError !== null ? (
+        <p className="explain explain-alert mt-[6px]">{urlError}</p>
+      ) : null}
+
       <button type="button" className="btn mt-[8px] w-full" onClick={() => setExporting(true)}>
         {strings.settings.packExport}
       </button>

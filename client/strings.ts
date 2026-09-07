@@ -910,6 +910,8 @@ export const strings = {
     packInstall: "Install a pack",
     packInstalling: "Reading…",
     packExport: "Make a pack",
+    packInstallUrl: "Install from a URL",
+    packUrlPlaceholder: "https://github.com/you/your-extension",
     packNone: "Nothing installed.",
     packVersion: (version: string) => `Version ${version}`,
     packBy: (author: string) => `by ${author}`,

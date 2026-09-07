@@ -1,4 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import { zipSync } from "fflate";
 import { completeSetup, createHarness, type TestHarness } from "./helpers.ts";
 import { V2_CARD, pngCard } from "./card-fixtures.ts";
@@ -65,6 +68,21 @@ async function send(
   form.append("file", new File([bytes as unknown as BlobPart], "pack.onsenpack"));
   const response = await t.fetch(path, { method: "POST", body: form });
   return { status: response.status, body: await response.json() };
+}
+
+/** A committed git repository holding a pack layout, for the URL installer. */
+function makeRepo(files: Record<string, string>): string {
+  const dir = mkdtempSync(join(tmpdir(), "onsen-pack-"));
+  for (const [name, content] of Object.entries(files)) {
+    const path = join(dir, name);
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, content);
+  }
+  const run = (args: string[]) => Bun.spawnSync(["git", ...args], { cwd: dir });
+  run(["init", "-q"]);
+  run(["add", "-A"]);
+  run(["-c", "user.email=x@y", "-c", "user.name=X", "commit", "-qm", "init"]);
+  return dir;
 }
 
 const LOREBOOK = JSON.stringify({
@@ -186,6 +204,31 @@ describe("previewing", () => {
 });
 
 describe("installing", () => {
+  test("installs an extension from its repository URL", async () => {
+    const t = await signedIn();
+    const dir = makeRepo({
+      "pack.json": JSON.stringify({
+        name: "The ridge",
+        version: "1.0.0",
+        author: "me",
+        description: "",
+      }),
+      "lorebooks/ridge.json": LOREBOOK,
+    });
+    try {
+      const response = await t.fetch("/api/packs/install-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: dir }),
+      });
+      expect(response.status).toBe(201);
+      const books = await json<{ name: string }[]>(t, "GET", "/api/lorebooks");
+      expect(books.some((book) => book.name === "The ridge")).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   test("brings everything the archive carries, with every field intact", async () => {
     const t = await signedIn();
     const { status } = await send(

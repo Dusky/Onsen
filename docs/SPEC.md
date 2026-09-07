@@ -3612,6 +3612,11 @@ Each phase ends in a working, usable application.
     default, else a built-in anime onsen. The chrome goes translucent while it
     shows, the opacity is the reader's, and a Backgrounds section in Settings
     generates, picks and deletes. See §12, `test/backgrounds.test.ts`.
+109. **Extensions install from a URL** — the extension framework is the pack
+    system; now a repository can be installed by its URL (`POST
+    /packs/install-url` clones, reads the pack layout and installs it), with an
+    *Install from a URL* box beside the pack controls. See §15,
+    `test/packs.test.ts`.
 
 Settled while building phase 15.
 

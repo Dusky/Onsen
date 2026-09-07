@@ -2110,6 +2110,13 @@ export function useInstallPack() {
   );
 }
 
+/** Install an extension from its repository URL (§20 phase 109). */
+export function useInstallPackFromUrl() {
+  return useEverythingMutation((url: string) =>
+    api.post<PackInstallDto>("/packs/install-url", { url }),
+  );
+}
+
 /** What is here that a pack could carry. One request, seven lists. */
 export function useExportable() {
   return useQuery({
