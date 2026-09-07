@@ -3701,6 +3701,11 @@ Each phase ends in a working, usable application.
     entry all on one pane; on a phone the list and editor swap in place. The
     `/lorebooks/:id` deep link still works and follows its book. See §10, §16,
     `test/lore-screen.test.ts`.
+124. **The lore entry list searches and sorts** — the entry list gains a search
+    box and four sort orders, the default being SillyTavern's priority order
+    (constant entries first, then active, then disabled, insertion order
+    breaking ties), and constant entries carry the amber live marker in the
+    row. See §10, §16, `test/lore-screen.test.ts`.
 
 Settled while building phase 15.
 

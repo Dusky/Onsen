@@ -35,4 +35,11 @@ describe("the lore page", () => {
     expect(APP).not.toContain("LorebooksScreen");
     expect(APP).not.toContain("LorebookEditorScreen");
   });
+
+  test("the entry list searches, sorts, and marks constant entries", () => {
+    expect(LORE).toContain("entrySearch");
+    expect(LORE).toContain("sortEntries");
+    expect(LORE).toContain("sortPriority");
+    expect(LORE).toContain("entry.isConstant");
+  });
 });

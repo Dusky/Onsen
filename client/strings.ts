@@ -1650,6 +1650,12 @@ export const strings = {
     imported: (name: string, entries: number) =>
       `Imported ${name} \u2014 ${entries} ${entries === 1 ? "entry" : "entries"}.`,
     entries: (n: number) => `${n} ${n === 1 ? "ENTRY" : "ENTRIES"}`,
+    entrySearch: "Search entries",
+    sortPriority: "Priority",
+    sortOrder: "Order",
+    sortTitle: "Title",
+    sortRecent: "Recent",
+    noMatches: "Nothing matches that.",
     unbound: "Not attached to anything",
     /* §10: import and export both, and unknown fields survive either way. */
     exportBook: "Save as world info",

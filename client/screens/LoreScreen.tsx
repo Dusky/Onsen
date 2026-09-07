@@ -860,6 +860,17 @@ function EntryRow({
     >
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[14px]">
+          {/* Constant entries carry the live amber, the same state the writing
+              indicator uses — a rule that is always on is a rule that is "now". */}
+          {entry.isConstant ? (
+            <span
+              aria-hidden="true"
+              className="mr-[7px]"
+              style={{ color: "var(--onsen-color-amber)" }}
+            >
+              {"\u25cf"}
+            </span>
+          ) : null}
           {entry.title === "" ? strings.lore.untitled : entry.title}
         </span>
         <span className="meta mt-[4px] block truncate">
@@ -873,6 +884,33 @@ function EntryRow({
       </span>
     </button>
   );
+}
+
+/**
+ * The entry list's order (SPEC §10, §16). Priority puts constant entries
+ * first, then active, then disabled — the order a reader actually scans —
+ * with insertion order breaking ties; the other modes are the obvious ones.
+ */
+function sortEntries(
+  entries: LoreEntryDto[],
+  mode: "priority" | "order" | "title" | "recent",
+): LoreEntryDto[] {
+  const sorted = [...entries];
+  if (mode === "title") {
+    sorted.sort(
+      (a, b) => a.title.localeCompare(b.title) || b.insertionOrder - a.insertionOrder,
+    );
+  } else if (mode === "order") {
+    sorted.sort((a, b) => b.insertionOrder - a.insertionOrder);
+  } else if (mode === "recent") {
+    sorted.sort((a, b) => b.updatedAt - a.updatedAt);
+  } else {
+    const rank = (entry: LoreEntryDto) => (!entry.enabled ? 2 : entry.isConstant ? 0 : 1);
+    sorted.sort(
+      (a, b) => rank(a) - rank(b) || b.insertionOrder - a.insertionOrder,
+    );
+  }
+  return sorted;
 }
 
 /**
@@ -1027,6 +1065,8 @@ function BookEditor({ bookId, onBack }: { bookId: string; onBack?: () => void })
   const updateEntry = useUpdateLoreEntry(bookId);
   const deleteEntry = useDeleteLoreEntry(bookId);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [entrySearch, setEntrySearch] = useState("");
+  const [entrySort, setEntrySort] = useState<"priority" | "order" | "title" | "recent">("priority");
   const [bookConfirmNode, confirmBook] = useConfirm();
 
   const book = query.data?.lorebook;
@@ -1043,6 +1083,23 @@ function BookEditor({ bookId, onBack }: { bookId: string; onBack?: () => void })
   const entries = query.data?.entries ?? [];
   const open = entries.find((entry) => entry.id === openId) ?? null;
   const total = entries.reduce((sum, entry) => sum + entry.tokenCount, 0);
+
+  // The closed entries, narrowed by the search box and ordered by the sort.
+  // The open entry stays open regardless — it is the one being edited, not
+  // a row in the list.
+  const needle = entrySearch.trim().toLowerCase();
+  const listed = entries.filter((entry) => entry.id !== openId);
+  const visible = sortEntries(
+    needle === ""
+      ? listed
+      : listed.filter(
+          (entry) =>
+            entry.title.toLowerCase().includes(needle) ||
+            entry.keys.some((key) => key.toLowerCase().includes(needle)) ||
+            entry.content.toLowerCase().includes(needle),
+        ),
+    entrySort,
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-bg">
@@ -1145,18 +1202,47 @@ function BookEditor({ bookId, onBack }: { bookId: string; onBack?: () => void })
                 },
               ]}
             />
-          ) : null}
+          ) : (
+            <>
+              {/* Search and sort the entry list the way SillyTavern does: a
+                  search box, and priority as the default order (§20 phase 124). */}
+              <div className="mb-[12px] flex gap-[6px]">
+                <input
+                  className="field min-h-0 min-w-0 flex-1 py-[8px] text-[13px]"
+                  placeholder={strings.lore.entrySearch}
+                  aria-label={strings.lore.entrySearch}
+                  value={entrySearch}
+                  onChange={(event) => setEntrySearch(event.target.value)}
+                />
+                <select
+                  className="field min-h-0 flex-none py-[8px]"
+                  aria-label={strings.lore.entrySearch}
+                  value={entrySort}
+                  onChange={(event) =>
+                    setEntrySort(event.target.value as "priority" | "order" | "title" | "recent")
+                  }
+                >
+                  <option value="priority">{strings.lore.sortPriority}</option>
+                  <option value="order">{strings.lore.sortOrder}</option>
+                  <option value="title">{strings.lore.sortTitle}</option>
+                  <option value="recent">{strings.lore.sortRecent}</option>
+                </select>
+              </div>
 
-          {entries
-            .filter((entry) => entry.id !== openId)
-            .map((entry) => (
-              <EntryRow
-                key={entry.id}
-                entry={entry}
-                book={book}
-                onOpen={() => setOpenId(entry.id)}
-              />
-            ))}
+              {visible.length === 0 ? (
+                <p className="explain">{strings.lore.noMatches}</p>
+              ) : (
+                visible.map((entry) => (
+                  <EntryRow
+                    key={entry.id}
+                    entry={entry}
+                    book={book}
+                    onOpen={() => setOpenId(entry.id)}
+                  />
+                ))
+              )}
+            </>
+          )}
 
           <button
             type="button"

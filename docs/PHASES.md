@@ -6714,3 +6714,15 @@ that link follows the new book rather than showing the first.
 **Verified** by a new `test/lore-screen.test.ts` pinning that the list and the
 editor are one component, both routes render it, and the old two screens are
 gone. Full suite green.
+
+## Phase 124 — The lore entry list searches and sorts
+
+The entry list inside a book gained a search box and four sort orders, the
+default being SillyTavern's priority order — constant entries first, then
+active, then disabled, insertion order breaking ties — with "order", "title"
+and "recent" as the others. Constant entries now carry the amber live marker in
+their row, the same state the writing indicator uses, because a rule that is
+always on is "now". Searches match the title, the keys and the content.
+
+**Verified** by `test/lore-screen.test.ts`, which pins the search state, the
+sorter and the constant marker.
