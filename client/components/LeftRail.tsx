@@ -32,7 +32,7 @@ import {
   useUpdateScene,
 } from "../lib/queries.ts";
 import { useUiStore } from "../state/ui.ts";
-import { LABELS, Slider, PromptManager, download } from "./PresetEditor.tsx";
+import { LABELS, Slider, PromptManager, download, PresetFields } from "./PresetEditor.tsx";
 import { GuidesBody } from "./GuidesPanel.tsx";
 import { LorePane } from "./LorePane.tsx";
 import { useConfirm } from "./ConfirmSheet.tsx";
@@ -461,6 +461,7 @@ function PresetPanel({ sceneId }: { sceneId: string | null }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [confirmNode, confirm] = useConfirm();
   const [presetId, setPresetId] = useState<string | null>(null);
+  const [fullEditor, setFullEditor] = useState(false);
   const rows = presets.data ?? [];
   const preset =
     rows.find((row) => row.id === presetId) ??
@@ -607,10 +608,19 @@ function PresetPanel({ sceneId }: { sceneId: string | null }) {
       <button
         type="button"
         className="btn mt-[6px] w-full"
-        onClick={() => navigate({ name: "settings" })}
+        aria-expanded={fullEditor}
+        onClick={() => setFullEditor(!fullEditor)}
       >
-        {strings.leftRail.fullEditor}
+        {fullEditor ? strings.chat.back : strings.leftRail.fullEditor}
       </button>
+
+      {/* The whole preset editor, in the rail rather than a Settings trip
+          (§20 phase 106). */}
+      {fullEditor ? (
+        <div className="mt-[14px] border-t border-rule pt-[14px]">
+          <PresetFields preset={preset} onClose={() => setFullEditor(false)} />
+        </div>
+      ) : null}
 
       {/* The ban list is per scene, so it sits here only while a roleplay is
           open (§13.6). */}

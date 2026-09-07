@@ -1619,17 +1619,21 @@ export function SettingsScreen() {
   const signOut = useSignOut();
   const [category, setCategory] = useState<CategoryId>("models");
   const [filter, setFilter] = useState("");
+  const isDesktop = useIsDesktop();
 
   /**
    * Which categories the filter leaves standing. An empty filter leaves all of
-   * them, so typing is additive rather than a mode to get into and out of.
+   * them, so typing is additive rather than a mode to get into and out of. The
+   * preset editor moved to the left rail's Preset tab, so on a desktop this
+   * category is not here at all — the rail is the one surface (§20 phase 106).
    */
   const needle = filter.trim().toLowerCase();
   const matching = CATEGORIES.filter(
     (entry) =>
-      needle === "" ||
-      (strings.settings.categories[entry.id] ?? entry.id).toLowerCase().includes(needle) ||
-      entry.words.some((word) => word.includes(needle)),
+      !(isDesktop && entry.id === "generation") &&
+      (needle === "" ||
+        (strings.settings.categories[entry.id] ?? entry.id).toLowerCase().includes(needle) ||
+        entry.words.some((word) => word.includes(needle))),
   );
   // A filter that hides the open category would show an empty pane, so the
   // first survivor takes over.
@@ -1658,7 +1662,6 @@ export function SettingsScreen() {
   const [editingPreset, setEditingPreset] = useState<PresetDto | null>(null);
   /** The op expanded inline in the routing list, desktop only (§20 phase 71). */
   const [openOp, setOpenOp] = useState<string | null>(null);
-  const isDesktop = useIsDesktop();
 
   const profileList = profiles.data ?? [];
   const providerList = providers.data ?? [];

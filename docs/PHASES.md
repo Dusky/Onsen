@@ -6511,3 +6511,10 @@ preset" carries the whole answer. The scene still wins when it names a profile.
 
 **Verified in a browser** at 1440×900: the Preset tab shows the manager buttons
 and the model dropdown, and the round-trip test pins the model persisting.
+
+## Phase 106 — The full preset editor leaves Settings
+
+The Preset tab's *Full editor* now expands the whole `PresetFields` in the rail
+rather than navigating away, and on a desktop the Settings screen drops its
+Generation category — the rail is the one surface for presets. The phone keeps
+the sheet, because it has no rail.

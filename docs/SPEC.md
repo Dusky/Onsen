@@ -3598,6 +3598,10 @@ Each phase ends in a working, usable application.
     all live in the rail, and a preset can name the model it answers with
     (`presets.connection_profile_id`), so picking a preset is one choice. See
     §13, `test/leftrail.test.ts`.
+106. **The full preset editor leaves Settings** — the Preset tab's *Full editor*
+    expands the whole `PresetFields` in the rail, and on a desktop the Settings
+    screen drops its Generation category — the rail is now the one surface for
+    presets. The phone keeps the sheet. See §13, `test/leftrail.test.ts`.
 
 Settled while building phase 15.
 
