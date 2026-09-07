@@ -1203,7 +1203,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     <div className="flex screen-height flex-col bg-bg">
       <header
         className="hairline flex flex-none items-baseline gap-[12px] px-[22px] pb-[12px]"
-        style={{ paddingTop: "calc(18px + env(safe-area-inset-top))" }}
+        style={{ paddingTop: "18px" }}
       >
         {/* Back is how a phone leaves a screen. On desktop the sidebar is
             always there, so the affordance would point at nothing. */}

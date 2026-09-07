@@ -27,7 +27,6 @@ import {
   useSavedFilters,
   useAuthorCreate,
 } from "../lib/queries.ts";
-import { TabBar } from "../components/TabBar.tsx";
 import { Notice } from "../components/Notice.tsx";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
 
@@ -242,7 +241,7 @@ export function CharactersScreen() {
     <div className="flex screen-height flex-col bg-bg">
       <header
         className="screen-header screen-header-wide hairline flex-none px-[22px] pb-[14px]"
-        style={{ paddingTop: "calc(22px + env(safe-area-inset-top))" }}
+        style={{ paddingTop: "22px" }}
       >
         <p className="screen-kicker">{strings.characters.kicker}</p>
         <div className="mt-[6px] flex items-center gap-[8px]">
@@ -701,7 +700,6 @@ export function CharactersScreen() {
       ) : null}
 
       {confirmNode}
-      <TabBar active="characters" />
     </div>
   );
 }

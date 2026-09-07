@@ -68,7 +68,7 @@ describe("the comfyui adapter", () => {
     expect(sampler.seed).not.toBe(0);
 
     // The key went to the API, and the download was fetched without it.
-    expect(viewKey).toBe("k");
+    expect(viewKey ?? "missing").toBe("k");
     expect(result.mime).toBe("image/png");
     expect(result.bytes.byteLength).toBeGreaterThan(0);
   });

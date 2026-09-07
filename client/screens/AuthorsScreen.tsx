@@ -6,7 +6,6 @@ import { EmptyState } from "../components/EmptyState.tsx";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { navigate } from "../lib/router.ts";
 import { useAuthor, useAuthors, useCreateAuthor, useDeleteAuthor, useUpdateAuthor } from "../lib/queries.ts";
-import { TabBar } from "../components/TabBar.tsx";
 import { AuthorNotes } from "../components/AuthorMemory.tsx";
 
 /**
@@ -92,7 +91,7 @@ export function AuthorsScreen() {
     <div className="flex screen-height flex-col bg-bg">
       <header
         className="screen-header screen-header-wide hairline flex-none px-[22px] pb-[14px]"
-        style={{ paddingTop: "calc(22px + env(safe-area-inset-top))" }}
+        style={{ paddingTop: "22px" }}
       >
         <p className="screen-kicker">{strings.authors.kicker}</p>
         <h1 className="screen-title mt-[6px]">{strings.authors.listTitle}</h1>
@@ -160,8 +159,6 @@ export function AuthorsScreen() {
         </button>
       </footer>
       )}
-
-      <TabBar active="authors" />
     </div>
   );
 }
@@ -194,7 +191,7 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
     <div className="flex screen-height flex-col bg-bg">
       <header
         className="hairline flex flex-none items-baseline gap-[12px] px-[22px] pb-[12px]"
-        style={{ paddingTop: "calc(18px + env(safe-area-inset-top))" }}
+        style={{ paddingTop: "18px" }}
       >
         <button
           type="button"

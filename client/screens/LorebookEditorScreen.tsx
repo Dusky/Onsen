@@ -913,7 +913,7 @@ export function LorebookEditorScreen({ bookId }: { bookId: string }) {
     <div className="flex screen-height flex-col bg-bg">
       <header
         className="screen-header hairline flex-none px-[22px] pb-[12px]"
-        style={{ paddingTop: "calc(18px + env(safe-area-inset-top))" }}
+        style={{ paddingTop: "18px" }}
       >
         <div className="flex w-full items-baseline gap-[12px]">
           <button

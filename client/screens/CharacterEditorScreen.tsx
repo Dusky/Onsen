@@ -206,7 +206,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
     <div className="flex screen-height flex-col bg-bg">
       <header
         className="flex-none px-[22px] pb-[10px]"
-        style={{ paddingTop: "calc(18px + env(safe-area-inset-top))" }}
+        style={{ paddingTop: "18px" }}
       >
         <div className="flex items-baseline gap-[12px]">
           <button

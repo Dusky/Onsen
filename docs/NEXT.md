@@ -3,16 +3,18 @@
 A short, honest list, written at the end of phase 65 so work can resume without
 re-deriving it. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 79, on `glm/sillytavern-replacement-dyp30w`. 1384 tests across
-99 files, typecheck clean, working tree clean. Feature complete against
+**State:** phase 80, on `glm/sillytavern-replacement-dyp30w`. 1387 tests across
+100 files, typecheck clean, working tree clean. Feature complete against
 `SPEC.md` §20 apart from the deferred phase 42.
 
-**Recent** — the desktop settings expand in place, the preset editor is a
-pane, the setup wizard renders, a theme's `base` flag is wired, the dead-export
-sweep fixed an orphaned write half of timed effects, auto background and
-display-only translation ship, and a `comfyui` adapter plus *Generate portrait*
-round out the picture story (§20 phases 71–79). Next: the top bar, then the
-conditional set (smooth streaming, web search, self-responses).
+**Recent** — desktop settings expand in place, the preset editor is a pane, the
+setup wizard renders, a theme's `base` flag is wired, the dead-export sweep
+fixed an orphaned write half of timed effects, auto background and display-only
+translation ship, a `comfyui` adapter plus *Generate portrait* round out the
+picture story, and a global top bar now carries the wordmark, destinations and
+writing indicator (§20 phases 71–80). Next: the conditional set — smooth
+streaming only if it judders, web search after a provider decision,
+self-responses after a conversation.
 
 ## How to pick up
 

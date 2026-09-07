@@ -17,7 +17,7 @@ export function Screen({ kicker, title, children, footer }: ScreenProps) {
     <div className="flex screen-height flex-col bg-bg">
       <header
         className="hairline shrink-0 px-[22px] pb-[14px]"
-        style={{ paddingTop: "calc(22px + env(safe-area-inset-top))" }}
+        style={{ paddingTop: "22px" }}
       >
         <p className="screen-kicker">{kicker}</p>
         <h1 className="screen-title mt-[6px]">{title}</h1>

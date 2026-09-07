@@ -52,7 +52,6 @@ import {
   useApiKeys,
   useSignOut,
 } from "../lib/queries.ts";
-import { TabBar } from "../components/TabBar.tsx";
 import { useIsDesktop } from "../lib/breakpoint.ts";
 import { Sheet } from "../components/Sheet.tsx";
 import { PresetEditor, PresetFields } from "../components/PresetEditor.tsx";
@@ -1667,7 +1666,7 @@ export function SettingsScreen() {
     <div className="flex screen-height flex-col bg-bg">
       <header
         className="screen-header screen-header-wide hairline flex-none px-[22px] pb-[14px]"
-        style={{ paddingTop: "calc(22px + env(safe-area-inset-top))" }}
+        style={{ paddingTop: "22px" }}
       >
         <p className="screen-kicker">{strings.nav.appName}</p>
         <h1 className="screen-title mt-[6px]">{strings.settings.kicker}</h1>
@@ -2082,8 +2081,6 @@ export function SettingsScreen() {
           onClose={() => setEditingOp(null)}
         />
       ) : null}
-
-      <TabBar active="settings" />
     </div>
   );
 }

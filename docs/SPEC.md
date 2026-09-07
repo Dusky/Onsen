@@ -2599,11 +2599,12 @@ toggle.
   (§20 phase 78), and a turn's *Translate* command renders it in that language
   while the stored text and the prompt keep the author's own. The translation
   lives in a row beside the message, read only when the log's DTO is built.
-- **Desktop sidebar** — the tab bar unrolled (§20 phase 67): a Spectral
-  wordmark, the five destinations with counts and an unmistakable active state,
-  and a `RECENT` list of real rows — title, the newest line of prose, the
-  cast's initials, the message count — with a red dot and a red `writing` in
-  place of the count while that scene is generating.
+- **Top bar** — the wordmark, the five destinations and the cross-screen
+  writing indicator live in one global bar, on every screen and every width
+  (§20 phase 80): SillyTavern's shape. On a desktop the rail below it shrank to
+  a `RECENT` list of real rows — title, the newest line of prose, the cast's
+  initials, the message count — with a red `writing` while that scene is
+  generating.
 
 ### Empty states
 
@@ -3464,6 +3465,11 @@ Each phase ends in a working, usable application.
     *Generate portrait* draws from the card's description through the configured
     picture service, filed where an imported card's portrait goes. See §12 and
     `test/comfyui.test.ts`, `test/portrait.test.ts`.
+80. **The top bar** — the wordmark, the five destinations and the cross-screen
+    writing indicator move into one global bar on every screen and every width,
+    the shape SillyTavern puts its most-reached-for things in. The desktop rail
+    shrinks to the recent list, and the mobile tab bar is gone. See §16 and
+    `test/topbar.test.ts`.
 
 Settled while building phase 15.
 

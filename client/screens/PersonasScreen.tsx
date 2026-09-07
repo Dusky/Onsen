@@ -4,7 +4,6 @@ import { strings } from "../strings.ts";
 import { AvatarField } from "../components/AvatarField.tsx";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { EmptyState } from "../components/EmptyState.tsx";
-import { TabBar } from "../components/TabBar.tsx";
 import {
   useCreatePersona,
   useDeletePersona,
@@ -176,7 +175,7 @@ export function PersonasScreen() {
     <div className="flex screen-height flex-col bg-bg">
       <header
         className="screen-header screen-header-wide hairline flex-none px-[22px] pb-[14px]"
-        style={{ paddingTop: "calc(22px + env(safe-area-inset-top))" }}
+        style={{ paddingTop: "22px" }}
       >
         <p className="screen-kicker">{strings.sceneSetup.personaKicker}</p>
         <div className="mt-[6px] flex items-baseline justify-between gap-[12px]">
@@ -230,8 +229,6 @@ export function PersonasScreen() {
           )}
         </div>
       </main>
-
-      <TabBar active="scenes" />
     </div>
   );
 }

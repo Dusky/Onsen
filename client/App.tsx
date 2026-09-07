@@ -17,7 +17,7 @@ import { strings } from "./strings.ts";
 import { useRoute } from "./lib/router.ts";
 import { useIsDesktop } from "./lib/breakpoint.ts";
 import { Sidebar } from "./components/Sidebar.tsx";
-import { WritingElsewhere } from "./components/WritingElsewhere.tsx";
+import { TopBar } from "./components/TopBar.tsx";
 import { setChimeWanted, unlockAudio } from "./lib/chime.ts";
 import { usePreferences, useReading } from "./lib/queries.ts";
 import { useReadingVariables, useViewportHeight } from "./lib/viewport.ts";
@@ -146,11 +146,12 @@ function Shell() {
 
   // The cross-screen generation indicator sits above whatever screen is
   // showing, on both layouts: a reader who wandered off gets one way back
-  // wherever they wandered to (SPEC §5, design §403).
+  // wherever they wandered to (SPEC §5, design §403). It lives in the top bar
+  // now, beside the destinations (§20 phase 80).
   if (!isDesktop) {
     return (
       <div className="flex screen-height flex-col bg-bg">
-        <WritingElsewhere />
+        <TopBar />
         <div className="flex min-h-0 flex-1 flex-col">
           <Routed />
         </div>
@@ -161,7 +162,7 @@ function Shell() {
     <div className="flex screen-height bg-bg">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
-        <WritingElsewhere />
+        <TopBar />
         <div className="flex min-h-0 flex-1 flex-col">
           <Routed />
         </div>

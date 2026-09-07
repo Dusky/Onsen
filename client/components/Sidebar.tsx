@@ -2,24 +2,19 @@ import { useEffect, useState } from "react";
 import type { ConnectionProfileDto } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { api } from "../lib/api.ts";
-import { navigate, useRoute, type Route } from "../lib/router.ts";
-import { useCreateScene, useLorebooks, useScenes } from "../lib/queries.ts";
+import { navigate, useRoute } from "../lib/router.ts";
+import { useCreateScene, useScenes } from "../lib/queries.ts";
 import { useGeneration } from "../lib/generation.ts";
 
 /**
- * The desktop sidebar (design `4a`, §20 phase 67).
+ * The desktop rail (design `4a`, §20 phases 67 and 80).
  *
- * "The mobile tab bar turned vertical" — the same five destinations, the same
- * red for the active one, unrolled into a column with room for the counts a
- * bottom bar has no space for. The active row takes `bg-inset` and a 2px red
- * left border, which is the tab bar's red text given somewhere to live.
- *
- * Below the nav, `RECENT`: the roleplay list the phone puts on its own screen.
- * That is the whole justification for the sidebar existing — on a phone,
- * switching scenes is a screen change, and on a desktop it should not be. So a
- * recent row is a real row, not a bare title: the newest line of prose, the
- * cast's initials, the message count, and — while the scene is generating — a
- * red dot and a red `writing` in place of the count.
+ * The destinations moved to the global top bar in phase 80; what stays here is
+ * the thing that justified a desktop rail in the first place — the recent
+ * roleplay list, so switching scenes is not a screen change on a desktop the
+ * way it is on a phone. A recent row is a real row: the newest line of prose,
+ * the cast's initials, the message count, and a red `writing` while the scene
+ * is generating.
  */
 
 /** Initials of up to three cast members, with a surplus count past that. */
@@ -36,7 +31,6 @@ export function Sidebar() {
   const route = useRoute();
   const scenes = useScenes();
   const create = useCreateScene();
-  const books = useLorebooks();
   const generation = useGeneration();
   const [profileId, setProfileId] = useState<string | null>(null);
 
@@ -51,37 +45,6 @@ export function Sidebar() {
       .catch(() => setProfileId(null));
   }, []);
 
-  const items: { key: string; label: string; route: Route; count?: number }[] = [
-    {
-      key: "scenes",
-      label: strings.nav.roleplays,
-      route: { name: "scenes" },
-      count: scenes.data?.length ?? 0,
-    },
-    { key: "characters", label: strings.nav.characters, route: { name: "characters" } },
-    { key: "authors", label: strings.nav.authors, route: { name: "authors" } },
-    {
-      key: "lorebooks",
-      label: strings.nav.lore,
-      route: { name: "lorebooks" },
-      count: books.data?.length ?? 0,
-    },
-    { key: "settings", label: strings.nav.settings, route: { name: "settings" } },
-  ];
-
-  // The roleplay screen and a chat inside one are both "roleplays" as far as
-  // the nav is concerned; anything else names itself.
-  const activeKey =
-    route.name === "chat" || route.name === "setup" || route.name === "unknown"
-      ? "scenes"
-      : route.name === "character"
-        ? "characters"
-        : route.name === "author"
-          ? "authors"
-          : route.name === "lorebook"
-            ? "lorebooks"
-            : route.name;
-
   const openSceneId = route.name === "chat" ? route.sceneId : null;
   // The scene generating right now, wherever it is (§5): the recent row wears
   // a red dot and a red `writing` so the sidebar is a live map, not a list.
@@ -89,61 +52,7 @@ export function Sidebar() {
 
   return (
     <nav className="flex w-[232px] flex-none flex-col border-r border-rule bg-bg-sunken">
-      {/* The wordmark. The one serif moment in the chrome, the same allowance
-          phase 47 made for a group heading: the app's own name, set as prose. */}
-      <div className="hairline px-[18px] pt-[20px] pb-[13px]">
-        <p
-          className="text-[19px] font-medium leading-none tracking-[-0.01em]"
-          style={{
-            fontFamily: "var(--onsen-font-prose)",
-            color: "var(--onsen-color-text-bright)",
-          }}
-        >
-          {strings.nav.appName}
-        </p>
-      </div>
-
-      {/* The five destinations. Full-bleed so the active row's red bar runs to
-          the edge; the bar plus the inset plus the red label are three signals,
-          not one, which is what makes the state read at a glance. */}
-      <div className="flex flex-col py-[8px]">
-        {items.map((item) => {
-          const isActive = item.key === activeKey;
-          return (
-            <button
-              key={item.key}
-              type="button"
-              onClick={() => navigate(item.route)}
-              aria-current={isActive ? "page" : undefined}
-              className="flex items-baseline gap-[10px] py-[11px] pr-[16px] pl-[16px] text-left text-[13px]"
-              style={{
-                color: isActive
-                  ? "var(--onsen-color-red)"
-                  : "var(--onsen-color-text-muted)",
-                background: isActive ? "var(--onsen-color-bg-inset)" : "transparent",
-                borderLeft: `2px solid ${isActive ? "var(--onsen-color-red)" : "transparent"}`,
-                fontWeight: isActive ? 600 : 400,
-              }}
-            >
-              <span className="min-w-0 flex-1 truncate">{item.label}</span>
-              {item.count === undefined ? null : (
-                <span
-                  className="flex-none text-[12px]"
-                  style={{
-                    color: isActive
-                      ? "var(--onsen-color-red)"
-                      : "var(--onsen-color-text-dim)",
-                  }}
-                >
-                  {item.count}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      <p className="section-label mt-[18px] mb-[2px] px-[18px]">{strings.nav.recent}</p>
+      <p className="section-label px-[18px] pt-[16px] pb-[2px]">{strings.nav.recent}</p>
       <div className="min-h-0 flex-1 overflow-y-auto pb-[10px]">
         {(scenes.data ?? []).map((scene) => {
           const isOpen = scene.id === openSceneId;

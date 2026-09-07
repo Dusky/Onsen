@@ -219,7 +219,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
     <div className="flex screen-height flex-col bg-bg">
       <header
         className="screen-header hairline flex-none px-[22px] pb-[12px]"
-        style={{ paddingTop: "calc(18px + env(safe-area-inset-top))" }}
+        style={{ paddingTop: "18px" }}
       >
         {/* Wrapped so the whole row is capped to the column below it, rather
             than each of its parts being capped on its own. */}

@@ -6084,3 +6084,40 @@ decrypted at call time, never serialised back to the client.
 
 **Verified in a browser** at 390×844 against a stub A1111 service: *Generate
 portrait* flips `hasAvatar` true and the file serves as `image/png`.
+
+## Phase 80 — The top bar
+
+The one thing SillyTavern puts at the top and this app scattered: the wordmark,
+the destinations, and the thing a reader reaches for from anywhere — which
+scene is writing right now.
+
+### One bar, every screen, every width
+
+A global `TopBar` carries the wordmark (the one serif moment), the five
+destinations with a red active state, and a red writing indicator that jumps to
+the scene generating now. It sits above every screen; the screens shed their
+own safe-area padding to it. On a desktop the rail shrinks to the `RECENT` list
+it always existed for, and the mobile tab bar is deleted — the same five things
+now live in exactly one place instead of two.
+
+The cross-screen `WritingElsewhere` strip is replaced by the bar's indicator;
+same global store, one surface instead of two.
+
+### What was built
+
+- `TopBar.tsx`: wordmark, nav, writing indicator; safe-area top.
+- `Sidebar.tsx` shrank to the recent list; `TabBar.tsx` and
+  `WritingElsewhere.tsx` deleted.
+- `test/topbar.test.ts` pins that the nav moved and the rail shrank.
+
+### Surprises
+
+**A full page load loses the writing indicator — client navigation does not.**
+The generation store is in-memory by design (no browser storage), so a hard
+reload resets it. The browser check had to click the bar's `Settings` rather
+than `page.goto`, which is also what a real reader does — the app navigates in
+place.
+
+**Verified in a browser** at 1440×900 and 390×844: the wordmark and five
+destinations sit in the bar on both widths, the rail is recent-only, and the
+writing indicator appears on another screen mid-stream.
