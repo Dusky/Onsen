@@ -1,84 +1,84 @@
-# Onsen
+<p align="center">
+  <img src="docs/onsen-banner.png" alt="Onsen — an anime onsen at twilight" width="880" />
+</p>
 
-A self-hosted, mobile-first AI roleplay frontend. Group scenes are the primary
-case: one AI **author** with its own personality plays the whole cast, like a GM
-running a table, while you direct.
+<h1 align="center">Onsen</h1>
 
-> **Status: phase 112 — feature complete, less the deferred phase 42.**
-> Set it up, **point it at your SillyTavern folder and move in** — cards, chats,
-> group chats, personas, world info, instruct templates and regex scripts all
-> come across, with your swipes intact as branches — give the AI an author
-> persona of its own, and run a group scene: one writing partner voicing a
-> whole cast, **beats** — a whole exchange between several
-> characters written in one go, which you can then correct one character at a
-> time or split into separate turns — and a **turn director that can be a model**
-> and prints its reasoning before it writes a word. Direct it as you go: nudge a
-> single turn, steer the whole scene, reroll with guidance, expand or rewrite a
-> reply, or have it draft your own turn into the composer. Plus streaming, swipe
-> to reroll, a version carousel, edit and branch, and a stream that survives a
-> phone suspending its tab. It keeps **persistent guides** too — short notes on
-> what everyone is thinking, wearing and doing, written behind the scene and
-> carried on every prompt after that, versioned per message so rewinding rewinds
-> them, and it **summarises what it can no longer afford to carry** — old turns
-> condensed into a paragraph the prompt takes instead, so a scene can outlive
-> its context window. Models that think out loud are handled: the reasoning is
-> pulled out of the prose, shown collapsed, and never fed back into the next
-> prompt unless you ask. And how it writes is a set of small switches rather than
-> one long instruction — point of view, prose structure, length, planning — with
-> a **ban list** of the phrasings models fall into, which it will offer to fill
-> in for you by counting what your scene keeps repeating. **Lorebooks** are here
-> in full — keyword activation with secondary logic, sticky, cooldown and delay
-> counted along the branch you are actually on, inclusion groups, per-character
-> knowledge out of one shared book, and recursion — with a test that shows what
-> would fire against your scene right now *and why each miss missed*. It reads
-> SillyTavern world info and hands back every field it was given, including ones
-> it has never heard of. It talks to **OpenAI-compatible endpoints, Anthropic,
-> and raw text-completion servers** — llama.cpp, KoboldCpp, TabbyAPI — with the
-> named instruct templates those need (ChatML, Llama 3, Mistral, Alpaca, Vicuna,
-> Metharme) and an editor for writing your own, previewed as you type, because a
-> wrong template does not error, it just quietly makes the prose worse. The
-> author can also **step out of the scene** — a question, a check, a flag —
-> which arrives as a note in the margin rather than a line in your story, and
-> you can ask it something back; that exchange opens into a channel of its own
-> and never touches the prose. When it will not stop doing something, you can
-> **fix it yourself**: find-and-replace with a test panel, applied to what you
-> write, what the model writes, what you see, or what the model reads — four
-> stages that differ in what survives — plus **named actions bound to moments**,
-> so a lore entry firing can refresh a guide or run a rewrite. All of that
-> travels: a **pack** is one file holding characters, lore, presets, writing
-> partners, prompt options, scripts and triggers, which shows you what it will
-> add before it adds it, installs whole or not at all, and remembers exactly
-> what it brought so removing it takes that and nothing of yours. And it will
-> **tell something else what happened** — a message written, a reply finished, a
-> beat split by speaker, a tracker changed, lore firing — posted to a URL you
-> run with a signature your receiver can check, which with the REST API is
-> enough for a Discord bridge or a stream overlay with no code running inside
-> the app. Open the same roleplay on a **phone and a desktop** and they keep
-> step: a turn written on one appears on the other, and if one moves the story
-> somewhere the other is not, the other holds what you were reading and says so
-> rather than changing under you. And a roleplay can **answer as a model**:
-> point any OpenAI-compatible client at this app, and `scene/the-pass` runs the
-> whole pipeline behind it — author, cast, lore, guides — with the director's
-> ops available as `((nudge: ...))` inline. Turns land in the tree like any
-> other, so the terminal and the phone are the same story. Optionally it also
-> **keeps track of who and what** — people, places, things and facts pulled out
-> of the story as it goes, scored by how much they matter, brought back when the
-> moment needs them and fading when it does not; edit one and the extractor
-> never touches it again. It can **draw a scene, read a line aloud, and look at
-> a picture you paste in** — a local Stable Diffusion WebUI or anything speaking
-> the OpenAI shape — and what the author is told about a picture is its
-> description, never the file, so a scene's context is not spent on an image it
-> already has words for. Hiding a picture from the log and keeping it from the
-> author are separate switches. A writing partner can also **remember you between
-> roleplays** — a thread left hanging, a name that keeps coming back, how you
-> like to be written for — but only when you ask it to, note by note, and every
-> note is one you can read, edit or throw away. Built
-> for a phone first, and on a
-> wide screen the same pieces unroll into a workbench: a left icon rail for the
-> prompt, preset, lore and guides, a right rail for the cast, characters and
-> authors, and a header carrying the scene, the model and the reading controls. See
-> [`docs/SPEC.md` §20](docs/SPEC.md) for the build order and
-> [`docs/PHASES.md`](docs/PHASES.md) for what exists today.
+<p align="center">
+  <strong>A self-hosted, mobile-first AI roleplay frontend.</strong><br />
+  One AI <strong>author</strong> with its own personality plays the whole cast — like a GM running a table — while you direct.
+</p>
+
+<p align="center">
+  <a href="#running-it"><img src="https://img.shields.io/badge/Bun-1.3%2B-f9f1e1?logo=bun&logoColor=14151a" alt="Bun 1.3+"></a>
+  <a href="#working-on-it"><img src="https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white" alt="TypeScript strict"></a>
+  <img src="https://img.shields.io/badge/Hono-4.x-360d0a?logo=hono" alt="Hono 4.x">
+  <img src="https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=20272f" alt="React 19">
+  <img src="https://img.shields.io/badge/SQLite-WAL-003b57?logo=sqlite&logoColor=white" alt="SQLite WAL">
+  <img src="https://img.shields.io/badge/phase-122-8b8477" alt="Phase 122">
+</p>
+
+> **Status: phase 122 — feature complete, less the deferred phase 42.**
+> Set it up, **point it at your SillyTavern folder and move in** — cards, chats, group chats, personas, world info, instruct templates and regex scripts all come across, with your swipes intact as branches.
+
+---
+
+## What it is
+
+Onsen is where a story is *run* rather than merely chatted. Give the AI an author persona of its own, gather a cast, and direct the scene as it writes: nudge one turn, steer the whole story, reroll with guidance, expand or rewrite a reply, or have it draft your own turn into the composer.
+
+It is built for a phone first. On a wide screen the same pieces unroll into a workbench — a left icon rail for the prompt, preset, lore and guides; a right rail for the cast, characters and authors; a header carrying the scene, the model and the reading controls.
+
+## Highlights
+
+**The writing**
+
+- **Beats** — a whole exchange between several characters written in one go, which you can correct one character at a time or split into separate turns.
+- **A turn director that can be a model** — and prints its reasoning before it writes a word.
+- **Streaming, swipe to reroll, a version carousel, edit and branch** — and a stream that survives a phone suspending its tab.
+- **Persistent guides** — short notes on what everyone is thinking, wearing and doing, written behind the scene and carried on every prompt after that, versioned per message so rewinding rewinds them.
+- **Summarisation** — old turns condensed into a paragraph the prompt takes instead, so a scene can outlive its context window.
+- **Reasoning handled** — the thinking is pulled out of the prose, shown collapsed, and never fed back into the next prompt unless you ask.
+
+**How it writes**
+
+- A set of small switches rather than one long instruction — point of view, prose structure, length, planning.
+- A **ban list** of the phrasings models fall into, which it will offer to fill in for you by counting what your scene keeps repeating.
+
+**Lore and memory**
+
+- **Lorebooks in full** — keyword activation with secondary logic, sticky, cooldown and delay counted along the branch you are actually on, inclusion groups, per-character knowledge out of one shared book, and recursion — with a test that shows what would fire against your scene right now *and why each miss missed*.
+- SillyTavern world info round-trips every field it was given, including ones the app has never heard of.
+- **Narrative memory** (optional) — people, places, things and facts pulled out of the story as it goes, scored by how much they matter, brought back when the moment needs them and fading when it does not. Edit one and the extractor never touches it again.
+- **Author memory** (optional) — a thread left hanging, a name that keeps coming back, how you like to be written for — only when you ask, note by note, and every note is one you can read, edit or throw away.
+
+**Providers**
+
+- **OpenAI-compatible endpoints, Anthropic, and raw text-completion servers** — llama.cpp, KoboldCpp, TabbyAPI.
+- The named instruct templates those need (ChatML, Llama 3, Mistral, Alpaca, Vicuna, Metharme) and an editor for writing your own, previewed as you type — a wrong template does not error, it just quietly makes the prose worse.
+
+**Out of character and automation**
+
+- **Step out of the scene** — a question, a check, a flag — which arrives as a note in the margin rather than a line in your story, and you can ask it something back; that exchange opens into a channel of its own and never touches the prose.
+- **Regex** find-and-replace with a test panel, applied to what you write, what the model writes, what you see, or what the model reads — four stages that differ in what survives.
+- **Named actions bound to moments** — a lore entry firing can refresh a guide or run a rewrite.
+
+**Packs, extensions, and the outside**
+
+- **Packs** — one file holding characters, lore, presets, writing partners, prompt options, scripts and triggers; it shows what it will add before it adds it, installs whole or not at all, and remembers exactly what it brought so removing it takes that and nothing of yours.
+- **Extensions install from a URL** — a repository whose `server.ts` declares side-call tasks, reloaded at startup.
+- **Webhooks** — a message written, a reply finished, a beat split by speaker, a tracker changed, lore firing — posted to a URL you run with a signature your receiver can check, which with the REST API is enough for a Discord bridge or a stream overlay.
+
+**Everywhere, together**
+
+- **Phone and desktop keep step** — a turn written on one appears on the other, and if one moves the story somewhere the other is not, the other holds what you were reading and says so rather than changing under you.
+- **A roleplay can answer as a model** — point any OpenAI-compatible client at this app, and `scene/the-pass` runs the whole pipeline behind it: author, cast, lore, guides, with the director's ops available as `((nudge: ...))` inline.
+
+**Pictures, voices, and the page**
+
+- **Draw a scene, read a line aloud, look at a picture you paste in** — a local Stable Diffusion WebUI, ComfyUI/ComfyCloud, or anything speaking the OpenAI shape. What the author is told about a picture is its description, never the file.
+- Hiding a picture from the log and keeping it from the author are separate switches.
+- A **backdrop** behind the whole app, with a library you can generate, name, tag and folder.
 
 ## Documents
 
@@ -90,13 +90,11 @@ running a table, while you direct.
 | [`docs/PHASES.md`](docs/PHASES.md) | What each completed phase actually built. |
 | [`docs/NEXT.md`](docs/NEXT.md) | What is left, in order, and how to pick it up. |
 
-`SPEC.md` wins on behaviour and data; the design doc wins on layout and
-appearance.
+`SPEC.md` wins on behaviour and data; the design doc wins on layout and appearance.
 
 ## Running it
 
-Requires [Bun](https://bun.sh) 1.3 or newer. No native modules — `bun install`
-runs with no compile step.
+Requires [Bun](https://bun.sh) 1.3 or newer. No native modules — `bun install` runs with no compile step.
 
 ```sh
 bun install
@@ -109,18 +107,11 @@ bun run build
 bun run start          # http://localhost:8787
 ```
 
-Open the app and the setup wizard asks for a password and one connection
-profile. There is no second account and no registration.
+Open the app and the setup wizard asks for a password and one connection profile. There is no second account and no registration.
 
-Themes are yours: eight ship, every colour and the four values that decide
-depth are editable by hex, and you can save, export and import them. They live
-on the server, so the phone and the desktop agree. An imported theme's own CSS
-is shown to you before any of it runs.
+Themes are yours: eight ship, every colour and the four values that decide depth are editable by hex, and you can save, export and import them. They live on the server, so the phone and the desktop agree. An imported theme's own CSS is shown to you before any of it runs.
 
-It is an installable web app: add it to a phone's home screen and it opens
-standalone, in its own window, with the shell cached so it starts without
-waiting on the network. Nothing about a scene is cached — there is no offline
-mode, and offline it says so rather than showing you a stale story.
+It is an installable web app: add it to a phone's home screen and it opens standalone, in its own window, with the shell cached so it starts without waiting on the network. Nothing about a scene is cached — there is no offline mode, and offline it says so rather than showing you a stale story.
 
 ### A single-file executable
 
@@ -153,19 +144,11 @@ Everything is environment variables; all state lives under one data directory.
 
 ## Deploying it safely
 
-This is single-user software with one password and no account recovery. The
-recommended deployment is **behind Tailscale or a Cloudflare Tunnel**, with the
-password as defence in depth rather than the only defence. Exposing it directly
-to the internet is not a supported configuration.
+This is single-user software with one password and no account recovery. The recommended deployment is **behind Tailscale or a Cloudflare Tunnel**, with the password as defence in depth rather than the only defence. Exposing it directly to the internet is not a supported configuration.
 
-- Provider API keys are encrypted at rest with AES-256-GCM and are never
-  returned to the browser — the UI sees only the last four characters.
-- The root secret lives at `$ONSEN_DATA_DIR/secret.key` with mode `600`, or is
-  injected via `ONSEN_SECRET_KEY`. **Back it up with the database**: without it,
-  stored provider keys cannot be decrypted.
-- Sessions are HttpOnly, SameSite=Lax cookies signed with an HMAC derived from
-  that secret. Set `ONSEN_SECURE_COOKIES=1` when TLS terminates in front of the
-  app.
+- Provider API keys are encrypted at rest with AES-256-GCM and are never returned to the browser — the UI sees only the last four characters.
+- The root secret lives at `$ONSEN_DATA_DIR/secret.key` with mode `600`, or is injected via `ONSEN_SECRET_KEY`. **Back it up with the database**: without it, stored provider keys cannot be decrypted.
+- Sessions are HttpOnly, SameSite=Lax cookies signed with an HMAC derived from that secret. Set `ONSEN_SECURE_COOKIES=1` when TLS terminates in front of the app.
 - Login attempts are rate-limited.
 
 ## Working on it
@@ -175,8 +158,7 @@ bun test           # the suite
 bun run typecheck  # tsc --noEmit, strict
 ```
 
-Build one phase at a time, in the order `SPEC.md` §20 gives. The order exists
-because later phases depend on earlier ones being correct, not merely present.
+Build one phase at a time, in the order `SPEC.md` §20 gives. The order exists because later phases depend on earlier ones being correct, not merely present.
 
 ```
 /server        Bun + Hono. Routes are thin; logic lives in modules.
@@ -196,8 +178,10 @@ because later phases depend on earlier ones being correct, not merely present.
 /test
 ```
 
-Two structural rules. `/prompt` never imports from `/db` or `/routes`, and is
-pure — no clock, no randomness, no I/O; `test/prompt-purity.test.ts` enforces
-both by reading the source. And every user-facing string goes through
-`client/strings.ts`: the product nouns in the design are provisional and will be
-renamed.
+Two structural rules. `/prompt` never imports from `/db` or `/routes`, and is pure — no clock, no randomness, no I/O; `test/prompt-purity.test.ts` enforces both by reading the source. And every user-facing string goes through `client/strings.ts`: the product nouns in the design are provisional and will be renamed.
+
+---
+
+<p align="center">
+  <sub>The banner was drawn with Comfy Cloud (Flux Pro 1.1 Ultra).</sub>
+</p>
