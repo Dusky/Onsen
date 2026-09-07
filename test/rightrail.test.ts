@@ -3,13 +3,13 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * The global right rail (SPEC §16, §20 phase 87).
+ * The global right rail (SPEC §16, the redesign phase 90).
  *
- * The right rail was chat-only; the complaint was that it vanished on every
- * other screen. It now lives at the shell level — on every desktop page unless
- * collapsed — and is where the entities live: the cast, the author, the lore
- * and the persona, each editable in place, with a Scene tab while a roleplay is
- * open.
+ * The mockup's right side is three flat tabs, not the workbench's five: In
+ * this scene (the cast, scene-scoped and fed in by the chat screen), Characters
+ * (the library with an inline editor) and Authors (the authors with an inline
+ * editor). Lore moved to the left rail, and the persona moved into the scene
+ * pane. This pins that shape.
  */
 
 const APP = readFileSync(join(import.meta.dir, "..", "client", "App.tsx"), "utf8");
@@ -17,17 +17,40 @@ const RAIL = readFileSync(
   join(import.meta.dir, "..", "client", "components", "RightRail.tsx"),
   "utf8",
 );
+const CHAT = readFileSync(join(import.meta.dir, "..", "client", "screens", "ChatScreen.tsx"), "utf8");
 
 describe("the global right rail", () => {
   test("is part of the shell, not a screen", () => {
     expect(APP).toContain("<RightRail />");
   });
 
-  test("holds the entities, not just the scene", () => {
-    expect(RAIL).toContain("strings.nav.characters");
-    expect(RAIL).toContain("strings.nav.authors");
-    expect(RAIL).toContain("strings.nav.lore");
-    expect(RAIL).toContain("strings.chat.inspectorTabPersona");
-    expect(RAIL).toContain("strings.chat.inspectorTabScene");
+  test("has the mockup's three tabs, not the workbench's five", () => {
+    expect(RAIL).toContain("strings.rightRail.inThisScene");
+    expect(RAIL).toContain("strings.rightRail.characters");
+    expect(RAIL).toContain("strings.rightRail.authors");
+    expect(RAIL).not.toContain("strings.nav.lore");
+    expect(RAIL).not.toContain("inspectorTab");
+  });
+
+  test("the scene tab shows the slot the chat screen fills", () => {
+    expect(RAIL).toContain("sceneInspector");
+  });
+});
+
+describe("the scene pane carries the cast and the scene's people", () => {
+  test("the cast rail and the reader/author footer are one pane", () => {
+    expect(CHAT).toContain("<CastRail");
+    expect(CHAT).toContain("strings.rightRail.you");
+    expect(CHAT).toContain("strings.rightRail.author");
+  });
+
+  test("the persona edits inline, the author in its own tab", () => {
+    expect(CHAT).toContain("<PersonaEditPane");
+    expect(CHAT).toContain("setRightTab(\"authors\")");
+  });
+
+  test("the nested inspector tabs are gone", () => {
+    expect(CHAT).not.toContain("InspectorTab");
+    expect(CHAT).not.toContain('from "../components/Inspector.tsx"');
   });
 });

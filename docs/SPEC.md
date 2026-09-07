@@ -3519,6 +3519,13 @@ Each phase ends in a working, usable application.
     (the budget bar, the blocks, the evictions), Preset the samplers, Lore what
     fired, Guides what is injected. Three of the four read the scene from the
     route. See §16, `docs/REDESIGN.md` and `test/leftrail.test.ts`.
+90. **The right panel's three tabs** — the mockup's right side replaces the
+    workbench's five tabs with *In this scene / Characters / Authors*. The
+    scene tab is the cast plus a reader/author footer; Characters and Authors
+    are the library with inline editors. Lore moved to the left rail, the
+    persona into the scene pane's footer, and the guides/memory/summaries
+    management opens as a sheet from the readouts. See §16 and
+    `test/rightrail.test.ts`.
 
 Settled while building phase 15.
 

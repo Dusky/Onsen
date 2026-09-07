@@ -50,19 +50,3 @@ describe("the persona pane", () => {
     expect(CHAT).toContain("<PersonaEditPane");
   });
 });
-
-describe("the lore pane", () => {
-  const LORE = readFileSync(
-    join(import.meta.dir, "..", "client", "components", "LorePane.tsx"),
-    "utf8",
-  );
-
-  test("edits entries in place, with the shared fields", () => {
-    expect(LORE).toContain("<EditorField");
-    expect(LORE).toContain("useUpdateLoreEntry");
-  });
-
-  test("is a pane the chat shows, not a screen", () => {
-    expect(CHAT).toContain("lore={<LorePane />}");
-  });
-});

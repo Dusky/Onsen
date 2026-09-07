@@ -2,36 +2,28 @@ import { useState } from "react";
 import { strings } from "../strings.ts";
 import { EditorField } from "./EditorField.tsx";
 import { TextField } from "./TextField.tsx";
-import { LorePane } from "./LorePane.tsx";
 import { CastEditPane } from "./CastEditPane.tsx";
-import {
-  useAuthors,
-  useCharacters,
-  usePersonas,
-  useUpdateAuthor,
-  useUpdatePersona,
-} from "../lib/queries.ts";
+import { useAuthors, useCharacters, useUpdateAuthor } from "../lib/queries.ts";
 import { useUiStore } from "../state/ui.ts";
-import { PERSONA_DEPTH_BOUNDS, type AuthorDto, type PersonaDto } from "@shared/types.ts";
+import type { AuthorDto } from "@shared/types.ts";
 
 /**
- * The global right rail (SPEC §16, §20 phase 87).
+ * The global right rail (SPEC §16, the redesign phase 90).
  *
- * On every desktop page unless collapsed. The entities a reader manages —
- * the cast (characters), the author, the lore and the persona — live here, and
- * while a scene is open a *Scene* tab carries its context, cast and persona,
- * fed in by the chat screen. The left rail holds the configuration; this holds
- * the people and the world.
+ * The mockup's right side is three flat tabs, not the workbench's five —
+ * *In this scene* (the cast, scene-scoped and fed in by the chat screen),
+ * *Characters* (the library with an inline editor) and *Authors* (the authors
+ * with an inline editor). Lore moved to the left rail's Lore section, and the
+ * persona moved into the scene pane — the reader is part of the scene, not a
+ * separate tab. On every desktop page unless collapsed.
  */
 
-type RailTab = "cast" | "author" | "lore" | "you" | "scene";
+type RailTab = "scene" | "characters" | "authors";
 
 export function RightRail() {
-  const { rightRailOpen, toggleRightRail, sceneInspector } = useUiStore();
-  const [tab, setTab] = useState<RailTab>("cast");
+  const { rightRailOpen, rightTab, setRightTab, toggleRightRail, sceneInspector } = useUiStore();
 
-  const active: RailTab =
-    tab === "scene" && sceneInspector === null ? "cast" : tab;
+  const active: RailTab = rightTab === "scene" && sceneInspector === null ? "characters" : rightTab;
 
   if (!rightRailOpen) {
     return (
@@ -49,27 +41,25 @@ export function RightRail() {
   }
 
   const tabs: [RailTab, string][] = [
-    ["cast", strings.nav.characters],
-    ["author", strings.nav.authors],
-    ["lore", strings.nav.lore],
-    ["you", strings.chat.inspectorTabPersona],
-    ...(sceneInspector === null ? [] : ([["scene", strings.chat.inspectorTabScene]] as [RailTab, string][])),
+    ["scene", strings.rightRail.inThisScene],
+    ["characters", strings.rightRail.characters],
+    ["authors", strings.rightRail.authors],
   ];
 
   return (
-    <aside className="flex w-[364px] flex-none flex-col border-l border-rule bg-bg-sunken">
+    <aside className="flex w-[352px] flex-none flex-col border-l border-rule bg-bg-sunken">
       <div className="hairline flex flex-none items-center justify-between pr-[8px]">
         <div className="flex min-w-0 items-stretch">
           {tabs.map(([id, label]) => (
             <button
               key={id}
               type="button"
-              onClick={() => setTab(id)}
+              onClick={() => setRightTab(id)}
               aria-current={active === id ? "true" : undefined}
               className="chrome flex min-h-[44px] items-center px-[12px] text-[12.5px]"
               style={{
                 color: active === id ? "var(--onsen-color-text)" : "var(--onsen-color-text-dim)",
-                borderBottom: `2px solid ${active === id ? "var(--onsen-color-red)" : "transparent"}`,
+                borderBottom: `2px solid ${active === id ? "var(--onsen-color-blue)" : "transparent"}`,
               }}
             >
               {label}
@@ -87,11 +77,11 @@ export function RightRail() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {active === "cast" ? <CharacterPane /> : null}
-        {active === "author" ? <AuthorPane /> : null}
-        {active === "lore" ? <LorePane /> : null}
-        {active === "you" ? <PersonaPane /> : null}
-        {active === "scene" ? sceneInspector : null}
+        {active === "scene" ? (
+          sceneInspector ?? <p className="explain px-[16px] py-[14px]">{strings.rightRail.noScene}</p>
+        ) : null}
+        {active === "characters" ? <CharacterPane /> : null}
+        {active === "authors" ? <AuthorPane /> : null}
       </div>
     </aside>
   );
@@ -199,82 +189,6 @@ function AuthorEdit({ author, onClose }: { author: AuthorDto; onClose(): void })
           rows={3}
           onCommit={(boundaries) => update.mutate({ boundaries: boundaries || null })}
         />
-      </EditorField>
-    </div>
-  );
-}
-
-function PersonaPane() {
-  const personas = usePersonas();
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const persona = (personas.data ?? []).find((candidate) => candidate.id === editingId) ?? null;
-
-  if (persona !== null) {
-    return <PersonaEdit persona={persona} onClose={() => setEditingId(null)} />;
-  }
-
-  return (
-    <div className="px-[16px] py-[14px]">
-      {(personas.data ?? []).map((candidate) => (
-        <button
-          key={candidate.id}
-          type="button"
-          onClick={() => setEditingId(candidate.id)}
-          className="row flex w-full items-baseline gap-[10px] text-left"
-        >
-          <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">
-            {candidate.name}
-          </span>
-          {candidate.isDefault ? <span className="meta flex-none">{strings.settings.presetIsDefault}</span> : null}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function PersonaEdit({ persona, onClose }: { persona: PersonaDto; onClose(): void }) {
-  const update = useUpdatePersona(persona.id);
-  return (
-    <div className="px-[16px] py-[14px]">
-      <button type="button" className="chrome mb-[10px] text-[12.5px] text-ink-muted" onClick={onClose}>
-        {strings.chat.back}
-      </button>
-
-      <EditorField label={strings.sceneSetup.personaName}>
-        <TextField value={persona.name} onCommit={(name) => update.mutate({ name })} />
-      </EditorField>
-      <EditorField label={strings.sceneSetup.personaDescription}>
-        <TextField
-          value={persona.description ?? ""}
-          rows={4}
-          placeholder={strings.sceneSetup.personaDescriptionPlaceholder}
-          onCommit={(description) => update.mutate({ description: description || null })}
-        />
-      </EditorField>
-      <EditorField label={strings.sceneSetup.personaPosition}>
-        <div className="flex items-center gap-[10px]">
-          <button
-            type="button"
-            className={`btn flex-none ${persona.depth === null ? "btn-primary" : ""}`}
-            onClick={() => update.mutate({ depth: persona.depth === null ? 0 : null })}
-          >
-            {persona.depth === null
-              ? strings.sceneSetup.personaPositionPrefix
-              : strings.sceneSetup.personaPositionDepth(persona.depth)}
-          </button>
-          {persona.depth === null ? null : (
-            <input
-              type="range"
-              className="min-w-0 flex-1"
-              min={PERSONA_DEPTH_BOUNDS.min}
-              max={PERSONA_DEPTH_BOUNDS.max}
-              step={1}
-              value={persona.depth}
-              aria-label={strings.sceneSetup.personaPosition}
-              onChange={(event) => update.mutate({ depth: Number(event.target.value) })}
-            />
-          )}
-        </div>
       </EditorField>
     </div>
   );

@@ -16,11 +16,14 @@ interface UiState {
   rightRailOpen: boolean;
   /** Which section the left rail's panel shows (§20 phase 89). */
   leftSection: "prompt" | "preset" | "lore" | "guides";
+  /** Which tab the right rail's panel shows (§20 phase 90). */
+  rightTab: "scene" | "characters" | "authors";
   /** The chat's scene-scoped panes, set while a scene is open. */
   sceneInspector: ReactNode | null;
   toggleLeftRail(): void;
   toggleRightRail(): void;
   setLeftSection(section: UiState["leftSection"]): void;
+  setRightTab(tab: UiState["rightTab"]): void;
   setSceneInspector(node: ReactNode | null): void;
 }
 
@@ -28,9 +31,11 @@ export const useUiStore = create<UiState>((set) => ({
   leftRailOpen: true,
   rightRailOpen: true,
   leftSection: "prompt",
+  rightTab: "scene",
   sceneInspector: null,
   toggleLeftRail: () => set((state) => ({ leftRailOpen: !state.leftRailOpen })),
   toggleRightRail: () => set((state) => ({ rightRailOpen: !state.rightRailOpen })),
   setLeftSection: (section) => set({ leftSection: section }),
+  setRightTab: (tab) => set({ rightTab: tab }),
   setSceneInspector: (node) => set({ sceneInspector: node }),
 }));

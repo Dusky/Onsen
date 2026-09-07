@@ -3,16 +3,16 @@
 A short, honest list, written at the end of phase 65 so work can resume without
 re-deriving it. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 89, on `glm/sillytavern-replacement-dyp30w`. 1401 tests across
+**State:** phase 90, on `glm/sillytavern-replacement-dyp30w`. 1403 tests across
 102 files, typecheck clean, working tree clean. Feature complete against
 `SPEC.md` §20 apart from the deferred phase 42.
 
 **The redesign** (`docs/REDESIGN.md`, from the user's mockup) is underway. The
 foundation shipped (§20 phase 88: Source Serif 4 prose, IBM Plex Sans labels,
-`Midnight` cool-dark default), and the left side is now the icon rail with its
-Prompt / Preset / Lore / Guides sections (§20 phase 89). Next, in order: the
-right panel's In-scene / Characters / Authors, the header, then the composer
-and turns.
+`Midnight` cool-dark default), the left side is the icon rail with its
+Prompt / Preset / Lore / Guides sections (§20 phase 89), and the right panel is
+now In this scene / Characters / Authors (§20 phase 90). Next, in order: the
+header, then the composer and turns.
 
 ## How to pick up
 

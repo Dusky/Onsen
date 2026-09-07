@@ -27,7 +27,6 @@ import { Sheet, SheetAction } from "../components/Sheet.tsx";
 import { CheckpointsSheet, MarkSheet } from "../components/Checkpoints.tsx";
 import { CommandPalette } from "../components/CommandPalette.tsx";
 import { StatusBar } from "../components/StatusBar.tsx";
-import { Inspector, type InspectorTab } from "../components/Inspector.tsx";
 import { COMMANDS } from "../lib/commands.ts";
 import { InspectorSheet } from "../components/InspectorSheet.tsx";
 import { CastStrip } from "../components/CastStrip.tsx";
@@ -37,7 +36,6 @@ import { QuickReplyRow, QuickReplySheet } from "../components/QuickReplies.tsx";
 import { CastRail } from "../components/CastRail.tsx";
 import { CastEditPane } from "../components/CastEditPane.tsx";
 import { PersonaEditPane } from "../components/PersonaEditPane.tsx";
-import { LorePane } from "../components/LorePane.tsx";
 import { VnStage } from "../components/VnStage.tsx";
 import { TrackerPanel } from "../components/TrackerPanel.tsx";
 import { VirtualizedLog } from "../components/VirtualizedLog.tsx";
@@ -61,6 +59,7 @@ import {
   useStopAutopilot,
   useTasks,
   useAutopilot,
+  useAuthors,
   useUpdateScene,
   useConnectionProfiles,
   useLayout,
@@ -161,8 +160,8 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   /** Whether the blue sheet is up, which half of it, and what is working. */
   const [guidesOpen, setGuidesOpen] = useState(false);
   const [contextTab, setContextTab] = useState<ContextTab>("guides");
-  /** Which pane the desktop inspector shows (§20 phase 43). */
-  const [inspectorTab, setInspectorTab] = useState<InspectorTab>("cast");
+  /** The reader's own card, edited inline in the scene pane (§20 phase 90). */
+  const [personaEditing, setPersonaEditing] = useState(false);
   const [guideWorking, setGuideWorking] = useState<GuideKind | "all" | null>(null);
   // Only fetched while the sheet is open: the pending count moves on every turn,
   // and polling it behind a closed panel would be a request per message.
@@ -230,6 +229,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   // else about this screen is the same components at a different width.
   const isDesktop = useIsDesktop();
   const setSceneInspector = useUiStore((state) => state.setSceneInspector);
+  const setRightTab = useUiStore((state) => state.setRightTab);
   // §5's held view. While another device has moved the head somewhere this one
   // is not, the log keeps showing what the reader was reading — the whole point
   // of the prompt is that the scene does not change under them, and a client
@@ -251,6 +251,10 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const historyTotal = scene.data?.historyTotal ?? messages.length;
   const title = scene.data?.scene.title ?? "";
   const authorName = scene.data?.scene.authorName ?? null;
+  const authors = useAuthors();
+  const authorTokens =
+    (authors.data ?? []).find((candidate) => candidate.id === scene.data?.scene.authorId)?.tokens
+      .total ?? null;
   const cast = scene.data?.scene.cast ?? [];
   // Versioned per message and read off the active path, so this changes when the
   // reader rewinds — which is why it is read from the scene every time rather
@@ -481,42 +485,6 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       "sign-out": () => signOut.mutate(undefined),
     };
     handlers[id]?.();
-  }
-
-  /**
-   * The context panel's body, built once.
-   *
-   * The desktop pane and the phone's sheet render the same node, so the two
-   * cannot drift into being different views of the same thing.
-   */
-  function contextBody() {
-    return (
-      <ContextSheet
-        tab={contextTab}
-        onTab={setContextTab}
-        guides={guides}
-        tasks={tasks.data ?? []}
-        customPrompt={scene.data?.scene.customGuidePrompt ?? null}
-        guideWorking={guideWorking}
-        onRebuild={(kind) => {
-          setGuideWorking(kind);
-          rebuildGuides.mutate(kind === "all" ? {} : { kind }, {
-            onSettled: () => setGuideWorking(null),
-          });
-        }}
-        onEditGuide={(guideId, content) => editGuide.mutate({ guideId, content })}
-        onFlush={(kind) => flushGuides.mutate(kind)}
-        summaries={summaries.data}
-        evicting={scene.data?.scene.summariseEvict ?? false}
-        summaryWorking={
-          summariseNow.isPending || rewriteSummary.isPending || forgetSummary.isPending
-        }
-        onSummarise={() => summariseNow.mutate(undefined)}
-        onRewriteSummary={(summaryId) => rewriteSummary.mutate(summaryId)}
-        onEditSummary={(summaryId, content) => editSummary.mutate({ summaryId, content })}
-        onForgetSummary={(summaryId) => forgetSummary.mutate(summaryId)}
-      />
-    );
   }
 
   const [marksOpen, setMarksOpen] = useState(false);
@@ -1208,50 +1176,97 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
 
   const scenePane = editingCastId !== null ? (
     <CastEditPane characterId={editingCastId} onClose={() => setEditingCastId(null)} />
+  ) : personaEditing ? (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex-none px-[16px] pt-[12px]">
+        <button
+          type="button"
+          className="chrome text-[12.5px] text-ink-muted"
+          onClick={() => setPersonaEditing(false)}
+        >
+          {strings.chat.back}
+        </button>
+      </div>
+      <PersonaEditPane sceneId={sceneId} personaId={scene.data?.scene.personaId ?? null} />
+    </div>
   ) : (
-    <Inspector
-      tab={inspectorTab}
-      onTab={setInspectorTab}
-      context={contextBody()}
-      persona={
-        <PersonaEditPane sceneId={sceneId} personaId={scene.data?.scene.personaId ?? null} />
-      }
-      lore={<LorePane />}
-      cast={
-        <>
-          <div className="mb-[14px]" hidden={!layout.readouts}>
-            <Readouts
-              guides={guides}
-              summaryCount={scene.data?.scene.summaryCount ?? 0}
-              mediaOn={scene.data?.scene.vnModeEnabled ?? false}
-              onOpen={(pane) => {
-                setContextTab(pane === "memory" ? "memory" : "guides");
-                setInspectorTab("context");
-              }}
-            />
-          </div>
-          <CastRail
-            embedded
-            cast={cast}
-            nextSpeaker={nextSpeaker}
-            messages={messages}
-            guides={guides}
-            scope={scope}
-            onScope={setScope}
-            onCue={(characterId) => setCued(characterId)}
-            onMember={(member) => setCastActing(member)}
-            writingName={isGenerating ? active.speaker : null}
-            guidesCost={guides.reduce((sum, guide) => sum + guide.tokenCount, 0)}
-            autopilotOn={scene.data?.scene.autopilotEnabled ?? false}
-            onToggleAutopilot={(on) => updateScene.mutate({ autopilotEnabled: on })}
-            onGuides={() => {
-              setContextTab("guides");
-              setInspectorTab("context");
-            }}
-          />
-        </>
-      }
-    />
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex-none px-[14px] pt-[10px]" hidden={!layout.readouts}>
+        <Readouts
+          guides={guides}
+          summaryCount={scene.data?.scene.summaryCount ?? 0}
+          mediaOn={scene.data?.scene.vnModeEnabled ?? false}
+          onOpen={(pane) => {
+            setContextTab(pane === "memory" ? "memory" : "guides");
+            setGuidesOpen(true);
+          }}
+        />
+      </div>
+      <CastRail
+        embedded
+        cast={cast}
+        nextSpeaker={nextSpeaker}
+        messages={messages}
+        guides={guides}
+        scope={scope}
+        onScope={setScope}
+        onCue={(characterId) => setCued(characterId)}
+        onMember={(member) => setCastActing(member)}
+        writingName={isGenerating ? active.speaker : null}
+        guidesCost={guides.reduce((sum, guide) => sum + guide.tokenCount, 0)}
+        autopilotOn={scene.data?.scene.autopilotEnabled ?? false}
+        onToggleAutopilot={(on) => updateScene.mutate({ autopilotEnabled: on })}
+        onGuides={() => {
+          setContextTab("guides");
+          setGuidesOpen(true);
+        }}
+      />
+      {/* The scene's people in one footer: the reader, edited inline, and the
+          author, edited in its own tab (§20 phase 90). */}
+      <div className="flex-none border-t border-rule px-[14px] py-[10px]">
+        <div className="flex items-center gap-[8px]">
+          <span
+            className="chrome flex-none text-[11px]"
+            style={{ color: "var(--onsen-color-text-dim)" }}
+          >
+            {strings.rightRail.you}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-[12.5px]">
+            {scene.data?.scene.personaName ?? strings.sceneSetup.personaNone}
+          </span>
+          <button
+            type="button"
+            className="chrome text-[12.5px]"
+            style={{ color: "var(--onsen-color-blue-text)" }}
+            onClick={() => setPersonaEditing(true)}
+          >
+            {strings.rightRail.edit}
+          </button>
+        </div>
+        <div className="mt-[6px] flex items-center gap-[8px]">
+          <span
+            className="chrome flex-none text-[11px]"
+            style={{ color: "var(--onsen-color-text-dim)" }}
+          >
+            {strings.rightRail.author}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-[12.5px]">
+            {scene.data?.scene.authorName ?? strings.chat.narratorName}
+          </span>
+          {authorTokens === null ? null : (
+            <span className="meta flex-none">{strings.characters.tokens(authorTokens)}</span>
+          )}
+          <button
+            type="button"
+            className="chrome text-[12.5px]"
+            style={{ color: "var(--onsen-color-blue-text)" }}
+            onClick={() => setRightTab("authors")}
+          >
+            {strings.rightRail.edit}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 
   // The scene panes render in the shell's global right rail, not here (§20
@@ -1423,7 +1438,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         <CheckpointsSheet sceneId={sceneId} onClose={() => setMarksOpen(false)} />
       ) : null}
 
-      {guidesOpen && !isDesktop ? (
+      {guidesOpen ? (
         <ContextSheet
           tab={contextTab}
           onTab={setContextTab}

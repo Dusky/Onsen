@@ -6285,3 +6285,25 @@ screen, where they always were.
 **Verified in a browser** at 1440×900: the icon rail renders, and each section
 fills the panel — Prompt with a real 445-token assembly, Preset with working
 sliders, Lore and Guides with their empty states.
+
+## Phase 90 — The right panel's three tabs
+
+The mockup's right side replaces the workbench's five tabs with *In this
+scene / Characters / Authors*:
+
+- **In this scene** is the cast — the One voice/Whole room scope, cue, bench,
+  the writing indicator — fed in by the chat screen as before, plus a footer
+  with the reader (edited inline) and the author (edited in its own tab, with
+  its token cost).
+- **Characters** is the library with the inline editor, **Authors** the authors
+  with theirs.
+
+Lore moved to the left rail's Lore section, and the persona moved into the
+scene pane's footer — the reader is part of the scene, not a separate tab. The
+guides/memory/summaries management, which the old Context tab held, now opens
+as a sheet from the readout row. The nested inspector tabs and their component
+are gone.
+
+**Verified in a browser** at 1440×900: the three tabs render, the scene pane
+carries the cast and the reader/author footer, Characters lists the library,
+and the persona editor opens from the footer.

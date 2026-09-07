@@ -249,13 +249,6 @@ export const strings = {
     promptPreviewWorking: "Assembling…",
     promptPreviewFailed: "Could not read the prompt.",
 
-    /* The inspector pane (§20 phase 43). */
-    inspectorPane: "Inspector",
-    inspectorTabContext: "Context",
-    inspectorTabCast: "Cast",
-    inspectorTabPersona: "You",
-    inspectorTabLore: "Lore",
-    inspectorTabScene: "Scene",
     checkpointName: "Call it",
     checkpointNamePlaceholder: "before she opens the ledger",
     checkpointSave: "Mark it",
@@ -1044,6 +1037,18 @@ export const strings = {
     free: (n: number) => `Free ${n} tok`,
     loreEmpty: "Nothing fired \u2014 no lore matched.",
     guidesEmpty: "Nothing injected. Writing a guide reads the scene so far.",
+  },
+
+  /** The right rail's three tabs (§20 phase 90). */
+  rightRail: {
+    inThisScene: "In this scene",
+    characters: "Characters",
+    authors: "Authors",
+    noScene: "Open a roleplay to see its cast here.",
+    you: "You",
+    author: "Author",
+    edit: "Edit",
+    nextTurn: "Next turn",
   },
 
   characters: {
