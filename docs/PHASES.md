@@ -6121,3 +6121,25 @@ place.
 **Verified in a browser** at 1440×900 and 390×844: the wordmark and five
 destinations sit in the bar on both widths, the rail is recent-only, and the
 writing indicator appears on another screen mid-stream.
+
+## Phase 81 — Editor fields, unified and surfaced
+
+A short pass before the editors become panes. The character and author editors
+had each grown their own label-plus-cost field component — the two-
+implementations defect, in miniature — and the character editor's card tab was
+a flat wall of six identical textareas on the bare page.
+
+- **One `EditorField`** replaces both, with an optional tone for the two fields
+  whose colour means something (OOC voice blue, boundaries red).
+- **The editor body sits on a raised `.surface`**, the same panel settings
+  uses, instead of directly on the page.
+- **The card fields are grouped** — *Who they are* and *Scene* — so the wall of
+  boxes has hierarchy.
+- **The card total moves up** into the header, beside the name, not only the
+  footer.
+
+This is the foundation the right-sidebar editors reuse: the pane renders the
+same `EditorField`s the screen does.
+
+**Verified in a browser** at 1440×900: the surface, both group headings and the
+header total render.

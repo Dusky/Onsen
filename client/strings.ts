@@ -1062,6 +1062,9 @@ export const strings = {
     /* The persona lock (§20 phase 61). */
     opensAs: "Opens as",
     opensAsDefault: "The default persona",
+    /* Groupings within the card tab (§20 phase 81). */
+    groupWho: "Who they are",
+    groupScene: "Scene",
     derive: "Make a variant",
     /* Portrait generation (§20 phase 79). */
     generatePortrait: "Generate portrait",

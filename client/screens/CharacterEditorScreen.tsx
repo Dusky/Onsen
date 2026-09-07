@@ -19,6 +19,7 @@ import {
   usePersonas,
 } from "../lib/queries.ts";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
+import { EditorField } from "../components/EditorField.tsx";
 
 /**
  * The character editor.
@@ -36,36 +37,6 @@ import { Sheet, SheetAction } from "../components/Sheet.tsx";
 const CONTEXT_WINDOW = 32_768;
 
 type Tab = "card" | "greetings" | "sprites" | "advanced";
-
-/** A label row with the field's cost printed at its end. */
-function FieldRow({
-  label,
-  tokens,
-  hint,
-  children,
-}: {
-  label: string;
-  tokens?: number;
-  hint?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="mb-[18px]">
-      <div className="mb-[8px] flex items-baseline justify-between gap-[10px]">
-        <span className="section-label">{label}</span>
-        {tokens === undefined ? null : (
-          <span className="token-count">
-            {strings.characters.tokens(tokens)}
-          </span>
-        )}
-      </div>
-      {children}
-      {hint === undefined ? null : (
-        <p className="explain mt-[7px]">{hint}</p>
-      )}
-    </div>
-  );
-}
 
 /** A text field that commits on blur and keeps its own draft while focused. */
 function TextField({
@@ -222,6 +193,9 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
             <h1 className="truncate text-[19px] font-medium tracking-[-0.01em]">
               {character.name}
             </h1>
+            <p className="meta mt-[3px]">
+              {strings.characters.shareOfContext(tokens.total, CONTEXT_WINDOW)}
+            </p>
           </div>
         </div>
 
@@ -249,7 +223,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
       </header>
 
       <main className="min-h-0 flex-1 overflow-y-auto px-[22px] py-[16px]">
-        <div className="mx-auto w-full max-w-[var(--onsen-prose-measure)]">
+        <div className="surface mx-auto w-full max-w-[var(--onsen-prose-measure)]">
           {tab === "card" ? (
             <>
               <div className="mb-[18px] flex gap-[14px]">
@@ -262,9 +236,9 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                   }
                 />
                 <div className="min-w-0 flex-1">
-                  <FieldRow label={strings.characters.name}>
+                  <EditorField label={strings.characters.name}>
                     <TextField value={character.name} onCommit={(name) => save({ name })} />
-                  </FieldRow>
+                  </EditorField>
                   <button
                     type="button"
                     className="btn mt-[8px] w-full"
@@ -306,7 +280,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                   name. Comma separated because these are short — "doc", "the
                   captain" — and a list editor for two words is a list editor
                   too many. */}
-              <FieldRow
+              <EditorField
                 label={strings.characters.mentionKeywords}
                 hint={strings.characters.mentionKeywordsHint}
               >
@@ -314,25 +288,27 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                   value={character.mentionKeywords.join(", ")}
                   onCommit={(raw) => save({ mentionKeywords: splitKeywords(raw) })}
                 />
-              </FieldRow>
+              </EditorField>
 
-              <FieldRow label={strings.characters.description} tokens={tokens.description}>
+              <p className="group-heading mb-[12px]">{strings.characters.groupWho}</p>
+
+              <EditorField label={strings.characters.description} tokens={tokens.description}>
                 <TextField
                   value={character.description ?? ""}
                   rows={5}
                   onCommit={(description) => save({ description: description || null })}
                 />
-              </FieldRow>
+              </EditorField>
 
-              <FieldRow label={strings.characters.personality} tokens={tokens.personality}>
+              <EditorField label={strings.characters.personality} tokens={tokens.personality}>
                 <TextField
                   value={character.personality ?? ""}
                   rows={3}
                   onCommit={(personality) => save({ personality: personality || null })}
                 />
-              </FieldRow>
+              </EditorField>
 
-              <FieldRow
+              <EditorField
                 label={strings.characters.speech}
                 tokens={tokens.voiceNotes}
               >
@@ -341,17 +317,19 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                   rows={3}
                   onCommit={(voiceNotes) => save({ voiceNotes: voiceNotes || null })}
                 />
-              </FieldRow>
+              </EditorField>
 
-              <FieldRow label={strings.characters.scenario} tokens={tokens.scenario}>
+              <p className="group-heading mb-[12px]">{strings.characters.groupScene}</p>
+
+              <EditorField label={strings.characters.scenario} tokens={tokens.scenario}>
                 <TextField
                   value={character.scenario ?? ""}
                   rows={3}
                   onCommit={(scenario) => save({ scenario: scenario || null })}
                 />
-              </FieldRow>
+              </EditorField>
 
-              <FieldRow label={strings.characters.exampleDialogue} tokens={tokens.exampleDialogue}>
+              <EditorField label={strings.characters.exampleDialogue} tokens={tokens.exampleDialogue}>
                 <TextField
                   value={character.exampleDialogue ?? ""}
                   rows={5}
@@ -359,35 +337,35 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                     save({ exampleDialogue: exampleDialogue || null })
                   }
                 />
-              </FieldRow>
+              </EditorField>
             </>
           ) : null}
 
           {tab === "greetings" ? (
             <>
-              <FieldRow label={strings.characters.firstMessage} tokens={tokens.firstMessage}>
+              <EditorField label={strings.characters.firstMessage} tokens={tokens.firstMessage}>
                 <TextField
                   value={character.firstMessage ?? ""}
                   rows={5}
                   onCommit={(firstMessage) => save({ firstMessage: firstMessage || null })}
                 />
-              </FieldRow>
+              </EditorField>
 
-              <FieldRow label={strings.characters.alternateGreetings}>
+              <EditorField label={strings.characters.alternateGreetings}>
                 <GreetingList
                   items={character.alternateGreetings}
                   onChange={(alternateGreetings) => save({ alternateGreetings })}
                 />
-              </FieldRow>
+              </EditorField>
 
-              <FieldRow
+              <EditorField
                 label={strings.characters.groupGreetings}
               >
                 <GreetingList
                   items={character.groupGreetings}
                   onChange={(groupGreetings) => save({ groupGreetings })}
                 />
-              </FieldRow>
+              </EditorField>
             </>
           ) : null}
 
@@ -456,7 +434,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
 
           {tab === "advanced" ? (
             <>
-              <FieldRow
+              <EditorField
                 label={strings.characters.depthPrompt}
                 tokens={tokens.depthPrompt}
                 hint={strings.characters.depthPromptHint}
@@ -466,9 +444,9 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                   rows={3}
                   onCommit={(depthPrompt) => save({ depthPrompt: depthPrompt || null })}
                 />
-              </FieldRow>
+              </EditorField>
 
-              <FieldRow label={strings.characters.depth}>
+              <EditorField label={strings.characters.depth}>
                 <input
                   className="field"
                   type="number"
@@ -477,17 +455,17 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                     save({ depthPromptDepth: Number(event.target.value) || 0 })
                   }
                 />
-              </FieldRow>
+              </EditorField>
 
-              <FieldRow label={strings.characters.systemPrompt}>
+              <EditorField label={strings.characters.systemPrompt}>
                 <TextField
                   value={character.systemPrompt ?? ""}
                   rows={3}
                   onCommit={(systemPrompt) => save({ systemPrompt: systemPrompt || null })}
                 />
-              </FieldRow>
+              </EditorField>
 
-              <FieldRow label={strings.characters.postHistory}>
+              <EditorField label={strings.characters.postHistory}>
                 <TextField
                   value={character.postHistoryInstructions ?? ""}
                   rows={3}
@@ -495,15 +473,15 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                     save({ postHistoryInstructions: postHistoryInstructions || null })
                   }
                 />
-              </FieldRow>
+              </EditorField>
 
-              <FieldRow label={strings.characters.creatorNotes}>
+              <EditorField label={strings.characters.creatorNotes}>
                 <TextField
                   value={character.creatorNotes ?? ""}
                   rows={3}
                   onCommit={(creatorNotes) => save({ creatorNotes: creatorNotes || null })}
                 />
-              </FieldRow>
+              </EditorField>
 
               {/* Tags (SPEC §9): chips of what the card has, an add box, and the
                   background task that proposes more from the library's own

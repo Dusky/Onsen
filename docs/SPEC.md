@@ -3470,6 +3470,11 @@ Each phase ends in a working, usable application.
     the shape SillyTavern puts its most-reached-for things in. The desktop rail
     shrinks to the recent list, and the mobile tab bar is gone. See §16 and
     `test/topbar.test.ts`.
+81. **Editor fields, unified and surfaced** — the character and author editors
+    each grew their own label-plus-cost field; one `EditorField` serves both,
+    the character editor's body sits on a raised surface, its card fields are
+    grouped (*Who they are* / *Scene*), and the card total appears in the
+    header rather than only the footer. See §16 and `EditorField.tsx`.
 
 Settled while building phase 15.
 
