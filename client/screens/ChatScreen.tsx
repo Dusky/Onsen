@@ -31,7 +31,7 @@ import { COMMANDS } from "../lib/commands.ts";
 import { InspectorSheet } from "../components/InspectorSheet.tsx";
 import { CastStrip } from "../components/CastStrip.tsx";
 import { Deck, Readouts } from "../components/Deck.tsx";
-import { OpsGrid, OpsRow, OpPrompt, type Op } from "../components/OpsGrid.tsx";
+import { OpsGrid, OpsRow, OpPrompt, SteerOp, type Op } from "../components/OpsGrid.tsx";
 import { QuickReplyRow, QuickReplySheet } from "../components/QuickReplies.tsx";
 import { CastRail } from "../components/CastRail.tsx";
 import { CastEditPane } from "../components/CastEditPane.tsx";
@@ -658,6 +658,9 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   }
 
   const steer = scene.data?.scene.directorNote ?? null;
+  const steerDepth = scene.data?.scene.directorNoteDepth ?? 0;
+  const steerInterval = scene.data?.scene.directorNoteInterval ?? 1;
+  const steerRole = scene.data?.scene.directorNoteRole ?? "system";
 
   /**
    * Who speaks next, in one line — what replaces the cast strip and the
@@ -774,13 +777,18 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         );
       case "steer":
         return (
-          <OpPrompt
-            title={strings.chat.opSteerTitle}
-            placeholder={strings.chat.opSteerPlaceholder}
+          <SteerOp
             initial={steer ?? ""}
-            submitLabel={strings.chat.opApply}
-            onSubmit={(value) => {
-              setup.mutate({ directorNote: value });
+            initialDepth={steerDepth}
+            initialInterval={steerInterval}
+            initialRole={steerRole}
+            onSubmit={(note, knobs) => {
+              setup.mutate({
+                directorNote: note,
+                directorNoteDepth: knobs.depth,
+                directorNoteInterval: knobs.interval,
+                directorNoteRole: knobs.role,
+              });
               setOpsPanel(null);
             }}
             onCancel={() => setOpsPanel(isDesktop ? null : "grid")}

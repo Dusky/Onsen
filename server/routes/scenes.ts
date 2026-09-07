@@ -370,13 +370,39 @@ export function sceneRoutes(
       setTurnStrategy(ctx.db, row.id, input.turnStrategy as string);
     }
     // Steer (SPEC §7): a note applied to every turn until cleared. An empty
-    // string is a clear, not an empty instruction.
+    // string is a clear, not an empty instruction. Depth, interval and role
+    // travel with it (§20 phase 125); each defaults to the current value when
+    // the client only sends the text.
     if ("directorNote" in input) {
       const note = input.directorNote;
       if (note !== null && typeof note !== "string") {
         return c.json(badRequest("The steer must be text, or nothing."), 400);
       }
-      setDirectorNote(ctx.db, row.id, note === null || note.trim() === "" ? null : note.trim());
+      const depth = (input as { directorNoteDepth?: unknown }).directorNoteDepth;
+      const interval = (input as { directorNoteInterval?: unknown }).directorNoteInterval;
+      const role = (input as { directorNoteRole?: unknown }).directorNoteRole;
+      if (depth !== undefined && (typeof depth !== "number" || !Number.isInteger(depth) || depth < 0)) {
+        return c.json(badRequest("The steer depth must be a whole number, zero or more."), 400);
+      }
+      if (
+        interval !== undefined &&
+        (typeof interval !== "number" || !Number.isInteger(interval) || interval < 1)
+      ) {
+        return c.json(badRequest("The steer interval must be a whole number, one or more."), 400);
+      }
+      if (
+        role !== undefined &&
+        role !== "system" &&
+        role !== "user" &&
+        role !== "assistant"
+      ) {
+        return c.json(badRequest("The steer role must be system, user or assistant."), 400);
+      }
+      setDirectorNote(ctx.db, row.id, note === null || note.trim() === "" ? null : note.trim(), {
+        ...(depth === undefined ? {} : { depth }),
+        ...(interval === undefined ? {} : { interval }),
+        ...(role === undefined ? {} : { role: role as "system" | "user" | "assistant" }),
+      });
     }
     // The custom guide's question is the user's own (SPEC §8). An empty string
     // clears it, which turns the guide off — there is nothing to ask.

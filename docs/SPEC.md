@@ -3706,6 +3706,12 @@ Each phase ends in a working, usable application.
     (constant entries first, then active, then disabled, insertion order
     breaking ties), and constant entries carry the amber live marker in the
     row. See §10, §16, `test/lore-screen.test.ts`.
+125. **The steer gains depth, interval and role** — the steer was one string
+    injected at depth 0 every turn; it now carries SillyTavern's Author's-Note
+    knobs: a depth (0 near the turn, a positive depth that many back), an
+    interval (1 every turn, a larger one only when the turn count lands on it),
+    and a role (system / you / the author). The composer's steer form grows the
+    three controls. See §7, `test/guided-ops.test.ts`.
 
 Settled while building phase 15.
 

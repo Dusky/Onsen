@@ -551,6 +551,10 @@ export interface PromptContext {
   reasoning?: { reinjectLast: number; prefix: string; suffix: string };
   /** Persistent steer on the scene (§7). */
   directorNote?: string;
+  /** Steer placement: 0 near the turn, positive depth that many back (§125). */
+  directorNoteDepth?: number;
+  /** Steer frequency: 1 every turn, 2 every other (§125). */
+  directorNoteInterval?: number;
   /** One-shot instruction for this generation only (§7). */
   nudge?: string;
   /**

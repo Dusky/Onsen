@@ -78,6 +78,12 @@ export interface SceneRow {
   director_profile_id: number | null;
   /** Steer: a persistent director note, applied until cleared (SPEC §7). */
   director_note: string | null;
+  /** Steer placement: 0 near the turn, positive depth that many back. */
+  director_note_depth: number;
+  /** Steer frequency: 1 every turn. */
+  director_note_interval: number;
+  /** Steer role: the message the note is injected as. */
+  director_note_role: "system" | "user" | "assistant";
   /** Whether the post-generation passes run without being asked (§7.5). */
   auto_passes: number;
   /** The question the custom guide asks (SPEC §8). Null until written. */
@@ -307,6 +313,9 @@ function toSceneDto(
     turnStrategy: extras.turnStrategy,
     directorProfileId: extras.directorProfileUlid,
     directorNote: row.director_note,
+    directorNoteDepth: row.director_note_depth,
+    directorNoteInterval: row.director_note_interval,
+    directorNoteRole: row.director_note_role,
     autoPasses: row.auto_passes === 1,
     customGuidePrompt: row.custom_guide_prompt,
     guideOrder: parseGuideOrder(row.guide_order),

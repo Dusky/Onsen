@@ -6726,3 +6726,18 @@ always on is "now". Searches match the title, the keys and the content.
 
 **Verified** by `test/lore-screen.test.ts`, which pins the search state, the
 sorter and the constant marker.
+
+## Phase 125 — The steer gains depth, interval and role
+
+The steer was one string injected at depth 0 on every turn. SillyTavern's
+Author's Note carries position, depth, frequency and role; the steer now carries
+depth, interval and role (position is depth's zero versus a positive depth,
+which is the placement the lore entries and depth prompts already use).
+Migration 0058 adds the three columns to `scenes`, the steer op honours them in
+the prompt builder, and the composer's steer form grows the three controls
+beside the text. Clearing the note leaves the knobs for the next one, which is
+the remember-last-values behaviour the author-note users expect.
+
+**Verified** by two new steer tests — depth and role reach the built prompt
+exactly, and an interval of two skips the turns that are not due — plus the
+migration and reachable-fields guards.

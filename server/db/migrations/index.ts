@@ -55,6 +55,7 @@ import presetUtilityPrompts from "./0054_preset_utility_prompts.sql" with { type
 import backgrounds from "./0055_backgrounds.sql" with { type: "text" };
 import extensions from "./0056_extensions.sql" with { type: "text" };
 import entityLists from "./0057_entity_lists.sql" with { type: "text" };
+import steerKnobs from "./0058_steer_knobs.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -127,4 +128,5 @@ export const migrations: readonly Migration[] = [
   { version: 55, name: "backgrounds", sql: backgrounds },
   { version: 56, name: "extensions", sql: extensions },
   { version: 57, name: "entity_lists", sql: entityLists },
+  { version: 58, name: "steer_knobs", sql: steerKnobs },
 ];

@@ -1262,6 +1262,12 @@ export interface SceneDto {
   personaName: string | null;
   /** Steer (SPEC §7): applied to every turn until cleared. Null when clear. */
   directorNote: string | null;
+  /** Steer placement: 0 is near the turn; a positive depth is that many back. */
+  directorNoteDepth: number;
+  /** Steer frequency: 1 every turn, 2 every other, and so on. */
+  directorNoteInterval: number;
+  /** Steer role: the message the note is injected as. */
+  directorNoteRole: PromptRoleName;
   /** Whether the post-generation passes run without being asked (§7.5). */
   autoPasses: boolean;
   /** The question the custom guide asks. Null when it has not been written. */
@@ -2823,6 +2829,10 @@ export interface SceneSetupRequest {
   directorProfileId?: string | null;
   /** Steer: a persistent director note, applied until cleared (SPEC §7). */
   directorNote?: string | null;
+  /** Steer placement, frequency and role (SPEC §7, §20 phase 125). */
+  directorNoteDepth?: number;
+  directorNoteInterval?: number;
+  directorNoteRole?: PromptRoleName;
   /** Whether the post-generation passes run without being asked (§7.5). */
   autoPasses?: boolean;
   /** The question the custom guide asks (SPEC §8). */

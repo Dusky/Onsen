@@ -397,10 +397,26 @@ export function setDirectorProfile(db: Database, sceneId: number, profileId: num
 }
 
 /** Steer: a persistent director note on the scene, until cleared (SPEC §7). */
-export function setDirectorNote(db: Database, sceneId: number, note: string | null): void {
-  db.query("UPDATE scenes SET director_note = $note, updated_at = $now WHERE id = $id").run({
+export function setDirectorNote(
+  db: Database,
+  sceneId: number,
+  note: string | null,
+  knobs: { depth?: number; interval?: number; role?: "system" | "user" | "assistant" } = {},
+): void {
+  const row = db.query("SELECT director_note_depth, director_note_interval, director_note_role FROM scenes WHERE id = $id").get({ id: sceneId }) as
+    | { director_note_depth: number; director_note_interval: number; director_note_role: string }
+    | null;
+  const depth = knobs.depth ?? row?.director_note_depth ?? 0;
+  const interval = knobs.interval ?? row?.director_note_interval ?? 1;
+  const role = knobs.role ?? (row?.director_note_role as "system" | "user" | "assistant") ?? "system";
+  db.query(
+    "UPDATE scenes SET director_note = $note, director_note_depth = $depth, director_note_interval = $interval, director_note_role = $role, updated_at = $now WHERE id = $id",
+  ).run({
     id: sceneId,
     note,
+    depth,
+    interval,
+    role,
     now: Date.now(),
   });
 }

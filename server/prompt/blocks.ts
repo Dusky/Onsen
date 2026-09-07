@@ -658,12 +658,20 @@ export function draftBlocks(ctx: PromptContext): Map<string, DraftBlock[]> {
   }
 
   const steerOp = ctx.ops?.["steer"];
+  const steerDepth = ctx.directorNoteDepth ?? 0;
+  const steerInterval = ctx.directorNoteInterval ?? 1;
+  // Frequency: 1 is every turn; a larger interval injects only when the turn
+  // count lands on it, so a note set to "every other" stays periodic rather
+  // than appearing once and then never again (§20 phase 125).
+  const steerDue = steerInterval <= 1 || ctx.history.length % steerInterval === 0;
   add(
     "director_note",
     "Steer",
     "scene",
-    steerOp?.enabled === false ? null : (steerOp?.text ?? ctx.directorNote ?? null),
-    NEAR_TURN,
+    steerOp?.enabled === false || !steerDue
+      ? null
+      : (steerOp?.text ?? ctx.directorNote ?? null),
+    steerDepth === 0 ? NEAR_TURN : { kind: "depth", depth: steerDepth },
     steerOp?.role ?? "system",
   );
   add(

@@ -400,6 +400,11 @@ function resolveOps(options: BuildContextOptions): Partial<Record<string, Prompt
   if (options.nudge !== undefined) put(NUDGE, { input: options.nudge });
   if (options.scene.director_note !== null) {
     put(STEER, { input: options.scene.director_note });
+    // The scene's own role beats the task's default (SPEC §7, §20 phase 125).
+    const steer = ops[STEER];
+    if (steer !== undefined && options.scene.director_note_role !== undefined) {
+      steer.role = options.scene.director_note_role;
+    }
   }
   if (turn?.kind === "revise") {
     const key = turn.mode === "expand" ? EXPAND : turn.mode === "correct" ? CORRECT : CONTINUE;
@@ -541,7 +546,11 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
     // Steer: a persistent note on the scene, applied until cleared (SPEC §7).
     ...(options.scene.director_note === null
       ? {}
-      : { directorNote: options.scene.director_note }),
+      : {
+          directorNote: options.scene.director_note,
+          directorNoteDepth: options.scene.director_note_depth ?? 0,
+          directorNoteInterval: options.scene.director_note_interval ?? 1,
+        }),
     ...(options.nudge === undefined ? {} : { nudge: options.nudge }),
     // §11's raw eviction, off unless the scene asks: it saves the most and it
     // loses the most.

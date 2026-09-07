@@ -213,6 +213,38 @@ describe("steer — until cleared", () => {
     const { sceneId } = await scene(t);
     expect(await statusOf(t, "PATCH", `/api/scenes/${sceneId}`, { directorNote: 3 })).toBe(400);
   });
+
+  test("honours depth and role", async () => {
+    const t = await signedIn();
+    const { sceneId } = await scene(t);
+    await json<SceneDto>(t, "PATCH", `/api/scenes/${sceneId}`, {
+      directorNote: "Rain, always.",
+      directorNoteDepth: 3,
+      directorNoteRole: "user",
+    });
+
+    await run(t, `/api/scenes/${sceneId}/generate`, {}, "Ok.");
+    const block = lastTurnPrompt().debug.blocks.find((b) => b.label === "Steer")!;
+    expect(block.content).toBe("Rain, always.");
+    expect(block.placement).toEqual({ kind: "depth", depth: 3 });
+    expect(block.role).toBe("user");
+  });
+
+  test("interval skips the turns it is not due on", async () => {
+    const t = await signedIn();
+    const { sceneId } = await scene(t);
+    await json<SceneDto>(t, "PATCH", `/api/scenes/${sceneId}`, {
+      directorNote: "Rain, always.",
+      directorNoteInterval: 2,
+    });
+
+    // The scene opens with one user message, so the first turn is history
+    // length 1 (not due) and the second is length 2 (due).
+    await run(t, `/api/scenes/${sceneId}/generate`, {}, "One.");
+    expect(lastTurnPrompt().debug.blocks.some((b) => b.label === "Steer")).toBe(false);
+    await run(t, `/api/scenes/${sceneId}/generate`, {}, "Two.");
+    expect(lastTurnPrompt().debug.blocks.some((b) => b.label === "Steer")).toBe(true);
+  });
 });
 
 describe("guided swipe — a reroll with direction", () => {

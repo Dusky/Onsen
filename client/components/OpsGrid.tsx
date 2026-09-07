@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { strings } from "../strings.ts";
 
 /**
@@ -197,6 +198,130 @@ export function OpPrompt({
       <div className="mt-[9px] flex gap-[6px]">
         <button type="submit" className="btn btn-primary flex-1">
           {submitLabel}
+        </button>
+        {onClear === undefined ? null : (
+          <button type="button" className="btn" onClick={onClear}>
+            {strings.chat.opSteerClear}
+          </button>
+        )}
+        <button type="button" className="btn" onClick={onCancel}>
+          {strings.common.cancel}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/**
+ * The steer op with its knobs (SPEC §7, §20 phase 125).
+ *
+ * SillyTavern's Author's Note carries position, depth, frequency and role; the
+ * steer now carries depth, interval and role beside the text. The knobs travel
+ * with the note, so clearing the note also clears them (they are meaningless
+ * without text).
+ */
+export function SteerOp({
+  initial,
+  initialDepth = 0,
+  initialInterval = 1,
+  initialRole = "system",
+  onSubmit,
+  onCancel,
+  onClear,
+}: {
+  initial: string;
+  initialDepth?: number;
+  initialInterval?: number;
+  initialRole?: "system" | "user" | "assistant";
+  onSubmit(
+    note: string,
+    knobs: { depth: number; interval: number; role: "system" | "user" | "assistant" },
+  ): void;
+  onCancel(): void;
+  onClear?(): void;
+}) {
+  const [depth, setDepth] = useState(initialDepth);
+  const [interval, setInterval] = useState(initialInterval);
+  const [role, setRole] = useState<"system" | "user" | "assistant">(initialRole);
+
+  return (
+    <form
+      className="pb-[2px]"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const field = event.currentTarget.elements.namedItem("value");
+        onSubmit(field instanceof HTMLTextAreaElement ? field.value : "", {
+          depth,
+          interval,
+          role,
+        });
+      }}
+    >
+      <p className="section-label mb-[6px]">{strings.chat.opSteerTitle}</p>
+      <textarea
+        name="value"
+        rows={2}
+        autoFocus
+        defaultValue={initial}
+        placeholder={strings.chat.opSteerPlaceholder}
+        className="field min-h-[62px] resize-none py-[10px]"
+      />
+
+      <div className="mt-[9px] flex flex-wrap items-end gap-[8px]">
+        <label className="flex-1">
+          <span className="section-label mb-[4px] block">{strings.chat.steerDepth}</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={200}
+            value={depth}
+            className="field"
+            onChange={(event) => setDepth(Math.max(0, Number(event.target.value) || 0))}
+          />
+          <span className="chrome mt-[4px] block text-[12.5px] text-ink-dim">
+            {strings.chat.steerDepthHint}
+          </span>
+        </label>
+        <label className="flex-1">
+          <span className="section-label mb-[4px] block">{strings.chat.steerInterval}</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={100}
+            value={interval}
+            className="field"
+            onChange={(event) => setInterval(Math.max(1, Number(event.target.value) || 1))}
+          />
+          <span className="chrome mt-[4px] block text-[12.5px] text-ink-dim">
+            {strings.chat.steerIntervalUnit}
+          </span>
+        </label>
+        <div>
+          <span className="section-label mb-[4px] block">{strings.chat.steerRole}</span>
+          <div className="flex gap-[4px]">
+            {(["system", "user", "assistant"] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setRole(option)}
+                className={`btn px-[8px] ${role === option ? "btn-primary" : ""}`}
+              >
+                {option === "system"
+                  ? strings.lore.roleSystem
+                  : option === "user"
+                    ? strings.lore.roleUser
+                    : strings.lore.roleAssistant}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-[9px] flex gap-[6px]">
+        <button type="submit" className="btn btn-primary flex-1">
+          {strings.chat.opApply}
         </button>
         {onClear === undefined ? null : (
           <button type="button" className="btn" onClick={onClear}>
