@@ -25,8 +25,8 @@ import type { MediaRunner } from "../media/runner.ts";
 
 function opacityOf(ctx: AppContext): number {
   const raw = getSetting(ctx.db, SettingKey.backgroundOpacity);
-  const parsed = raw === null ? 0.55 : Number(raw);
-  return Number.isFinite(parsed) ? Math.min(1, Math.max(0, parsed)) : 0.55;
+  const parsed = raw === null ? 0.8 : Number(raw);
+  return Number.isFinite(parsed) ? Math.min(1, Math.max(0, parsed)) : 0.8;
 }
 
 function toDto(row: { ulid: string; prompt: string | null; is_default: number; created_at: number }) {

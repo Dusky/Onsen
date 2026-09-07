@@ -55,10 +55,10 @@
  * readable on the quietest ground.
  */
 :root[data-background="1"] {
-  --color-bg: color-mix(in srgb, var(--onsen-color-bg) 78%, transparent);
-  --color-bg-sunken: color-mix(in srgb, var(--onsen-color-bg-sunken) 82%, transparent);
-  --color-bg-raised: color-mix(in srgb, var(--onsen-color-bg-raised) 76%, transparent);
-  --color-bg-inset: color-mix(in srgb, var(--onsen-color-bg-inset) 68%, transparent);
+  --color-bg: color-mix(in srgb, var(--onsen-color-bg) 60%, transparent);
+  --color-bg-sunken: color-mix(in srgb, var(--onsen-color-bg-sunken) 66%, transparent);
+  --color-bg-raised: color-mix(in srgb, var(--onsen-color-bg-raised) 58%, transparent);
+  --color-bg-inset: color-mix(in srgb, var(--onsen-color-bg-inset) 50%, transparent);
 }
 
 @layer base {

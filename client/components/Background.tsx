@@ -19,7 +19,7 @@ export function Background() {
   const sceneId = route.name === "chat" ? route.sceneId : null;
   const scene = (scenes.data ?? []).find((candidate) => candidate.id === sceneId) ?? null;
   const defaultId = backgrounds.data?.defaultId ?? null;
-  const opacity = backgrounds.data?.opacity ?? 0.55;
+  const opacity = backgrounds.data?.opacity ?? 0.8;
 
   const url =
     scene?.hasBackground === true
