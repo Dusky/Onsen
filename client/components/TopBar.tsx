@@ -1,6 +1,7 @@
 import { strings } from "../strings.ts";
 import { navigate, useRoute, type Route } from "../lib/router.ts";
 import { useGeneration } from "../lib/generation.ts";
+import { Logo } from "./Logo.tsx";
 
 /**
  * The global top bar (SPEC §16, §20 phase 80).
@@ -55,14 +56,16 @@ export function TopBar() {
       className="flex flex-none items-center gap-[2px] border-b border-rule bg-bg-sunken px-[12px]"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
-      {/* The wordmark, set as prose — the one serif moment in the chrome. */}
+      {/* The wordmark: the mark beside the name, in the mono the redesign
+          sets it in. */}
       <button
         type="button"
         onClick={() => navigate({ name: "scenes" })}
-        className="flex-none py-[11px] pl-[6px] pr-[10px] text-[16px] font-medium tracking-[-0.01em]"
-        style={{ fontFamily: "var(--onsen-font-prose)", color: "var(--onsen-color-text-bright)" }}
+        className="chrome flex flex-none items-center gap-[7px] py-[11px] pl-[6px] pr-[10px] text-[12px] font-medium"
+        style={{ color: "var(--onsen-color-text-bright)" }}
       >
-        {strings.nav.appName}
+        <Logo className="h-[20px] w-auto" />
+        <span>onsen</span>
       </button>
 
       <span aria-hidden="true" className="mx-[4px] h-[16px] w-px flex-none bg-rule" />

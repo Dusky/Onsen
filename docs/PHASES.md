@@ -6344,3 +6344,15 @@ names who will reply.
 
 **Verified in a browser** at 1440×900: the Direct row renders with the ops and
 the steer note, and the send button names the next speaker.
+
+## Phase 93 — The app mark
+
+The wordmark gains a mark. The logo is a stylised silhouette of a woman in a
+bikini, generated with the NanoGPT image API (`recraft-v4`, flat vector) and
+flattened to one amber shape on a transparent ground — `client/public/logo.png`,
+58×128. It stands beside the mono `onsen` on both widths, and the launcher
+icons (`onsen-256/512`, the maskable, the apple touch) are redrawn from it on
+the `Midnight` ground, replacing the serif `O`.
+
+**Verified in a browser** at 1440×900 and 390×844: the mark renders beside the
+wordmark on both, and the icon files serve.

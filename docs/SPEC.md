@@ -3535,6 +3535,11 @@ Each phase ends in a working, usable application.
     label, the ops, and the steer note inline with a clear), and a send button
     that names who will reply — blue, `Send / then Sister Bell replies`. The
     turn gutter now says `turn N` rather than `#N`. See §16.
+93. **The app mark** — the wordmark gains a mark: a stylised silhouette of a
+    woman in a bikini, generated with the NanoGPT image API and flattened to
+    one amber shape on a transparent ground. It stands beside the mono `onsen`
+    on both widths, and the launcher icons are redrawn from it on the `Midnight`
+    ground. See `client/components/Logo.tsx`.
 
 Settled while building phase 15.
 

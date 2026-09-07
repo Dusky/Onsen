@@ -34,8 +34,8 @@ describe("the web manifest", () => {
     expect(manifest.start_url).toBe("/");
     expect(manifest.display).toBe("standalone");
     // The design's own background, so the splash is not a white flash (§16).
-    expect(manifest.background_color).toBe("#14120f");
-    expect(manifest.theme_color).toBe("#14120f");
+    expect(manifest.background_color).toBe("#0e0f11");
+    expect(manifest.theme_color).toBe("#0e0f11");
   });
 
   test("every icon it names is on disk, at the size it claims", () => {

@@ -1,22 +1,23 @@
 # App icons
 
-The installed app's mark (SPEC §16): a Spectral 300 `O` in `--onsen-text`
-(`#e8e2d6`) on `--onsen-bg` (`#14120f`), with the red hairline the design
-reserves for *live, active, now* set beneath it. The wordmark itself does not
-survive a 48px launcher, so the icon keeps the two things that are unmistakably
-Onsen — the serif and the red rule — and drops the rest.
+The installed app's mark: a stylised silhouette of a woman in a bikini, in the
+amber (`--onsen-color-amber`, `#d99a3f`) the design reserves for the live state,
+on the `Midnight` ground (`#0e0f11`). Generated with the NanoGPT image API and
+flattened to one solid shape, so it survives a 48px launcher the way the serif
+`O` never did.
 
 | File | Purpose |
 | --- | --- |
 | `onsen-256.png`, `onsen-512.png` | `purpose: "any"` — shown as drawn |
-| `onsen-maskable-512.png` | `purpose: "maskable"` — the mark held inside the 40% safe radius, so a launcher may crop it to any shape |
+| `onsen-maskable-512.png` | `purpose: "maskable"` — the mark held inside the safe radius, so a launcher may crop it to any shape |
 | `apple-touch-icon.png` | iOS home screen, which reads the `<link>` rather than the manifest |
 
-These are committed rather than generated at build time: they change roughly
-never, and a build step that needs a browser to draw four PNGs is a dependency
-the project does not otherwise have. To redraw them, render the mark in
-Chromium at 512×512 (`--headless --screenshot --window-size=512,512`) and again
-at half scale (`--force-device-scale-factor=0.5`) for the 256. Chromium clamps
-its window below roughly 350px, so a 192 asked for directly comes back as a
-downscaled 512 with the rule cropped off — which is why the small size here is
-256.
+The master is `client/public/logo.png` (the transparent amber silhouette, 58×128).
+To redraw, run:
+
+```sh
+magick -size 512x512 xc:"#0e0f11" \( ../logo.png -resize 'x370' \) -gravity center -composite onsen-512.png
+magick -size 256x256 xc:"#0e0f11" \( ../logo.png -resize 'x185' \) -gravity center -composite onsen-256.png
+magick -size 512x512 xc:"#0e0f11" \( ../logo.png -resize 'x260' \) -gravity center -composite onsen-maskable-512.png
+magick -size 180x180 xc:"#0e0f11" \( ../logo.png -resize 'x126' \) -gravity center -composite apple-touch-icon.png
+```

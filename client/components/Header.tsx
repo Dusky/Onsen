@@ -1,6 +1,7 @@
 import { strings } from "../strings.ts";
 import { navigate, useRoute } from "../lib/router.ts";
 import { useGeneration } from "../lib/generation.ts";
+import { Logo } from "./Logo.tsx";
 import {
   useActivateTheme,
   useConnectionProfiles,
@@ -81,10 +82,11 @@ export function Header() {
       <button
         type="button"
         onClick={() => navigate({ name: "scenes" })}
-        className="chrome flex-none px-[12px] text-[12px] font-medium"
+        className="chrome flex flex-none items-center gap-[7px] px-[12px] text-[12px] font-medium"
         style={{ color: "var(--onsen-color-text)" }}
       >
-        onsen
+        <Logo className="h-[18px] w-auto" />
+        <span>onsen</span>
       </button>
 
       {/* The open scene, with its turn count. Outside a roleplay this is absent —
