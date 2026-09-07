@@ -6,6 +6,7 @@ import { zipSync } from "fflate";
 import type { AppContext, AppEnv } from "../context.ts";
 import { requireAuth } from "../middleware/session.ts";
 import { readPack } from "../packs/archive.ts";
+import { installExtensionCode } from "../extensions/install.ts";
 import { HOST_API_VERSION, PackError, type PackManifest } from "../packs/manifest.ts";
 import { installPack, planInstall, uninstallPack, uninstallPreview } from "../packs/install.ts";
 import { buildPack, emptySelection, type PackSelection } from "../packs/build.ts";
@@ -184,11 +185,20 @@ export function packRoutes(ctx: AppContext): Hono<AppEnv> {
         }
       };
       walk(dir);
+      const contents = readPack(zipSync(files));
       const result = await installPack(
         { db: ctx.db, avatarsDir: ctx.config.avatarsDir },
-        readPack(zipSync(files)),
+        contents,
       );
-      return c.json(result, 201);
+      const code = await installExtensionCode({
+        db: ctx.db,
+        extensionsDir: ctx.config.extensionsDir,
+        sourceDir: dir,
+        name: contents.manifest.name,
+        version: contents.manifest.version,
+        author: contents.manifest.author,
+      });
+      return c.json({ ...result, extension: code }, 201);
     } catch (caught) {
       if (caught instanceof PackError) return c.json(badRequest(caught.message), 400);
       throw caught;

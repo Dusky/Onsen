@@ -37,7 +37,8 @@ import {
   type ClassifierCandidate,
 } from "./classifier.ts";
 import { castRowsOf } from "../db/queries/authors.ts";
-import { taskKind, TURN_CLASSIFIER, BACKGROUND_DETECT } from "../tasks/registry.ts";
+import { taskKind, TURN_CLASSIFIER, BACKGROUND_DETECT, type SideCallOp } from "../tasks/registry.ts";
+import { postGenerationExtensionTasks } from "../extensions/registry.ts";
 import type { TaskRunner } from "../tasks/runner.ts";
 import type { PassPipeline } from "../passes/pipeline.ts";
 import type { GuideRunner } from "../guides/runner.ts";
@@ -974,8 +975,58 @@ export class GenerationService {
       // Auto-background last, and never waits on the turn: a background is a
       // nice-to-have that a slow image service must not delay the reply by.
       void this.maybeAutoBackground(sceneId);
+      // Extension tasks run last of all, after everything the host does; an
+      // extension reads the settled turn, never a moving one (§20 phase 110).
+      void this.runExtensionTasks(sceneId);
     } catch {
       /* Never reaches the turn. */
+    }
+  }
+
+  /**
+   * Every installed extension's post-generation tasks. Each is a prompt the
+   * extension wrote, run against the model, then handed to its `apply` — which
+   * may write to the database but must never throw (SPEC §7).
+   */
+  private async runExtensionTasks(sceneId: number): Promise<void> {
+    for (const entry of postGenerationExtensionTasks()) {
+      const task = entry.task;
+      try {
+        const scene = findSceneById(this.db, sceneId);
+        if (scene === null) continue;
+        const path = activePathOf(this.db, sceneId);
+        const transcript = path
+          .slice(-24)
+          .map((message) => `${message.author_type === "user" ? "You" : "Character"}: ${message.content}`)
+          .join("\n");
+        const lastMessage = path[path.length - 1]?.content ?? "";
+        const question = task.prompt
+          .replace(/\{\{transcript\}\}/g, transcript)
+          .replace(/\{\{lastMessage\}\}/g, lastMessage);
+
+        const kind: SideCallOp = {
+          key: `ext:${entry.moduleName}:${task.key}`,
+          runs: "side_call",
+          label: task.label,
+          description: task.description ?? "",
+          stage: task.stage,
+          samplers: task.samplers ?? {},
+          timeoutMs: task.timeoutMs ?? 12_000,
+          replyLimit: task.replyLimit ?? 2_000,
+          variables: [],
+          hideable: false,
+        };
+        const outcome = await this.tasks.run({
+          kind,
+          sceneId,
+          prompt: buildSideCallPrompt(question, "You are a background assistant answering a task."),
+          fallbackProfileId: scene.connection_profile_id,
+        });
+        if (!outcome.ok) continue;
+        if (task.apply !== undefined) await task.apply(outcome.text, { db: this.db, sceneId });
+      } catch {
+        /* A broken extension task must not reach the turn. */
+      }
     }
   }
 
@@ -1006,7 +1057,7 @@ export class GenerationService {
       const outcome = await this.tasks.run({
         kind,
         sceneId,
-        prompt: buildDetectionPrompt(question),
+        prompt: buildSideCallPrompt(question, "You decide one thing about a story in progress, and answer in one word."),
         fallbackProfileId: scene.connection_profile_id,
       });
       if (!outcome.ok || !/^\s*yes\b/i.test(outcome.text)) return;
@@ -2083,9 +2134,8 @@ const DEFAULT_DETECTION =
   "Text to analyze:\n\"{{text}}\"\n\n" +
   "Did the physical location change? Answer with EXACTLY one word: YES or NO.";
 
-function buildDetectionPrompt(question: string): BuiltPrompt {
+function buildSideCallPrompt(question: string, system: string): BuiltPrompt {
   const tokenizer = createEstimatingTokenizer();
-  const system = "You decide one thing about a story in progress, and answer in one word.";
   const tokens = tokenizer.count(system) + tokenizer.count(question);
   return {
     system,
@@ -2105,7 +2155,7 @@ function buildDetectionPrompt(question: string): BuiltPrompt {
       blocks: [
         {
           id: "system_prompt",
-          label: "Location check",
+          label: "Side call",
           source: "guided op",
           role: "system",
           content: system,
@@ -2113,7 +2163,7 @@ function buildDetectionPrompt(question: string): BuiltPrompt {
           tokens: tokenizer.count(system),
         },
         {
-          id: "background_detect",
+          id: "question",
           label: "Question",
           source: "guided op",
           role: "user",

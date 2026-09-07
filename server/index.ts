@@ -1,4 +1,5 @@
 import { ensureDataDirs, loadConfig } from "./config.ts";
+import { loadInstalledExtensions } from "./extensions/install.ts";
 import { openDatabase } from "./db/index.ts";
 import { migrate } from "./db/migrate.ts";
 import { seedBuiltins } from "./db/queries/options.ts";
@@ -26,6 +27,8 @@ seedBuiltins(db);
 seedBuiltinThemes(db);
 
 const ctx: AppContext = { db, config, keyring: loadOrCreateKeyring(config) };
+// Extensions' code reloads here so their task callbacks exist before any turn.
+await loadInstalledExtensions(db, config.extensionsDir);
 const { app, generation, tasks, passes, guides, trackers, autopilot } = createServer(ctx);
 
 const server = Bun.serve({

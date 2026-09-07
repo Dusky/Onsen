@@ -6542,3 +6542,13 @@ The extension framework is the pack system; now a repository installs by URL.
 `POST /packs/install-url` clones the repo, reads the pack layout and installs
 it transactionally, and the Packs section gains an *Install from a URL* box —
 the SillyTavern-shaped flow: publish a repository, paste its URL.
+
+## Phase 110 — The extension code API
+
+An extension is now data plus code. A `server.ts` in a repository exports
+`register(ctx)`; `ctx.task` declares a side-call task — a prompt with
+`{{transcript}}` and `{{lastMessage}}`, a stage, samplers, and an optional
+`apply(reply, { db, sceneId })` that runs in the extension after the model
+answers. Installing by URL loads the module, persists the extension and its
+tasks, and startup reloads every installed extension so the callbacks exist
+again. Post-generation tasks run after each turn.

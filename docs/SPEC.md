@@ -3617,6 +3617,11 @@ Each phase ends in a working, usable application.
     /packs/install-url` clones, reads the pack layout and installs it), with an
     *Install from a URL* box beside the pack controls. See §15,
     `test/packs.test.ts`.
+110. **The extension code API** — an extension's `server.ts` exports
+    `register(ctx)`; `ctx.task` declares a side-call task (prompt, stage,
+    samplers, an optional `apply` that runs in the extension after the model
+    answers). Installed extensions reload at startup, and their post-generation
+    tasks run after each turn. See §15, `test/extensions.test.ts`.
 
 Settled while building phase 15.
 

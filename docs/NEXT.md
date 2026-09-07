@@ -12,18 +12,25 @@ re-deriving it. `GAPS.md` is the evidence; this is the order.
 Ordered by what the user asked for most recently, which is the thread to
 follow.
 
-1. **Megumin Suite — Story Config + Blocks.** The preset's prompt blocks are
+1. **Backgrounds as a screen.** The backdrop manager is a Settings section
+   now; it should be a top-bar destination — a screen that takes over the main
+   display so a potentially large library gets real thumbnails. Backgrounds
+   already keep their prompt; add user-editable **tags and folders**, search,
+   and the ability to name/rename a background. The default, the opacity and
+   generate stay; they move out of Settings into this screen.
+
+2. **Megumin Suite — Story Config + Blocks.** The preset's prompt blocks are
    already imported, and its samplers and utility prompts now round-trip. What
    remains: the Story Config dropdowns (genre, POV, friction, pace → scene
    prompt options) and the Blocks (tracker cards under a reply).
 
-2. **Multihog** — the RPG engine and the long pole. State Tracker first, then
+3. **Multihog** — the RPG engine and the long pole. State Tracker first, then
    the RNG, then World Progression and Map Evolution.
 
-3. **Web search** — explicitly *not* core; the user said it could be an
+4. **Web search** — explicitly *not* core; the user said it could be an
    extension. Left off the core list.
 
-4. **Self-responses** (`GAPS.md` §4). Still a product conversation, not a gap.
+5. **Self-responses** (`GAPS.md` §4). Still a product conversation, not a gap.
 
 ## How to pick up
 
