@@ -3,14 +3,14 @@
 A short, honest list, written at the end of phase 65 so work can resume without
 re-deriving it. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 96, on `glm/sillytavern-replacement-dyp30w`. 1412 tests across
+**State:** phase 97, on `glm/sillytavern-replacement-dyp30w`. 1414 tests across
 103 files, typecheck clean, working tree clean. Feature complete against
 `SPEC.md` §20 apart from the deferred phase 42.
 
-**The redesign is done** (`docs/REDESIGN.md`). The left rail's sections are now
-full tools: the Prompt panel carries provenance, the lore trace and a raw view;
-the Preset tab manages the prompt chunks and the ban list; and the Guides tab
-writes, reorders (weighting by order) and flushes guides (§20 phases 95–96).
+**The redesign is done** (`docs/REDESIGN.md`). Both rails are now full tools:
+the left rail carries provenance, prompt chunks, the ban list and guide
+weighting (§20 phases 95–96), and the right rail gained search, new buttons,
+scene markers and the aside-voice sample (§20 phase 97).
 
 ## How to pick up
 

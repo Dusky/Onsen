@@ -3557,6 +3557,11 @@ Each phase ends in a working, usable application.
     fired"; and the Guides tab gains the full guide body — write a missing
     kind, edit, rebuild, flush — plus a per-scene order whose up/down moves
     weight one guide above another. See §16, `test/leftrail.test.ts`.
+97. **The right rail gets the same pass** — the Characters and Authors tabs gain
+    search, a new-card/new-author button, and the scene markers (*in scene*,
+    *in use*); the author editor samples its aside voice in the exact
+    treatment the log shows it; and the inline card editor fits the rail
+    instead of overflowing it. See §16, `test/rightrail.test.ts`.
 
 Settled while building phase 15.
 

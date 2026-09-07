@@ -35,6 +35,18 @@ describe("the global right rail", () => {
   test("the scene tab shows the slot the chat screen fills", () => {
     expect(RAIL).toContain("sceneInspector");
   });
+
+  test("characters and authors have search, a new button and the scene markers", () => {
+    expect(RAIL).toContain("strings.characters.searchPlaceholder");
+    expect(RAIL).toContain("useCreateCharacter");
+    expect(RAIL).toContain("useCreateAuthor");
+    expect(RAIL).toContain("strings.rightRail.inScene");
+    expect(RAIL).toContain("strings.rightRail.inUse");
+  });
+
+  test("the author editor samples the aside voice", () => {
+    expect(RAIL).toContain("strings.authors.sampleVoice");
+  });
 });
 
 describe("the scene pane carries the cast and the scene's people", () => {

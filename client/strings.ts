@@ -1069,6 +1069,8 @@ export const strings = {
     author: "Author",
     edit: "Edit",
     nextTurn: "Next turn",
+    inScene: "in scene",
+    inUse: "in use",
   },
 
   /** The desktop header (§20 phase 91). */

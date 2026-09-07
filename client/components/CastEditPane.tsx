@@ -35,7 +35,7 @@ export function CastEditPane({
   const tokens = character.tokens;
 
   return (
-    <aside className="flex w-[420px] flex-none flex-col border-l border-rule bg-bg-sunken">
+    <aside className="flex min-h-0 w-full flex-col">
       <div className="hairline flex flex-none items-center gap-[10px] px-[16px] py-[12px]">
         <button
           type="button"

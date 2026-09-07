@@ -6407,3 +6407,18 @@ null for the default order.
 **Verified in a browser** at 1440×900: the Preset tab lists every prompt block
 with its controls, the Lore tab offers the lorebooks, and the Guides tab shows
 all six kinds with write, reorder and rebuild.
+
+## Phase 97 — The right rail gets the same pass
+
+- **Characters** gains search, a new-card button (which opens the card for
+  editing straight away) and an *in this scene* grouping that marks the cast of
+  the open roleplay in amber.
+- **Authors** gains search, a new-author button and an *in use* mark on the
+  author the open roleplay runs with.
+- The author editor samples the aside voice in the exact blue treatment the log
+  shows it in, so the voice is configured against something seen.
+- The inline card editor fits the 352px rail (it was still carrying its old
+  420px pane width and overflowing).
+
+**Verified in a browser** at 1440×900: the Characters tab shows the in-scene
+mark, and the Authors tab shows the empty state and the new button.
