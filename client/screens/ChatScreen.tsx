@@ -36,6 +36,7 @@ import { OpsGrid, OpsRow, OpPrompt, type Op } from "../components/OpsGrid.tsx";
 import { QuickReplyRow, QuickReplySheet } from "../components/QuickReplies.tsx";
 import { CastRail } from "../components/CastRail.tsx";
 import { CastEditPane } from "../components/CastEditPane.tsx";
+import { PersonaEditPane } from "../components/PersonaEditPane.tsx";
 import { VnStage } from "../components/VnStage.tsx";
 import { TrackerPanel } from "../components/TrackerPanel.tsx";
 import { VirtualizedLog } from "../components/VirtualizedLog.tsx";
@@ -1308,6 +1309,12 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             tab={inspectorTab}
             onTab={setInspectorTab}
             context={contextBody()}
+            persona={
+              <PersonaEditPane
+                sceneId={sceneId}
+                personaId={scene.data?.scene.personaId ?? null}
+              />
+            }
             cast={
               <>
                 {/* The same row the phone's deck carries (§20 phase 50): four

@@ -34,3 +34,19 @@ describe("the mid-scene edit pane", () => {
     expect(CHAT).toContain("strings.chat.editCard");
   });
 });
+
+describe("the persona pane", () => {
+  const PERSONA = readFileSync(
+    join(import.meta.dir, "..", "client", "components", "PersonaEditPane.tsx"),
+    "utf8",
+  );
+
+  test("edits the reader in place, with the shared fields", () => {
+    expect(PERSONA).toContain("<EditorField");
+    expect(PERSONA).toContain("useUpdatePersona");
+  });
+
+  test("is a pane the chat shows, not a screen", () => {
+    expect(CHAT).toContain("<PersonaEditPane");
+  });
+});

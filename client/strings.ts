@@ -253,6 +253,7 @@ export const strings = {
     inspectorPane: "Inspector",
     inspectorTabContext: "Context",
     inspectorTabCast: "Cast",
+    inspectorTabPersona: "You",
     checkpointName: "Call it",
     checkpointNamePlaceholder: "before she opens the ledger",
     checkpointSave: "Mark it",
@@ -1286,6 +1287,8 @@ export const strings = {
     personaNoDescription: "No description",
     personaEmpty: "No personas yet",
     personaNone: "Not set",
+    personaNoneInScene: "No persona in this scene. Pick one, or set it in setup.",
+    personaPick: "Use",
     /* Picture and placement (§20 phase 61). */
     personaPicture: "Picture",
     personaPictureAdd: "Add a picture",

@@ -3484,6 +3484,10 @@ Each phase ends in a working, usable application.
     the log; on a phone the same action opens the full editor. The pane renders
     the same `EditorField`s the screen does. See §16 and
     `test/cast-edit-pane.test.ts`.
+83. **The reader, editable in place** — the inspector gains a *You* tab: the
+    scene's persona — name, description, picture, position — editable without
+    leaving the log, and a list to pick one when the scene has none yet. See
+    §16 and `test/cast-edit-pane.test.ts`.
 
 Settled while building phase 15.
 

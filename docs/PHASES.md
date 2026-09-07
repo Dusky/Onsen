@@ -6162,3 +6162,18 @@ editor* reaches it.
 
 **Verified in a browser** at 1440×900: right-clicking a cast card, choosing
 *Edit card*, and the pane opens with the name field and *Open full editor*.
+
+## Phase 83 — The reader, editable in place
+
+The inspector gains a third tab, *You*. The scene's persona — who the author is
+told the reader is — is editable without leaving the log: name, description,
+picture and position, with the same prefix-versus-depth control the persona
+screen carries. When the scene has no persona yet, the pane lists the personas
+to pick one, rather than sending the reader to setup.
+
+The pane renders the same `EditorField`s and the same `AvatarField` as the
+screen, so the two cannot drift — the same contract the cast pane took a phase
+earlier.
+
+**Verified in a browser** at 1440×900: the *You* tab opens the persona's name,
+description and position controls in the pane.
