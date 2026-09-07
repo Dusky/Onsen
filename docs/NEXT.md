@@ -3,14 +3,12 @@
 A short, honest list, written at the end of phase 65 so work can resume without
 re-deriving it. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 99, on `glm/sillytavern-replacement-dyp30w`. 1420 tests across
+**State:** phase 100, on `glm/sillytavern-replacement-dyp30w`. 1421 tests across
 104 files, typecheck clean, working tree clean. Feature complete against
 `SPEC.md` §20 apart from the deferred phase 42.
 
-**The redesign is done** (`docs/REDESIGN.md`). Both rails are full tools (§20
-phases 95–98), and the turn surface and composer got the same pass — named
-actions, an amber streaming cursor, labelled reasoning and a live draft cost
-(§20 phase 99).
+**The redesign is done** (`docs/REDESIGN.md`). Both rails are full tools, and
+prompt blocks and lorebooks edit without a roleplay open (§20 phase 100).
 
 ## How to pick up
 

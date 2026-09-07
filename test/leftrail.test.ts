@@ -57,20 +57,24 @@ describe("the prompt panel shows the window, not a link", () => {
 });
 
 describe("the other sections are real, not placeholders", () => {
-  test("preset carries the samplers, the prompt chunks and the scene's ban list", () => {
+  test("preset carries the samplers and the scene's ban list", () => {
     expect(RAIL).toContain("PANEL_SAMPLERS");
     expect(RAIL).toContain("<Slider");
-    expect(RAIL).toContain("<PromptManager");
     expect(RAIL).toContain("useBans");
     expect(RAIL).toContain("useAddBan");
   });
 
-  test("lore points at the lorebooks, and guides can be written, reordered and flushed", () => {
+  test("lore is editable without a scene, and guides can be written, reordered and flushed", () => {
     expect(RAIL).toContain("useLoreActivation");
-    expect(RAIL).toContain("strings.leftRail.loreManage");
+    expect(RAIL).toContain("<LorePane");
     expect(RAIL).toContain("<GuidesBody");
     expect(RAIL).toContain("onMove");
     expect(RAIL).toContain("useRebuildGuides");
     expect(RAIL).toContain("useFlushGuides");
+  });
+
+  test("the prompt is editable without a scene", () => {
+    expect(RAIL).toContain("<PromptManager");
+    expect(RAIL).toContain('sceneId === null');
   });
 });

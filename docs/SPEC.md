@@ -3571,6 +3571,11 @@ Each phase ends in a working, usable application.
     ends in an amber cursor; reasoning is labelled *model reasoning, not sent
     back*; and the composer states the draft's rough token cost as it is typed,
     with the mockup's placeholder. See §16, `test/turn-surface.test.ts`.
+100. **Prompt and lore edit without a roleplay** — the Prompt tab now shows the
+    prompt blocks (add, remove, reorder, switch) when no scene is open, and the
+    Lore tab shows the lorebooks — browse and edit entries in place — with the
+    fired/missed verdicts above them only while a roleplay is open. See §16,
+    `test/leftrail.test.ts`.
 
 Settled while building phase 15.
 

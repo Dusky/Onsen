@@ -18,7 +18,6 @@ import {
   useEditGuide,
   useFlushGuides,
   useLoreActivation,
-  useLorebooks,
   usePresets,
   usePreviewPrompt,
   useRebuildGuides,
@@ -31,6 +30,7 @@ import {
 import { useUiStore } from "../state/ui.ts";
 import { LABELS, Slider, PromptManager } from "./PresetEditor.tsx";
 import { GuidesBody } from "./GuidesPanel.tsx";
+import { LorePane } from "./LorePane.tsx";
 
 /**
  * The left icon rail and its section panel (the redesign, phase 89).
@@ -189,6 +189,7 @@ function NoScene() {
 /* ------------------------------------------------------------------ */
 
 function PromptPanel({ sceneId }: { sceneId: string | null }) {
+  const presets = usePresets();
   const preview = usePreviewPrompt(sceneId ?? "");
   const [debug, setDebug] = useState<PromptDebugInfo | null>(null);
   const [rawOpen, setRawOpen] = useState(false);
@@ -208,7 +209,22 @@ function PromptPanel({ sceneId }: { sceneId: string | null }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sceneId]);
 
-  if (sceneId === null) return <NoScene />;
+  // Outside a roleplay there is nothing assembled yet, but the prompt's
+  // structure — the blocks, their order and their switches — is the preset's
+  // and is edited here (§20 phase 100).
+  if (sceneId === null) {
+    const preset =
+      (presets.data ?? []).find((row) => row.isDefault) ?? (presets.data ?? [])[0] ?? null;
+    if (preset === null) {
+      return <p className="explain mt-[14px]">{strings.settings.presetDefault}</p>;
+    }
+    return (
+      <div className="mt-[12px]">
+        <PromptManager preset={preset} />
+      </div>
+    );
+  }
+
   if (debug === null) {
     if (preview.isError) {
       return (
@@ -481,10 +497,6 @@ function PresetPanel({ sceneId }: { sceneId: string | null }) {
         />
       ))}
 
-      {/* The prompt chunks: add, remove, reorder, switch on or off (§20 phase
-          56). The preset owns them, so this is where they are managed. */}
-      <PromptManager preset={preset} />
-
       <button
         type="button"
         className="btn mt-[6px] w-full"
@@ -598,29 +610,24 @@ function BanList({ sceneId }: { sceneId: string }) {
 
 function LorePanel({ sceneId }: { sceneId: string | null }) {
   const lore = useLoreActivation(sceneId ?? "", sceneId !== null);
-  const books = useLorebooks();
-
-  if (sceneId === null) return <NoScene />;
   const rows = lore.data ?? [];
-  const noBooks = (books.data ?? []).length === 0;
+  // The fired/missed verdicts are per scene; the books themselves are not, so
+  // the books are always here and the verdicts only while a roleplay is open
+  // (§20 phase 100).
+  const showActivation = sceneId !== null && rows.length > 0;
 
   return (
     <div className="mt-[12px]">
-      <p className="meta mb-[8px]">{strings.leftRail.loreTitle}</p>
-      {rows.length === 0 ? (
-        <p className="explain">
-          {noBooks ? strings.leftRail.loreNoBooks : strings.leftRail.loreNoMatch}
-        </p>
+      {showActivation ? (
+        <>
+          <p className="meta mb-[6px]">{strings.leftRail.loreTitle}</p>
+          {rows.map((entry) => <LoreRow key={entry.entryId} entry={entry} />)}
+          <p className="section-label mt-[14px] mb-[4px]">{strings.lore.books}</p>
+        </>
       ) : (
-        rows.map((entry) => <LoreRow key={entry.entryId} entry={entry} />)
+        <p className="section-label mb-[4px]">{strings.lore.books}</p>
       )}
-      <button
-        type="button"
-        className="btn mt-[12px] w-full"
-        onClick={() => navigate({ name: "lorebooks" })}
-      >
-        {strings.leftRail.loreManage}
-      </button>
+      <LorePane />
     </div>
   );
 }

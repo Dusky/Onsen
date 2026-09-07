@@ -6447,3 +6447,18 @@ mark, and the editors render the share-of-window footer.
 
 **Verified in a browser**: the composer shows `~6 tok` under a typed draft, the
 placeholder and the named send button, and the tests pin the rest.
+
+## Phase 100 — Prompt and lore edit without a roleplay
+
+The Prompt tab and the Lore tab no longer need a scene open:
+
+- **Prompt** shows the prompt blocks — add, remove, reorder, switch on or off,
+  edit label and content — whenever no roleplay is open, and the assembled
+  window when one is. The blocks moved here from the Preset tab, which now
+  carries the samplers and the ban list.
+- **Lore** always shows the lorebooks — pick a book, pick an entry, edit its
+  title, keys and content in place. The fired/missed verdicts sit above the
+  books only while a roleplay is open.
+
+**Verified in a browser** on the roleplays list: the Prompt tab lists every
+prompt block with its controls, and the Lore tab shows the books.
