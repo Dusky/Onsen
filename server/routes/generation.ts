@@ -59,6 +59,7 @@ import {
   pendingForSummary,
   toSummaryDto,
 } from "../db/queries/summaries.ts";
+import { isSummariseSuppressed } from "../db/queries/settings.ts";
 import {
   activeGuides,
   editGuide,
@@ -1049,6 +1050,9 @@ export function sceneGenerationRoutes(
       pendingMessages: pending.length,
       pendingWords: pending.reduce((sum, row) => sum + countWords(row.content), 0),
       coveredMessages: injected.coveredMessageIds.size,
+      // The panel says so rather than pretending the native summariser still
+      // owns this scene (§147).
+      suppressed: isSummariseSuppressed(ctx.db),
     };
   }
 

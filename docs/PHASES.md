@@ -7006,7 +7006,10 @@ Summarize extension suppresses the native rolling summariser — its auto-trigge
 its manual run, and the injection of existing native summaries — while the
 extension is enabled, and hands them back the moment it is disabled or removed.
 The mapping is host-owned (`server/extensions/suppress.ts`), so a manifest can
-only turn off a feature the host has agreed can be taken over.
+only turn off a feature the host has agreed can be taken over. While suppressed,
+the summaries panel says so — "Summaries are handled by the Summarize
+extension" — instead of showing native rows and buttons that would no longer
+act.
 
 **Verified** by two cases — the shipped Summarize installs as an external
 extension exactly once, and its summary injects through the template while its

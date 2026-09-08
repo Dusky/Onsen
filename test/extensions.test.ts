@@ -431,6 +431,18 @@ describe("shipped extensions", () => {
     await loadInstalledExtensions(t.ctx.db, t.config.extensionsDir);
     expect(isSummariseSuppressed(t.ctx.db)).toBe(true);
 
+    // The summaries panel reports it, rather than showing inert native rows.
+    const profiles = (await (await t.fetch("/api/connections/profiles")).json()) as Array<{ id: string }>;
+    const created = (await (
+      await t.fetch("/api/scenes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Ridge station", connectionProfileId: profiles[0]!.id }),
+      })
+    ).json()) as { id: string };
+    const state = (await (await t.fetch(`/api/scenes/${created.id}/summaries`)).json()) as { suppressed: boolean };
+    expect(state.suppressed).toBe(true);
+
     // Disabling it hands summarisation back to the native summarizer.
     const list = (await (await t.fetch("/api/extensions")).json()) as Array<{ id: string; name: string }>;
     const id = list.find((entry) => entry.name === "Summarize")!.id;
@@ -441,5 +453,8 @@ describe("shipped extensions", () => {
     });
     expect(off.status).toBe(200);
     expect(isSummariseSuppressed(t.ctx.db)).toBe(false);
+
+    const after = (await (await t.fetch(`/api/scenes/${created.id}/summaries`)).json()) as { suppressed: boolean };
+    expect(after.suppressed).toBe(false);
   });
 });

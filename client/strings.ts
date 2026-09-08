@@ -429,6 +429,8 @@ export const strings = {
     memoryPending: (messages: number, words: number) =>
       `${messages} waiting · ${words} words`,
     memoryPendingNone: "Nothing waiting",
+    memorySuppressed:
+      "Summaries are handled by the Summarize extension. Turn it off in Settings → Extensions to use the built-in summariser.",
     memoryCovers: (messages: number) => `${messages} turns`,
     memoryInjected: "In the prompt",
     memoryHeld: "Too recent",

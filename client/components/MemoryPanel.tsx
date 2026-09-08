@@ -43,6 +43,19 @@ export function MemoryPanel({
   const summaries = state?.summaries ?? [];
   const injected = new Set(state?.injectedIds ?? []);
 
+  // An extension owns summarisation now (§147): the native list would show
+  // summaries it no longer injects and buttons that no longer do anything, so
+  // the whole panel is replaced by the one thing worth saying.
+  if (state?.suppressed === true) {
+    return (
+      <div className="pt-[4px] pb-[14px]">
+        <p className="chrome text-[13px] leading-[1.6]" style={blueMuted}>
+          {strings.chat.memorySuppressed}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="pt-[4px] pb-[14px]">
       {/* What is waiting, so the trigger is not a black box: "nothing has been

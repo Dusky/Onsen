@@ -2444,6 +2444,8 @@ export interface SummaryStateDto {
   pendingWords: number;
   /** How many raw messages the injected summaries stand in for. */
   coveredMessages: number;
+  /** True while an extension has taken over summarisation (§147). */
+  suppressed: boolean;
 }
 
 export interface UpdateSummaryRequest {
