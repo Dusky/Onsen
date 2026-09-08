@@ -42,5 +42,8 @@ describe("the shared tag editor", () => {
     // And pins the preset it answers with (§20 phase 140).
     expect(CHARACTERS).toContain("character.presetId");
     expect(CHARACTERS).toContain("strings.characters.preset");
+    // And carries its own regex scripts (§20 phase 141).
+    expect(CHARACTERS).toContain("characterScripts");
+    expect(CHARACTERS).toContain("strings.characters.scripts");
   });
 });

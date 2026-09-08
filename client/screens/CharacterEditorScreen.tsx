@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import type { CharacterDto, UpdateCharacterRequest } from "@shared/types.ts";
+import type { CharacterDto, RegexScriptDto, UpdateCharacterRequest } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { navigate } from "../lib/router.ts";
@@ -18,10 +18,15 @@ import {
   useDeleteExpression,
   usePersonas,
   usePresets,
+  useScripts,
+  useCreateScript,
+  useUpdateScript,
+  useDeleteScript,
 } from "../lib/queries.ts";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
 import { EditorField } from "../components/EditorField.tsx";
 import { TagEditor } from "../components/TagEditor.tsx";
+import { ScriptEditor } from "../components/ScriptEditor.tsx";
 
 /**
  * The character editor.
@@ -153,6 +158,11 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
   const [confirmNode, confirm] = useConfirm();
   const personas = usePersonas();
   const presets = usePresets();
+  const scripts = useScripts();
+  const createScript = useCreateScript();
+  const updateScript = useUpdateScript();
+  const deleteScript = useDeleteScript();
+  const [editingScript, setEditingScript] = useState<RegexScriptDto | null>(null);
 
   const character: CharacterDto | undefined = query.data;
   if (character === undefined) {
@@ -164,6 +174,8 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
       </div>
     );
   }
+
+  const characterScripts = (scripts.data ?? []).filter((script) => script.characterId === character.id);
 
   const save = (patch: UpdateCharacterRequest) => update.mutate(patch);
   const tokens = character.tokens;
@@ -623,6 +635,77 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
 
               {/* Sprites live on their own tab (DESIGN §295). */}
 
+              {/* Per-character regex scripts (§14, §20 phase 141): the ones that
+                  run only for this card. */}
+              <p className="section-label mb-[8px]">{strings.characters.scripts}</p>
+              {characterScripts.length === 0 ? (
+                <p className="explain mb-[14px]">{strings.characters.scriptsNone}</p>
+              ) : (
+                characterScripts.map((script) => (
+                  <div key={script.id} className="mb-[8px] flex items-center gap-[8px]">
+                    <button
+                      type="button"
+                      onClick={() => setEditingScript(script)}
+                      className="chrome min-w-0 flex-1 text-left"
+                    >
+                      <span
+                        className="block truncate text-[14px]"
+                        style={{ opacity: script.enabled ? 1 : 0.55 }}
+                      >
+                        {script.name}
+                      </span>
+                      <span className="meta block truncate">
+                        {strings.settings.stageLabel[script.applyTo]}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateScript.mutate({ id: script.id, enabled: !script.enabled })}
+                      aria-pressed={script.enabled}
+                      className="chrome flex-none text-[12px]"
+                      style={{ color: script.enabled ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)" }}
+                    >
+                      {script.enabled ? strings.lore.on : strings.lore.off}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        confirm(
+                          strings.settings.scriptDeleteConfirm,
+                          () => deleteScript.mutate(script.id),
+                          { confirmLabel: strings.settings.scriptDelete },
+                        )
+                      }
+                      aria-label={strings.settings.scriptDelete}
+                      className="chrome flex-none text-[13px]"
+                      style={{ color: "var(--onsen-color-red)" }}
+                    >
+                      {"\u00d7"}
+                    </button>
+                  </div>
+                ))
+              )}
+              <button
+                type="button"
+                className="btn mb-[16px] w-full"
+                onClick={() =>
+                  createScript.mutate(
+                    {
+                      name: "New script",
+                      pattern: "",
+                      replacement: "",
+                      flags: "g",
+                      applyTo: "ai_output",
+                      scope: "character",
+                      characterId: character.id,
+                    } as Partial<RegexScriptDto>,
+                    { onSuccess: (script) => setEditingScript(script) },
+                  )
+                }
+              >
+                {strings.settings.addScript}
+              </button>
+
               {/* What the original card carried that this editor does not show.
                   It survives export; saying so is what stops it feeling lost. */}
               {character.unmodelledFields.length > 0 ? (
@@ -757,6 +840,9 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
           )}
         </Sheet>
       ) : null}
+      {editingScript === null ? null : (
+        <ScriptEditor script={editingScript} onClose={() => setEditingScript(null)} />
+      )}
       {confirmNode}
     </div>
   );

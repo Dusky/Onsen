@@ -1182,6 +1182,9 @@ export const strings = {
     /* The pinned preset (§20 phase 140). */
     preset: "Answers with preset",
     presetDefault: "The scene's, or the default",
+    /* Per-character scripts (§20 phase 141). */
+    scripts: "Scripts",
+    scriptsNone: "No scripts on this card.",
     /* The bound lorebook (§20 phase 139). */
     lore: "Lorebook",
     loreNone: "No lorebook attached.",

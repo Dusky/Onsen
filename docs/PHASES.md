@@ -6913,3 +6913,12 @@ lock; the PATCH route resolves the preset ULID the way the persona lock does.
 
 **Verified** by a dedicated resolution test (scene beats character, character
 beats default) and a characters-api round-trip of the pin and its clearing.
+
+## Phase 141 — Per-character regex scripts
+
+The server has stored character-scoped scripts since phase 33; the card editor
+just could not reach them. The card's advanced tab now has a Scripts section:
+the scripts scoped to this card, each with an enable toggle and a delete, and a
+one-tap add that creates a character-scoped script and opens the existing
+`ScriptEditor` for it — the same sheet the Settings screen uses, so the two
+surfaces cannot drift.

@@ -3788,6 +3788,11 @@ Each phase ends in a working, usable application.
     default; the card editor gains a preset selector beside the persona lock.
     Migration 0065. See §13, `test/character-preset.test.ts`,
     `test/characters-api.test.ts`.
+141. **Per-character regex scripts** — the card editor gains a Scripts section
+    listing the scripts scoped to this card, with enable/delete and a
+    one-tap add that opens the existing `ScriptEditor`. The server has stored
+    character-scoped scripts since phase 33; the editor just could not reach
+    them. See §14, `test/tags.test.ts`.
 
 Settled while building phase 15.
 
