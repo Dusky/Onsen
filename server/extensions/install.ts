@@ -4,6 +4,7 @@ import type { Database } from "bun:sqlite";
 import { loadExtensionModule } from "./loader.ts";
 import { loadBuiltin, BUILTINS } from "./builtins.ts";
 import { registerExtensionTask, registerExtensionInjection, clearExtensionTasks } from "./registry.ts";
+import { applySuppression } from "./suppress.ts";
 import {
   deleteExtensionTasks,
   findExtensionByName,
@@ -52,6 +53,7 @@ function readManifest(dir: string): {
   author: string;
   description: string | null;
   settingsSchema: ExtensionSettingsField[];
+  disables: string[];
 } | null {
   for (const file of ["pack.json", "extension.json"]) {
     const path = join(dir, file);
@@ -63,6 +65,7 @@ function readManifest(dir: string): {
         author?: unknown;
         description?: unknown;
         settings?: unknown;
+        disables?: unknown;
       };
       return {
         name: typeof manifest.name === "string" ? manifest.name : "Extension",
@@ -71,6 +74,9 @@ function readManifest(dir: string): {
         description: typeof manifest.description === "string" ? manifest.description : null,
         settingsSchema: Array.isArray(manifest.settings)
           ? (manifest.settings as ExtensionSettingsField[])
+          : [],
+        disables: Array.isArray(manifest.disables)
+          ? manifest.disables.filter((f): f is string => typeof f === "string")
           : [],
       };
     } catch {
@@ -164,6 +170,7 @@ export async function installExtensionCode(opts: {
 export async function loadInstalledExtensions(db: Database, extensionsDir: string): Promise<void> {
   clearExtensionTasks();
   seedBuiltins(db);
+  const disabled = new Set<string>();
   for (const row of listExtensions(db)) {
     // A disabled extension contributes no tasks and runs no callbacks, and its
     // rows leave the ops list so it cannot look alive while off (§144).
@@ -178,6 +185,11 @@ export async function loadInstalledExtensions(db: Database, extensionsDir: strin
         : await loadFromDir(row.dir, row.name, parseSettings(row.settings));
     if (registration === null) continue;
 
+    // An enabled extension may declare native features it takes over (§147).
+    if (row.built_in !== 1) {
+      for (const feature of readManifest(row.dir)?.disables ?? []) disabled.add(feature);
+    }
+
     for (const task of registration.tasks) {
       registerExtensionTask(task, row.name);
       upsertTask(db, row.name, task);
@@ -186,6 +198,7 @@ export async function loadInstalledExtensions(db: Database, extensionsDir: strin
       registerExtensionInjection(injection, row.name);
     }
   }
+  applySuppression(db, disabled);
 }
 
 /** A built-in's registration, from the in-process registry by name. */

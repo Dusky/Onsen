@@ -7,6 +7,7 @@ import { loadExtensionModule } from "../server/extensions/loader.ts";
 import { loadInstalledExtensions, installShippedExtensions } from "../server/extensions/install.ts";
 import { postGenerationExtensionTasks, clearExtensionTasks, collectExtensionInjections } from "../server/extensions/registry.ts";
 import { writeExtensionState } from "../server/extensions/state.ts";
+import { isSummariseSuppressed } from "../server/db/queries/settings.ts";
 
 /**
  * The extension code API (SPEC §15, §20 phase 110).
@@ -422,5 +423,23 @@ describe("shipped extensions", () => {
     const task = postGenerationExtensionTasks().find((entry) => entry.task.key === "summarize")!.task;
     expect(task.shouldRun!({ db: t.ctx.db, sceneId, messageCount: 3 })).toBe(false);
     expect(task.shouldRun!({ db: t.ctx.db, sceneId, messageCount: 12 })).toBe(true);
+  });
+
+  test("the Summarize extension suppresses the native summarizer while enabled", async () => {
+    const t = await signedIn();
+    await installShippedExtensions(t.ctx.db, t.config.extensionsDir);
+    await loadInstalledExtensions(t.ctx.db, t.config.extensionsDir);
+    expect(isSummariseSuppressed(t.ctx.db)).toBe(true);
+
+    // Disabling it hands summarisation back to the native summarizer.
+    const list = (await (await t.fetch("/api/extensions")).json()) as Array<{ id: string; name: string }>;
+    const id = list.find((entry) => entry.name === "Summarize")!.id;
+    const off = await t.fetch(`/api/extensions/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: false }),
+    });
+    expect(off.status).toBe(200);
+    expect(isSummariseSuppressed(t.ctx.db)).toBe(false);
   });
 });

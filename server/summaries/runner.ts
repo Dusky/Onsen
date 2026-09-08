@@ -18,6 +18,7 @@ import {
   type SummaryRow,
 } from "../db/queries/summaries.ts";
 import { taskConfig, templateOf } from "../db/queries/tasks.ts";
+import { isSummariseSuppressed } from "../db/queries/settings.ts";
 import { RESUMMARISE, SUMMARISE, taskKind } from "../tasks/registry.ts";
 import type { TaskRunner } from "../tasks/runner.ts";
 
@@ -177,6 +178,7 @@ export class SummaryRunner {
 
   /** Whether an automatic run would do anything, so a caller can skip the await. */
   willRunAutomatically(scene: SceneRow): boolean {
+    if (isSummariseSuppressed(this.db)) return false;
     if (scene.summarise === 0) return false;
     const op = taskKind(SUMMARISE);
     if (op === null) return false;
@@ -195,6 +197,7 @@ export class SummaryRunner {
     scene: SceneRow,
     options: { automatic: boolean } = { automatic: false },
   ): Promise<void> {
+    if (isSummariseSuppressed(this.db)) return;
     if (scene.summarise === 0) return;
     const op = taskKind(SUMMARISE);
     if (op === null) return;

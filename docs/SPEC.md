@@ -3826,7 +3826,10 @@ Each phase ends in a working, usable application.
     repo install once through the ordinary path: a real copied directory, a
     removable row, no `built_in` flag. The Summarize extension is the first;
     an `app_settings` flag makes the install one-shot so uninstalling it
-    sticks. See §15, `installShippedExtensions`.
+    sticks. A manifest `disables: ["summarise"]` suppresses the native rolling
+    summariser while the extension is enabled — the Summarize extension is more
+    featureful, so the two never both describe the story. See §15,
+    `installShippedExtensions`, `server/extensions/suppress.ts`.
 
 Settled while building phase 15.
 

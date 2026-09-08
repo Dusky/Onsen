@@ -7001,6 +7001,14 @@ real copied directory, a removable row, no `built_in` flag. The Summarize
 extension is the first. An `app_settings` flag makes the install one-shot, so
 uninstalling it sticks instead of coming back on the next boot.
 
+The manifest also declares what it takes over: `disables: ["summarise"]` on the
+Summarize extension suppresses the native rolling summariser — its auto-trigger,
+its manual run, and the injection of existing native summaries — while the
+extension is enabled, and hands them back the moment it is disabled or removed.
+The mapping is host-owned (`server/extensions/suppress.ts`), so a manifest can
+only turn off a feature the host has agreed can be taken over.
+
 **Verified** by two cases — the shipped Summarize installs as an external
 extension exactly once, and its summary injects through the template while its
-task gates on the interval — plus the full suite (1488 pass).
+task gates on the interval — plus a suppression case (enabled suppresses the
+native summarizer, disabled hands it back) and the full suite (1489 pass).

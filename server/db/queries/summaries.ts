@@ -3,6 +3,7 @@ import { ulid } from "../../lib/ulid.ts";
 import { createEstimatingTokenizer } from "../../prompt/index.ts";
 import type { SummaryDto } from "../../../shared/types.ts";
 import { activePath, type MessageRow, type SceneRow } from "./history.ts";
+import { isSummariseSuppressed } from "./settings.ts";
 
 /**
  * Rolling summarisation (SPEC §11 layer 1).
@@ -87,7 +88,9 @@ export function injectedSummaries(
   path: MessageRow[] = activePath(db, scene.id),
 ): InjectedSummaries {
   const empty: InjectedSummaries = { summaries: [], coveredMessageIds: new Set() };
-  if (scene.summarise === 0 || path.length === 0) return empty;
+  // An extension has taken over summarisation (§147): nothing native is
+  // injected, so the two never both describe the story.
+  if (isSummariseSuppressed(db) || scene.summarise === 0 || path.length === 0) return empty;
 
   const index = new Map(path.map((row, at) => [row.id, at]));
   const all = activeSummaries(db, scene.id).filter((row) => index.has(row.covers_to_message_id));

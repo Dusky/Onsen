@@ -15,6 +15,8 @@ export const SettingKey = {
   brandingLogoPath: "branding.logo_path",
   /** How strongly the background shows through the chrome (§20 phase 108). */
   backgroundOpacity: "background.opacity",
+  /** The native rolling summariser is suppressed by an extension (§147). */
+  summariseSuppressed: "summarise.suppressed",
 } as const;
 
 export type SettingKeyName = (typeof SettingKey)[keyof typeof SettingKey];
@@ -24,6 +26,11 @@ export function getSetting(db: Database, key: string): string | null {
     | { value: string }
     | null;
   return row?.value ?? null;
+}
+
+/** True while an extension has taken over native summarisation (§147). */
+export function isSummariseSuppressed(db: Database): boolean {
+  return getSetting(db, SettingKey.summariseSuppressed) === "1";
 }
 
 export function setSetting(db: Database, key: string, value: string): void {

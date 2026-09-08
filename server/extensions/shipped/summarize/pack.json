@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "author": "SillyTavern (ported)",
   "description": "ST-style rolling summary: condenses the story into one running summary and injects it through a template.",
+  "disables": ["summarise"],
   "settings": [
     {
       "key": "prompt",
