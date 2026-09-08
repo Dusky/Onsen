@@ -24,6 +24,7 @@ import type {
   EventTriggerDto,
   TriggerOutcomeDto,
   PackListDto,
+  ExtensionDto,
   PackPlanDto,
   PackInstallDto,
   PackUninstallPreviewDto,
@@ -147,6 +148,7 @@ export const connectionKeys = {
   webhooks: ["webhooks"] as const,
   apiKeys: ["api-keys"] as const,
   quickReplies: ["quick-replies"] as const,
+  extensions: ["extensions"] as const,
 };
 
 /** Invalidate everything a connection change can touch. */
@@ -2138,6 +2140,30 @@ export function usePacks() {
   return useQuery({
     queryKey: connectionKeys.packs,
     queryFn: () => api.get<PackListDto>("/packs"),
+  });
+}
+
+export function useExtensions() {
+  return useQuery({
+    queryKey: connectionKeys.extensions,
+    queryFn: () => api.get<ExtensionDto[]>("/extensions"),
+  });
+}
+
+export function useUpdateExtension() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string; enabled?: boolean; settings?: Record<string, unknown> }) =>
+      api.patch<ExtensionDto>(`/extensions/${id}`, body),
+    onSuccess: () => void client.invalidateQueries({ queryKey: connectionKeys.extensions }),
+  });
+}
+
+export function useDeleteExtension() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/extensions/${id}`),
+    onSuccess: () => void client.invalidateQueries({ queryKey: connectionKeys.extensions }),
   });
 }
 

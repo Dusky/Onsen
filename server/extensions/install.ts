@@ -1,10 +1,11 @@
 import { join } from "node:path";
-import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
 import type { Database } from "bun:sqlite";
 import { loadExtensionModule } from "./loader.ts";
 import { registerExtensionTask, clearExtensionTasks } from "./registry.ts";
 import { insertExtension, listExtensions } from "../db/queries/extensions.ts";
 import type { ExtensionTask } from "./api.ts";
+import type { ExtensionSettingsField } from "../../shared/types.ts";
 
 /**
  * Install an extension's code and reload it on startup (§20 phase 110).
@@ -33,6 +34,48 @@ function copyDir(from: string, to: string): void {
 
 function taskKey(extensionName: string, key: string): string {
   return `ext:${extensionName}:${key}`;
+}
+
+/** The manifest an extension repo carries: `pack.json`, or a bare `extension.json`. */
+function readManifest(dir: string): { description: string | null; settingsSchema: ExtensionSettingsField[] } {
+  for (const file of ["pack.json", "extension.json"]) {
+    const path = join(dir, file);
+    if (!existsSync(path)) continue;
+    try {
+      const manifest = JSON.parse(readFileSync(path, "utf8")) as {
+        description?: unknown;
+        settings?: unknown;
+      };
+      return {
+        description: typeof manifest.description === "string" ? manifest.description : null,
+        settingsSchema: Array.isArray(manifest.settings)
+          ? (manifest.settings as ExtensionSettingsField[])
+          : [],
+      };
+    } catch {
+      continue;
+    }
+  }
+  return { description: null, settingsSchema: [] };
+}
+
+/** The defaults a schema declares, so a fresh install starts at them (§143). */
+export function defaultSettings(schema: ExtensionSettingsField[]): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const field of schema) {
+    if (field.default !== undefined) out[field.key] = field.default;
+  }
+  return out;
+}
+
+function parseSettings(raw: string | null): Record<string, unknown> {
+  if (raw === null) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
 }
 
 function upsertTask(db: Database, extensionName: string, task: ExtensionTask): void {
@@ -68,13 +111,21 @@ export async function installExtensionCode(opts: {
 
   const target = join(opts.extensionsDir, safeDir(opts.name));
   copyDir(opts.sourceDir, target);
-  const registration = await loadExtensionModule(join(target, serverFile), opts.name);
+  const { description, settingsSchema } = readManifest(opts.sourceDir);
+  const registration = await loadExtensionModule(
+    join(target, serverFile),
+    opts.name,
+    defaultSettings(settingsSchema),
+  );
 
   insertExtension(opts.db, {
     name: opts.name,
     version: opts.version,
     author: opts.author,
     dir: target,
+    description,
+    settingsSchema: JSON.stringify(settingsSchema),
+    settings: JSON.stringify(defaultSettings(settingsSchema)),
   });
   for (const task of registration.tasks) {
     registerExtensionTask(task, opts.name);
@@ -87,11 +138,17 @@ export async function installExtensionCode(opts: {
 export async function loadInstalledExtensions(db: Database, extensionsDir: string): Promise<void> {
   clearExtensionTasks();
   for (const row of listExtensions(db)) {
+    // A disabled extension contributes no tasks and runs no callbacks (§144).
+    if (row.enabled !== 1) continue;
     const serverFile = ["server.ts", "server.js", "index.ts", "index.js"].find((file) =>
       existsSync(join(row.dir, file)),
     );
     if (serverFile === undefined) continue;
-    const registration = await loadExtensionModule(join(row.dir, serverFile), row.name);
+    const registration = await loadExtensionModule(
+      join(row.dir, serverFile),
+      row.name,
+      parseSettings(row.settings),
+    );
     for (const task of registration.tasks) {
       registerExtensionTask(task, row.name);
     }

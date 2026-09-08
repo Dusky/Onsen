@@ -13,6 +13,10 @@ export interface ExtensionRow {
   version: string;
   author: string;
   dir: string;
+  enabled: number;
+  description: string | null;
+  settings: string | null;
+  settings_schema: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -21,17 +25,61 @@ export function listExtensions(db: Database): ExtensionRow[] {
   return db.query("SELECT * FROM extensions ORDER BY name").all() as ExtensionRow[];
 }
 
+export function findExtension(db: Database, extensionUlid: string): ExtensionRow | null {
+  return (db.query("SELECT * FROM extensions WHERE ulid = $ulid").get({ ulid: extensionUlid }) as
+    | ExtensionRow
+    | null) ?? null;
+}
+
 export function insertExtension(
   db: Database,
-  input: { name: string; version: string; author: string; dir: string },
+  input: {
+    name: string;
+    version: string;
+    author: string;
+    dir: string;
+    description: string | null;
+    settingsSchema: string | null;
+    settings: string | null;
+  },
 ): ExtensionRow {
   const now = Date.now();
   return db
     .query(
-      `INSERT INTO extensions (ulid, name, version, author, dir, created_at, updated_at)
-       VALUES ($ulid, $name, $version, $author, $dir, $now, $now) RETURNING *`,
+      `INSERT INTO extensions (ulid, name, version, author, dir, description, settings_schema, settings, enabled, created_at, updated_at)
+       VALUES ($ulid, $name, $version, $author, $dir, $description, $schema, $settings, 1, $now, $now) RETURNING *`,
     )
-    .get({ ulid: ulid(), name: input.name, version: input.version, author: input.author, dir: input.dir, now }) as ExtensionRow;
+    .get({
+      ulid: ulid(),
+      name: input.name,
+      version: input.version,
+      author: input.author,
+      dir: input.dir,
+      description: input.description,
+      schema: input.settingsSchema,
+      settings: input.settings,
+      now,
+    }) as ExtensionRow;
+}
+
+/** Enable or disable, and write settings; both take effect on the next reload. */
+export function updateExtension(
+  db: Database,
+  id: number,
+  patch: { enabled?: boolean; settings?: string },
+): ExtensionRow {
+  const current = db.query("SELECT * FROM extensions WHERE id = $id").get({ id }) as ExtensionRow;
+  return db
+    .query(
+      `UPDATE extensions SET enabled = $enabled, settings = $settings, updated_at = $now
+        WHERE id = $id RETURNING *`,
+    )
+    .get({
+      id,
+      enabled: patch.enabled === undefined ? current.enabled : patch.enabled ? 1 : 0,
+      settings: patch.settings === undefined ? current.settings : patch.settings,
+      now: Date.now(),
+    }) as ExtensionRow;
 }
 
 /**

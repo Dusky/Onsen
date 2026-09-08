@@ -3797,6 +3797,14 @@ Each phase ends in a working, usable application.
     open on the first, cycle through them, or pick one at random (migration
     0066); a saved portrait prompt overrides the auto-assembled one when the
     reader draws a portrait. See §9, §12, `test/greetings.test.ts`.
+143. **Extension management** — an extension repo declares a `settings` schema
+    in its manifest and the host renders it, so no extension ships UI code;
+    `extensions` gains `enabled`, `description`, `settings`, and
+    `settings_schema` (migration 0067). Installed extensions are managed under
+    Settings → Packs with an enable switch, a schema-driven settings form, and
+    uninstall; `register(ctx, settings)` receives the stored values on every
+    reload, and a toggle or settings change reloads without a restart. See §15,
+    `test/extensions.test.ts`.
 
 Settled while building phase 15.
 

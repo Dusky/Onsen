@@ -59,6 +59,7 @@ import { PresetEditor, PresetFields } from "../components/PresetEditor.tsx";
 import { ScriptEditor } from "../components/ScriptEditor.tsx";
 import { TriggerEditor } from "../components/TriggerEditor.tsx";
 import { ExportPackSheet, InstallPackSheet, RemovePackSheet } from "../components/PackSheets.tsx";
+import { ExtensionsSection } from "../components/ExtensionManager.tsx";
 import { WebhookEditor } from "../components/WebhookEditor.tsx";
 import { ApiKeyEditor } from "../components/ApiKeyEditor.tsx";
 import { ModelPicker } from "../components/ModelPicker.tsx";
@@ -1675,7 +1676,7 @@ const CATEGORIES = [
   { id: "data", words: ["embedding", "document", "retrieval", "rag", "data bank"] },
   { id: "automation", words: ["trigger", "script", "regex", "action", "event"] },
   { id: "outward", words: ["api key", "webhook", "outbound", "bridge", "token"] },
-  { id: "packs", words: ["pack", "update", "import", "export", "version"] },
+  { id: "packs", words: ["pack", "update", "import", "export", "version", "extension"] },
   {
     id: "migrate",
     words: ["sillytavern", "migrate", "move", "switch", "chats", "jsonl", "import"],
@@ -2078,6 +2079,8 @@ export function SettingsScreen() {
           {show("packs") ? (
             <>
               <PacksSection />
+              <p className="group-heading mb-[12px] mt-[22px]">{strings.settings.extensions}</p>
+              <ExtensionsSection />
               <UpdateGroup />
             </>
           ) : null}

@@ -6934,3 +6934,21 @@ portrait.
 
 **Verified** by two new greeting cases (cycle advances, random picks any) and a
 structural guard pinning the greeting selector and the portrait-prompt field.
+
+## Phase 143 — Extension management
+
+An extension repo can now declare a `settings` array in its `pack.json` (or a
+bare `extension.json`) — a declarative schema of string / number / boolean /
+select fields with defaults. The host renders the form and stores the values,
+so an extension never ships UI code. Migration 0067 adds `enabled`,
+`description`, `settings` and `settings_schema` to `extensions`; installing from
+URL reads the manifest, seeds the defaults, and hands them to
+`register(ctx, settings)`. Settings → Packs gains an Extensions list with an
+enable switch, a schema-driven settings sheet, and uninstall; toggling or saving
+reloads the extension's tasks in place, no restart. Disabled extensions
+contribute no tasks and run no callbacks.
+
+**Verified** by three cases — install reads the manifest and its defaults,
+writing settings reloads `register` with the new values, and disabling
+unregisters the tasks while deleting removes the extension — plus the full
+suite (1482 pass).

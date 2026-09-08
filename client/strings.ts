@@ -968,6 +968,15 @@ export const strings = {
       extensions: "Extension",
     } as Record<string, string>,
 
+    /** Extensions (SPEC §15 tier 3, §20 phase 143). */
+    extensions: "Extensions",
+    extensionNone: "Nothing installed.",
+    extensionInstallNote: "Paste a GitHub link and it figures it out.",
+    extensionSettings: "Settings",
+    extensionSettingsTitle: (name: string) => `${name} settings`,
+    extensionSave: "Save",
+    extensionUninstallNote: "Removes this extension and its tasks.",
+
     /** Moving in from SillyTavern (SPEC §20 phase 44). */
     /** Themes (SPEC §20 phase 45). */
     theme: "Theme",

@@ -75,7 +75,7 @@ describe("a scene opens on its first cast member's greeting", () => {
     const second = await emptyScene(t);
     await json<SceneDto>(t, "PUT", `/api/scenes/${second}/cast/${bell.id}`);
     expect((await history(t, second)).messages[0]!.content).toBe(
-      V2_CARD.data.alternate_greetings[0],
+      V2_CARD.data.alternate_greetings[0]!,
     );
   });
 

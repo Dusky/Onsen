@@ -12,13 +12,14 @@ import { createExtensionApi, type ExtensionRegistration } from "./api.ts";
 export async function loadExtensionModule(
   path: string,
   name: string,
+  settings: Record<string, unknown> = {},
 ): Promise<ExtensionRegistration> {
   const { api, registration } = createExtensionApi(name);
   // A cache-busting query so a reinstalled extension reloads, not a stale copy.
   const loaded = (await import(`${path}?t=${Date.now()}`)) as Record<string, unknown>;
   const register = loaded["register"] ?? (loaded["default"] as Record<string, unknown> | undefined)?.["register"];
   if (typeof register === "function") {
-    await (register as (api: unknown) => void | Promise<void>)(api);
+    await (register as (api: unknown, settings: unknown) => void | Promise<void>)(api, settings);
   }
   return registration;
 }

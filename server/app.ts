@@ -35,6 +35,7 @@ import { scriptRoutes } from "./routes/scripts.ts";
 import { quickReplyRoutes } from "./routes/quick-replies.ts";
 import { triggerRoutes } from "./routes/triggers.ts";
 import { packRoutes } from "./routes/packs.ts";
+import { extensionRoutes } from "./routes/extensions.ts";
 import { webhookRoutes } from "./routes/webhooks.ts";
 import { openAiRoutes } from "./routes/openai.ts";
 import { apiKeyRoutes, sceneApiRoutes } from "./routes/api-keys.ts";
@@ -217,6 +218,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   api.route("/quick-replies", quickReplyRoutes(ctx));
   api.route("/triggers", triggerRoutes(ctx, triggers));
   api.route("/packs", packRoutes(ctx));
+  api.route("/extensions", extensionRoutes(ctx));
   api.route("/webhooks", webhookRoutes(ctx, webhooks));
   api.route("/migrate", migrateRoutes(ctx));
   api.route("/themes", themeRoutes(ctx));

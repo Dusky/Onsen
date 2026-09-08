@@ -1055,6 +1055,35 @@ export interface PackUninstallPreviewDto {
 }
 
 /* ------------------------------------------------------------------ */
+/* Extensions (SPEC §15, §20 phase 143)                                */
+/* ------------------------------------------------------------------ */
+
+/** One field an extension declares, rendered by the host as a form control. */
+export interface ExtensionSettingsField {
+  key: string;
+  label: string;
+  type: "string" | "number" | "boolean" | "select";
+  /** `select` only: the values offered. */
+  options?: string[];
+  default?: string | number | boolean;
+  min?: number;
+  max?: number;
+}
+
+export interface ExtensionDto {
+  id: string;
+  name: string;
+  version: string;
+  author: string;
+  description: string | null;
+  enabled: boolean;
+  /** Stored values, keyed by the schema's `key`. */
+  settings: Record<string, unknown>;
+  /** The declarative schema, empty when the extension has no settings. */
+  settingsSchema: ExtensionSettingsField[];
+}
+
+/* ------------------------------------------------------------------ */
 /* Outbound webhooks (SPEC §15)                                        */
 /* ------------------------------------------------------------------ */
 

@@ -130,3 +130,132 @@ describe("the extension code API", () => {
     }
   });
 });
+
+/* ------------------------------------------------------------------ */
+/* Extension management (SPEC §15, §20 phase 143)                     */
+/* ------------------------------------------------------------------ */
+
+/** `register` bakes a setting into the prompt, so settings reach the code. */
+const SETTINGS_SERVER_TS = `
+export function register(ctx, settings) {
+  ctx.task({
+    key: "tone",
+    label: "Tone",
+    prompt: "Style: " + (settings && settings.style ? settings.style : "default"),
+    stage: "post_generation",
+  });
+}
+`;
+
+const TONE_PACK = {
+  name: "Tone",
+  version: "1.0.0",
+  author: "me",
+  description: "A tone knob",
+  settings: [
+    { key: "style", label: "Style", type: "select", options: ["terse", "verbose"], default: "terse" },
+    { key: "count", label: "Count", type: "number", default: 2, min: 1, max: 9 },
+    { key: "dry", label: "Dry", type: "boolean", default: true },
+  ],
+};
+
+describe("extension management", () => {
+  test("installing from a GitHub link reads the manifest and its settings schema", async () => {
+    const t = await signedIn();
+    const dir = repoWith({
+      "pack.json": JSON.stringify(TONE_PACK),
+      "server.ts": SETTINGS_SERVER_TS,
+    });
+    try {
+      const response = await t.fetch("/api/packs/install-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: dir }),
+      });
+      expect(response.status).toBe(201);
+
+      const list = await t.fetch("/api/extensions");
+      const body = (await list.json()) as Array<{
+        name: string;
+        enabled: boolean;
+        description: string | null;
+        settings: Record<string, unknown>;
+        settingsSchema: Array<{ key: string; type: string }>;
+      }>;
+      const tone = body.find((entry) => entry.name === "Tone");
+      expect(tone).toBeDefined();
+      expect(tone!.enabled).toBe(true);
+      expect(tone!.description).toBe("A tone knob");
+      expect(tone!.settingsSchema).toHaveLength(3);
+      // Defaults reach the stored settings on a fresh install.
+      expect(tone!.settings).toEqual({ style: "terse", count: 2, dry: true });
+      // And the defaults reach `register`, observable through the task prompt.
+      const prompt = (postGenerationExtensionTasks().find((e) => e.task.key === "tone")?.task.prompt) ?? "";
+      expect(prompt).toContain("terse");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("writing settings reloads the extension with the new values", async () => {
+    const t = await signedIn();
+    const dir = repoWith({
+      "pack.json": JSON.stringify(TONE_PACK),
+      "server.ts": SETTINGS_SERVER_TS,
+    });
+    try {
+      const installed = await t.fetch("/api/packs/install-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: dir }),
+      });
+      expect(installed.status).toBe(201);
+      const list = await (await t.fetch("/api/extensions")).json() as Array<{ id: string; name: string }>;
+      const id = list.find((entry) => entry.name === "Tone")!.id;
+
+      const patched = await t.fetch(`/api/extensions/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settings: { style: "verbose", count: 3, dry: false } }),
+      });
+      expect(patched.status).toBe(200);
+
+      const prompt = (postGenerationExtensionTasks().find((e) => e.task.key === "tone")?.task.prompt) ?? "";
+      expect(prompt).toContain("verbose");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("disabling unregisters the tasks, and deleting removes the extension", async () => {
+    const t = await signedIn();
+    const dir = repoWith({
+      "pack.json": JSON.stringify(TONE_PACK),
+      "server.ts": SETTINGS_SERVER_TS,
+    });
+    try {
+      const installed = await t.fetch("/api/packs/install-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: dir }),
+      });
+      expect(installed.status).toBe(201);
+      const list = await (await t.fetch("/api/extensions")).json() as Array<{ id: string; name: string }>;
+      const id = list.find((entry) => entry.name === "Tone")!.id;
+
+      const off = await t.fetch(`/api/extensions/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: false }),
+      });
+      expect(off.status).toBe(200);
+      expect(postGenerationExtensionTasks().map((entry) => entry.task.key)).not.toContain("tone");
+
+      const removed = await t.fetch(`/api/extensions/${id}`, { method: "DELETE" });
+      expect(removed.status).toBe(200);
+      expect(t.ctx.db.query("SELECT id FROM extensions WHERE name = 'Tone'").get()).toBeNull();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
