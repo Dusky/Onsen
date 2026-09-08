@@ -1702,6 +1702,7 @@ export const strings = {
     editorKicker: "Lorebook",
     editing: "Editing",
     books: "Books",
+    openEditor: "Open the full editor",
     keysHint: "Comma separated. A mention of any one of these brings the entry in.",
     name: "Name",
     description: "Description",

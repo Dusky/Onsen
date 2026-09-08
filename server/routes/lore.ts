@@ -138,6 +138,13 @@ export function loreRoutes(ctx: AppContext): Hono<AppEnv> {
       }
       patch[column] = value;
     }
+    // The mute switch (§20 phase 131): a boolean, not a string.
+    if ("enabled" in input) {
+      if (typeof input["enabled"] !== "boolean") {
+        return c.json(badRequest("enabled must be true or false."), 400);
+      }
+      patch.enabled = input["enabled"] ? 1 : 0;
+    }
     return c.json(toBookDto(ctx.db, updateLorebook(ctx.db, book.id, patch)));
   });
 

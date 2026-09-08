@@ -3738,6 +3738,13 @@ Each phase ends in a working, usable application.
     own; the turn actions return to glyphs, their words living in the palette;
     and a leading `/` in the composer opens the palette with the rest as its
     query. See §7, §16, `test/guided-ops.test.ts`, `test/turn-surface.test.ts`.
+131. **Lorebooks toggle, and the rail reaches the full editor** — a lorebook
+    gains an `enabled` switch (migration 0060): a muted book contributes nothing
+    to any scene but keeps its bindings for when it is switched back. The toggle
+    sits on the sidebar's book list and the library rail, and the sidebar's
+    Lore section gains an *Open the full editor* button, because the full
+    `LoreScreen` was otherwise unreachable from the desktop shell. See §10, §16,
+    `test/lore-api.test.ts`, `test/lore-screen.test.ts`, `test/leftrail.test.ts`.
 
 Settled while building phase 15.
 

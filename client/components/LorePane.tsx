@@ -2,8 +2,8 @@ import { useState } from "react";
 import { strings } from "../strings.ts";
 import { EditorField } from "./EditorField.tsx";
 import { TextField } from "./TextField.tsx";
-import { useLorebook, useLorebooks, useUpdateLoreEntry } from "../lib/queries.ts";
-import type { LoreEntryDto } from "@shared/types.ts";
+import { useLorebook, useLorebooks, useUpdateLorebook, useUpdateLoreEntry } from "../lib/queries.ts";
+import type { LoreEntryDto, LorebookDto } from "@shared/types.ts";
 
 /**
  * The lorebooks, editable in the left rail's Lore section (SPEC §16,
@@ -76,19 +76,34 @@ export function LorePane() {
         <p className="explain">{strings.lore.empty}</p>
       ) : (
         (books.data ?? []).map((lorebook) => (
-          <button
-            key={lorebook.id}
-            type="button"
-            onClick={() => setBookId(lorebook.id)}
-            className="row flex w-full items-baseline gap-[10px] text-left"
-          >
-            <span className="min-w-0 flex-1 truncate text-[14px] font-medium">
-              {lorebook.name}
-            </span>
-            <span className="meta flex-none">{lorebook.entryCount}</span>
-          </button>
+          <BookRow key={lorebook.id} book={lorebook} onOpen={() => setBookId(lorebook.id)} />
         ))
       )}
+    </div>
+  );
+}
+
+/** A book in the rail, with its mute switch (§20 phase 131). */
+function BookRow({ book, onOpen }: { book: LorebookDto; onOpen(): void }) {
+  const update = useUpdateLorebook(book.id);
+  return (
+    <div
+      className="row flex w-full items-center gap-[10px]"
+      style={book.enabled ? undefined : { opacity: 0.55 }}
+    >
+      <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-left">
+        <span className="block truncate text-[14px] font-medium">{book.name}</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => update.mutate({ enabled: !book.enabled })}
+        aria-pressed={book.enabled}
+        className="chrome flex-none text-[12.5px]"
+        style={{ color: book.enabled ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)" }}
+      >
+        {book.enabled ? strings.lore.on : strings.lore.off}
+      </button>
+      <span className="meta flex-none">{book.entryCount}</span>
     </div>
   );
 }

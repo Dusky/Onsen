@@ -1925,6 +1925,8 @@ export interface LorebookDto {
   tokenBudget: number;
   scanDepth: number;
   recursionDepth: number;
+  /** Off mutes the book but keeps its bindings (§20 phase 131). */
+  enabled: boolean;
   entryCount: number;
   /** What this book is attached to, and how. */
   bindings: LoreBindingDto[];
@@ -2023,6 +2025,8 @@ export interface UpdateLorebookRequest {
   tokenBudget?: number;
   scanDepth?: number;
   recursionDepth?: number;
+  /** Off mutes the book but keeps its bindings (§20 phase 131). */
+  enabled?: boolean;
 }
 
 /**

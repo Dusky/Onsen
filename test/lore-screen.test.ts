@@ -51,4 +51,9 @@ describe("the lore page", () => {
     expect(LORE).toContain("characterFilterTags");
     expect(LORE).toContain("characterFilterExclude");
   });
+
+  test("each book carries a mute switch", () => {
+    expect(LORE).toContain("BookListRow");
+    expect(LORE).toContain("enabled: !book.enabled");
+  });
 });

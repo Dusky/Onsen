@@ -722,6 +722,15 @@ function LorePanel({ sceneId }: { sceneId: string | null }) {
 
   return (
     <div className="mt-[12px]">
+      {/* The full editor is the main page; the rail is the quick in-place
+          view, so the rail points at it rather than duplicating it (§131). */}
+      <button
+        type="button"
+        className="btn w-full mb-[12px]"
+        onClick={() => navigate({ name: "lorebooks" })}
+      >
+        {strings.lore.openEditor}
+      </button>
       {showActivation ? (
         <>
           <p className="meta mb-[6px]">{strings.leftRail.loreTitle}</p>

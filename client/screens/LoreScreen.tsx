@@ -122,25 +122,12 @@ function BookList({
           />
         ) : (
           (books.data ?? []).map((book) => (
-            <button
+            <BookListRow
               key={book.id}
-              type="button"
-              onClick={() => onSelect(book.id)}
-              className="row flex w-full items-baseline gap-[10px] text-left"
-              style={book.id === selectedId ? { background: "var(--onsen-color-bg-inset)" } : undefined}
-            >
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[15px] font-medium">{book.name}</span>
-                <span className="meta mt-[4px] block truncate">
-                  {book.ownerAuthorName !== null
-                    ? strings.lore.ownedBy(book.ownerAuthorName)
-                    : book.bindings.length === 0
-                      ? strings.lore.unbound
-                      : book.bindings.map(bindingLabel).join(" · ")}
-                </span>
-              </span>
-              <span className="meta flex-none">{strings.lore.entries(book.entryCount)}</span>
-            </button>
+              book={book}
+              active={book.id === selectedId}
+              onSelect={() => onSelect(book.id)}
+            />
           ))
         )}
       </div>
@@ -178,6 +165,46 @@ function BookList({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** A book in the library rail, with its mute switch (§20 phase 131). */
+function BookListRow({
+  book,
+  active,
+  onSelect,
+}: {
+  book: LorebookDto;
+  active: boolean;
+  onSelect(): void;
+}) {
+  const update = useUpdateLorebook(book.id);
+  return (
+    <div
+      className="row flex w-full items-center gap-[10px]"
+      style={active ? { background: "var(--onsen-color-bg-inset)" } : book.enabled ? undefined : { opacity: 0.55 }}
+    >
+      <button type="button" onClick={onSelect} className="min-w-0 flex-1 text-left">
+        <span className="block truncate text-[15px] font-medium">{book.name}</span>
+        <span className="meta mt-[4px] block truncate">
+          {book.ownerAuthorName !== null
+            ? strings.lore.ownedBy(book.ownerAuthorName)
+            : book.bindings.length === 0
+              ? strings.lore.unbound
+              : book.bindings.map(bindingLabel).join(" · ")}
+        </span>
+      </button>
+      <button
+        type="button"
+        onClick={() => update.mutate({ enabled: !book.enabled })}
+        aria-pressed={book.enabled}
+        className="chrome flex-none text-[12.5px]"
+        style={{ color: book.enabled ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)" }}
+      >
+        {book.enabled ? strings.lore.on : strings.lore.off}
+      </button>
+      <span className="meta flex-none">{strings.lore.entries(book.entryCount)}</span>
     </div>
   );
 }

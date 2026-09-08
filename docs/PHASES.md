@@ -6806,3 +6806,19 @@ also the command entry.
 **Verified** by a guided-ops case (the nudge lands in the reply's meta and not
 in the log), and turn-surface cases pinning the glyphs, the collapsed direction
 strip and the slash-to-palette path.
+
+## Phase 131 — Lorebooks toggle, and the rail reaches the full editor
+
+A lorebook had no on/off switch — it was "active" only by being bound, so the
+only way to silence a whole book was to unbind it and lose the binding.
+Migration 0060 adds `lorebooks.enabled`, a mute switch: a disabled book
+contributes nothing to any scene but keeps every binding for when it is flipped
+back. The switch sits on the sidebar's book list and on the library rail, both
+reading the same column. And because the full `LoreScreen` was unreachable from
+the desktop shell — the rail's Lore section was a lighter in-place editor — the
+section now leads with an *Open the full editor* button that lands on the main
+page.
+
+**Verified** by a lore-api case (the toggle round-trips, rejects non-booleans,
+and a muted book contributes nothing yet keeps its binding), and structural
+cases pinning the mute switch and the open-editor affordance.

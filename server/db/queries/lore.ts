@@ -30,6 +30,8 @@ export interface LorebookRow {
   scan_depth: number;
   recursion_depth: number;
   raw_import: string | null;
+  /** §20 phase 131: a disabled book is muted, but keeps its bindings. */
+  enabled: number;
   /** §11's author memory: set when this book is one author's own notes. */
   owner_author_id: number | null;
   created_at: number;
@@ -153,7 +155,8 @@ export function booksForScene(
     .query(
       `SELECT DISTINCT b.* FROM lorebooks b
          LEFT JOIN lorebook_bindings bind ON bind.lorebook_id = b.id
-        WHERE bind.scope = 'global'
+        WHERE b.enabled = 1 AND (
+           bind.scope = 'global'
            OR (bind.scope = 'scene' AND bind.scene_id = $scene)
            OR (bind.scope = 'persona' AND bind.persona_id IS NOT NULL
                AND bind.persona_id = $persona)
@@ -168,6 +171,7 @@ export function booksForScene(
            -- inner join would have quietly excluded exactly the case this
            -- clause exists for.
            OR (b.owner_author_id IS NOT NULL AND b.owner_author_id = $author)
+        )
         ORDER BY b.name`,
     )
     .all({ scene: sceneId, persona: personaId, author: authorId }) as LorebookRow[];
@@ -334,14 +338,15 @@ export function insertLorebook(
 export function updateLorebook(
   db: Database,
   id: number,
-  patch: Partial<Pick<LorebookRow, "name" | "description" | "token_budget" | "scan_depth" | "recursion_depth">>,
+  patch: Partial<Pick<LorebookRow, "name" | "description" | "token_budget" | "scan_depth" | "recursion_depth" | "enabled">>,
 ): LorebookRow {
   const current = db.query("SELECT * FROM lorebooks WHERE id = $id").get({ id }) as LorebookRow;
   return db
     .query(
       `UPDATE lorebooks
           SET name = $name, description = $description, token_budget = $budget,
-              scan_depth = $scan, recursion_depth = $recursion, updated_at = $now
+              scan_depth = $scan, recursion_depth = $recursion, enabled = $enabled,
+              updated_at = $now
         WHERE id = $id RETURNING *`,
     )
     .get({
@@ -351,6 +356,7 @@ export function updateLorebook(
       budget: patch.token_budget ?? current.token_budget,
       scan: patch.scan_depth ?? current.scan_depth,
       recursion: patch.recursion_depth ?? current.recursion_depth,
+      enabled: patch.enabled ?? current.enabled,
       now: Date.now(),
     }) as LorebookRow;
 }
@@ -588,6 +594,7 @@ export function toBookDto(db: Database, row: LorebookRow): LorebookDto {
     tokenBudget: row.token_budget,
     scanDepth: row.scan_depth,
     recursionDepth: row.recursion_depth,
+    enabled: row.enabled === 1,
     entryCount: count.n,
     bindings,
     createdAt: row.created_at,

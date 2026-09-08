@@ -153,6 +153,23 @@ describe("books and entries", () => {
     const made = await entry(t, one.id);
     expect(await statusOf(t, "PATCH", `/api/lorebooks/${two.id}/entries/${made.id}`, {})).toBe(404);
   });
+
+  test("a book can be muted, and a muted book stays muted until switched back", async () => {
+    const t = await signedIn();
+    const created = await book(t);
+    expect(created.enabled).toBe(true);
+
+    const off = await json<LorebookDto>(t, "PATCH", `/api/lorebooks/${created.id}`, {
+      enabled: false,
+    });
+    expect(off.enabled).toBe(false);
+
+    const on = await json<LorebookDto>(t, "PATCH", `/api/lorebooks/${created.id}`, {
+      enabled: true,
+    });
+    expect(on.enabled).toBe(true);
+    expect(await statusOf(t, "PATCH", `/api/lorebooks/${created.id}`, { enabled: "yes" })).toBe(400);
+  });
 });
 
 describe("bindings", () => {
@@ -258,6 +275,28 @@ describe("what reaches the prompt", () => {
     await json<LorebookDto>(t, "POST", `/api/lorebooks/${created.id}/bindings`, { scope: "global" });
     await entry(t, created.id, { keys: ["ledger"] });
     expect(loreBlocks(t, made.sceneId).length).toBe(0);
+  });
+
+  test("a muted book contributes nothing, but keeps its binding", async () => {
+    const t = await signedIn();
+    const made = await scene(t);
+    await json(t, "POST", `/api/scenes/${made.sceneId}/messages`, {
+      kind: "user",
+      authorType: "user",
+      content: "Has anyone counted the lamp oil?",
+    });
+
+    const created = await book(t);
+    await json<LorebookDto>(t, "POST", `/api/lorebooks/${created.id}/bindings`, { scope: "global" });
+    await entry(t, created.id, { keys: ["oil"], content: "Oil is short." });
+    expect(loreBlocks(t, made.sceneId).length).toBe(1);
+
+    await json<LorebookDto>(t, "PATCH", `/api/lorebooks/${created.id}`, { enabled: false });
+    expect(loreBlocks(t, made.sceneId).length).toBe(0);
+
+    // The binding is untouched — flipping it back restores the lore.
+    await json<LorebookDto>(t, "PATCH", `/api/lorebooks/${created.id}`, { enabled: true });
+    expect(loreBlocks(t, made.sceneId).length).toBe(1);
   });
 
   test("editing an entry clears its timed state", async () => {
