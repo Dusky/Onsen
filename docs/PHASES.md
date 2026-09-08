@@ -6901,3 +6901,15 @@ made in the lore editor travel back into the card.
 
 **Verified** by a characters-api case (import extracts and binds, export
 re-embeds) and a structural guard pinning the card's Lore section.
+
+## Phase 140 — Per-character presets
+
+A character can pin the preset it answers with — which, in Onsen, also names a
+model, since a preset carries a connection profile. Resolution runs after the
+turn director has picked the spotlight: the scene's own preset, then the
+spotlight character's pin, then the profile's, then the default. Migration 0065
+adds the column; the card editor gains a preset selector beside the persona
+lock; the PATCH route resolves the preset ULID the way the persona lock does.
+
+**Verified** by a dedicated resolution test (scene beats character, character
+beats default) and a characters-api round-trip of the pin and its clearing.

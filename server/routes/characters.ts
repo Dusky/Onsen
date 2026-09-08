@@ -14,6 +14,7 @@ import {
 } from "../cards/index.ts";
 import { toWorldInfo } from "../lore/export.ts";
 import { findLorebook, listEntries, primaryBookForCharacter } from "../db/queries/lore.ts";
+import { findPresetByUlid } from "../db/queries/connections.ts";
 import {
   deleteCharacter,
   findByHash,
@@ -374,6 +375,15 @@ export function characterRoutes(ctx: AppContext, tasks: TaskRunner, media: Media
         const persona = findPersona(ctx.db, String(patch.personaId));
         if (persona === null) return c.json(badRequest("No such persona."), 400);
         resolved["personaId"] = persona.id;
+      }
+    }
+    if ("presetId" in patch) {
+      if (patch.presetId === null) {
+        resolved["presetId"] = null;
+      } else {
+        const preset = findPresetByUlid(ctx.db, String(patch.presetId));
+        if (preset === null) return c.json(badRequest("No such preset."), 400);
+        resolved["presetId"] = preset.id;
       }
     }
 

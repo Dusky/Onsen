@@ -62,6 +62,7 @@ import loreEntryTriggers from "./0061_lore_entry_triggers.sql" with { type: "tex
 import loreEntryMatchAgainst from "./0062_lore_entry_match_against.sql" with { type: "text" };
 import embeddingsSource from "./0063_embeddings_source.sql" with { type: "text" };
 import vectorizedLore from "./0064_vectorized_lore.sql" with { type: "text" };
+import characterPreset from "./0065_character_preset.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -141,4 +142,5 @@ export const migrations: readonly Migration[] = [
   { version: 62, name: "lore_entry_match_against", sql: loreEntryMatchAgainst },
   { version: 63, name: "embeddings_source", sql: embeddingsSource },
   { version: 64, name: "vectorized_lore", sql: vectorizedLore },
+  { version: 65, name: "character_preset", sql: characterPreset },
 ];

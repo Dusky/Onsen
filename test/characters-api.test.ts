@@ -137,6 +137,36 @@ describe("importing", () => {
 });
 
 describe("editing", () => {
+  test("pins a preset, and clearing it falls back to the default", async () => {
+    const t = await signedIn();
+    const { body } = await upload(t, pngCard({ chara: V2_CARD }), "bell.png");
+    const preset = (await (
+      await t.fetch("/api/connections/presets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Chaotic" }),
+      })
+    ).json()) as { id: string };
+
+    const pinned = (await (
+      await t.fetch(`/api/characters/${body.character.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ presetId: preset.id }),
+      })
+    ).json()) as CharacterDto;
+    expect(pinned.presetId).toBe(preset.id);
+
+    const cleared = (await (
+      await t.fetch(`/api/characters/${body.character.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ presetId: null }),
+      })
+    ).json()) as CharacterDto;
+    expect(cleared.presetId).toBeNull();
+  });
+
   test("an edit changes the field and recomputes its cost", async () => {
     const t = await signedIn();
     const { body } = await upload(t, pngCard({ chara: V2_CARD }), "bell.png");

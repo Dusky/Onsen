@@ -1179,6 +1179,9 @@ export const strings = {
     /* The persona lock (§20 phase 61). */
     opensAs: "Opens as",
     opensAsDefault: "The default persona",
+    /* The pinned preset (§20 phase 140). */
+    preset: "Answers with preset",
+    presetDefault: "The scene's, or the default",
     /* The bound lorebook (§20 phase 139). */
     lore: "Lorebook",
     loreNone: "No lorebook attached.",

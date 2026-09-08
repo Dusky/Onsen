@@ -2484,6 +2484,8 @@ export interface CharacterDto {
    * the roleplays already running under it.
    */
   personaId: string | null;
+  /** The preset this character answers with, when the scene has none (§140). */
+  presetId: string | null;
   creator: string | null;
   characterVersion: string | null;
 
@@ -2531,6 +2533,8 @@ export interface UpdateCharacterRequest {
   folder?: string | null;
   /** §20 phase 61. Null clears the lock; the roleplay follows the default again. */
   personaId?: string | null;
+  /** The preset this character answers with (§20 phase 140). Null = default. */
+  presetId?: string | null;
   /** §20 phase 61, closing what 59 half-built: the star the roleplay list has. */
   isFavourite?: boolean;
 }

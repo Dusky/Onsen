@@ -43,6 +43,8 @@ export interface CharacterRow {
   is_favourite: number;
   /** The persona a roleplay with this character opens as (§2, §20 phase 61). */
   persona_id: number | null;
+  /** The preset this character answers with, when the scene has none (§140). */
+  preset_id: number | null;
   creator: string | null;
   character_version: string | null;
   raw_card: string;
@@ -140,6 +142,7 @@ export function toCharacterDto(db: Database, row: CharacterRow): CharacterDto {
     tags: parseArray(row.tags),
     isFavourite: row.is_favourite === 1,
     personaId: personaUlidOf(db, row.persona_id),
+    presetId: presetUlidOf(db, row.preset_id),
     creator: row.creator,
     characterVersion: row.character_version,
     format: row.raw_card_format,
@@ -365,6 +368,12 @@ export function updateCharacter(
     params["persona_id"] = typeof value === "number" ? value : null;
     organisational++;
   }
+  if ("presetId" in patch) {
+    const value = patch["presetId"];
+    assignments.push("preset_id = $preset_id");
+    params["preset_id"] = typeof value === "number" ? value : null;
+    organisational++;
+  }
   // A generated or uploaded portrait is filing, not editing (§20 phase 79):
   // it changes no prose, so it takes the same no-snapshot exemption.
   if ("avatarPath" in patch) {
@@ -402,6 +411,14 @@ export function deleteCharacter(db: Database, id: number): void {
 function personaUlidOf(db: Database, personaId: number | null): string | null {
   if (personaId === null) return null;
   const row = db.query("SELECT ulid FROM personas WHERE id = $id").get({ id: personaId }) as
+    | { ulid: string }
+    | null;
+  return row?.ulid ?? null;
+}
+
+function presetUlidOf(db: Database, presetId: number | null): string | null {
+  if (presetId === null) return null;
+  const row = db.query("SELECT ulid FROM presets WHERE id = $id").get({ id: presetId }) as
     | { ulid: string }
     | null;
   return row?.ulid ?? null;

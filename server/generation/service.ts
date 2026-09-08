@@ -660,12 +660,6 @@ export class GenerationService {
 
     let dispatchedAt = this.now();
     try {
-      // One preset for the whole generation: the samplers, the prompt and the
-      // reasoning settings all come from the same row (SPEC §13).
-      const presetId = presetIdFor(this.db, scene, route.presetId);
-      const { samplers } = resolvePreset(this.db, presetId);
-      generation.meta.samplers = samplers;
-
       // Who speaks, and whether one of them or several. For the classifier this
       // is a model call, which is why it happens here rather than in `start`.
       await this.direct(generation, scene);
@@ -673,6 +667,14 @@ export class GenerationService {
         this.finish(generation, dispatchedAt);
         return;
       }
+
+      // One preset for the whole generation, now that the spotlight is known:
+      // the scene's, then the spotlight character's pin, then the profile's,
+      // then the default (§13, §20 phase 140). The samplers, the prompt and the
+      // reasoning settings all come from this one row.
+      const presetId = presetIdFor(this.db, scene, route.presetId, generation.spotlightId);
+      const { samplers } = resolvePreset(this.db, presetId);
+      generation.meta.samplers = samplers;
 
       // §14's `before_generation`. Awaited on purpose: a trigger bound here
       // exists to change what the prompt says, and one that ran alongside the

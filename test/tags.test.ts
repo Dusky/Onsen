@@ -39,5 +39,8 @@ describe("the shared tag editor", () => {
   test("the character card links its bound lorebook", () => {
     expect(CHARACTERS).toContain("character.lorebook");
     expect(CHARACTERS).toContain("strings.characters.lore");
+    // And pins the preset it answers with (§20 phase 140).
+    expect(CHARACTERS).toContain("character.presetId");
+    expect(CHARACTERS).toContain("strings.characters.preset");
   });
 });

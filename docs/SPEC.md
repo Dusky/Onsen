@@ -3782,6 +3782,12 @@ Each phase ends in a working, usable application.
     links to the lore editor, and the card's export re-embeds the current book
     so edits made in the lore editor travel back out. See §9, §10,
     `test/characters-api.test.ts`.
+140. **Per-character presets** — a character can pin the preset it answers
+    with (which, in Onsen, also names a model). Resolution: the scene's own
+    preset, then the spotlight character's pin, then the profile's, then the
+    default; the card editor gains a preset selector beside the persona lock.
+    Migration 0065. See §13, `test/character-preset.test.ts`,
+    `test/characters-api.test.ts`.
 
 Settled while building phase 15.
 

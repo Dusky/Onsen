@@ -17,6 +17,7 @@ import {
   useUploadExpression,
   useDeleteExpression,
   usePersonas,
+  usePresets,
 } from "../lib/queries.ts";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
 import { EditorField } from "../components/EditorField.tsx";
@@ -151,6 +152,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
   const [reviseDraft, setReviseDraft] = useState("");
   const [confirmNode, confirm] = useConfirm();
   const personas = usePersonas();
+  const presets = usePresets();
 
   const character: CharacterDto | undefined = query.data;
   if (character === undefined) {
@@ -272,6 +274,25 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                 {(personas.data ?? []).map((persona) => (
                   <option key={persona.id} value={persona.id}>
                     {persona.name}
+                  </option>
+                ))}
+              </select>
+
+              {/* The pinned preset (§20 phase 140): this card always answers
+                  with these samplers unless the scene says otherwise. */}
+              <p className="section-label mb-[8px]">{strings.characters.preset}</p>
+              <select
+                className="field mb-[16px] w-full"
+                value={character.presetId ?? ""}
+                aria-label={strings.characters.preset}
+                onChange={(event) =>
+                  save({ presetId: event.target.value === "" ? null : event.target.value })
+                }
+              >
+                <option value="">{strings.characters.presetDefault}</option>
+                {(presets.data ?? []).map((preset) => (
+                  <option key={preset.id} value={preset.id}>
+                    {preset.name}
                   </option>
                 ))}
               </select>

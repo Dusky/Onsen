@@ -118,9 +118,17 @@ export function presetIdFor(
   db: Database,
   scene: SceneRow,
   routePresetId: number | null,
+  characterId: number | null = null,
 ): number | null {
   if (scene.preset_id !== null) return scene.preset_id;
   if (routePresetId !== null) return routePresetId;
+  // The spotlight character's own pin beats the default (§20 phase 140).
+  if (characterId !== null) {
+    const row = db.query("SELECT preset_id FROM characters WHERE id = $id").get({ id: characterId }) as
+      | { preset_id: number | null }
+      | null;
+    if (row?.preset_id !== null && row?.preset_id !== undefined) return row.preset_id;
+  }
   const row = db.query("SELECT id FROM presets WHERE is_default = 1").get() as
     | { id: number }
     | null;
