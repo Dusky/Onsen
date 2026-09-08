@@ -3793,6 +3793,10 @@ Each phase ends in a working, usable application.
     one-tap add that opens the existing `ScriptEditor`. The server has stored
     character-scoped scripts since phase 33; the editor just could not reach
     them. See §14, `test/tags.test.ts`.
+142. **Greeting modes and a saved portrait prompt** — a card's openings can
+    open on the first, cycle through them, or pick one at random (migration
+    0066); a saved portrait prompt overrides the auto-assembled one when the
+    reader draws a portrait. See §9, §12, `test/greetings.test.ts`.
 
 Settled while building phase 15.
 

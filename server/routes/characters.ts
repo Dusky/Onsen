@@ -85,6 +85,10 @@ function extensionOf(name: string): string {
 
 /** A portrait prompt from what the card is, when the reader gave none. */
 function portraitPrompt(row: CharacterRow): string {
+  // A saved prompt always wins over the auto-assembled one (§20 phase 142).
+  if (row.image_prompt !== null && row.image_prompt.trim() !== "") {
+    return row.image_prompt.trim();
+  }
   const parts = [`A character portrait of ${row.name}.`];
   if (row.description !== null && row.description.trim() !== "") {
     parts.push(row.description.trim());
@@ -362,6 +366,14 @@ export function characterRoutes(ctx: AppContext, tasks: TaskRunner, media: Media
     }
     if ("isFavourite" in patch && typeof patch.isFavourite !== "boolean") {
       return c.json(badRequest("isFavourite is a boolean."), 400);
+    }
+    if (
+      "greetingMode" in patch &&
+      patch.greetingMode !== "first" &&
+      patch.greetingMode !== "cycle" &&
+      patch.greetingMode !== "random"
+    ) {
+      return c.json(badRequest("greetingMode is first, cycle or random."), 400);
     }
 
     // The persona lock arrives as a ULID and is stored as a row id, so it is

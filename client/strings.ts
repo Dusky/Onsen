@@ -1185,6 +1185,12 @@ export const strings = {
     /* Per-character scripts (§20 phase 141). */
     scripts: "Scripts",
     scriptsNone: "No scripts on this card.",
+    /* Greetings and the portrait prompt (§20 phase 142). */
+    greetingMode: "Open on",
+    greetingFirst: "The first",
+    greetingCycle: "Next in turn",
+    greetingRandom: "A random one",
+    portraitPrompt: "Portrait prompt",
     /* The bound lorebook (§20 phase 139). */
     lore: "Lorebook",
     loreNone: "No lorebook attached.",

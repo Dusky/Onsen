@@ -63,6 +63,33 @@ const history = (t: TestHarness, sceneId: string) =>
   json<SceneWithHistoryDto>(t, "GET", `/api/scenes/${sceneId}`);
 
 describe("a scene opens on its first cast member's greeting", () => {
+  test("a card set to cycle opens on the next greeting each scene", async () => {
+    const t = await signedIn();
+    const bell = await importCharacter(t, pngCard({ chara: V2_CARD }), "bell.png");
+    await json<CharacterDto>(t, "PATCH", `/api/characters/${bell.id}`, { greetingMode: "cycle" });
+
+    const first = await emptyScene(t);
+    await json<SceneDto>(t, "PUT", `/api/scenes/${first}/cast/${bell.id}`);
+    expect((await history(t, first)).messages[0]!.content).toBe(V2_CARD.data.first_mes);
+
+    const second = await emptyScene(t);
+    await json<SceneDto>(t, "PUT", `/api/scenes/${second}/cast/${bell.id}`);
+    expect((await history(t, second)).messages[0]!.content).toBe(
+      V2_CARD.data.alternate_greetings[0],
+    );
+  });
+
+  test("a card set to random opens on any of its greetings", async () => {
+    const t = await signedIn();
+    const bell = await importCharacter(t, pngCard({ chara: V2_CARD }), "bell.png");
+    await json<CharacterDto>(t, "PATCH", `/api/characters/${bell.id}`, { greetingMode: "random" });
+
+    const sceneId = await emptyScene(t);
+    await json<SceneDto>(t, "PUT", `/api/scenes/${sceneId}/cast/${bell.id}`);
+    const opening = (await history(t, sceneId)).messages[0]!.content;
+    expect([V2_CARD.data.first_mes, ...V2_CARD.data.alternate_greetings]).toContain(opening);
+  });
+
   test("casting one character writes the card's first message", async () => {
     const t = await signedIn();
     const bell = await importCharacter(t, pngCard({ chara: V2_CARD }), "bell.png");

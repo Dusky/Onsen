@@ -6922,3 +6922,15 @@ the scripts scoped to this card, each with an enable toggle and a delete, and a
 one-tap add that creates a character-scoped script and opens the existing
 `ScriptEditor` for it — the same sheet the Settings screen uses, so the two
 surfaces cannot drift.
+
+## Phase 142 — Greeting modes and a saved portrait prompt
+
+A card's openings can now open on the first (the old behaviour), cycle through
+them, or pick one at random — migration 0066 adds the mode and the cycle
+cursor, and `seedGreeting` honours them, the rest landing as root siblings
+either way so every opening stays one swipe away. The card also carries a saved
+portrait prompt that overrides the auto-assembled one when the reader draws a
+portrait.
+
+**Verified** by two new greeting cases (cycle advances, random picks any) and a
+structural guard pinning the greeting selector and the portrait-prompt field.

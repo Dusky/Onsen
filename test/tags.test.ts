@@ -45,5 +45,8 @@ describe("the shared tag editor", () => {
     // And carries its own regex scripts (§20 phase 141).
     expect(CHARACTERS).toContain("characterScripts");
     expect(CHARACTERS).toContain("strings.characters.scripts");
+    // And picks how its openings are chosen, with a saved portrait prompt (§142).
+    expect(CHARACTERS).toContain("greetingMode");
+    expect(CHARACTERS).toContain("strings.characters.portraitPrompt");
   });
 });

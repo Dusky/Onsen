@@ -45,6 +45,12 @@ export interface CharacterRow {
   persona_id: number | null;
   /** The preset this character answers with, when the scene has none (§140). */
   preset_id: number | null;
+  /** How its openings are chosen: first, cycle, or random (§142). */
+  greeting_mode: "first" | "cycle" | "random";
+  /** The cycle cursor, advanced each time this card opens a scene (§142). */
+  greeting_index: number;
+  /** A saved portrait prompt; null uses the auto-assembled one (§142). */
+  image_prompt: string | null;
   creator: string | null;
   character_version: string | null;
   raw_card: string;
@@ -143,6 +149,8 @@ export function toCharacterDto(db: Database, row: CharacterRow): CharacterDto {
     isFavourite: row.is_favourite === 1,
     personaId: personaUlidOf(db, row.persona_id),
     presetId: presetUlidOf(db, row.preset_id),
+    greetingMode: row.greeting_mode,
+    imagePrompt: row.image_prompt,
     creator: row.creator,
     characterVersion: row.character_version,
     format: row.raw_card_format,
@@ -320,6 +328,8 @@ const PATCHABLE = {
   creator: "creator",
   characterVersion: "character_version",
   folder: "folder",
+  greetingMode: "greeting_mode",
+  imagePrompt: "image_prompt",
 } as const;
 
 const PATCHABLE_ARRAYS = {

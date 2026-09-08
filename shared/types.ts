@@ -2486,6 +2486,10 @@ export interface CharacterDto {
   personaId: string | null;
   /** The preset this character answers with, when the scene has none (§140). */
   presetId: string | null;
+  /** How its openings are chosen: first, cycle, or random (§142). */
+  greetingMode: "first" | "cycle" | "random";
+  /** A saved portrait prompt; null uses the auto-assembled one (§142). */
+  imagePrompt: string | null;
   creator: string | null;
   characterVersion: string | null;
 
@@ -2535,6 +2539,10 @@ export interface UpdateCharacterRequest {
   personaId?: string | null;
   /** The preset this character answers with (§20 phase 140). Null = default. */
   presetId?: string | null;
+  /** How its openings are chosen (§20 phase 142). */
+  greetingMode?: "first" | "cycle" | "random";
+  /** A saved portrait prompt (§20 phase 142). */
+  imagePrompt?: string | null;
   /** §20 phase 61, closing what 59 half-built: the star the roleplay list has. */
   isFavourite?: boolean;
 }

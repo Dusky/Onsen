@@ -79,16 +79,22 @@ export function seedGreeting(db: Database, sceneId: number, opener: CharacterRow
   const greetings = greetingsFor(opener, castSize);
   if (greetings.length === 0) return 0;
 
-  const first = appendMessage(db, {
-    sceneId,
-    parentId: null,
-    kind: "spotlight",
-    authorType: "character",
-    content: greetings[0]!,
-    characterId: opener.id,
-  });
-  for (const text of greetings.slice(1)) {
-    appendMessage(db, {
+  // How the opening is chosen (§20 phase 142): the first, a random one, or the
+  // next in the card's cycle. The rest land as root siblings either way, so
+  // every opening stays one swipe away.
+  let activeIndex = 0;
+  if (opener.greeting_mode === "random") {
+    activeIndex = Math.floor(Math.random() * greetings.length);
+  } else if (opener.greeting_mode === "cycle") {
+    activeIndex = opener.greeting_index % greetings.length;
+    db.query("UPDATE characters SET greeting_index = greeting_index + 1 WHERE id = $id").run({
+      id: opener.id,
+    });
+  }
+
+  let activeId: number | null = null;
+  greetings.forEach((text, index) => {
+    const message = appendMessage(db, {
       sceneId,
       parentId: null,
       kind: "spotlight",
@@ -96,11 +102,9 @@ export function seedGreeting(db: Database, sceneId: number, opener: CharacterRow
       content: text,
       characterId: opener.id,
     });
-  }
+    if (index === activeIndex) activeId = message.id;
+  });
 
-  // Each append moves the leaf to what it just wrote, so after the alternates
-  // the scene would open on the last one. The card's own first message is the
-  // one it opens on; the rest are a swipe away.
-  if (greetings.length > 1) setActiveLeaf(db, sceneId, first.id);
+  if (activeId !== null) setActiveLeaf(db, sceneId, activeId);
   return greetings.length;
 }

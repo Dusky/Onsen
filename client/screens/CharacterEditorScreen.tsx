@@ -266,6 +266,13 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                   {portrait.error !== null ? (
                     <p className="explain explain-alert mt-[6px]">{portrait.error.message}</p>
                   ) : null}
+                  <EditorField label={strings.characters.portraitPrompt}>
+                    <TextField
+                      value={character.imagePrompt ?? ""}
+                      rows={2}
+                      onCommit={(imagePrompt) => save({ imagePrompt: imagePrompt || null })}
+                    />
+                  </EditorField>
                 </div>
               </div>
 
@@ -394,6 +401,26 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
 
           {tab === "greetings" ? (
             <>
+              {/* How the opening is chosen (§20 phase 142). */}
+              <p className="section-label mb-[8px]">{strings.characters.greetingMode}</p>
+              <div className="mb-[16px] flex flex-wrap gap-[6px]">
+                {(["first", "cycle", "random"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    aria-pressed={character.greetingMode === mode}
+                    onClick={() => save({ greetingMode: mode })}
+                    className={`btn flex-none ${character.greetingMode === mode ? "btn-primary" : ""}`}
+                  >
+                    {mode === "first"
+                      ? strings.characters.greetingFirst
+                      : mode === "cycle"
+                        ? strings.characters.greetingCycle
+                        : strings.characters.greetingRandom}
+                  </button>
+                ))}
+              </div>
+
               <EditorField label={strings.characters.firstMessage} tokens={tokens.firstMessage}>
                 <TextField
                   value={character.firstMessage ?? ""}
