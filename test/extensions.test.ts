@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { completeSetup, createHarness, type TestHarness } from "./helpers.ts";
 import { loadExtensionModule } from "../server/extensions/loader.ts";
+import { loadInstalledExtensions } from "../server/extensions/install.ts";
 import { postGenerationExtensionTasks, clearExtensionTasks } from "../server/extensions/registry.ts";
 
 /**
@@ -257,5 +258,49 @@ describe("extension management", () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* Built-in extensions (SPEC §15, §20 phase 144)                      */
+/* ------------------------------------------------------------------ */
+
+describe("built-in extensions", () => {
+  test("boot seeds the built-ins disabled, with their schemas", async () => {
+    const t = await signedIn();
+    await loadInstalledExtensions(t.ctx.db, t.config.extensionsDir);
+
+    const list = await (await t.fetch("/api/extensions")).json() as Array<{
+      name: string;
+      enabled: boolean;
+      builtIn: boolean;
+      settingsSchema: Array<{ key: string }>;
+    }>;
+    const proofread = list.find((entry) => entry.name === "Proofread");
+    expect(proofread).toBeDefined();
+    expect(proofread!.builtIn).toBe(true);
+    expect(proofread!.enabled).toBe(false);
+    expect(proofread!.settingsSchema.map((f) => f.key)).toContain("level");
+    // Disabled, so it contributes no tasks.
+    expect(postGenerationExtensionTasks().map((entry) => entry.task.key)).not.toContain("proofread");
+  });
+
+  test("enabling a built-in registers its tasks, and a built-in cannot be removed", async () => {
+    const t = await signedIn();
+    await loadInstalledExtensions(t.ctx.db, t.config.extensionsDir);
+    const list = await (await t.fetch("/api/extensions")).json() as Array<{ id: string; name: string; builtIn: boolean }>;
+    const proofread = list.find((entry) => entry.name === "Proofread")!;
+
+    const on = await t.fetch(`/api/extensions/${proofread.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: true }),
+    });
+    expect(on.status).toBe(200);
+    expect(postGenerationExtensionTasks().map((entry) => entry.task.key)).toContain("proofread");
+
+    const removed = await t.fetch(`/api/extensions/${proofread.id}`, { method: "DELETE" });
+    expect(removed.status).toBe(400);
+    expect(t.ctx.db.query("SELECT id FROM extensions WHERE name = 'Proofread'").get()).not.toBeNull();
   });
 });

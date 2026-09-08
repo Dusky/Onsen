@@ -140,6 +140,7 @@ export function ExtensionsSection() {
                   {" \u00b7 "}
                   {strings.settings.packVersion(extension.version)}
                   {extension.author ? ` \u00b7 ${strings.settings.packBy(extension.author)}` : ""}
+                  {extension.builtIn ? ` \u00b7 ${strings.settings.extensionBuiltIn}` : ""}
                 </span>
               </p>
               {extension.description ? (
@@ -155,16 +156,18 @@ export function ExtensionsSection() {
                 {strings.settings.extensionSettings}
               </button>
             ) : null}
-            <button
-              type="button"
-              className="btn flex-none px-[10px]"
-              title={strings.settings.extensionUninstallNote}
-              onClick={() => {
-                if (window.confirm(strings.settings.extensionUninstallNote)) remove.mutate(extension.id);
-              }}
-            >
-              {strings.settings.packRemove}
-            </button>
+            {extension.builtIn ? null : (
+              <button
+                type="button"
+                className="btn flex-none px-[10px]"
+                title={strings.settings.extensionUninstallNote}
+                onClick={() => {
+                  if (window.confirm(strings.settings.extensionUninstallNote)) remove.mutate(extension.id);
+                }}
+              >
+                {strings.settings.packRemove}
+              </button>
+            )}
           </div>
         ))
       )}

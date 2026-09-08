@@ -1077,6 +1077,8 @@ export interface ExtensionDto {
   author: string;
   description: string | null;
   enabled: boolean;
+  /** Built-ins ship with the app and cannot be uninstalled. */
+  builtIn: boolean;
   /** Stored values, keyed by the schema's `key`. */
   settings: Record<string, unknown>;
   /** The declarative schema, empty when the extension has no settings. */

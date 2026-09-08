@@ -2,9 +2,16 @@ import { join } from "node:path";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
 import type { Database } from "bun:sqlite";
 import { loadExtensionModule } from "./loader.ts";
+import { loadBuiltin, BUILTINS } from "./builtins.ts";
 import { registerExtensionTask, clearExtensionTasks } from "./registry.ts";
-import { insertExtension, listExtensions } from "../db/queries/extensions.ts";
-import type { ExtensionTask } from "./api.ts";
+import {
+  deleteExtensionTasks,
+  findExtensionByName,
+  insertBuiltinExtension,
+  insertExtension,
+  listExtensions,
+} from "../db/queries/extensions.ts";
+import type { ExtensionTask, ExtensionRegistration } from "./api.ts";
 import type { ExtensionSettingsField } from "../../shared/types.ts";
 
 /**
@@ -137,20 +144,60 @@ export async function installExtensionCode(opts: {
 /** Reload every installed extension's code, rebuilding the runtime registry. */
 export async function loadInstalledExtensions(db: Database, extensionsDir: string): Promise<void> {
   clearExtensionTasks();
+  seedBuiltins(db);
   for (const row of listExtensions(db)) {
-    // A disabled extension contributes no tasks and runs no callbacks (§144).
-    if (row.enabled !== 1) continue;
-    const serverFile = ["server.ts", "server.js", "index.ts", "index.js"].find((file) =>
-      existsSync(join(row.dir, file)),
-    );
-    if (serverFile === undefined) continue;
-    const registration = await loadExtensionModule(
-      join(row.dir, serverFile),
-      row.name,
-      parseSettings(row.settings),
-    );
+    // A disabled extension contributes no tasks and runs no callbacks, and its
+    // rows leave the ops list so it cannot look alive while off (§144).
+    if (row.enabled !== 1) {
+      deleteExtensionTasks(db, row.name);
+      continue;
+    }
+
+    const registration =
+      row.built_in === 1
+        ? await loadBuiltinByName(row.name, parseSettings(row.settings))
+        : await loadFromDir(row.dir, row.name, parseSettings(row.settings));
+    if (registration === null) continue;
+
     for (const task of registration.tasks) {
       registerExtensionTask(task, row.name);
+      upsertTask(db, row.name, task);
     }
+  }
+}
+
+/** A built-in's registration, from the in-process registry by name. */
+async function loadBuiltinByName(
+  name: string,
+  settings: Record<string, unknown>,
+): Promise<ExtensionRegistration | null> {
+  const builtin = BUILTINS.find((entry) => entry.name === name);
+  return builtin === undefined ? null : loadBuiltin(builtin, settings);
+}
+
+/** An installed extension's registration, from its copied directory. */
+async function loadFromDir(
+  dir: string,
+  name: string,
+  settings: Record<string, unknown>,
+): Promise<ExtensionRegistration | null> {
+  const serverFile = ["server.ts", "server.js", "index.ts", "index.js"].find((file) =>
+    existsSync(join(dir, file)),
+  );
+  return serverFile === undefined ? null : loadExtensionModule(join(dir, serverFile), name, settings);
+}
+
+/** Ensure every built-in has a row; seeded disabled so it never surprises. */
+function seedBuiltins(db: Database): void {
+  for (const builtin of BUILTINS) {
+    if (findExtensionByName(db, builtin.name) !== null) continue;
+    insertBuiltinExtension(db, {
+      name: builtin.name,
+      version: builtin.version,
+      author: builtin.author,
+      description: builtin.description,
+      settingsSchema: JSON.stringify(builtin.settings),
+      settings: JSON.stringify(defaultSettings(builtin.settings)),
+    });
   }
 }

@@ -975,6 +975,7 @@ export const strings = {
     extensionSettings: "Settings",
     extensionSettingsTitle: (name: string) => `${name} settings`,
     extensionSave: "Save",
+    extensionBuiltIn: "Built-in",
     extensionUninstallNote: "Removes this extension and its tasks.",
 
     /** Moving in from SillyTavern (SPEC §20 phase 44). */

@@ -3805,6 +3805,12 @@ Each phase ends in a working, usable application.
     uninstall; `register(ctx, settings)` receives the stored values on every
     reload, and a toggle or settings change reloads without a restart. See §15,
     `test/extensions.test.ts`.
+144. **Built-in extensions** — extensions whose code ships in the host, seeded
+    disabled at boot and marked non-removable (migration 0068); the two bundled
+    ones are Proofread (with a settings schema) and Lore Scout. Reload is now
+    authoritative: a disabled extension's tasks leave the ops list, and an
+    enabled one's are re-persisted, so the manager and the ops list cannot
+    disagree. See §15, `server/extensions/builtins.ts`.
 
 Settled while building phase 15.
 

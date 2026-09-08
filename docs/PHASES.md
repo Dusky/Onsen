@@ -6952,3 +6952,18 @@ contribute no tasks and run no callbacks.
 writing settings reloads `register` with the new values, and disabling
 unregisters the tasks while deleting removes the extension — plus the full
 suite (1482 pass).
+
+## Phase 144 — Built-in extensions
+
+Extensions whose code ships in the host now seed themselves at boot: migration
+0068 adds `built_in`, and `server/extensions/builtins.ts` registers the two
+bundled ones — Proofread (a settings schema: thoroughness and whether to return
+corrected text) and Lore Scout. A built-in has no copied directory, is seeded
+disabled so it never surprises a user, and cannot be uninstalled (the manager
+hides the remove button and the route refuses). Reload is now authoritative:
+a disabled extension's tasks leave the ops list and an enabled one's are
+re-persisted, so the manager and the ops list can never disagree.
+
+**Verified** by two cases — boot seeds the built-ins disabled with their
+schemas, and enabling one registers its tasks while deletion is refused — plus
+the full suite (1484 pass).

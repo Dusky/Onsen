@@ -14,6 +14,7 @@ export interface ExtensionRow {
   author: string;
   dir: string;
   enabled: number;
+  built_in: number;
   description: string | null;
   settings: string | null;
   settings_schema: string | null;
@@ -29,6 +30,13 @@ export function findExtension(db: Database, extensionUlid: string): ExtensionRow
   return (db.query("SELECT * FROM extensions WHERE ulid = $ulid").get({ ulid: extensionUlid }) as
     | ExtensionRow
     | null) ?? null;
+}
+
+/** A built-in is addressed by name, since it is seeded, not installed by id. */
+export function findExtensionByName(db: Database, name: string): ExtensionRow | null {
+  return (db
+    .query("SELECT * FROM extensions WHERE name = $name AND built_in = 1 LIMIT 1")
+    .get({ name }) as ExtensionRow | null) ?? null;
 }
 
 export function insertExtension(
@@ -55,6 +63,36 @@ export function insertExtension(
       version: input.version,
       author: input.author,
       dir: input.dir,
+      description: input.description,
+      schema: input.settingsSchema,
+      settings: input.settings,
+      now,
+    }) as ExtensionRow;
+}
+
+/** Seed a built-in's row; it is shipped disabled so it never surprises a user. */
+export function insertBuiltinExtension(
+  db: Database,
+  input: {
+    name: string;
+    version: string;
+    author: string;
+    description: string;
+    settingsSchema: string;
+    settings: string;
+  },
+): ExtensionRow {
+  const now = Date.now();
+  return db
+    .query(
+      `INSERT INTO extensions (ulid, name, version, author, dir, description, settings_schema, settings, enabled, built_in, created_at, updated_at)
+       VALUES ($ulid, $name, $version, $author, '', $description, $schema, $settings, 0, 1, $now, $now) RETURNING *`,
+    )
+    .get({
+      ulid: ulid(),
+      name: input.name,
+      version: input.version,
+      author: input.author,
       description: input.description,
       schema: input.settingsSchema,
       settings: input.settings,

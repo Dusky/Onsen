@@ -50,6 +50,7 @@ function toExtensionDto(row: ExtensionRow): ExtensionDto {
     author: row.author,
     description: row.description,
     enabled: row.enabled === 1,
+    builtIn: row.built_in === 1,
     settings: parseSettings(row.settings),
     settingsSchema: parseSchema(row.settings_schema),
   };
@@ -90,6 +91,9 @@ export function extensionRoutes(ctx: AppContext): Hono<AppEnv> {
   app.delete("/:extensionId", (c) => {
     const extension = findExtension(ctx.db, c.req.param("extensionId"));
     if (extension === null) return c.json({ error: { code: "not_found", message: "No such extension." } }, 404);
+    if (extension.built_in === 1) {
+      return c.json({ error: { code: "bad_request", message: "Built-in extensions cannot be removed." } }, 400);
+    }
 
     unregisterExtensionModule(extension.name);
     deleteExtensionTasks(ctx.db, extension.name);
