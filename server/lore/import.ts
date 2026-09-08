@@ -112,6 +112,23 @@ function characterFilterOf(source: Record<string, unknown>): {
   };
 }
 
+/** The card fields an entry matches against, from Onsen's array or ST's booleans. */
+function matchAgainstOf(source: Record<string, unknown>): string[] {
+  const onsen = (source["onsen"] ?? {}) as Record<string, unknown>;
+  const arr = onsen["match_against"];
+  if (Array.isArray(arr)) return arr.filter((item): item is string => typeof item === "string");
+  const exts = (source["extensions"] ?? {}) as Record<string, unknown>;
+  const pairs: [string, string][] = [
+    ["persona_description", "match_persona_description"],
+    ["character_description", "match_character_description"],
+    ["character_personality", "match_character_personality"],
+    ["character_depth_prompt", "match_character_depth_prompt"],
+    ["scenario", "match_scenario"],
+    ["creator_notes", "match_creator_notes"],
+  ];
+  return pairs.filter(([, key]) => exts[key] === true).map(([field]) => field);
+}
+
 function logicOf(source: Record<string, unknown>): LoreEntryRow["secondary_logic"] {
   const value = pick(source, ["selectiveLogic", "secondary_logic"]);
   if (typeof value === "string") {
@@ -173,6 +190,8 @@ function entryFrom(source: Record<string, unknown>): ImportedEntry {
         0,
         asInt(pick(source, ["delayUntilRecursion", "delay_until_recursion"]), 0),
       ),
+      triggers: JSON.stringify(asStrings(pick(source, ["triggers"]))),
+      match_against: JSON.stringify(matchAgainstOf(source)),
       position,
       insertion_order: asInt(pick(source, ["order", "insertion_order", "insertionOrder"]), 100),
       insertion_depth: Math.max(0, asInt(pick(source, ["depth", "insertion_depth"]), 4)),

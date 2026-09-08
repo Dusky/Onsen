@@ -5,6 +5,7 @@ import { LORE_POSITIONS, type UpdateLoreEntryRequest } from "../../shared/types.
 import {
   bind,
   bindingsOf,
+  copyEntry,
   deleteEntry,
   deleteLorebook,
   findEntry,
@@ -13,6 +14,7 @@ import {
   insertLorebook,
   listEntries,
   listLorebooks,
+  moveEntry,
   toBookDto,
   toEntryDto,
   unbind,
@@ -219,6 +221,9 @@ export function loreRoutes(ctx: AppContext): Hono<AppEnv> {
     list("keys", "keys");
     list("secondaryKeys", "secondary_keys");
     list("characterFilter", "character_filter");
+    list("characterFilterTags", "character_filter_tags");
+    list("triggers", "triggers");
+    list("matchAgainst", "match_against");
     flag("caseSensitive", "case_sensitive");
     flag("matchWholeWords", "match_whole_words");
     flag("useRegex", "use_regex");
@@ -277,6 +282,46 @@ export function loreRoutes(ctx: AppContext): Hono<AppEnv> {
     if (entry === null || entry.lorebook_id !== book.id) return c.json(notFound("entry"), 404);
     deleteEntry(ctx.db, entry.id);
     return c.json({ ok: true });
+  });
+
+  /** Move an entry to another book (§20 phase 132). */
+  app.post("/:bookId/entries/:entryId/move", async (c) => {
+    const book = findLorebook(ctx.db, c.req.param("bookId"));
+    if (book === null) return c.json(notFound("lorebook"), 404);
+    const entry = findEntry(ctx.db, c.req.param("entryId"));
+    if (entry === null || entry.lorebook_id !== book.id) return c.json(notFound("entry"), 404);
+    const input = await body(c);
+    const target = findLorebook(ctx.db, typeof input["toBookId"] === "string" ? input["toBookId"] : "");
+    if (target === null || target.id === book.id) {
+      return c.json(badRequest("Pick another lorebook to move it to."), 400);
+    }
+    const moved = moveEntry(ctx.db, entry.id, target.id);
+    return c.json(toEntryDto(moved, target.ulid));
+  });
+
+  /** Copy an entry into another book, leaving the original (§20 phase 132). */
+  app.post("/:bookId/entries/:entryId/copy", async (c) => {
+    const book = findLorebook(ctx.db, c.req.param("bookId"));
+    if (book === null) return c.json(notFound("lorebook"), 404);
+    const entry = findEntry(ctx.db, c.req.param("entryId"));
+    if (entry === null || entry.lorebook_id !== book.id) return c.json(notFound("entry"), 404);
+    const input = await body(c);
+    const target = findLorebook(ctx.db, typeof input["toBookId"] === "string" ? input["toBookId"] : "");
+    if (target === null || target.id === book.id) {
+      return c.json(badRequest("Pick another lorebook to copy it to."), 400);
+    }
+    const copied = copyEntry(ctx.db, entry.id, target.id);
+    return c.json(toEntryDto(copied, target.ulid), 201);
+  });
+
+  /** Duplicate an entry within its book (§20 phase 133). */
+  app.post("/:bookId/entries/:entryId/duplicate", (c) => {
+    const book = findLorebook(ctx.db, c.req.param("bookId"));
+    if (book === null) return c.json(notFound("lorebook"), 404);
+    const entry = findEntry(ctx.db, c.req.param("entryId"));
+    if (entry === null || entry.lorebook_id !== book.id) return c.json(notFound("entry"), 404);
+    const dup = copyEntry(ctx.db, entry.id, book.id);
+    return c.json(toEntryDto(dup, book.ulid), 201);
   });
 
   /* ---------------- bindings ---------------- */

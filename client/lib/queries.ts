@@ -1364,6 +1364,40 @@ export function useDeleteLoreEntry(bookId: string) {
   });
 }
 
+/** Move an entry into another book (§20 phase 132). */
+export function useMoveLoreEntry(bookId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ entryId, toBookId }: { entryId: string; toBookId: string }) =>
+      api.post<LoreEntryDto>(`/lorebooks/${bookId}/entries/${entryId}/move`, { toBookId }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: loreKeys.all });
+    },
+  });
+}
+
+/** Copy an entry into another book, leaving the original (§20 phase 132). */
+export function useCopyLoreEntry(bookId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ entryId, toBookId }: { entryId: string; toBookId: string }) =>
+      api.post<LoreEntryDto>(`/lorebooks/${bookId}/entries/${entryId}/copy`, { toBookId }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: loreKeys.all });
+    },
+  });
+}
+
+/** Duplicate an entry within its book (§20 phase 133). */
+export function useDuplicateLoreEntry(bookId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (entryId: string) =>
+      api.post<LoreEntryDto>(`/lorebooks/${bookId}/entries/${entryId}/duplicate`, {}),
+    onSuccess: () => void client.invalidateQueries({ queryKey: loreKeys.one(bookId) }),
+  });
+}
+
 export function useBindLorebook() {
   const client = useQueryClient();
   return useMutation({

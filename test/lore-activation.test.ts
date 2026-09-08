@@ -36,6 +36,8 @@ function entry(over: Partial<LoreCandidate> = {}): LoreCandidate {
     useProbability: true,
     groupOverride: false,
     delayUntilRecursion: 0,
+    triggers: [],
+    matchAgainst: [],
     sticky: 0,
     cooldown: 0,
     delay: 0,
@@ -64,6 +66,8 @@ function run(entries: LoreCandidate[], over: Partial<ActivationInput> = {}) {
     transcript: ["Has anyone counted the lamp oil?"],
     presentCharacterIds: ["bell"],
     presentCharacterTags: [],
+    generationType: "normal",
+    matchText: {},
     timed: [],
     messageCount: 10,
     messagesSinceBranch: 10,
@@ -364,6 +368,22 @@ describe("the parity knobs (§20 phase 126)", () => {
     const exclude = entry({ id: "exclude", characterFilterExclude: true, characterFilter: ["bell"], keys: ["oil"] });
     // run()'s default presentCharacterIds is ["bell"], which the exclude filter rules out.
     expect(fired(run([exclude]))).toEqual([]);
+  });
+
+  test("triggers restrict an entry to the named generation types", () => {
+    const e = entry({ id: "e", keys: ["oil"], triggers: ["swipe"] });
+    expect(fired(run([e], { generationType: "normal" }))).toEqual([]);
+    expect(why(run([e], { generationType: "normal" }), "e")).toBe("trigger");
+    expect(fired(run([e], { generationType: "swipe" }))).toEqual(["e"]);
+  });
+
+  test("an entry can match against card fields, not only the transcript", () => {
+    const e = entry({ id: "e", keys: ["surveyor"], matchAgainst: ["persona_description"] });
+    expect(
+      fired(run([e], { matchText: { persona_description: "A surveyor waiting out the weather." } })),
+    ).toEqual(["e"]);
+    // Without the matched text, the key does not appear anywhere.
+    expect(fired(run([e]))).toEqual([]);
   });
 });
 

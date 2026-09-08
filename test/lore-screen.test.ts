@@ -56,4 +56,13 @@ describe("the lore page", () => {
     expect(LORE).toContain("BookListRow");
     expect(LORE).toContain("enabled: !book.enabled");
   });
+
+  test("the editor carries move, copy, duplicate, triggers and card-field matching", () => {
+    expect(LORE).toContain("moveTo");
+    expect(LORE).toContain("copyTo");
+    expect(LORE).toContain("duplicate");
+    expect(LORE).toContain("labelForTrigger");
+    expect(LORE).toContain("labelForMatchField");
+    expect(LORE).toContain("matchAgainst");
+  });
 });

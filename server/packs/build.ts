@@ -258,6 +258,8 @@ function entryDocument(row: {
   use_probability: number;
   group_override: number;
   delay_until_recursion: number;
+  triggers: string;
+  match_against: string;
   sticky: number;
   cooldown: number;
   delay: number;
@@ -303,6 +305,8 @@ function entryDocument(row: {
     useProbability: row.use_probability === 1,
     groupOverride: row.group_override === 1,
     delayUntilRecursion: row.delay_until_recursion,
+    triggers: list(row.triggers),
+    matchAgainst: list(row.match_against),
     sticky: row.sticky,
     cooldown: row.cooldown,
     delay: row.delay,

@@ -6822,3 +6822,38 @@ page.
 **Verified** by a lore-api case (the toggle round-trips, rejects non-booleans,
 and a muted book contributes nothing yet keeps its binding), and structural
 cases pinning the mute switch and the open-editor affordance.
+
+## Phase 132 — Move and copy lore entries
+
+An entry can move to another lorebook or be copied into one, from a picker in
+the entry editor. Move clears timed state the way an edit does; copy writes a
+byte-for-byte fresh entry, dropping only the author-memory provenance. Both
+refuse the same book or a missing one.
+
+## Phase 133 — Duplicate a lore entry
+
+An entry duplicates within its book — all fields intact, a fresh ULID — from a
+button beside move and copy.
+
+## Phase 134 — Generation-trigger filter
+
+An entry can fire only on certain generation types — normal, reroll, rewrite or
+continue; empty means every type. Migration 0061 stores the list, the generation
+service names its type (a reroll is a sibling of an earlier turn; a rewrite is
+expand/correct; continue is the continue op), and the engine skips an entry
+whose list does not name the current type, reporting "not for this turn".
+
+## Phase 135 — Card-field matching
+
+An entry's keys can also scan the present cast's description, personality, depth
+note, scenario and creator notes, and the persona's description — the fields
+SillyTavern calls matchCharacterDescription and so on. Migration 0062 stores the
+list; the engine appends the chosen fields to the scan window; export writes
+both the Onsen array and ST's `extensions.match_*` booleans, and import reads
+either.
+
+## Phase 136 — Title auto-fill
+
+An entry with no title takes the first key as its title — SillyTavern's
+addMemo — so a book full of keyed entries is never a book full of "Untitled
+entry".

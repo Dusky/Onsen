@@ -359,6 +359,8 @@ export interface BuildContextOptions {
    * said.
    */
   nudge?: string;
+  /** The kind of generation, for the lore trigger filter (§20 phase 134). */
+  generationType?: string;
   now: number;
   seed: number;
   /** Retrieved document chunks, resolved in the I/O layer before the build (§11). */
@@ -493,23 +495,40 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
   // reads rows and counts messages. §10's probability and weighted groups are
   // seeded from the generation, so the same turn always activates the same lore
   // — a reroll that quietly matched different entries would be untraceable.
+  // The card fields the entry can also match against (§20 phase 135): the
+  // present cast's description, personality, depth note, scenario and creator
+  // notes, plus the persona's description.
+  const activeCast = castRows.filter((row) => row.is_active === 1);
+  const personaForMatch =
+    options.scene.persona_id === null
+      ? null
+      : findPersonaById(options.db, options.scene.persona_id);
+  const matchText: Record<string, string> = {
+    character_description: activeCast.map((row) => row.description ?? "").join("\n"),
+    character_personality: activeCast.map((row) => row.personality ?? "").join("\n"),
+    character_depth_prompt: activeCast.map((row) => row.depth_prompt ?? "").join("\n"),
+    scenario: activeCast.map((row) => row.scenario ?? "").join("\n"),
+    creator_notes: activeCast.map((row) => row.creator_notes ?? "").join("\n"),
+    persona_description: personaForMatch?.description ?? "",
+  };
+
   const lore = activateForScene({
     db: options.db,
     scene: options.scene,
     history,
-    presentCharacterIds: castRows.filter((row) => row.is_active === 1).map((row) => row.ulid),
-    presentCharacterTags: castRows
-      .filter((row) => row.is_active === 1)
-      .flatMap((row) => {
-        try {
-          const parsed: unknown = JSON.parse(row.tags);
-          return Array.isArray(parsed)
-            ? parsed.filter((tag): tag is string => typeof tag === "string")
-            : [];
-        } catch {
-          return [];
-        }
-      }),
+    presentCharacterIds: activeCast.map((row) => row.ulid),
+    presentCharacterTags: activeCast.flatMap((row) => {
+      try {
+        const parsed: unknown = JSON.parse(row.tags);
+        return Array.isArray(parsed)
+          ? parsed.filter((tag): tag is string => typeof tag === "string")
+          : [];
+      } catch {
+        return [];
+      }
+    }),
+    matchText,
+    generationType: options.generationType ?? "normal",
     seed: options.seed,
     tokenizer,
   });

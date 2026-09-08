@@ -20,13 +20,16 @@ import { useIsDesktop } from "../lib/breakpoint.ts";
 import {
   useBindLorebook,
   useCharacters,
+  useCopyLoreEntry,
   useCreateLoreEntry,
   useCreateLorebook,
   useDeleteLoreEntry,
   useDeleteLorebook,
+  useDuplicateLoreEntry,
   useImportLorebook,
   useLorebook,
   useLorebooks,
+  useMoveLoreEntry,
   usePersonas,
   useScenes,
   useUnbindLorebook,
@@ -252,6 +255,40 @@ function labelForSelection(selection: LoreGroupSelection): string {
   }
 }
 
+function labelForTrigger(trigger: string): string {
+  switch (trigger) {
+    case "normal":
+      return strings.lore.fireOnNormal;
+    case "swipe":
+      return strings.lore.fireOnSwipe;
+    case "revise":
+      return strings.lore.fireOnRevise;
+    case "continue":
+      return strings.lore.fireOnContinue;
+    default:
+      return trigger;
+  }
+}
+
+function labelForMatchField(field: string): string {
+  switch (field) {
+    case "persona_description":
+      return strings.lore.matchPersonaDescription;
+    case "character_description":
+      return strings.lore.matchCharacterDescription;
+    case "character_personality":
+      return strings.lore.matchCharacterPersonality;
+    case "character_depth_prompt":
+      return strings.lore.matchCharacterDepthPrompt;
+    case "scenario":
+      return strings.lore.matchScenario;
+    case "creator_notes":
+      return strings.lore.matchCreatorNotes;
+    default:
+      return field;
+  }
+}
+
 /** Keys as mono chips, with the design's dashed `+ key` chip at the end. */
 function KeyChips({
   keys,
@@ -447,9 +484,14 @@ function EntryEditor({
 }) {
   const [draft, setDraft] = useState<LoreEntryDto>(entry);
   const [advanced, setAdvanced] = useState(false);
+  const [transfer, setTransfer] = useState<"move" | "copy" | null>(null);
   const [confirmNode, confirm] = useConfirm();
   const characters = useCharacters();
   const revise = useReviseLore(entry.id);
+  const books = useLorebooks();
+  const moveEntry = useMoveLoreEntry(entry.lorebookId);
+  const copyEntry = useCopyLoreEntry(entry.lorebookId);
+  const duplicate = useDuplicateLoreEntry(entry.lorebookId);
 
   function set<K extends keyof LoreEntryDto>(field: K, value: LoreEntryDto[K]) {
     setDraft((current) => ({ ...current, [field]: value }));
@@ -484,7 +526,14 @@ function EntryEditor({
           <KeyChips
             keys={draft.keys}
             label={strings.lore.keys}
-            onChange={(keys) => set("keys", keys)}
+            onChange={(keys) => {
+              // SillyTavern's addMemo: the first key names an entry that has
+              // no title of its own (§20 phase 136).
+              set("keys", keys);
+              if (draft.title === "" && keys.length > draft.keys.length) {
+                set("title", keys[keys.length - 1] ?? draft.title);
+              }
+            }}
           />
         </div>
 
@@ -700,6 +749,62 @@ function EntryEditor({
               </>
             )}
 
+            {/* The generation types this entry fires on (§20 phase 134). */}
+            <p className="section-label mb-[6px]">{strings.lore.fireOn}</p>
+            <div className="mb-[6px] flex flex-wrap gap-[6px]">
+              {(["normal", "swipe", "revise", "continue"] as const).map((type) => {
+                const on = draft.triggers.includes(type);
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() =>
+                      set(
+                        "triggers",
+                        on ? draft.triggers.filter((t) => t !== type) : [...draft.triggers, type],
+                      )
+                    }
+                    aria-pressed={on}
+                    className={`btn flex-none ${on ? "btn-primary" : ""}`}
+                  >
+                    {labelForTrigger(type)}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="explain mb-[14px]">{strings.lore.fireOnHint}</p>
+
+            {/* The card fields this entry also scans against (§20 phase 135). */}
+            <p className="section-label mb-[6px]">{strings.lore.matchAgainst}</p>
+            <div className="mb-[14px] flex flex-wrap gap-[6px]">
+              {([
+                "character_description",
+                "character_personality",
+                "character_depth_prompt",
+                "scenario",
+                "creator_notes",
+                "persona_description",
+              ] as const).map((field) => {
+                const on = draft.matchAgainst.includes(field);
+                return (
+                  <button
+                    key={field}
+                    type="button"
+                    onClick={() =>
+                      set(
+                        "matchAgainst",
+                        on ? draft.matchAgainst.filter((f) => f !== field) : [...draft.matchAgainst, field],
+                      )
+                    }
+                    aria-pressed={on}
+                    className={`btn flex-none ${on ? "btn-primary" : ""}`}
+                  >
+                    {labelForMatchField(field)}
+                  </button>
+                );
+              })}
+            </div>
+
             {/* The character filter: how two characters in one scene can know
                 different things out of one shared book (§10). */}
             <p className="section-label mb-[6px]">{strings.lore.characterFilter}</p>
@@ -847,6 +952,8 @@ function EntryEditor({
               delay: draft.delay,
               delayFrom: draft.delayFrom,
               inclusionGroup: draft.inclusionGroup,
+              triggers: draft.triggers,
+              matchAgainst: draft.matchAgainst,
               groupWeight: draft.groupWeight,
               groupSelection: draft.groupSelection,
               position: draft.position,
@@ -885,6 +992,28 @@ function EntryEditor({
         >
           {strings.lore.close}
         </button>
+        <button
+          type="button"
+          onClick={() => setTransfer("copy")}
+          className="chrome text-[12.5px] text-ink-muted"
+        >
+          {strings.lore.copyTo}
+        </button>
+        <button
+          type="button"
+          onClick={() => setTransfer("move")}
+          className="chrome text-[12.5px] text-ink-muted"
+        >
+          {strings.lore.moveTo}
+        </button>
+        <button
+          type="button"
+          disabled={duplicate.isPending}
+          onClick={() => duplicate.mutate(entry.id, { onSuccess: () => onClose() })}
+          className="chrome text-[12.5px] text-ink-muted"
+        >
+          {strings.lore.duplicate}
+        </button>
         <span className="flex-1" />
         <button
           type="button"
@@ -899,6 +1028,42 @@ function EntryEditor({
           {strings.lore.deleteEntry}
         </button>
       </div>
+
+      {transfer === null ? null : (
+        <div className="border-t border-rule px-[14px] py-[10px]">
+          <p className="section-label mb-[6px]">
+            {transfer === "move" ? strings.lore.moveTo : strings.lore.copyTo}
+          </p>
+          {(books.data ?? [])
+            .filter((candidate) => candidate.id !== entry.lorebookId)
+            .map((candidate) => (
+              <button
+                key={candidate.id}
+                type="button"
+                className="row w-full text-left"
+                onClick={() => {
+                  const run = transfer === "move" ? moveEntry : copyEntry;
+                  run.mutate(
+                    { entryId: entry.id, toBookId: candidate.id },
+                    { onSuccess: () => { setTransfer(null); onClose(); } },
+                  );
+                }}
+              >
+                <span className="text-[14px] font-medium">{candidate.name}</span>
+              </button>
+            ))}
+          {(books.data ?? []).length <= 1 ? (
+            <p className="explain mt-[6px]">{strings.lore.noOtherBooks}</p>
+          ) : null}
+          <button
+            type="button"
+            className="chrome mt-[10px] text-[12.5px] text-ink-dim"
+            onClick={() => setTransfer(null)}
+          >
+            {strings.common.cancel}
+          </button>
+        </div>
+      )}
       {confirmNode}
     </section>
   );

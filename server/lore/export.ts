@@ -109,6 +109,7 @@ export function toWorldInfoEntry(row: LoreEntryRow, index: number): Record<strin
     preventRecursion: row.prevent_further_recursion === 1,
     ignoreBudget: row.ignore_budget === 1,
     delayUntilRecursion: row.delay_until_recursion,
+    triggers: parseList(row.triggers),
     // SillyTavern's persisted character filter is one object: exclude, names,
     // and tags (§20 phase 126).
     characterFilter: {
@@ -129,6 +130,17 @@ export function toWorldInfoEntry(row: LoreEntryRow, index: number): Record<strin
       outlet_name: row.outlet_name,
       group_selection: row.group_selection,
       recursion_level: row.recursion_level,
+      match_against: parseList(row.match_against),
+    },
+    // SillyTavern's own shape for the card-field matching (§20 phase 135),
+    // written beside the Onsen array so either reader round-trips it.
+    extensions: {
+      match_persona_description: parseList(row.match_against).includes("persona_description"),
+      match_character_description: parseList(row.match_against).includes("character_description"),
+      match_character_personality: parseList(row.match_against).includes("character_personality"),
+      match_character_depth_prompt: parseList(row.match_against).includes("character_depth_prompt"),
+      match_scenario: parseList(row.match_against).includes("scenario"),
+      match_creator_notes: parseList(row.match_against).includes("creator_notes"),
     },
   };
 }

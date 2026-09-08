@@ -36,6 +36,10 @@ export interface SceneActivationOptions {
   presentCharacterIds: string[];
   /** Tags of the characters in play, for the filter's tag half (§126). */
   presentCharacterTags: string[];
+  /** The kind of generation, for the entry trigger filter (§134). */
+  generationType?: string;
+  /** Card fields the entry can also match against (§135). */
+  matchText?: Record<string, string>;
   /**
    * Seeded from the generation, so the same turn always activates the same
    * lore. A reroll that quietly matched different entries would be untraceable.
@@ -63,6 +67,8 @@ export function activateForScene(options: SceneActivationOptions): ActivationRes
     transcript: history.filter((row) => row.is_hidden === 0).map((row) => row.content),
     presentCharacterIds: options.presentCharacterIds,
     presentCharacterTags: options.presentCharacterTags,
+    generationType: options.generationType ?? "normal",
+    matchText: options.matchText ?? {},
     timed: timedStateFor(options.db, options.scene.id, history),
     messageCount: history.length,
     messagesSinceBranch: messagesSinceBranch(history),

@@ -58,6 +58,8 @@ import entityLists from "./0057_entity_lists.sql" with { type: "text" };
 import steerKnobs from "./0058_steer_knobs.sql" with { type: "text" };
 import loreEntryKnobs from "./0059_lore_entry_knobs.sql" with { type: "text" };
 import lorebookToggle from "./0060_lorebook_toggle.sql" with { type: "text" };
+import loreEntryTriggers from "./0061_lore_entry_triggers.sql" with { type: "text" };
+import loreEntryMatchAgainst from "./0062_lore_entry_match_against.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -133,4 +135,6 @@ export const migrations: readonly Migration[] = [
   { version: 58, name: "steer_knobs", sql: steerKnobs },
   { version: 59, name: "lore_entry_knobs", sql: loreEntryKnobs },
   { version: 60, name: "lorebook_toggle", sql: lorebookToggle },
+  { version: 61, name: "lore_entry_triggers", sql: loreEntryTriggers },
+  { version: 62, name: "lore_entry_match_against", sql: loreEntryMatchAgainst },
 ];

@@ -61,6 +61,8 @@ export interface LoreEntryRow {
   use_probability: number;
   group_override: number;
   delay_until_recursion: number;
+  triggers: string;
+  match_against: string;
   sticky: number;
   cooldown: number;
   delay: number;
@@ -221,6 +223,8 @@ function toCandidate(row: LoreEntryRow, book: LorebookRow): LoreCandidate {
     useProbability: row.use_probability === 1,
     groupOverride: row.group_override === 1,
     delayUntilRecursion: row.delay_until_recursion,
+    triggers: parseList(row.triggers),
+    matchAgainst: parseList(row.match_against),
     sticky: row.sticky,
     cooldown: row.cooldown,
     delay: row.delay,
@@ -398,6 +402,7 @@ export function updateEntry(
          character_filter_exclude = $character_filter_exclude,
          ignore_budget = $ignore_budget, use_probability = $use_probability,
          group_override = $group_override, delay_until_recursion = $delay_until_recursion,
+         triggers = $triggers, match_against = $match_against,
          sticky = $sticky, cooldown = $cooldown, delay = $delay, delay_from = $delay_from,
          inclusion_group = $inclusion_group, group_weight = $group_weight,
          group_selection = $group_selection, position = $position,
@@ -440,6 +445,8 @@ export function updateEntry(
       use_probability: next.use_probability,
       group_override: next.group_override,
       delay_until_recursion: next.delay_until_recursion,
+      triggers: next.triggers,
+      match_against: next.match_against,
       sticky: next.sticky,
       cooldown: next.cooldown,
       delay: next.delay,
@@ -460,6 +467,70 @@ export function updateEntry(
       written_in_scene_id: next.written_in_scene_id,
       now: Date.now(),
     }) as LoreEntryRow;
+}
+
+/**
+ * Move an entry to another book (§20 phase 132). Timed state is cleared, the
+ * same rule an edit follows: a change takes effect now, not after the current
+ * sticky window runs out.
+ */
+export function moveEntry(db: Database, id: number, targetBookId: number): LoreEntryRow {
+  clearTimedEffects(db, id);
+  return db
+    .query(
+      `UPDATE lore_entries SET lorebook_id = $book, updated_at = $now
+        WHERE id = $id RETURNING *`,
+    )
+    .get({ book: targetBookId, id, now: Date.now() }) as LoreEntryRow;
+}
+
+/**
+ * Copy an entry into another book, byte-for-byte, as a fresh entry (§132).
+ * Provenance (author-memory) is not carried: a copy in a different book is not
+ * the author's note it was.
+ */
+export function copyEntry(db: Database, sourceId: number, targetBookId: number): LoreEntryRow {
+  const src = db.query("SELECT * FROM lore_entries WHERE id = $id").get({ id: sourceId }) as LoreEntryRow;
+  const fresh = insertEntry(db, targetBookId, src.content);
+  return updateEntry(db, fresh.id, {
+    title: src.title,
+    enabled: src.enabled,
+    keys: src.keys,
+    secondary_keys: src.secondary_keys,
+    secondary_logic: src.secondary_logic,
+    case_sensitive: src.case_sensitive,
+    match_whole_words: src.match_whole_words,
+    use_regex: src.use_regex,
+    probability: src.probability,
+    is_constant: src.is_constant,
+    scan_depth: src.scan_depth,
+    character_filter: src.character_filter,
+    character_filter_tags: src.character_filter_tags,
+    character_filter_exclude: src.character_filter_exclude,
+    ignore_budget: src.ignore_budget,
+    use_probability: src.use_probability,
+    group_override: src.group_override,
+    delay_until_recursion: src.delay_until_recursion,
+    triggers: src.triggers,
+    match_against: src.match_against,
+    sticky: src.sticky,
+    cooldown: src.cooldown,
+    delay: src.delay,
+    delay_from: src.delay_from,
+    inclusion_group: src.inclusion_group,
+    group_weight: src.group_weight,
+    group_selection: src.group_selection,
+    position: src.position,
+    insertion_order: src.insertion_order,
+    insertion_depth: src.insertion_depth,
+    insertion_role: src.insertion_role,
+    outlet_name: src.outlet_name,
+    recursion_level: src.recursion_level,
+    non_recursable: src.non_recursable,
+    prevent_further_recursion: src.prevent_further_recursion,
+    automation_id: src.automation_id,
+    raw_entry: src.raw_entry,
+  });
 }
 
 export function deleteEntry(db: Database, id: number): void {
@@ -523,6 +594,8 @@ export function toEntryDto(row: LoreEntryRow, bookUlid: string): LoreEntryDto {
     useProbability: row.use_probability === 1,
     groupOverride: row.group_override === 1,
     delayUntilRecursion: row.delay_until_recursion,
+    triggers: parseList(row.triggers),
+    matchAgainst: parseList(row.match_against),
     sticky: row.sticky,
     cooldown: row.cooldown,
     delay: row.delay,

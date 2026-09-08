@@ -159,6 +159,8 @@ interface ActiveGeneration {
   requestedSpotlightId: number | null;
   /** What was asked for, and where the result lands (SPEC §3.5, §7). */
   turn: ResolvedTurn;
+  /** The kind of generation, for the lore trigger filter (§20 phase 134). */
+  generationType: string;
   /** Announced once, before streaming, and replayed to anyone who joins late. */
   director: DirectorEvent | null;
   /** The message this turn produced, for the passes that read it afterwards. */
@@ -463,6 +465,16 @@ export class GenerationService {
             : null,
       requestedSpotlightId: options.spotlightId ?? null,
       turn,
+      generationType:
+        turn.kind === "revise"
+          ? turn.mode === "continue"
+            ? "continue"
+            : "revise"
+          : turn.kind === "recast"
+            ? "revise"
+            : parentId !== null && parentId !== scene.active_leaf_id
+              ? "swipe"
+              : "normal",
       director: null,
       landedMessageId: null,
       nudge: options.nudge?.trim() === "" ? null : (options.nudge ?? null),
@@ -676,6 +688,7 @@ export class GenerationService {
         presetId,
         spotlightId: generation.spotlightId,
         turn: promptTurnOf(generation.turn),
+        generationType: generation.generationType,
         ...(generation.nudge === null ? {} : { nudge: generation.nudge }),
         now: this.now(),
         // The seed is derived from the generation's own identifier, so a reroll

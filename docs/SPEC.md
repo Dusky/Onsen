@@ -3745,6 +3745,22 @@ Each phase ends in a working, usable application.
     Lore section gains an *Open the full editor* button, because the full
     `LoreScreen` was otherwise unreachable from the desktop shell. See §10, §16,
     `test/lore-api.test.ts`, `test/lore-screen.test.ts`, `test/leftrail.test.ts`.
+132. **Move and copy lore entries** — an entry can move to another lorebook or
+    be copied into one, from a picker in the entry editor. See §10,
+    `test/lore-api.test.ts`.
+133. **Duplicate a lore entry** — an entry duplicates within its book, all
+    fields intact. See §10, `test/lore-api.test.ts`.
+134. **Generation-trigger filter** — an entry can fire only on certain
+    generation types (normal / reroll / rewrite / continue); empty means every
+    type. Migration 0061; the generation service names its type and the engine
+    honours it. See §10, `test/lore-activation.test.ts`.
+135. **Card-field matching** — an entry's keys can also scan the present cast's
+    description, personality, depth note, scenario and creator notes, and the
+    persona's description. Migration 0062; round-tripped through ST's
+    `extensions.match_*` shape. See §10, `test/lore-activation.test.ts`,
+    `test/lore-api.test.ts`.
+136. **Title auto-fill** — an entry with no title takes the first key as its
+    title, SillyTavern's addMemo. See §10, `test/lore-screen.test.ts`.
 
 Settled while building phase 15.
 

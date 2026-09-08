@@ -601,6 +601,8 @@ function entryPatch(source: Record<string, unknown>): Record<string, unknown> {
     use_probability: flag(source, "useProbability", true) ? 1 : 0,
     group_override: flag(source, "groupOverride", false) ? 1 : 0,
     delay_until_recursion: whole(source, "delayUntilRecursion", 0),
+    triggers: list("triggers"),
+    match_against: list("matchAgainst"),
     sticky: whole(source, "sticky", 0),
     cooldown: whole(source, "cooldown", 0),
     delay: whole(source, "delay", 0),

@@ -1974,6 +1974,10 @@ export interface LoreEntryDto {
   groupOverride: boolean;
   /** Only eligible once recursion has reached this round (§20 phase 126). */
   delayUntilRecursion: number;
+  /** Generation types this entry fires on; empty means every type (§134). */
+  triggers: string[];
+  /** Card fields this entry's keys also scan against (§135). */
+  matchAgainst: string[];
 
   sticky: number;
   cooldown: number;
@@ -2195,6 +2199,7 @@ export type SkipReason =
   | "secondary_keys"
   | "character_filter"
   | "probability"
+  | "trigger"
   | "group_not_chosen"
   | "book_budget";
 

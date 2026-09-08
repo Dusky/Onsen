@@ -64,6 +64,10 @@ export interface LoreCandidate {
   groupOverride: boolean;
   /** Only eligible once recursion has reached this round (§20 phase 126). */
   delayUntilRecursion: number;
+  /** Generation types this entry fires on; empty means every type (§134). */
+  triggers: string[];
+  /** Card fields this entry's keys also scan against (§135). */
+  matchAgainst: string[];
 
   sticky: number;
   cooldown: number;
@@ -108,6 +112,10 @@ export interface ActivationInput {
   presentCharacterIds: string[];
   /** Tags of characters in play, for the tag half of the filter (§126). */
   presentCharacterTags: string[];
+  /** The kind of generation, for the entry trigger filter (§134). */
+  generationType: string;
+  /** Card fields the entry can also match against (§135). */
+  matchText: Record<string, string>;
   timed: TimedState[];
   /** Messages in the scene, for `delay`. */
   messageCount: number;
@@ -285,6 +293,13 @@ export function activateLore(input: ActivationInput): ActivationResult {
     return input.transcript.slice(-Math.max(0, depth)).join("\n");
   };
 
+  /** The card fields an entry also scans against (§20 phase 135). */
+  const matchTextFor = (entry: LoreCandidate): string =>
+    entry.matchAgainst
+      .map((field) => input.matchText[field] ?? "")
+      .filter((text) => text !== "")
+      .join("\n");
+
   /**
    * One pass over everything not already chosen.
    *
@@ -329,6 +344,13 @@ export function activateLore(input: ActivationInput): ActivationResult {
           continue;
         }
 
+        // Generation-type filter: an entry that names types only fires on those
+        // (§20 phase 134). Empty means every type.
+        if (entry.triggers.length > 0 && !entry.triggers.includes(input.generationType)) {
+          if (round === 0) note(entry, round, "trigger");
+          continue;
+        }
+
         const agoValue = timedBy.get(entry.id);
         const isSticky = entry.sticky > 0 && agoValue !== undefined && agoValue < entry.sticky;
 
@@ -343,7 +365,8 @@ export function activateLore(input: ActivationInput): ActivationResult {
           continue;
         }
 
-        const haystack = round === 0 ? windowFor(entry) : extra;
+        const haystack =
+          round === 0 ? `${windowFor(entry)}\n${matchTextFor(entry)}` : extra;
 
         let matchedKey: string | null = null;
         let score = 0;

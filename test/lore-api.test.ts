@@ -170,6 +170,52 @@ describe("books and entries", () => {
     expect(on.enabled).toBe(true);
     expect(await statusOf(t, "PATCH", `/api/lorebooks/${created.id}`, { enabled: "yes" })).toBe(400);
   });
+
+  test("an entry moves to another book, and can be copied", async () => {
+    const t = await signedIn();
+    const one = await book(t, "One");
+    const two = await book(t, "Two");
+    const made = await entry(t, one.id, { title: "The lamp oil", keys: ["oil"] });
+
+    const moved = await json<LoreEntryDto>(t, "POST", `/api/lorebooks/${one.id}/entries/${made.id}/move`, { toBookId: two.id });
+    expect(moved.lorebookId).toBe(two.id);
+
+    const oneRead = await json<{ entries: LoreEntryDto[] }>(t, "GET", `/api/lorebooks/${one.id}`);
+    expect(oneRead.entries.length).toBe(0);
+    const twoRead = await json<{ entries: LoreEntryDto[] }>(t, "GET", `/api/lorebooks/${two.id}`);
+    expect(twoRead.entries.some((e) => e.title === "The lamp oil")).toBe(true);
+
+    // Copy leaves the original behind.
+    const copied = await json<LoreEntryDto>(t, "POST", `/api/lorebooks/${two.id}/entries/${moved.id}/copy`, { toBookId: one.id });
+    expect(copied.lorebookId).toBe(one.id);
+    const twoAfter = await json<{ entries: LoreEntryDto[] }>(t, "GET", `/api/lorebooks/${two.id}`);
+    expect(twoAfter.entries.some((e) => e.title === "The lamp oil")).toBe(true);
+  });
+
+  test("moving to the same book or a missing one is refused", async () => {
+    const t = await signedIn();
+    const one = await book(t, "One");
+    const made = await entry(t, one.id);
+    expect(
+      await statusOf(t, "POST", `/api/lorebooks/${one.id}/entries/${made.id}/move`, { toBookId: one.id }),
+    ).toBe(400);
+    expect(
+      await statusOf(t, "POST", `/api/lorebooks/${one.id}/entries/${made.id}/move`, { toBookId: "nope" }),
+    ).toBe(400);
+  });
+
+  test("an entry duplicates within its book", async () => {
+    const t = await signedIn();
+    const one = await book(t, "One");
+    const made = await entry(t, one.id, { title: "The lamp oil", keys: ["oil"] });
+
+    const dup = await json<LoreEntryDto>(t, "POST", `/api/lorebooks/${one.id}/entries/${made.id}/duplicate`);
+    expect(dup.lorebookId).toBe(one.id);
+    expect(dup.id).not.toBe(made.id);
+
+    const read = await json<{ entries: LoreEntryDto[] }>(t, "GET", `/api/lorebooks/${one.id}`);
+    expect(read.entries.filter((e) => e.title === "The lamp oil").length).toBe(2);
+  });
 });
 
 describe("bindings", () => {
