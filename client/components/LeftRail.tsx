@@ -241,11 +241,16 @@ function PromptPanel({ sceneId }: { sceneId: string | null }) {
     return <p className="meta mt-[14px]">{strings.common.working}</p>;
   }
 
+  // The summary's free percent, for the header line. The budget bar draws the
+  // same numbers as a stripe; the header states them.
+  const free = Math.max(debug.headroom, 0);
+  const freePct = Math.round((free / Math.max(debug.totalTokens + free, 1)) * 100);
+
   return (
     <div>
       <div className="mt-[12px] flex items-baseline justify-between gap-[10px]">
-        <span className="meta">
-          {strings.chat.inspectorTotal(debug.totalTokens, debug.available)}
+        <span className="meta tabular-nums">
+          {strings.leftRail.promptSummary(debug.totalTokens, debug.available, freePct)}
         </span>
         <span className="flex items-center gap-[12px]">
           <button
@@ -364,40 +369,21 @@ function PromptPanel({ sceneId }: { sceneId: string | null }) {
 function BudgetBar({ debug }: { debug: PromptDebugInfo }) {
   const free = Math.max(debug.headroom, 0);
   const total = Math.max(debug.totalTokens + free, 1);
-  const pct = Math.round((free / total) * 100);
   return (
-    <div className="mt-[10px]">
-      <div className="flex h-[8px] w-full overflow-hidden" aria-hidden="true">
-        {debug.blocks.map((block, index) => (
-          <div
-            key={`${block.id}-${index}`}
-            style={{
-              width: `${(block.tokens / total) * 100}%`,
-              background: blockColor(block),
-              flex: "none",
-            }}
-          />
-        ))}
-        <div style={{ width: `${(free / total) * 100}%`, background: "var(--onsen-color-rule-strong)" }} />
-      </div>
-      <div className="mt-[8px] flex flex-wrap gap-x-[12px] gap-y-[2px]">
-        {debug.blocks.map((block, index) => (
-          <span key={`${block.id}-${index}`} className="meta">
-            <span
-              className="mr-[5px] inline-block h-[7px] w-[7px] align-middle"
-              style={{ background: blockColor(block) }}
-            />
-            {block.label}
-          </span>
-        ))}
-        <span className="meta">
-          <span
-            className="mr-[5px] inline-block h-[7px] w-[7px] align-middle"
-            style={{ background: "var(--onsen-color-rule-strong)" }}
-          />
-          {strings.leftRail.free(free)} · {pct}%
-        </span>
-      </div>
+    <div className="mt-[12px] flex h-[8px] w-full overflow-hidden" aria-hidden="true">
+      {debug.blocks.map((block, index) => (
+        <div
+          key={`${block.id}-${index}`}
+          style={{
+            width: `${(block.tokens / total) * 100}%`,
+            background: blockColor(block),
+            flex: "none",
+          }}
+        />
+      ))}
+      <div
+        style={{ width: `${(free / total) * 100}%`, background: "var(--onsen-color-rule-strong)" }}
+      />
     </div>
   );
 }

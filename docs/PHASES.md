@@ -6779,3 +6779,15 @@ left in the carousel forever.
 
 **Verified** by a new stats endpoint test and a turn-surface guard pinning the
 delete affordance and the stats sheet.
+
+## Phase 129 — The prompt panel's top, cleaned
+
+The prompt sidebar's header read a bare `used / budget` with no unit, and the
+budget bar carried a wrapping legend of every block label — a second copy of the
+block list right below it. The top now states the window in one line (used,
+budget, and the free percent), and the budget bar is the stripe alone; the
+labels live in the block list, where each already sits beside its dot, its cost
+and its provenance.
+
+**Verified** by a leftrail case pinning the summary line and the absence of the
+old legend.

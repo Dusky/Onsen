@@ -49,6 +49,13 @@ describe("the prompt panel shows the window, not a link", () => {
     expect(RAIL).toContain("strings.chat.inspectorEvicted");
   });
 
+  test("the top states the window in one line, not a legend", () => {
+    // One summary line — used / budget · % free — and the stripe carries the
+    // colour, while the block list below carries the labels (§20 phase 129).
+    expect(RAIL).toContain("promptSummary");
+    expect(RAIL).not.toContain("leftRail.free");
+  });
+
   test("blocks carry their provenance, and the lore trace and raw view are there", () => {
     expect(RAIL).toContain("placementOf");
     expect(RAIL).toContain("debug.loreTrace");

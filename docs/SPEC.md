@@ -3727,6 +3727,12 @@ Each phase ends in a working, usable application.
     (messages, words, and who has carried the conversation) reachable from the
     chat header, and the versions sheet can delete a sibling, not only jump to
     it. See §16, `test/stats.test.ts`, `test/turn-surface.test.ts`.
+129. **The prompt panel's top, cleaned** — the prompt sidebar's header used a
+    bare `used / budget` with no units and a redundant block-label legend under
+    the budget bar that repeated the block list. It now states the window in one
+    line — used, budget, and the free percent — and the budget bar is the stripe
+    alone, the labels living in the block list below. See §16,
+    `test/leftrail.test.ts`.
 
 Settled while building phase 15.
 

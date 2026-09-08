@@ -1086,7 +1086,9 @@ export const strings = {
     noScene: "Open a roleplay to read it.",
     refresh: "Refresh",
     fullEditor: "Full editor",
-    free: (n: number) => `Free ${n} tok`,
+    /** The prompt panel's one summary line: used, budget, and free percent. */
+    promptSummary: (used: number, available: number, freePct: number) =>
+      `${used} / ${available} tok \u00b7 ${freePct}% free`,
     guidesEmpty: "Nothing injected. Writing a guide reads the scene so far.",
     viewRaw: "View raw",
     banList: "Ban list",
