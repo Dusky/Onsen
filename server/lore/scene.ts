@@ -4,6 +4,7 @@ import { createRng } from "../prompt/random.ts";
 import { activePath, type MessageRowWithSiblings, type SceneRow } from "../db/queries/history.ts";
 import { booksForScene, candidatesFor, timedStateFor } from "../db/queries/lore.ts";
 import { activateLore, type ActivationResult } from "./activate.ts";
+import { embedLocally } from "../embeddings/local.ts";
 
 /**
  * Running the activation model against a real scene (SPEC §10).
@@ -40,6 +41,8 @@ export interface SceneActivationOptions {
   generationType?: string;
   /** Card fields the entry can also match against (§135). */
   matchText?: Record<string, string>;
+  /** The transcript's embedding, for vectorized entries (§138). */
+  queryVector?: number[] | null;
   /**
    * Seeded from the generation, so the same turn always activates the same
    * lore. A reroll that quietly matched different entries would be untraceable.
@@ -59,9 +62,10 @@ export function activateForScene(options: SceneActivationOptions): ActivationRes
     // binding, so the scene's author has to be part of the question.
     options.scene.author_id,
   );
+  const candidates = candidatesFor(options.db, books);
 
   return activateLore({
-    entries: candidatesFor(options.db, books),
+    entries: candidates,
     // Newest last. Hidden messages are excluded for the reason they are
     // excluded from the prompt: the model never saw them.
     transcript: history.filter((row) => row.is_hidden === 0).map((row) => row.content),
@@ -69,6 +73,8 @@ export function activateForScene(options: SceneActivationOptions): ActivationRes
     presentCharacterTags: options.presentCharacterTags,
     generationType: options.generationType ?? "normal",
     matchText: options.matchText ?? {},
+    queryVector: options.queryVector ?? null,
+    vectorThreshold: VECTOR_THRESHOLD,
     timed: timedStateFor(options.db, options.scene.id, history),
     messageCount: history.length,
     messagesSinceBranch: messagesSinceBranch(history),
@@ -76,4 +82,27 @@ export function activateForScene(options: SceneActivationOptions): ActivationRes
     recursionCap: Math.max(...books.map((book) => book.recursion_depth), 0),
     countTokens: (text) => tokenizer.count(text),
   });
+}
+
+/** Minimum cosine for a vectorized entry to fire (§20 phase 138). */
+export const VECTOR_THRESHOLD = 0.35;
+
+/**
+ * The transcript's embedding, for vectorized entries (§20 phase 138). Computed
+ * only when a vectorized entry is in play; the bundled model never throws, and
+ * an empty vector means "no semantic matching this turn".
+ */
+export async function transcriptQueryVector(
+  db: Database,
+  scene: SceneRow,
+  history: MessageRowWithSiblings[],
+): Promise<number[] | null> {
+  const books = booksForScene(db, scene.id, scene.persona_id, scene.author_id);
+  const hasVectorized = candidatesFor(db, books).some((entry) => entry.vectorized);
+  if (!hasVectorized) return null;
+  const transcript = history
+    .filter((row) => row.is_hidden === 0)
+    .map((row) => row.content)
+    .join("\n");
+  return (await embedLocally([transcript]))[0] ?? null;
 }

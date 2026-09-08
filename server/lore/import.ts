@@ -192,6 +192,7 @@ function entryFrom(source: Record<string, unknown>): ImportedEntry {
       ),
       triggers: JSON.stringify(asStrings(pick(source, ["triggers"]))),
       match_against: JSON.stringify(matchAgainstOf(source)),
+      vectorized: asBool((source["extensions"] as Record<string, unknown> | undefined)?.["vectorized"], false) ? 1 : 0,
       position,
       insertion_order: asInt(pick(source, ["order", "insertion_order", "insertionOrder"]), 100),
       insertion_depth: Math.max(0, asInt(pick(source, ["depth", "insertion_depth"]), 4)),

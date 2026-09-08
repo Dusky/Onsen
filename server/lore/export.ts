@@ -141,6 +141,7 @@ export function toWorldInfoEntry(row: LoreEntryRow, index: number): Record<strin
       match_character_depth_prompt: parseList(row.match_against).includes("character_depth_prompt"),
       match_scenario: parseList(row.match_against).includes("scenario"),
       match_creator_notes: parseList(row.match_against).includes("creator_notes"),
+      vectorized: row.vectorized === 1,
     },
   };
 }

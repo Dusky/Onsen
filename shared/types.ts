@@ -1978,6 +1978,8 @@ export interface LoreEntryDto {
   triggers: string[];
   /** Card fields this entry's keys also scan against (§135). */
   matchAgainst: string[];
+  /** Semantic retrieval instead of keywords (§20 phase 138). */
+  vectorized: boolean;
 
   sticky: number;
   cooldown: number;
@@ -2200,6 +2202,7 @@ export type SkipReason =
   | "character_filter"
   | "probability"
   | "trigger"
+  | "vectorized"
   | "group_not_chosen"
   | "book_budget";
 

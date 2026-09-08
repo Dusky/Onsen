@@ -603,6 +603,7 @@ function entryPatch(source: Record<string, unknown>): Record<string, unknown> {
     delay_until_recursion: whole(source, "delayUntilRecursion", 0),
     triggers: list("triggers"),
     match_against: list("matchAgainst"),
+    vectorized: flag(source, "vectorized", false) ? 1 : 0,
     sticky: whole(source, "sticky", 0),
     cooldown: whole(source, "cooldown", 0),
     delay: whole(source, "delay", 0),

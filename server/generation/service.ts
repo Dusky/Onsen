@@ -29,6 +29,7 @@ import {
 } from "../db/queries/history.ts";
 import { buildPromptContext, presetIdFor, resolvePreset } from "./context.ts";
 import { recordActivations } from "../db/queries/lore.ts";
+import { transcriptQueryVector } from "../lore/scene.ts";
 import { resolveRoute, RouteError, type ResolvedRoute } from "./route.ts";
 import { internalIdOf, resolveNextSpeaker } from "./turn.ts";
 import {
@@ -697,7 +698,7 @@ export class GenerationService {
         ...(generation.parentId === null
           ? { history: [] }
           : { history: pathTo(this.db, generation.parentId) }),
-        // The data bank (SPEC §11): retrieved before the build, in the I/O
+      // The data bank (SPEC §11): retrieved before the build, in the I/O
         // layer, so the builder stays pure. A retrieval that fails or finds
         // nothing is an empty block, never a failed turn.
         documents: await this.retrieveDocuments(scene, generation.parentId),
@@ -705,6 +706,9 @@ export class GenerationService {
         // embeddings provider and the builder is pure. A scene with memory
         // switched off recalls nothing and costs nothing.
         ...(await this.recallMemory(scene, generation.parentId)),
+        // Vectorized lore entries match by meaning, so the transcript's
+        // embedding is resolved here — the I/O layer — before the build (§138).
+        queryVector: await this.queryVectorFor(scene, generation.parentId),
       });
 
       const prompt = buildPrompt(context);
@@ -1365,7 +1369,15 @@ export class GenerationService {
     }
   }
 
-  /** The preset's reasoning settings, or null for the built-in defaults (§13). */
+  /**
+   * The transcript's embedding, for vectorized lore entries (§20 phase 138).
+   * Computed only when a vectorized entry is in play; the bundled model never
+   * throws, and an empty vector means "no semantic matching this turn".
+   */
+  private async queryVectorFor(scene: SceneRow, parentId: number | null): Promise<number[] | null> {
+    const path = parentId === null ? [] : pathTo(this.db, parentId);
+    return transcriptQueryVector(this.db, scene, path);
+  }
   private reasoningJson(presetId: number | null): string | null {    if (presetId === null) return null;
     const row = this.db
       .query("SELECT reasoning_config FROM presets WHERE id = $id")

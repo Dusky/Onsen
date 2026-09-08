@@ -260,6 +260,7 @@ function entryDocument(row: {
   delay_until_recursion: number;
   triggers: string;
   match_against: string;
+  vectorized: number;
   sticky: number;
   cooldown: number;
   delay: number;
@@ -307,6 +308,7 @@ function entryDocument(row: {
     delayUntilRecursion: row.delay_until_recursion,
     triggers: list(row.triggers),
     matchAgainst: list(row.match_against),
+    vectorized: row.vectorized === 1,
     sticky: row.sticky,
     cooldown: row.cooldown,
     delay: row.delay,

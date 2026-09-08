@@ -63,6 +63,8 @@ export interface LoreEntryRow {
   delay_until_recursion: number;
   triggers: string;
   match_against: string;
+  vectorized: number;
+  vector: string | null;
   sticky: number;
   cooldown: number;
   delay: number;
@@ -104,6 +106,18 @@ function parseList(raw: string): string[] {
     return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
   } catch {
     return [];
+  }
+}
+
+function parseVector(raw: string | null): number[] | null {
+  if (raw === null) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is number => typeof item === "number")
+      : null;
+  } catch {
+    return null;
   }
 }
 
@@ -225,6 +239,8 @@ function toCandidate(row: LoreEntryRow, book: LorebookRow): LoreCandidate {
     delayUntilRecursion: row.delay_until_recursion,
     triggers: parseList(row.triggers),
     matchAgainst: parseList(row.match_against),
+    vectorized: row.vectorized === 1,
+    vector: row.vector === null ? null : parseVector(row.vector),
     sticky: row.sticky,
     cooldown: row.cooldown,
     delay: row.delay,
@@ -403,6 +419,7 @@ export function updateEntry(
          ignore_budget = $ignore_budget, use_probability = $use_probability,
          group_override = $group_override, delay_until_recursion = $delay_until_recursion,
          triggers = $triggers, match_against = $match_against,
+         vectorized = $vectorized, vector = $vector,
          sticky = $sticky, cooldown = $cooldown, delay = $delay, delay_from = $delay_from,
          inclusion_group = $inclusion_group, group_weight = $group_weight,
          group_selection = $group_selection, position = $position,
@@ -447,6 +464,8 @@ export function updateEntry(
       delay_until_recursion: next.delay_until_recursion,
       triggers: next.triggers,
       match_against: next.match_against,
+      vectorized: next.vectorized,
+      vector: next.vector,
       sticky: next.sticky,
       cooldown: next.cooldown,
       delay: next.delay,
@@ -513,6 +532,8 @@ export function copyEntry(db: Database, sourceId: number, targetBookId: number):
     delay_until_recursion: src.delay_until_recursion,
     triggers: src.triggers,
     match_against: src.match_against,
+    vectorized: src.vectorized,
+    vector: src.vector,
     sticky: src.sticky,
     cooldown: src.cooldown,
     delay: src.delay,
@@ -596,6 +617,7 @@ export function toEntryDto(row: LoreEntryRow, bookUlid: string): LoreEntryDto {
     delayUntilRecursion: row.delay_until_recursion,
     triggers: parseList(row.triggers),
     matchAgainst: parseList(row.match_against),
+    vectorized: row.vectorized === 1,
     sticky: row.sticky,
     cooldown: row.cooldown,
     delay: row.delay,

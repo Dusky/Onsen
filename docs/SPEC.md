@@ -3769,6 +3769,13 @@ Each phase ends in a working, usable application.
     bundled model (default), a configured endpoint, or keywords — and the
     store falls back to keyword retrieval when the model cannot load. See §11,
     `test/embedding-tokenizer.test.ts`.
+138. **Vectorized lore entries** — an entry can be marked vectorized, so it is
+    retrieved by semantic similarity to the transcript instead of keywords.
+    Its content is embedded on save (migration 0064 caches the vector), the
+    generation service embeds the transcript when a vectorized entry is in
+    play, and the engine fires the entry when the cosine clears the threshold.
+    Round-tripped through ST's `extensions.vectorized`. See §10,
+    `test/lore-activation.test.ts`.
 
 Settled while building phase 15.
 

@@ -29,7 +29,7 @@ import type { TrackerRunner } from "../trackers/runner.ts";
 import { activeTrackers, editTracker, findTracker, flushTrackers, toTrackerDto } from "../db/queries/trackers.ts";
 import type { SummaryRunner } from "../summaries/runner.ts";
 import type { BanAnalyser } from "../options/runner.ts";
-import { activateForScene } from "../lore/scene.ts";
+import { activateForScene, transcriptQueryVector } from "../lore/scene.ts";
 import {
   acceptBan,
   addBan,
@@ -834,7 +834,7 @@ export function sceneGenerationRoutes(
    * engine a generation runs — a test tool with its own second implementation
    * would be a tool that lies.
    */
-  app.get("/:sceneId/lore", (c) => {
+  app.get("/:sceneId/lore", async (c) => {
     const scene = findScene(ctx.db, c.req.param("sceneId"));
     if (scene === null) {
       return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
@@ -847,9 +847,11 @@ export function sceneGenerationRoutes(
       )
       .all({ scene: scene.id }) as { ulid: string; tags: string }[];
 
+    const history = activePath(ctx.db, scene.id);
     const result = activateForScene({
       db: ctx.db,
       scene,
+      history,
       presentCharacterIds: present.map((row) => row.ulid),
       presentCharacterTags: present.flatMap((row) => {
         try {
@@ -861,6 +863,7 @@ export function sceneGenerationRoutes(
           return [];
         }
       }),
+      queryVector: await transcriptQueryVector(ctx.db, scene, history),
       // Fixed rather than per-generation: the tool answers "what does this
       // scene do", and a number that changed on every refresh would make a
       // probability entry impossible to reason about.

@@ -593,6 +593,12 @@ function EntryEditor({
               value={draft.isConstant}
               onChange={(on) => set("isConstant", on)}
             />
+            <Toggle
+              label={strings.lore.vectorized}
+              hint={strings.lore.vectorizedNote}
+              value={draft.vectorized}
+              onChange={(on) => set("vectorized", on)}
+            />
 
             {/* §20 phase 54. `insertionRole` decides which role the injected
                 text lands in — `server/prompt/blocks.ts` has consumed it since
@@ -945,6 +951,7 @@ function EntryEditor({
               matchWholeWords: draft.matchWholeWords,
               probability: draft.probability,
               isConstant: draft.isConstant,
+              vectorized: draft.vectorized,
               scanDepth: draft.scanDepth,
               characterFilter: draft.characterFilter,
               sticky: draft.sticky,

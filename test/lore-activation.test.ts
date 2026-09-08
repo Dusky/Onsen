@@ -38,6 +38,8 @@ function entry(over: Partial<LoreCandidate> = {}): LoreCandidate {
     delayUntilRecursion: 0,
     triggers: [],
     matchAgainst: [],
+    vectorized: false,
+    vector: null,
     sticky: 0,
     cooldown: 0,
     delay: 0,
@@ -68,6 +70,8 @@ function run(entries: LoreCandidate[], over: Partial<ActivationInput> = {}) {
     presentCharacterTags: [],
     generationType: "normal",
     matchText: {},
+    queryVector: null,
+    vectorThreshold: 0.35,
     timed: [],
     messageCount: 10,
     messagesSinceBranch: 10,
@@ -384,6 +388,16 @@ describe("the parity knobs (§20 phase 126)", () => {
     ).toEqual(["e"]);
     // Without the matched text, the key does not appear anywhere.
     expect(fired(run([e]))).toEqual([]);
+  });
+
+  test("a vectorized entry matches by similarity, not keywords", () => {
+    const e = entry({ id: "e", keys: ["oil"], vectorized: true, vector: [1, 0, 0] });
+    // The query points the same way, so it fires despite no keyword match.
+    expect(fired(run([e], { queryVector: [1, 0, 0] }))).toEqual(["e"]);
+    // A dissimilar query leaves it out.
+    expect(fired(run([e], { queryVector: [0, 1, 0] }))).toEqual([]);
+    // No query vector at all means it cannot match semantically.
+    expect(why(run([e], { queryVector: null }), "e")).toBe("vectorized");
   });
 });
 

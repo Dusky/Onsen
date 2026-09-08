@@ -6874,3 +6874,17 @@ than failing a recall.
 **Verified** by the tokenizer and pooling unit tests, the invariant guard
 (confirming the runtime closure stays native-free), and a live run: identical
 texts embed to cosine 1.0, unrelated ones to 0.36.
+
+## Phase 138 — Vectorized lore entries
+
+The last SillyTavern lorebook gap. An entry can now be marked vectorized, so it
+is retrieved by semantic similarity to the transcript rather than by keywords —
+the same tri-state ST's editor offers (constant / normal / vectorized). The
+entry's content is embedded on save and cached (migration 0064); the generation
+service embeds the transcript only when a vectorized entry is in play, and the
+engine fires the entry when the cosine clears the threshold. Round-tripped
+through ST's `extensions.vectorized`, and surfaced as a toggle in the entry
+editor beside constant.
+
+**Verified** by an activation case (similarity fires it, a dissimilar query does
+not, and a missing vector is reported as such) and the existing ST round-trip.

@@ -64,5 +64,6 @@ describe("the lore page", () => {
     expect(LORE).toContain("labelForTrigger");
     expect(LORE).toContain("labelForMatchField");
     expect(LORE).toContain("matchAgainst");
+    expect(LORE).toContain("vectorized");
   });
 });

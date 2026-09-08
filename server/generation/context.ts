@@ -361,6 +361,8 @@ export interface BuildContextOptions {
   nudge?: string;
   /** The kind of generation, for the lore trigger filter (§20 phase 134). */
   generationType?: string;
+  /** The transcript's embedding, for vectorized lore entries (§138). */
+  queryVector?: number[] | null;
   now: number;
   seed: number;
   /** Retrieved document chunks, resolved in the I/O layer before the build (§11). */
@@ -529,6 +531,7 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
     }),
     matchText,
     generationType: options.generationType ?? "normal",
+    queryVector: options.queryVector ?? null,
     seed: options.seed,
     tokenizer,
   });

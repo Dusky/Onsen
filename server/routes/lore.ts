@@ -24,6 +24,7 @@ import {
 } from "../db/queries/lore.ts";
 import { toWorldInfo } from "../lore/export.ts";
 import { parseWorldInfo } from "../lore/import.ts";
+import { embedLocally } from "../embeddings/local.ts";
 
 /**
  * Lorebooks over HTTP (SPEC §10).
@@ -228,6 +229,7 @@ export function loreRoutes(ctx: AppContext): Hono<AppEnv> {
     flag("matchWholeWords", "match_whole_words");
     flag("useRegex", "use_regex");
     flag("isConstant", "is_constant");
+    flag("vectorized", "vectorized");
     flag("nonRecursable", "non_recursable");
     flag("preventFurtherRecursion", "prevent_further_recursion");
 
@@ -270,6 +272,17 @@ export function loreRoutes(ctx: AppContext): Hono<AppEnv> {
       const value = input[field];
       (patch[column] as unknown) =
         typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+    }
+
+    // Vectorized entries embed their content on save (§20 phase 138); the
+    // vector is a cache, cleared when vectorized turns off.
+    const willVectorize = "vectorized" in input ? input["vectorized"] === true : entry.vectorized === 1;
+    if (willVectorize) {
+      const content = typeof input["content"] === "string" ? input["content"] : entry.content;
+      const vector = (await embedLocally([content]))[0];
+      patch.vector = vector === undefined || vector.length === 0 ? null : JSON.stringify(vector);
+    } else {
+      patch.vector = null;
     }
 
     return c.json(toEntryDto(updateEntry(ctx.db, entry.id, patch), book.ulid));

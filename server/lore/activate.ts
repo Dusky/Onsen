@@ -68,6 +68,10 @@ export interface LoreCandidate {
   triggers: string[];
   /** Card fields this entry's keys also scan against (§135). */
   matchAgainst: string[];
+  /** Semantic retrieval instead of keywords (§20 phase 138). */
+  vectorized: boolean;
+  /** The cached embedding, set on save; null when not vectorized. */
+  vector: number[] | null;
 
   sticky: number;
   cooldown: number;
@@ -116,6 +120,10 @@ export interface ActivationInput {
   generationType: string;
   /** Card fields the entry can also match against (§135). */
   matchText: Record<string, string>;
+  /** The transcript's embedding, for vectorized entries (§138). */
+  queryVector: number[] | null;
+  /** Minimum cosine for a vectorized entry to fire (§138). */
+  vectorThreshold: number;
   timed: TimedState[];
   /** Messages in the scene, for `delay`. */
   messageCount: number;
@@ -189,6 +197,22 @@ function firstMatch(entry: LoreCandidate, haystack: string): string | null {
     if (keyMatches(haystack, key, entry)) return key;
   }
   return null;
+}
+
+/** Cosine similarity between two normalised vectors, clamped to [-1, 1]. */
+function cosine(a: number[], b: number[]): number {
+  if (a.length === 0 || b.length === 0) return 0;
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  const length = Math.min(a.length, b.length);
+  for (let index = 0; index < length; index += 1) {
+    dot += (a[index] ?? 0) * (b[index] ?? 0);
+    normA += (a[index] ?? 0) * (a[index] ?? 0);
+    normB += (b[index] ?? 0) * (b[index] ?? 0);
+  }
+  const denominator = Math.sqrt(normA) * Math.sqrt(normB);
+  return denominator === 0 ? 0 : dot / denominator;
 }
 
 /** §10's four secondary logics, which qualify a primary match. */
@@ -371,15 +395,31 @@ export function activateLore(input: ActivationInput): ActivationResult {
         let matchedKey: string | null = null;
         let score = 0;
         if (!entry.isConstant && !isSticky) {
-          matchedKey = firstMatch(entry, haystack);
-          if (matchedKey === null) {
-            if (round === 0) note(entry, round, "no_match");
-            continue;
-          }
-          score = entry.keys.filter((key) => keyMatches(haystack, key, entry)).length;
-          if (!secondaryPasses(entry, haystack)) {
-            note(entry, round, "secondary_keys", matchedKey);
-            continue;
+          if (entry.vectorized) {
+            // Semantic retrieval: the entry fires by similarity to the
+            // transcript, on the initial pass only (§20 phase 138).
+            if (round > 0) continue;
+            const vector = entry.vector;
+            const query = input.queryVector;
+            if (vector === null || vector.length === 0 || query === null || query.length === 0) {
+              note(entry, round, "vectorized");
+              continue;
+            }
+            if (cosine(query, vector) < input.vectorThreshold) {
+              note(entry, round, "no_match");
+              continue;
+            }
+          } else {
+            matchedKey = firstMatch(entry, haystack);
+            if (matchedKey === null) {
+              if (round === 0) note(entry, round, "no_match");
+              continue;
+            }
+            score = entry.keys.filter((key) => keyMatches(haystack, key, entry)).length;
+            if (!secondaryPasses(entry, haystack)) {
+              note(entry, round, "secondary_keys", matchedKey);
+              continue;
+            }
           }
         }
 
