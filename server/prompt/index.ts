@@ -55,6 +55,9 @@ const ALTERNATION_FILLER = "Begin.";
  */
 function orderedBlockIds(ctx: PromptContext): readonly string[] {
   const configured = ctx.preset.blockOrder;
+  // Extension injections are always appended: they have no home in the default
+  // order, and a preset must not be able to drop them by omission (§145).
+  const extensionIds = ctx.extensionBlocks.map((block) => block.key);
   // Null only. An order that is *empty* is a preset whose blocks are all
   // switched off, which is a different thing from one that has never been
   // arranged — and conflating them put every disabled block back in the prompt.
@@ -65,10 +68,15 @@ function orderedBlockIds(ctx: PromptContext): readonly string[] {
     // of the history, in the order they were given: they are instructions about
     // how to write, and instructions after the transcript read as part of it.
     const customs = ctx.preset.customBlocks.map((block) => block.id);
-    if (customs.length === 0) return DEFAULT_BLOCK_ORDER;
+    if (customs.length === 0 && extensionIds.length === 0) return DEFAULT_BLOCK_ORDER;
     const at = DEFAULT_BLOCK_ORDER.indexOf("history");
     const cut = at === -1 ? DEFAULT_BLOCK_ORDER.length : at;
-    return [...DEFAULT_BLOCK_ORDER.slice(0, cut), ...customs, ...DEFAULT_BLOCK_ORDER.slice(cut)];
+    return [
+      ...DEFAULT_BLOCK_ORDER.slice(0, cut),
+      ...customs,
+      ...extensionIds,
+      ...DEFAULT_BLOCK_ORDER.slice(cut),
+    ];
   }
   // A preset that omits a block is choosing to drop it, but it must not be able
   // to drop the history or the user-lock by accident, so both are re-appended
@@ -78,7 +86,7 @@ function orderedBlockIds(ctx: PromptContext): readonly string[] {
   for (const id of ["history", "spotlight_instruction"] as const) {
     if (!seen.has(id)) required.push(id);
   }
-  return [...configured, ...required];
+  return [...configured, ...required, ...extensionIds];
 }
 
 export function buildPrompt(ctx: PromptContext): BuiltPrompt {

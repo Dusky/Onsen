@@ -6967,3 +6967,40 @@ re-persisted, so the manager and the ops list can never disagree.
 **Verified** by two cases — boot seeds the built-ins disabled with their
 schemas, and enabling one registers its tasks while deletion is refused — plus
 the full suite (1484 pass).
+
+## Phase 145 — Extension prompt injections and gated tasks
+
+The extension code API grows two capabilities that turn it from a task runner
+into a real surface: `ctx.inject` registers a prompt block the host renders at
+build time (placed before/after the prompt, or in-chat at a depth), and
+`task.shouldRun` gates a task on scene state, so an extension can fire every N
+messages instead of every turn. Injections are collected into
+`PromptContext.extensionBlocks` and flow through eviction and the inspector like
+any other block.
+
+**Verified** by two cases — a gated task keeps its `shouldRun` and decides per
+turn, and an injection renders into the prompt blocks at its placement.
+
+## Phase 146 — Extension state and the Summarize port
+
+Migration 0069 adds `extension_state`, a per-scene key/value store. Extensions
+reach it through `ctx.state` (pre-bound to their name), the `{{state:<key>}}`
+task macro, and an injection's `render` — so an extension carries no host
+imports and survives being copied to its own directory. On that surface the
+SillyTavern Summarize extension is ported: one running summary, rebuilt when a
+message or word interval elapses (`shouldRun`), written by `apply`, and injected
+through a configurable template at a configurable position.
+
+**Verified** by the shipped-extension cases in phase 147.
+
+## Phase 147 — Shipped extensions install as external
+
+Extensions that ship in the repo now install once through the ordinary path
+(`installShippedExtensions`, wired before the reload in `server/index.ts`): a
+real copied directory, a removable row, no `built_in` flag. The Summarize
+extension is the first. An `app_settings` flag makes the install one-shot, so
+uninstalling it sticks instead of coming back on the next boot.
+
+**Verified** by two cases — the shipped Summarize installs as an external
+extension exactly once, and its summary injects through the template while its
+task gates on the interval — plus the full suite (1488 pass).

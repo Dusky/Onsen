@@ -34,6 +34,7 @@ import {
 import type { CharacterRow } from "../db/queries/characters.ts";
 import { activeGuides, parseGuideOrder } from "../db/queries/guides.ts";
 import { injectedSummaries } from "../db/queries/summaries.ts";
+import { collectExtensionInjections } from "../extensions/registry.ts";
 import { activeBans, listGroups, selectedOptions } from "../db/queries/options.ts";
 import { activateForScene } from "../lore/scene.ts";
 import { parseReasoningConfig, type ReasoningConfig } from "./reasoning.ts";
@@ -662,6 +663,9 @@ export function buildPromptContext(options: BuildContextOptions): PromptContext 
       name: opKind(guideOpKey(row.kind))?.label ?? row.kind,
       content: row.content,
     })),
+    // Extension prompt injections (§20 phase 145), rendered now so the blocks
+    // go through eviction and the inspector like any other.
+    extensionBlocks: collectExtensionInjections(options.db, options.scene.id),
     // The scene's prompt options (SPEC §13.5) and ban list (§13.6). An option
     // with an empty fragment is a real choice — "no planning", "immersive
     // prose" — that simply contributes nothing to the prompt.

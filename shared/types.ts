@@ -1062,7 +1062,7 @@ export interface PackUninstallPreviewDto {
 export interface ExtensionSettingsField {
   key: string;
   label: string;
-  type: "string" | "number" | "boolean" | "select";
+  type: "string" | "textarea" | "number" | "boolean" | "select";
   /** `select` only: the values offered. */
   options?: string[];
   default?: string | number | boolean;

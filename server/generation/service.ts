@@ -40,6 +40,7 @@ import {
 import { castRowsOf } from "../db/queries/authors.ts";
 import { taskKind, TURN_CLASSIFIER, BACKGROUND_DETECT, type SideCallOp } from "../tasks/registry.ts";
 import { postGenerationExtensionTasks } from "../extensions/registry.ts";
+import { readExtensionState } from "../extensions/state.ts";
 import type { TaskRunner } from "../tasks/runner.ts";
 import type { PassPipeline } from "../passes/pipeline.ts";
 import type { GuideRunner } from "../guides/runner.ts";
@@ -1017,6 +1018,15 @@ export class GenerationService {
         const scene = findSceneById(this.db, sceneId);
         if (scene === null) continue;
         const path = activePathOf(this.db, sceneId);
+        // A gated task decides against the settled scene whether to run, so an
+        // extension can fire every N messages rather than every turn (§145).
+        if (task.shouldRun !== undefined && !task.shouldRun({
+          db: this.db,
+          sceneId,
+          messageCount: path.length,
+        })) {
+          continue;
+        }
         const transcript = path
           .slice(-24)
           .map((message) => `${message.author_type === "user" ? "You" : "Character"}: ${message.content}`)
@@ -1024,7 +1034,12 @@ export class GenerationService {
         const lastMessage = path[path.length - 1]?.content ?? "";
         const question = task.prompt
           .replace(/\{\{transcript\}\}/g, transcript)
-          .replace(/\{\{lastMessage\}\}/g, lastMessage);
+          .replace(/\{\{lastMessage\}\}/g, lastMessage)
+          // `{{state:<key>}}` reads the extension's own scene state, written by
+          // an earlier `apply` (§146) — the previous summary, a counter, etc.
+          .replace(/\{\{state:([^}]+)\}\}/g, (_all, key: string) =>
+            readExtensionState(this.db, entry.moduleName, sceneId, key.trim()) ?? "",
+          );
 
         const kind: SideCallOp = {
           key: `ext:${entry.moduleName}:${task.key}`,
@@ -1045,7 +1060,9 @@ export class GenerationService {
           fallbackProfileId: scene.connection_profile_id,
         });
         if (!outcome.ok) continue;
-        if (task.apply !== undefined) await task.apply(outcome.text, { db: this.db, sceneId });
+        if (task.apply !== undefined) {
+          await task.apply(outcome.text, { db: this.db, sceneId, messageCount: path.length });
+        }
       } catch {
         /* A broken extension task must not reach the turn. */
       }

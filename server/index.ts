@@ -1,5 +1,5 @@
 import { ensureDataDirs, loadConfig } from "./config.ts";
-import { loadInstalledExtensions } from "./extensions/install.ts";
+import { loadInstalledExtensions, installShippedExtensions } from "./extensions/install.ts";
 import { openDatabase } from "./db/index.ts";
 import { migrate } from "./db/migrate.ts";
 import { seedBuiltins } from "./db/queries/options.ts";
@@ -28,6 +28,9 @@ seedBuiltinThemes(db);
 
 const ctx: AppContext = { db, config, keyring: loadOrCreateKeyring(config) };
 // Extensions' code reloads here so their task callbacks exist before any turn.
+// Shipped extensions install first, through the ordinary path, so a first boot
+// lands them and every boot loads them (§147).
+await installShippedExtensions(db, config.extensionsDir);
 await loadInstalledExtensions(db, config.extensionsDir);
 const { app, generation, tasks, passes, guides, trackers, autopilot } = createServer(ctx);
 

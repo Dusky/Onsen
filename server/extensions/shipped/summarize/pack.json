@@ -1,0 +1,71 @@
+{
+  "name": "Summarize",
+  "version": "1.0.0",
+  "author": "SillyTavern (ported)",
+  "description": "ST-style rolling summary: condenses the story into one running summary and injects it through a template.",
+  "settings": [
+    {
+      "key": "prompt",
+      "label": "Summary prompt",
+      "type": "textarea",
+      "default": "Ignore previous instructions. Summarize the most important facts and events in the story so far. If a summary already exists, use that as a base and expand with new facts. Limit the summary to {{words}} words or less. Your response should include nothing but the summary."
+    },
+    {
+      "key": "words",
+      "label": "Target length (words)",
+      "type": "number",
+      "default": 200,
+      "min": 25,
+      "max": 1000
+    },
+    {
+      "key": "intervalMessages",
+      "label": "Update every (messages)",
+      "type": "number",
+      "default": 10,
+      "min": 0,
+      "max": 250
+    },
+    {
+      "key": "intervalWords",
+      "label": "Update every (words)",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 10000
+    },
+    {
+      "key": "template",
+      "label": "Injection template",
+      "type": "string",
+      "default": "[Summary: {{summary}}]"
+    },
+    {
+      "key": "position",
+      "label": "Injection position",
+      "type": "select",
+      "options": ["in_chat", "before", "after"],
+      "default": "in_chat"
+    },
+    {
+      "key": "depth",
+      "label": "In-chat depth",
+      "type": "number",
+      "default": 2,
+      "min": 0,
+      "max": 20
+    },
+    {
+      "key": "frozen",
+      "label": "Pause updates",
+      "type": "boolean",
+      "default": false
+    },
+    {
+      "key": "includePrevious",
+      "label": "Build on the previous summary",
+      "type": "boolean",
+      "default": true
+    }
+  ]
+}

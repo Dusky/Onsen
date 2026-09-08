@@ -3811,6 +3811,22 @@ Each phase ends in a working, usable application.
     authoritative: a disabled extension's tasks leave the ops list, and an
     enabled one's are re-persisted, so the manager and the ops list cannot
     disagree. See §15, `server/extensions/builtins.ts`.
+145. **Extension prompt injections and gated tasks** — the extension code API
+    grows `ctx.inject` (a block rendered at prompt build time, placed before/
+    after the prompt or in-chat at a depth) and `task.shouldRun` (gate a task
+    on scene state, so an extension fires every N messages rather than every
+    turn). See §15, `server/extensions/api.ts`.
+146. **Extension state and the Summarize port** — a per-scene key/value store
+    (migration 0069) that extensions read through `ctx.state`, the `{{state:key}}`
+    task macro, and an injection's `render`. The SillyTavern Summarize
+    extension is ported onto it: one running summary, rebuilt on a message or
+    word interval, injected through a template. See §15,
+    `server/extensions/shipped/summarize/`.
+147. **Shipped extensions install as external** — extensions that ship in the
+    repo install once through the ordinary path: a real copied directory, a
+    removable row, no `built_in` flag. The Summarize extension is the first;
+    an `app_settings` flag makes the install one-shot so uninstalling it
+    sticks. See §15, `installShippedExtensions`.
 
 Settled while building phase 15.
 

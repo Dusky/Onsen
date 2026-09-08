@@ -75,6 +75,12 @@ function ExtensionSettingsSheet({ extension, onClose }: { extension: ExtensionDt
                   </option>
                 ))}
               </select>
+            ) : field.type === "textarea" ? (
+              <textarea
+                className="field min-h-[96px] resize-y"
+                value={String(values[field.key])}
+                onChange={(event) => setValues((v) => ({ ...v, [field.key]: event.target.value }))}
+              />
             ) : (
               <input
                 className="field"

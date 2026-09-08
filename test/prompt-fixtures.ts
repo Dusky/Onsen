@@ -160,6 +160,7 @@ export function context(overrides: Partial<PromptContext> = {}): PromptContext {
     memory: [],
     trackers: [],
     guides: [],
+    extensionBlocks: [],
     preset: PRESET,
     capabilities: OPENAI,
     budget: 8_000,

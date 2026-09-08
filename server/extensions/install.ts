@@ -3,14 +3,16 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSyn
 import type { Database } from "bun:sqlite";
 import { loadExtensionModule } from "./loader.ts";
 import { loadBuiltin, BUILTINS } from "./builtins.ts";
-import { registerExtensionTask, clearExtensionTasks } from "./registry.ts";
+import { registerExtensionTask, registerExtensionInjection, clearExtensionTasks } from "./registry.ts";
 import {
   deleteExtensionTasks,
   findExtensionByName,
+  findExtensionByNameVersion,
   insertBuiltinExtension,
   insertExtension,
   listExtensions,
 } from "../db/queries/extensions.ts";
+import { getSetting, setSetting } from "../db/queries/settings.ts";
 import type { ExtensionTask, ExtensionRegistration } from "./api.ts";
 import type { ExtensionSettingsField } from "../../shared/types.ts";
 
@@ -44,16 +46,28 @@ function taskKey(extensionName: string, key: string): string {
 }
 
 /** The manifest an extension repo carries: `pack.json`, or a bare `extension.json`. */
-function readManifest(dir: string): { description: string | null; settingsSchema: ExtensionSettingsField[] } {
+function readManifest(dir: string): {
+  name: string;
+  version: string;
+  author: string;
+  description: string | null;
+  settingsSchema: ExtensionSettingsField[];
+} | null {
   for (const file of ["pack.json", "extension.json"]) {
     const path = join(dir, file);
     if (!existsSync(path)) continue;
     try {
       const manifest = JSON.parse(readFileSync(path, "utf8")) as {
+        name?: unknown;
+        version?: unknown;
+        author?: unknown;
         description?: unknown;
         settings?: unknown;
       };
       return {
+        name: typeof manifest.name === "string" ? manifest.name : "Extension",
+        version: typeof manifest.version === "string" ? manifest.version : "1.0.0",
+        author: typeof manifest.author === "string" ? manifest.author : "",
         description: typeof manifest.description === "string" ? manifest.description : null,
         settingsSchema: Array.isArray(manifest.settings)
           ? (manifest.settings as ExtensionSettingsField[])
@@ -63,7 +77,7 @@ function readManifest(dir: string): { description: string | null; settingsSchema
       continue;
     }
   }
-  return { description: null, settingsSchema: [] };
+  return null;
 }
 
 /** The defaults a schema declares, so a fresh install starts at them (§143). */
@@ -118,7 +132,9 @@ export async function installExtensionCode(opts: {
 
   const target = join(opts.extensionsDir, safeDir(opts.name));
   copyDir(opts.sourceDir, target);
-  const { description, settingsSchema } = readManifest(opts.sourceDir);
+  const manifest = readManifest(opts.sourceDir);
+  const description = manifest?.description ?? null;
+  const settingsSchema = manifest?.settingsSchema ?? [];
   const registration = await loadExtensionModule(
     join(target, serverFile),
     opts.name,
@@ -137,6 +153,9 @@ export async function installExtensionCode(opts: {
   for (const task of registration.tasks) {
     registerExtensionTask(task, opts.name);
     upsertTask(opts.db, opts.name, task);
+  }
+  for (const injection of registration.injections) {
+    registerExtensionInjection(injection, opts.name);
   }
   return { hasCode: true, tasks: registration.tasks.length };
 }
@@ -162,6 +181,9 @@ export async function loadInstalledExtensions(db: Database, extensionsDir: strin
     for (const task of registration.tasks) {
       registerExtensionTask(task, row.name);
       upsertTask(db, row.name, task);
+    }
+    for (const injection of registration.injections) {
+      registerExtensionInjection(injection, row.name);
     }
   }
 }
@@ -200,4 +222,47 @@ function seedBuiltins(db: Database): void {
       settings: JSON.stringify(defaultSettings(builtin.settings)),
     });
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* Shipped extensions (SPEC §15, §20 phase 147)                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Extensions that ship in the repo but install as *external* — a real copied
+ * directory and a removable row, not a `built_in` flag. Installed once, through
+ * the same path a URL install takes, so they behave exactly like something the
+ * operator cloned. The flag means an uninstall sticks: the app does not
+ * re-install a thing the operator removed.
+ */
+const SHIPPED_SETTING = "extensions.shipped_installed";
+
+export function shippedExtensionsDir(): string {
+  return join(import.meta.dir, "shipped");
+}
+
+export async function installShippedExtensions(db: Database, extensionsDir: string): Promise<void> {
+  if (getSetting(db, SHIPPED_SETTING) !== null) return;
+  const source = shippedExtensionsDir();
+  if (!existsSync(source)) {
+    setSetting(db, SHIPPED_SETTING, "1");
+    return;
+  }
+  for (const entry of readdirSync(source)) {
+    const dir = join(source, entry);
+    if (!statSync(dir).isDirectory()) continue;
+    const manifest = readManifest(dir);
+    if (manifest === null) continue;
+    // Idempotent before the flag lands: a half-finished first boot re-runs.
+    if (findExtensionByNameVersion(db, manifest.name, manifest.version) !== null) continue;
+    await installExtensionCode({
+      db,
+      extensionsDir,
+      sourceDir: dir,
+      name: manifest.name,
+      version: manifest.version,
+      author: manifest.author,
+    });
+  }
+  setSetting(db, SHIPPED_SETTING, "1");
 }

@@ -436,6 +436,15 @@ export interface PromptGuide {
   content: string;
 }
 
+/** A prompt injection an extension rendered at build time (§20 phase 145). */
+export interface PromptExtensionBlock {
+  key: string;
+  label: string;
+  content: string;
+  placement: BlockPlacement;
+  role: PromptRole;
+}
+
 /** What happens to example dialogue when the budget tightens (§20 phase 64). */
 export type ExampleEviction = "keep" | "gradual" | "never";
 
@@ -538,6 +547,8 @@ export interface PromptContext {
   options?: PromptOption[];
   /** Banned constructions in force for this scene (§13.6). */
   bans?: string[];
+  /** Extension-provided prompt injections, rendered at build time (§145). */
+  extensionBlocks: PromptExtensionBlock[];
   preset: PromptPreset;
   /**
    * Drop the raw messages an injected summary covers (§11 raw eviction). The

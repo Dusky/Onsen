@@ -4,8 +4,9 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { completeSetup, createHarness, type TestHarness } from "./helpers.ts";
 import { loadExtensionModule } from "../server/extensions/loader.ts";
-import { loadInstalledExtensions } from "../server/extensions/install.ts";
-import { postGenerationExtensionTasks, clearExtensionTasks } from "../server/extensions/registry.ts";
+import { loadInstalledExtensions, installShippedExtensions } from "../server/extensions/install.ts";
+import { postGenerationExtensionTasks, clearExtensionTasks, collectExtensionInjections } from "../server/extensions/registry.ts";
+import { writeExtensionState } from "../server/extensions/state.ts";
 
 /**
  * The extension code API (SPEC §15, §20 phase 110).
@@ -302,5 +303,124 @@ describe("built-in extensions", () => {
     const removed = await t.fetch(`/api/extensions/${proofread.id}`, { method: "DELETE" });
     expect(removed.status).toBe(400);
     expect(t.ctx.db.query("SELECT id FROM extensions WHERE name = 'Proofread'").get()).not.toBeNull();
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* Task gating and prompt injection (SPEC §15, §20 phase 145)          */
+/* ------------------------------------------------------------------ */
+
+const INJECT_SERVER_TS = `
+export function register(ctx) {
+  ctx.task({
+    key: "every3",
+    label: "Every three",
+    prompt: "hi",
+    stage: "post_generation",
+    shouldRun: (ctx) => ctx.messageCount % 3 === 0,
+  });
+  ctx.inject({
+    key: "note",
+    label: "Note",
+    position: "in_chat",
+    depth: 1,
+    render: () => "[Extension note]",
+  });
+}
+`;
+
+describe("task gating and prompt injection", () => {
+  test("a gated task keeps its shouldRun and decides per turn", async () => {
+    const t = await signedIn();
+    const dir = mkdtempSync(join(tmpdir(), "onsen-ext-"));
+    writeFileSync(join(dir, "server.ts"), INJECT_SERVER_TS);
+    try {
+      const registration = await loadExtensionModule(join(dir, "server.ts"), "suite");
+      const task = registration.tasks.find((entry) => entry.key === "every3")!;
+      expect(task.shouldRun).toBeDefined();
+      expect(task.shouldRun!({ db: t.ctx.db, sceneId: 1, messageCount: 3 })).toBe(true);
+      expect(task.shouldRun!({ db: t.ctx.db, sceneId: 1, messageCount: 2 })).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("an injection renders into the prompt blocks at its placement", async () => {
+    const t = await signedIn();
+    const dir = repoWith({
+      "pack.json": JSON.stringify({ name: "Notes", version: "1.0.0", author: "me", description: "" }),
+      "server.ts": INJECT_SERVER_TS,
+    });
+    try {
+      const installed = await t.fetch("/api/packs/install-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: dir }),
+      });
+      expect(installed.status).toBe(201);
+
+      const blocks = collectExtensionInjections(t.ctx.db, 1);
+      const note = blocks.find((block) => block.key === "Notes:note");
+      expect(note?.content).toBe("[Extension note]");
+      expect(note?.placement).toEqual({ kind: "depth", depth: 1 });
+      expect(note?.role).toBe("system");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* Shipped extensions (SPEC §15, §20 phase 147)                       */
+/* ------------------------------------------------------------------ */
+
+describe("shipped extensions", () => {
+  test("the shipped Summarize installs as an external extension, once", async () => {
+    const t = await signedIn();
+    await installShippedExtensions(t.ctx.db, t.config.extensionsDir);
+
+    const row = t.ctx.db
+      .query("SELECT name, built_in, enabled, dir FROM extensions WHERE name = 'Summarize'")
+      .get() as { name: string; built_in: number; enabled: number; dir: string } | undefined;
+    expect(row).toBeDefined();
+    expect(row!.built_in).toBe(0);
+    expect(row!.enabled).toBe(1);
+    expect(row!.dir).toContain("summarize");
+
+    // The flag makes a re-run a no-op, so an uninstall would stick.
+    await installShippedExtensions(t.ctx.db, t.config.extensionsDir);
+    const count = t.ctx.db
+      .query("SELECT COUNT(*) AS n FROM extensions WHERE name = 'Summarize'")
+      .get() as { n: number };
+    expect(count.n).toBe(1);
+  });
+
+  test("the shipped Summarize injects its summary and gates on the interval", async () => {
+    const t = await signedIn();
+    await installShippedExtensions(t.ctx.db, t.config.extensionsDir);
+    await loadInstalledExtensions(t.ctx.db, t.config.extensionsDir);
+
+    // A real scene, so `extension_state` has something to reference.
+    const profiles = (await (await t.fetch("/api/connections/profiles")).json()) as Array<{ id: string }>;
+    const created = (await (
+      await t.fetch("/api/scenes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Ridge station", connectionProfileId: profiles[0]!.id }),
+      })
+    ).json()) as { id: string };
+    const sceneId = (
+      t.ctx.db.query("SELECT id FROM scenes WHERE ulid = $ulid").get({ ulid: created.id }) as { id: number }
+    ).id;
+
+    // As if a previous apply had written the running summary.
+    writeExtensionState(t.ctx.db, "Summarize", sceneId, "summary", "They crossed the ridge.");
+    const blocks = collectExtensionInjections(t.ctx.db, sceneId);
+    const block = blocks.find((entry) => entry.key === "Summarize:summary");
+    expect(block?.content).toBe("[Summary: They crossed the ridge.]");
+
+    const task = postGenerationExtensionTasks().find((entry) => entry.task.key === "summarize")!.task;
+    expect(task.shouldRun!({ db: t.ctx.db, sceneId, messageCount: 3 })).toBe(false);
+    expect(task.shouldRun!({ db: t.ctx.db, sceneId, messageCount: 12 })).toBe(true);
   });
 });

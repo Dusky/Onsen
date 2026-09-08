@@ -617,6 +617,25 @@ export function draftBlocks(ctx: PromptContext): Map<string, DraftBlock[]> {
   add("summaries", "Summary", "rolling summarisation", summariesBlock(ctx));
   add("history", "History", "message tree", HISTORY_PLACEHOLDER);
 
+  // Extension injections (§20 phase 145). Ids are dynamic (`ext:<name>:<key>`),
+  // so they are set directly rather than through `add`, the same as a preset's
+  // own blocks. The extension picked the placement and role; the host only
+  // costs and assembles.
+  for (const block of ctx.extensionBlocks) {
+    const trimmed = block.content.trim();
+    if (trimmed === "") continue;
+    blocks.set(block.key, [
+      {
+        id: block.key,
+        label: block.label,
+        source: "extension",
+        role: block.role,
+        content: trimmed,
+        placement: block.placement,
+      },
+    ]);
+  }
+
   add("documents", "Documents", "data bank", documentsBlock(ctx), NEAR_TURN);
   add("memory", "Memory", "narrative memory", memoryBlock(ctx), NEAR_TURN);
 

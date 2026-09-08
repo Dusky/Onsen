@@ -66,6 +66,7 @@ import characterPreset from "./0065_character_preset.sql" with { type: "text" };
 import greetingModePortrait from "./0066_greeting_mode_portrait.sql" with { type: "text" };
 import extensionManagement from "./0067_extension_management.sql" with { type: "text" };
 import builtinExtensions from "./0068_builtin_extensions.sql" with { type: "text" };
+import extensionState from "./0069_extension_state.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -149,4 +150,5 @@ export const migrations: readonly Migration[] = [
   { version: 66, name: "greeting_mode_portrait", sql: greetingModePortrait },
   { version: 67, name: "extension_management", sql: extensionManagement },
   { version: 68, name: "builtin_extensions", sql: builtinExtensions },
+  { version: 69, name: "extension_state", sql: extensionState },
 ];
