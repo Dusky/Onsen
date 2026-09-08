@@ -35,4 +35,9 @@ describe("the shared tag editor", () => {
     expect(EDITOR).toContain("×");
     expect(EDITOR).not.toContain(".split(");
   });
+
+  test("the character card links its bound lorebook", () => {
+    expect(CHARACTERS).toContain("character.lorebook");
+    expect(CHARACTERS).toContain("strings.characters.lore");
+  });
 });

@@ -127,6 +127,8 @@ export interface ExportInput {
   /** The character's image, where it has one. */
   avatar: Uint8Array | null;
   assets: Map<string, Uint8Array>;
+  /** The bound lorebook, re-embedded over any preserved one (§139). */
+  characterBook?: Record<string, unknown> | null;
 }
 
 export interface ExportedCard {
@@ -141,7 +143,7 @@ function safeFilename(name: string): string {
 }
 
 export function exportCard(input: ExportInput, format: ExportFormat): ExportedCard {
-  const json = buildCardDocument(input.card, input.rawCard);
+  const json = buildCardDocument(input.card, input.rawCard, input.characterBook);
   const base = safeFilename(input.card.name);
 
   switch (format) {
@@ -158,7 +160,7 @@ export function exportCard(input: ExportInput, format: ExportFormat): ExportedCa
       const image = input.avatar !== null && isPng(input.avatar) ? input.avatar : blankPng();
       const bytes = writeTextChunks(image, {
         [V3_KEYWORD]: encodePayload(json),
-        [V2_KEYWORD]: encodePayload(buildV2Document(input.card, input.rawCard)),
+        [V2_KEYWORD]: encodePayload(buildV2Document(input.card, input.rawCard, input.characterBook)),
       });
       return { bytes, filename: `${base}.png`, contentType: "image/png" };
     }

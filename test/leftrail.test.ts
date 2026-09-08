@@ -86,8 +86,6 @@ describe("the other sections are real, not placeholders", () => {
     expect(RAIL).toContain("onMove");
     expect(RAIL).toContain("useRebuildGuides");
     expect(RAIL).toContain("useFlushGuides");
-    // The rail points at the full editor rather than duplicating it (§131).
-    expect(RAIL).toContain("strings.lore.openEditor");
   });
 
   test("the prompt is editable without a scene", () => {

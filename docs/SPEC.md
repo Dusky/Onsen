@@ -3776,6 +3776,12 @@ Each phase ends in a working, usable application.
     play, and the engine fires the entry when the cosine clears the threshold.
     Round-tripped through ST's `extensions.vectorized`. See §10,
     `test/lore-activation.test.ts`.
+139. **The embedded character book** — a SillyTavern card's `character_book` now
+    imports as a real, bindable lorebook attached to the character, instead of
+    sitting unread in `raw_card`. The character editor shows the bound book and
+    links to the lore editor, and the card's export re-embeds the current book
+    so edits made in the lore editor travel back out. See §9, §10,
+    `test/characters-api.test.ts`.
 
 Settled while building phase 15.
 

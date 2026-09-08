@@ -2,6 +2,7 @@ import type { Database } from "bun:sqlite";
 import { ulid } from "../../lib/ulid.ts";
 import { createEstimatingTokenizer } from "../../prompt/index.ts";
 import { unmodelledFieldsOfDocument, type NormalisedCard } from "../../cards/index.ts";
+import { primaryBookForCharacter } from "./lore.ts";
 import type {
   CardFormat,
   CardTokenCosts,
@@ -144,6 +145,7 @@ export function toCharacterDto(db: Database, row: CharacterRow): CharacterDto {
     format: row.raw_card_format,
     folder: row.folder,
     parentId: parentUlidOf(db, row.parent_character_id),
+    lorebook: primaryBookForCharacter(db, row.id),
     unmodelledFields: unmodelledOf(row),
     tokens: tokenCostsFor(row),
     createdAt: row.created_at,

@@ -6888,3 +6888,16 @@ editor beside constant.
 
 **Verified** by an activation case (similarity fires it, a dissimilar query does
 not, and a missing vector is reported as such) and the existing ST round-trip.
+
+## Phase 139 — The embedded character book
+
+A SillyTavern card's `character_book` — the world-info book embedded in the
+card itself — used to survive import only as `raw_card` bytes, never as usable
+lore. It now imports as a real, bindable lorebook attached to the character: the
+book's entries land in the lorebook system, the book is bound to the card, and
+the character's card shows the bound book with a link into the lore editor. On
+export the current bound book is re-embedded over the preserved one, so edits
+made in the lore editor travel back into the card.
+
+**Verified** by a characters-api case (import extracts and binds, export
+re-embeds) and a structural guard pinning the card's Lore section.

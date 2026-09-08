@@ -2491,6 +2491,8 @@ export interface CharacterDto {
   format: CardFormat;
   /** A loose grouping label, not a tree (SPEC §9). Null means unsorted. */
   folder: string | null;
+  /** The character's primary bound lorebook, if one is attached (§139). */
+  lorebook: { id: string; name: string } | null;
   /** The card this one was derived from, where it is a variant. */
   parentId: string | null;
   /**

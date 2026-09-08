@@ -28,7 +28,7 @@ describe("the global right rail", () => {
     expect(RAIL).toContain("strings.rightRail.inThisScene");
     expect(RAIL).toContain("strings.rightRail.characters");
     expect(RAIL).toContain("strings.rightRail.authors");
-    expect(RAIL).not.toContain("strings.nav.lore");
+    expect(RAIL).not.toContain("strings.nav.lorebooks");
     expect(RAIL).not.toContain("inspectorTab");
   });
 

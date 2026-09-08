@@ -1179,6 +1179,9 @@ export const strings = {
     /* The persona lock (§20 phase 61). */
     opensAs: "Opens as",
     opensAsDefault: "The default persona",
+    /* The bound lorebook (§20 phase 139). */
+    lore: "Lorebook",
+    loreNone: "No lorebook attached.",
     /* Groupings within the card tab (§20 phase 81). */
     groupWho: "Who they are",
     groupScene: "Scene",
@@ -1709,7 +1712,6 @@ export const strings = {
     editorKicker: "Lorebook",
     editing: "Editing",
     books: "Books",
-    openEditor: "Open the full editor",
     keysHint: "Comma separated. A mention of any one of these brings the entry in.",
     name: "Name",
     description: "Description",
@@ -1891,9 +1893,9 @@ export const strings = {
     recent: "Recent",
     settings: "Settings",
     roleplays: "Roleplays",
-    characters: "Cast",
-    authors: "Author",
-    lore: "Lore",
+    characters: "Characters",
+    authors: "Authors",
+    lorebooks: "Lorebooks",
     backgrounds: "Backdrops",
     /** The overflow menu for destinations that do not fit a phone's bar. */
     more: "More",

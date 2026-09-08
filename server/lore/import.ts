@@ -267,3 +267,19 @@ export function parseWorldInfo(text: string, fallbackName: string): ImportedBook
     raw: text,
   };
 }
+
+/**
+ * The world-info book a character card carries embedded (`character_book`),
+ * parsed into the same shape a file import produces (§20 phase 139). A card
+ * without one, or with one that does not parse, returns null.
+ */
+export function embeddedCharacterBook(rawCard: string): ImportedBook | null {
+  try {
+    const parsed = JSON.parse(rawCard) as { data?: { character_book?: unknown } };
+    const book = parsed.data?.character_book;
+    if (book === undefined || book === null) return null;
+    return parseWorldInfo(JSON.stringify(book), "Lore");
+  } catch {
+    return null;
+  }
+}

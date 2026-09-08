@@ -192,7 +192,7 @@ export function parseCardJson(json: string, format: CardFormat): ParsedCard {
   const characterBook = data["character_book"];
   if (characterBook !== undefined && characterBook !== null) {
     warnings.push(
-      "This card carries an embedded lorebook. It is preserved in the original card and will be imported when lorebooks arrive.",
+      "This card carries an embedded lorebook.",
     );
   }
 
@@ -239,7 +239,11 @@ export function parseCardJson(json: string, format: CardFormat): ParsedCard {
  * lorebook, a creator's own metadata — is carried through untouched, while
  * anything the user edited here wins.
  */
-export function buildCardDocument(card: NormalisedCard, rawCard: string | null): string {
+export function buildCardDocument(
+  card: NormalisedCard,
+  rawCard: string | null,
+  characterBook?: Record<string, unknown> | null,
+): string {
   let base: Record<string, unknown> = {};
   if (rawCard !== null) {
     try {
@@ -281,12 +285,22 @@ export function buildCardDocument(card: NormalisedCard, rawCard: string | null):
     extensions,
   };
 
+  // The bound lorebook re-embeds over any preserved one, so edits made in the
+  // lore editor travel back into the exported card (§20 phase 139).
+  if (characterBook !== undefined && characterBook !== null) {
+    data["character_book"] = characterBook;
+  }
+
   return JSON.stringify({ spec: "chara_card_v3", spec_version: "3.0", data }, null, 2);
 }
 
 /** The V2 view of the same card, for the `chara` chunk V3 also writes. */
-export function buildV2Document(card: NormalisedCard, rawCard: string | null): string {
-  const v3 = JSON.parse(buildCardDocument(card, rawCard)) as { data: Record<string, unknown> };
+export function buildV2Document(
+  card: NormalisedCard,
+  rawCard: string | null,
+  characterBook?: Record<string, unknown> | null,
+): string {
+  const v3 = JSON.parse(buildCardDocument(card, rawCard, characterBook)) as { data: Record<string, unknown> };
   // V2 has no group-only greetings; dropping the key is more honest than
   // emitting one a V2 reader would ignore anyway.
   const data = { ...v3.data };

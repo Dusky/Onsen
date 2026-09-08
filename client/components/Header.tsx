@@ -29,6 +29,14 @@ const PROSE_STEP = 0.05;
 /** The two flat builtin themes the Dark/Light toggle switches between. */
 const BASE_THEMES = { dark: "Midnight", light: "Bone" } as const;
 
+/** The libraries that are full editors of their own (§20 phase 139). */
+const LIBRARIES: { key: string; label: string; route: { name: "characters" | "authors" | "lorebooks" | "backgrounds" } }[] = [
+  { key: "characters", label: strings.nav.characters, route: { name: "characters" } },
+  { key: "authors", label: strings.nav.authors, route: { name: "authors" } },
+  { key: "lorebooks", label: strings.nav.lorebooks, route: { name: "lorebooks" } },
+  { key: "backgrounds", label: strings.nav.backgrounds, route: { name: "backgrounds" } },
+];
+
 export function Header() {
   const route = useRoute();
   const generation = useGeneration();
@@ -41,6 +49,17 @@ export function Header() {
 
   const sceneId = route.name === "chat" ? route.sceneId : null;
   const scene = (scenes.data ?? []).find((candidate) => candidate.id === sceneId) ?? null;
+
+  // An editor route names its library: a character belongs to the cast, an
+  // author to the authors, a book to the lorebooks.
+  const activeLibrary =
+    route.name === "character"
+      ? "characters"
+      : route.name === "author"
+        ? "authors"
+        : route.name === "lorebook"
+          ? "lorebooks"
+          : route.name;
 
   // The scene's title runs amber while it is writing — the same live state the
   // cast cards carry, so the header and the rail agree on what "now" is.
@@ -106,16 +125,23 @@ export function Header() {
         </button>
       )}
 
-      {/* The backdrop library, its own screen (§20 phase 111). */}
-      <button
-        type="button"
-        onClick={() => navigate({ name: "backgrounds" })}
-        aria-current={route.name === "backgrounds" ? "page" : undefined}
-        className="chrome flex items-center border-l border-rule px-[12px] text-[12px]"
-        style={{ color: route.name === "backgrounds" ? "var(--onsen-color-blue-text)" : "var(--onsen-color-text-muted)" }}
-      >
-        {strings.nav.backgrounds}
-      </button>
+      {/* The libraries: each is a full editor of its own, reachable straight
+          from the bar rather than through a rail (§20 phase 139). */}
+      {LIBRARIES.map((library) => {
+        const active = activeLibrary === library.key;
+        return (
+          <button
+            key={library.key}
+            type="button"
+            onClick={() => navigate(library.route)}
+            aria-current={active ? "page" : undefined}
+            className="chrome flex items-center border-l border-rule px-[12px] text-[12px]"
+            style={{ color: active ? "var(--onsen-color-blue-text)" : "var(--onsen-color-text-muted)" }}
+          >
+            {library.label}
+          </button>
+        );
+      })}
 
       <div className="min-w-0 flex-1" />
 

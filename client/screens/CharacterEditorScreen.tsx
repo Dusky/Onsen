@@ -276,6 +276,24 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                 ))}
               </select>
 
+              {/* The bound lorebook (§20 phase 139): the card's own world info,
+                  opened in the lore editor rather than duplicated here. */}
+              <p className="section-label mb-[8px]">{strings.characters.lore}</p>
+              {character.lorebook === null ? (
+                <p className="explain mb-[16px]">{strings.characters.loreNone}</p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => navigate({ name: "lorebook", bookId: character.lorebook!.id })}
+                  className="chrome mb-[16px] flex w-full items-center justify-between gap-[10px] border border-rule-strong px-[10px] py-[9px] text-left"
+                >
+                  <span className="min-w-0 flex-1 truncate text-[14px]" style={{ color: "var(--onsen-color-blue-text)" }}>
+                    {character.lorebook.name}
+                  </span>
+                  <span className="meta flex-none">{strings.characters.openEditor}</span>
+                </button>
+              )}
+
               {/* SPEC §6: what the `mention` director listens for besides the
                   name. Comma separated because these are short — "doc", "the
                   captain" — and a list editor for two words is a list editor

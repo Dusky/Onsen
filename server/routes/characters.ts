@@ -12,6 +12,8 @@ import {
   importCard,
   type ExportFormat,
 } from "../cards/index.ts";
+import { toWorldInfo } from "../lore/export.ts";
+import { findLorebook, listEntries, primaryBookForCharacter } from "../db/queries/lore.ts";
 import {
   deleteCharacter,
   findByHash,
@@ -521,12 +523,24 @@ export function characterRoutes(ctx: AppContext, tasks: TaskRunner, media: Media
       if (await file.exists()) avatar = new Uint8Array(await file.arrayBuffer());
     }
 
+    // The bound lorebook re-embeds, so edits made in the lore editor travel
+    // back into the exported card rather than the stale preserved one (§139).
+    const bound = primaryBookForCharacter(ctx.db, row.id);
+    let characterBook: Record<string, unknown> | null = null;
+    if (bound !== null) {
+      const book = findLorebook(ctx.db, bound.id);
+      if (book !== null) {
+        characterBook = toWorldInfo(book, listEntries(ctx.db, book.id)) as unknown as Record<string, unknown>;
+      }
+    }
+
     const exported = exportCard(
       {
         card: toNormalisedCard(row),
         rawCard: row.raw_card,
         avatar,
         assets: new Map(),
+        characterBook,
       },
       requested as ExportFormat,
     );

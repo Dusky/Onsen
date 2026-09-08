@@ -11,6 +11,8 @@ import type { AppContext } from "../context.ts";
 import { ulid } from "../lib/ulid.ts";
 import { insertCharacter, type CharacterRow } from "../db/queries/characters.ts";
 import { addExpression, ensurePack } from "../db/queries/expressions.ts";
+import { bind, insertEntry, insertLorebook, updateEntry, updateLorebook } from "../db/queries/lore.ts";
+import { embeddedCharacterBook } from "../lore/import.ts";
 import type { importCard } from "./index.ts";
 
 export async function persistCard(
@@ -51,7 +53,32 @@ export async function persistCard(
     expressionCount += 1;
   }
 
+  // A card's embedded `character_book` becomes a real, bindable lorebook, so
+  // the world info a SillyTavern card carries is actually usable (§20 phase
+  // 139) rather than sitting in `raw_card` unread.
+  let loreCount = 0;
+  const embedded = embeddedCharacterBook(imported.rawCard);
+  if (embedded !== null) {
+    const book = insertLorebook(ctx.db, { name: embedded.name, rawImport: embedded.raw });
+    updateLorebook(ctx.db, book.id, {
+      ...(embedded.scanDepth === null ? {} : { scan_depth: embedded.scanDepth }),
+      ...(embedded.tokenBudget === null ? {} : { token_budget: embedded.tokenBudget }),
+      ...(embedded.recursionDepth === null ? {} : { recursion_depth: embedded.recursionDepth }),
+    });
+    for (const entry of embedded.entries) {
+      const entryRow = insertEntry(ctx.db, book.id, String(entry.columns.content ?? ""));
+      updateEntry(ctx.db, entryRow.id, entry.columns);
+    }
+    bind(ctx.db, book.id, "character", row.id);
+    loreCount = embedded.entries.length;
+  }
+
   const warnings = [...imported.warnings];
+  if (loreCount > 0) {
+    warnings.push(
+      `Imported its embedded lorebook \u2014 ${loreCount} ${loreCount === 1 ? "entry" : "entries"}.`,
+    );
+  }
   if (expressionCount > 0) {
     warnings.push(
       `Imported ${expressionCount} expression sprite${expressionCount === 1 ? "" : "s"}.`,

@@ -200,6 +200,22 @@ export function memoryBookOf(db: Database, authorId: number): LorebookRow | null
   }) as LorebookRow | null;
 }
 
+/** A character's primary bound book, for the card editor's Lore section (§139). */
+export function primaryBookForCharacter(
+  db: Database,
+  characterId: number,
+): { id: string; name: string } | null {
+  const row = db
+    .query(
+      `SELECT b.ulid, b.name FROM lorebooks b
+         JOIN lorebook_bindings bind ON bind.lorebook_id = b.id
+        WHERE bind.scope = 'character' AND bind.character_id = $character
+        ORDER BY b.name LIMIT 1`,
+    )
+    .get({ character: characterId }) as { ulid: string; name: string } | null;
+  return row === null ? null : { id: row.ulid, name: row.name };
+}
+
 /** Turn rows into what the engine takes, one entry per book per scene. */
 export function candidatesFor(db: Database, books: LorebookRow[]): LoreCandidate[] {
   const seen = new Set<number>();

@@ -62,4 +62,12 @@ describe("the desktop header", () => {
     expect(HEADER).toContain("toggleLeftRail");
     expect(HEADER).toContain("toggleRightRail");
   });
+
+  test("links the libraries — the full editors — by their names (§20 phase 139)", () => {
+    expect(HEADER).toContain("LIBRARIES");
+    expect(HEADER).toContain("strings.nav.characters");
+    expect(HEADER).toContain("strings.nav.authors");
+    expect(HEADER).toContain("strings.nav.lorebooks");
+    expect(HEADER).toContain("strings.nav.backgrounds");
+  });
 });

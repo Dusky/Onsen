@@ -3,7 +3,7 @@ import { completeSetup, createHarness, type TestHarness } from "./helpers.ts";
 import { V1_CARD, V2_CARD, V3_CARD, charxCard, jsonBytes, pngCard } from "./card-fixtures.ts";
 import { importCard } from "../server/cards/index.ts";
 import { readTextChunks } from "../server/cards/png.ts";
-import type { CharacterDto, ImportCharacterResponse } from "../shared/types.ts";
+import type { CharacterDto, ImportCharacterResponse, LorebookDto } from "../shared/types.ts";
 
 /**
  * The character library over HTTP (SPEC §9). The point of these is the same as
@@ -54,6 +54,23 @@ describe("importing", () => {
     expect(body.warnings.join(" ")).toContain("lorebook");
     expect(body.warnings.join(" ")).toContain("future_top_level_field");
     expect(body.character.unmodelledFields).toContain("extensions.risuai");
+  });
+
+  test("extracts an embedded character book into a bound lorebook", async () => {
+    const t = await signedIn();
+    const { body } = await upload(t, pngCard({ ccv3: V3_CARD }), "bell.png");
+
+    // The card's own world info is now a real, bindable book, named on the card.
+    expect(body.character.lorebook?.name).toBe("Ridge lore");
+    expect(body.warnings.join(" ")).toContain("Imported its embedded lorebook");
+
+    const books = (await (await t.fetch("/api/lorebooks")).json()) as LorebookDto[];
+    expect(books.some((book) => book.name === "Ridge lore")).toBe(true);
+
+    // And it round-trips: the exported card re-embeds the book.
+    const exported = await t.fetch(`/api/characters/${body.character.id}/export?format=json`);
+    const doc = (await exported.json()) as { data: { character_book: { name: string } } };
+    expect(doc.data.character_book.name).toBe("Ridge lore");
   });
 
   test("accepts CharX and raw JSON too", async () => {

@@ -64,7 +64,10 @@ interface Setup {
 
 async function scene(t: TestHarness): Promise<Setup> {
   const form = new FormData();
-  form.append("file", new File([pngCard({ chara: V2_CARD }) as unknown as BlobPart], "bell.png"));
+  // No embedded character book: these tests count the author's own book and
+  // nothing else, so the card must not drag a second one in (§20 phase 139).
+  const card = { ...V2_CARD, data: { ...V2_CARD.data, character_book: undefined } };
+  form.append("file", new File([pngCard({ chara: card }) as unknown as BlobPart], "bell.png"));
   const { character } = (await (
     await t.fetch("/api/characters/import", { method: "POST", body: form })
   ).json()) as { character: CharacterDto };
