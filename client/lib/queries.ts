@@ -1865,7 +1865,7 @@ export function useEmbeddingsConfig() {
 export function useSaveEmbeddingsConfig() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (body: { baseUrl?: string | null; model?: string | null; apiKey?: string | null }) =>
+    mutationFn: (body: { source?: "local" | "endpoint" | "lexical"; baseUrl?: string | null; model?: string | null; apiKey?: string | null }) =>
       api.put<EmbeddingsConfigDto>("/connections/embeddings", body),
     onSuccess: (config) => client.setQueryData(["embeddings"], config),
   });

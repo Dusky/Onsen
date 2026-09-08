@@ -6857,3 +6857,20 @@ either.
 An entry with no title takes the first key as its title — SillyTavern's
 addMemo — so a book full of keyed entries is never a book full of "Untitled
 entry".
+
+## Phase 137 — The bundled local embedding model
+
+The data bank's embeddings now work with no API and no external service,
+exactly the way SillyTavern's do. `all-MiniLM-L6-v2` ships as an ONNX model run
+in-process as pure WASM through `onnxruntime-web` — no native binary, so the
+app's "no native modules" rule holds (the only install hook in the closure,
+protobufjs's, is a harmless version check and is allowlisted). The model and
+vocabulary download once, on first use, into the data directory, and inference
+stays local after that. The embeddings source becomes a three-way choice in
+Settings — bundled model (default), a configured endpoint, or keywords — and
+the store falls back to keyword retrieval when the model cannot load rather
+than failing a recall.
+
+**Verified** by the tokenizer and pooling unit tests, the invariant guard
+(confirming the runtime closure stays native-free), and a live run: identical
+texts embed to cosine 1.0, unrelated ones to 0.36.

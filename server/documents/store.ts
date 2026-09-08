@@ -157,29 +157,33 @@ export async function retrieve(
   const embedder = resolveEmbedder(db, keyring);
   if (embedder.kind === "embeddings") {
     const [queryVector] = await embedder.embed([query]);
-    if (queryVector === undefined || queryVector.length === 0) return [];
-    const scored = chunks
-      .filter((chunk) => chunk.vector !== null)
-      .map((chunk) => {
-        let vector: number[];
-        try {
-          vector = JSON.parse(chunk.vector!) as number[];
-        } catch {
-          return null;
-        }
-        return { chunk, score: cosine(queryVector, vector) };
-      })
-      .filter((entry): entry is { chunk: (typeof chunks)[number]; score: number } => entry !== null);
-    return scored
-      .sort((a, b) => b.score - a.score)
-      .slice(0, topK)
-      .map(({ chunk, score }) => ({
-        documentId: chunk.documentId,
-        documentTitle: chunk.documentTitle,
-        chunkIndex: chunk.ordinal,
-        text: chunk.text,
-        score,
-      }));
+    // A non-empty vector means semantic retrieval. An empty one — the local
+    // model could not load, or the provider returned nothing — falls through
+    // to lexical rather than returning nothing (§20 phase 137).
+    if (queryVector !== undefined && queryVector.length > 0) {
+      const scored = chunks
+        .filter((chunk) => chunk.vector !== null)
+        .map((chunk) => {
+          let vector: number[];
+          try {
+            vector = JSON.parse(chunk.vector!) as number[];
+          } catch {
+            return null;
+          }
+          return { chunk, score: cosine(queryVector, vector) };
+        })
+        .filter((entry): entry is { chunk: (typeof chunks)[number]; score: number } => entry !== null);
+      return scored
+        .sort((a, b) => b.score - a.score)
+        .slice(0, topK)
+        .map(({ chunk, score }) => ({
+          documentId: chunk.documentId,
+          documentTitle: chunk.documentTitle,
+          chunkIndex: chunk.ordinal,
+          text: chunk.text,
+          score,
+        }));
+    }
   }
 
   // Lexical: one vocabulary over the corpus plus the query, so the dimensions

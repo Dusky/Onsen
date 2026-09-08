@@ -86,9 +86,10 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
    * provider (§11, phase 30). Nulls mean the lexical fallback is in force. */
   app.get("/embeddings", (c) => {
     const row = ctx.db.query("SELECT * FROM embeddings_config WHERE id = 1").get() as
-      | { base_url: string | null; model: string | null; api_key_encrypted: string | null }
+      | { base_url: string | null; model: string | null; api_key_encrypted: string | null; source: string | null }
       | null;
     return c.json({
+      source: row?.source === "endpoint" || row?.source === "lexical" ? row.source : "local",
       baseUrl: row?.base_url ?? null,
       model: row?.model ?? null,
       hasApiKey: (row?.api_key_encrypted ?? null) !== null,
@@ -105,6 +106,8 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
     const baseUrl = text(body["baseUrl"], 500);
     const model = text(body["model"], 200);
     const apiKey = text(body["apiKey"], 400);
+    const source =
+      body["source"] === "endpoint" || body["source"] === "lexical" ? body["source"] : "local";
     const existing = ctx.db.query("SELECT api_key_encrypted FROM embeddings_config WHERE id = 1").get() as
       | { api_key_encrypted: string | null }
       | null;
@@ -114,13 +117,14 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
         : encryptSecret(ctx.keyring, apiKey);
     ctx.db
       .query(
-        `INSERT INTO embeddings_config (id, base_url, model, api_key_encrypted, updated_at)
-         VALUES (1, $base, $model, $key, $now)
+        `INSERT INTO embeddings_config (id, base_url, model, api_key_encrypted, source, updated_at)
+         VALUES (1, $base, $model, $key, $source, $now)
          ON CONFLICT (id) DO UPDATE SET
-           base_url = $base, model = $model, api_key_encrypted = $key, updated_at = $now`,
+           base_url = $base, model = $model, api_key_encrypted = $key, source = $source, updated_at = $now`,
       )
-      .run({ base: baseUrl, model, key: storedKey, now: Date.now() });
+      .run({ base: baseUrl, model, key: storedKey, source, now: Date.now() });
     return c.json({
+      source,
       baseUrl,
       model,
       hasApiKey: storedKey !== null,

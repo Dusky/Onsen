@@ -3761,6 +3761,14 @@ Each phase ends in a working, usable application.
     `test/lore-api.test.ts`.
 136. **Title auto-fill** — an entry with no title takes the first key as its
     title, SillyTavern's addMemo. See §10, `test/lore-screen.test.ts`.
+137. **The bundled local embedding model** — the data bank's embeddings now
+    ship a local model: `all-MiniLM-L6-v2` run in-process as pure WASM via
+    `onnxruntime-web`, so embeddings need no API key and no external service.
+    The model and vocabulary download once into the data directory and cache;
+    inference stays local. The embeddings source becomes a three-way choice —
+    bundled model (default), a configured endpoint, or keywords — and the
+    store falls back to keyword retrieval when the model cannot load. See §11,
+    `test/embedding-tokenizer.test.ts`.
 
 Settled while building phase 15.
 

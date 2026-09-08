@@ -1560,60 +1560,96 @@ function EmbeddingsSection() {
   const config = useEmbeddingsConfig();
   const save = useSaveEmbeddingsConfig();
   const [saved, setSaved] = useState(false);
+  const [source, setSource] = useState<"local" | "endpoint" | "lexical">(
+    config.data?.source ?? "local",
+  );
+
+  function setSourceAndSave(next: "local" | "endpoint" | "lexical") {
+    setSource(next);
+    save.mutate(
+      { source: next, ...(next === "endpoint" ? {} : { baseUrl: null, model: null }) },
+      { onSuccess: () => setSaved(true) },
+    );
+  }
 
   return (
     <>
       <p className="group-heading mb-[12px]">{strings.settings.embeddings}</p>
-      {config.data !== undefined && config.data.baseUrl === null ? (
-        <p className="explain mb-[10px]">
-          {strings.settings.embeddingsLexical}
-        </p>
-      ) : null}
-      <form
-        className="mb-[14px]"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const form = new FormData(event.currentTarget);
-          const baseUrl = String(form.get("baseUrl") ?? "").trim();
-          const model = String(form.get("model") ?? "").trim();
-          const apiKey = String(form.get("apiKey") ?? "").trim();
-          save.mutate(
-            {
-              baseUrl: baseUrl === "" ? null : baseUrl,
-              model: model === "" ? null : model,
-              ...(apiKey === "" ? {} : { apiKey }),
-            },
-            { onSuccess: () => setSaved(true) },
-          );
-        }}
-      >
-        <p className="section-label mb-[6px]">{strings.settings.embeddingsBaseUrl}</p>
-        <input
-          name="baseUrl"
-          className="field mb-[10px]"
-          placeholder="http://localhost:11434/v1"
-          defaultValue={config.data?.baseUrl ?? ""}
-        />
-        <p className="section-label mb-[6px]">{strings.settings.embeddingsModel}</p>
-        <input
-          name="model"
-          className="field mb-[10px]"
-          placeholder="nomic-embed-text"
-          defaultValue={config.data?.model ?? ""}
-        />
-        <p className="section-label mb-[6px]">{strings.settings.embeddingsKey}</p>
-        <input name="apiKey" type="password" className="field mb-[10px]" autoComplete="off" />
-        <div className="flex items-center gap-[8px]">
-          <button type="submit" className="btn btn-primary flex-1">
-            {strings.settings.embeddingsSave}
+
+      <p className="section-label mb-[6px]">{strings.settings.embeddingsSource}</p>
+      <div className="mb-[10px] flex flex-wrap gap-[6px]">
+        {(["local", "endpoint", "lexical"] as const).map((option) => (
+          <button
+            key={option}
+            type="button"
+            aria-pressed={source === option}
+            onClick={() => setSourceAndSave(option)}
+            className={`btn flex-none ${source === option ? "btn-primary" : ""}`}
+          >
+            {option === "local"
+              ? strings.settings.embeddingsSourceLocal
+              : option === "endpoint"
+                ? strings.settings.embeddingsSourceEndpoint
+                : strings.settings.embeddingsSourceLexical}
           </button>
-          {saved ? (
-            <span className="meta">
-              {strings.settings.embeddingsSaved}
-            </span>
-          ) : null}
-        </div>
-      </form>
+        ))}
+      </div>
+      <p className="explain mb-[12px]">
+        {source === "local"
+          ? strings.settings.embeddingsLocal
+          : source === "lexical"
+            ? strings.settings.embeddingsLexical
+            : strings.settings.embeddingsBaseUrl}
+      </p>
+
+      {source !== "endpoint" ? null : (
+        <form
+          className="mb-[14px]"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const form = new FormData(event.currentTarget);
+            const baseUrl = String(form.get("baseUrl") ?? "").trim();
+            const model = String(form.get("model") ?? "").trim();
+            const apiKey = String(form.get("apiKey") ?? "").trim();
+            save.mutate(
+              {
+                source: "endpoint",
+                baseUrl: baseUrl === "" ? null : baseUrl,
+                model: model === "" ? null : model,
+                ...(apiKey === "" ? {} : { apiKey }),
+              },
+              { onSuccess: () => setSaved(true) },
+            );
+          }}
+        >
+          <p className="section-label mb-[6px]">{strings.settings.embeddingsBaseUrl}</p>
+          <input
+            name="baseUrl"
+            className="field mb-[10px]"
+            placeholder="http://localhost:11434/v1"
+            defaultValue={config.data?.baseUrl ?? ""}
+          />
+          <p className="section-label mb-[6px]">{strings.settings.embeddingsModel}</p>
+          <input
+            name="model"
+            className="field mb-[10px]"
+            placeholder="nomic-embed-text"
+            defaultValue={config.data?.model ?? ""}
+          />
+          <p className="section-label mb-[6px]">{strings.settings.embeddingsKey}</p>
+          <input name="apiKey" type="password" className="field mb-[10px]" autoComplete="off" />
+          <div className="flex items-center gap-[8px]">
+            <button type="submit" className="btn btn-primary flex-1">
+              {strings.settings.embeddingsSave}
+            </button>
+            {saved ? (
+              <span className="meta">
+                {strings.settings.embeddingsSaved}
+              </span>
+            ) : null}
+          </div>
+        </form>
+      )}
       <div className="mb-[26px]" />
     </>
   );

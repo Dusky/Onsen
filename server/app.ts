@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { join } from "node:path";
 import { ulid } from "./lib/ulid.ts";
+import { setLocalEmbeddingsDir } from "./embeddings/local.ts";
 import type { AppContext, AppEnv } from "./context.ts";
 import { sessionMiddleware } from "./middleware/session.ts";
 import { withOrigin } from "./sync/channel.ts";
@@ -101,6 +102,8 @@ export interface CreatedApp {
 
 /** Build the app and the services it owns. */
 export function createServer(ctx: AppContext, options: CreateAppOptions = {}): CreatedApp {
+  // The bundled embedding model caches beside the rest of the state (§137).
+  setLocalEmbeddingsDir(ctx.config.dataDir);
   const tasks =
     options.taskRunner ??
     new TaskRunner({

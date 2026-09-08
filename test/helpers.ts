@@ -77,6 +77,12 @@ export function createHarness(options: HarnessOptions = {}): TestHarness {
 // The shipped themes, for the same reason and by the same rule: matched by
 // name, so a release can add one without disturbing anything you have made.
 seedBuiltinThemes(db);
+// Tests embed lexically by default: the bundled local model would download a
+// 23MB ONNX file on first use, and the suite must not need the network
+// (§20 phase 137).
+db.query(
+  "INSERT INTO embeddings_config (id, source, updated_at) VALUES (1, 'lexical', $now)",
+).run({ now: Date.now() });
   const ctx: AppContext = { db, config, keyring: loadOrCreateKeyring(config, {} as NodeJS.ProcessEnv) };
   const adapterOption =
     options.adapter === undefined ? {} : { createAdapter: () => options.adapter as Adapter };

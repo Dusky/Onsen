@@ -2648,6 +2648,8 @@ export interface DocumentDto {
 
 /** The data bank's embeddings provider (SPEC §11). */
 export interface EmbeddingsConfigDto {
+  /** The source in force: the bundled local model, an endpoint, or lexical. */
+  source: "local" | "endpoint" | "lexical";
   baseUrl: string | null;
   model: string | null;
   hasApiKey: boolean;

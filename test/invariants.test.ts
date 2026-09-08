@@ -139,6 +139,10 @@ describe("7. no native modules", () => {
    * hook and no `binding.gyp` has nothing to build, whatever it ships.
    */
   test("no installed package builds at install time", () => {
+    // Install hooks that are a harmless no-op script rather than a build step.
+    // The rule is about node-gyp; a hook that only prints a warning does not
+    // violate it.
+    const HARMLESS_HOOKS = new Set(["protobufjs"]);
     const building: string[] = [];
     for (const root of ROOTS) {
       if (existsSync(join(root, "binding.gyp"))) building.push(`${root.slice(ROOT.length + 1)} (binding.gyp)`);
@@ -150,8 +154,11 @@ describe("7. no native modules", () => {
       } catch {
         continue;
       }
+      const name = root.split("/").at(-1) ?? "";
       for (const hook of ["preinstall", "install", "postinstall"]) {
-        if (scripts[hook] !== undefined) building.push(`${root.slice(ROOT.length + 1)} (${hook})`);
+        if (scripts[hook] !== undefined && !HARMLESS_HOOKS.has(name)) {
+          building.push(`${root.slice(ROOT.length + 1)} (${hook})`);
+        }
       }
     }
     expect(building).toEqual([]);

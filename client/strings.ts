@@ -1006,6 +1006,11 @@ export const strings = {
 
     /** The data bank's embeddings provider (SPEC §11, phase 30). */
     embeddings: "Embeddings",
+    embeddingsSource: "Source",
+    embeddingsSourceLocal: "Bundled model",
+    embeddingsSourceEndpoint: "Endpoint",
+    embeddingsSourceLexical: "Keywords",
+    embeddingsLocal: "A model that ships with Onsen, run in-process. Downloads once, then works offline.",
     embeddingsBaseUrl: "Address",
     embeddingsModel: "Model",
     embeddingsKey: "API key",

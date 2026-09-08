@@ -60,6 +60,7 @@ import loreEntryKnobs from "./0059_lore_entry_knobs.sql" with { type: "text" };
 import lorebookToggle from "./0060_lorebook_toggle.sql" with { type: "text" };
 import loreEntryTriggers from "./0061_lore_entry_triggers.sql" with { type: "text" };
 import loreEntryMatchAgainst from "./0062_lore_entry_match_against.sql" with { type: "text" };
+import embeddingsSource from "./0063_embeddings_source.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -137,4 +138,5 @@ export const migrations: readonly Migration[] = [
   { version: 60, name: "lorebook_toggle", sql: lorebookToggle },
   { version: 61, name: "lore_entry_triggers", sql: loreEntryTriggers },
   { version: 62, name: "lore_entry_match_against", sql: loreEntryMatchAgainst },
+  { version: 63, name: "embeddings_source", sql: embeddingsSource },
 ];

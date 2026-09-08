@@ -1,18 +1,16 @@
 import type { Database } from "bun:sqlite";
 import { decryptSecret, type Keyring } from "../lib/crypto.ts";
+import { embedLocally } from "../embeddings/local.ts";
 
 /**
  * The embedder (SPEC §11, §20 phase 30): text in, dense vectors out.
  *
- * The primary implementation calls an OpenAI-compatible `/embeddings` endpoint
- * — the "secondary embeddings provider" the reader configures, which covers
- * localhost stacks (Ollama, LM Studio, llama.cpp server) and hosted ones
- * alike. The fallback is lexical and lives in the store, because lexical
- * vectors are only meaningful against a shared corpus vocabulary — they cannot
- * be computed one text at a time the way a provider's can.
- *
- * An ONNX embedder is the future third implementation: native, opt-in, and
- * dropped in here rather than threaded through the rest of the system.
+ * The default source is the bundled local ONNX model (phase 137) — no API key,
+ * no external service. A configured OpenAI-compatible `/embeddings` endpoint
+ * (Ollama, LM Studio, llama.cpp server, or hosted) always wins when present.
+ * The lexical fallback lives in the store, because lexical vectors are only
+ * meaningful against a shared corpus vocabulary — they cannot be computed one
+ * text at a time the way a model's can.
  */
 
 export interface EmbeddingsProvider {
@@ -20,6 +18,8 @@ export interface EmbeddingsProvider {
   model: string;
   apiKey: string | null;
 }
+
+export type EmbeddingsSource = "local" | "endpoint" | "lexical";
 
 export function findEmbeddingsProvider(db: Database, keyring: Keyring): EmbeddingsProvider | null {
   const row = db
@@ -31,6 +31,15 @@ export function findEmbeddingsProvider(db: Database, keyring: Keyring): Embeddin
     model: row.model,
     apiKey: row.api_key_encrypted === null ? null : decryptSecret(keyring, row.api_key_encrypted),
   };
+}
+
+/** The configured source, or the default (local). */
+export function embeddingsSource(db: Database): EmbeddingsSource {
+  const row = db.query("SELECT source FROM embeddings_config WHERE id = 1").get() as
+    | { source: string | null }
+    | null;
+  const source = row?.source;
+  return source === "endpoint" || source === "lexical" ? source : "local";
 }
 
 /** Embed via an OpenAI-compatible `/embeddings` endpoint. */
@@ -57,7 +66,7 @@ export async function embedViaProvider(
   return texts.map((_, index) => data[index]?.embedding ?? []);
 }
 
-/** The embedding path in force: a configured provider, or lexical. */
+/** The embedding path in force: a configured provider, the local model, or lexical. */
 export function resolveEmbedder(db: Database, keyring: Keyring): {
   kind: "embeddings" | "lexical";
   embed(texts: string[]): Promise<number[][]>;
@@ -66,7 +75,10 @@ export function resolveEmbedder(db: Database, keyring: Keyring): {
   if (provider !== null) {
     return { kind: "embeddings", embed: (texts) => embedViaProvider(provider, texts) };
   }
-  // Lexical is resolved by the store, which holds the corpus; this shell is
-  // replaced there and only signals which path is in force.
-  return { kind: "lexical", embed: () => Promise.resolve([]) };
+  if (embeddingsSource(db) === "lexical") {
+    return { kind: "lexical", embed: () => Promise.resolve([]) };
+  }
+  // The bundled local model is the default: it returns empty vectors on any
+  // failure, which the store reads as "no embedding" and falls back to lexical.
+  return { kind: "embeddings", embed: (texts) => embedLocally(texts) };
 }
