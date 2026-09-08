@@ -346,6 +346,8 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const signOut = useSignOut();
   /** The palette opened on nothing, by key, rather than on a turn. */
   const [paletteOpen, setPaletteOpen] = useState(false);
+  /** Text after the `/` when the composer opened the palette (§20 phase 130). */
+  const [paletteSeed, setPaletteSeed] = useState("");
   /**
    * The turn ⌘K and the single-key accelerators act on (§20 phase 43).
    *
@@ -659,6 +661,20 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     setDraft("");
     setOpsPanel(null);
     await send.mutateAsync({ kind: "user", authorType: "user", content: text });
+  }
+
+  /**
+   * The composer as a command palette (§20 phase 130): a `/` first opens the
+   * palette with what follows as its query, instead of writing a message.
+   */
+  function handleDraftChange(value: string) {
+    if (value.startsWith("/")) {
+      setDraft("");
+      setPaletteSeed(value.slice(1));
+      setPaletteOpen(true);
+    } else {
+      setDraft(value);
+    }
   }
 
   const steer = scene.data?.scene.directorNote ?? null;
@@ -1181,7 +1197,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             hasModel: sceneProfile !== null,
           }}
           draft={draft}
-          onDraftChange={setDraft}
+          onDraftChange={handleDraftChange}
           onAttach={(file) =>
             attach.mutate(file, {
               // A caption that failed is worth saying once — the picture is
@@ -1487,10 +1503,12 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         <CommandPalette
           hasScene
           selectedSpeaker={paletteTurn === null ? null : speakerFor(paletteTurn, authorName)}
+          initialQuery={paletteSeed}
           onRun={(id) => runCommand(id, paletteTurn)}
           onClose={() => {
             setActing(null);
             setPaletteOpen(false);
+            setPaletteSeed("");
           }}
         />
       ) : null}

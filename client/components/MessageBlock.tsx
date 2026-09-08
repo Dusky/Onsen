@@ -128,6 +128,40 @@ export function Reasoning({ text }: { text: string }) {
 }
 
 /**
+ * The one-shot direction that produced this turn (§7, §20 phase 130).
+ *
+ * Shown collapsed on the reply it made, rather than as a message of its own:
+ * a nudge is direction, not something the reader said in the scene. The same
+ * treatment as reasoning, for the same reason — hidden by default, the closed
+ * state still says what it is.
+ */
+export function Direction({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const trimmed = text.trim();
+  if (trimmed === "") return null;
+  return (
+    <div className="mb-[12px]">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="chrome flex min-h-[28px] w-full items-center gap-[8px] text-left text-[12px] text-ink-dim"
+      >
+        <span aria-hidden>{open ? "⌃" : "⌄"}</span>
+        {strings.chat.directionNote(trimmed.length)}
+      </button>
+      {open ? (
+        <p
+          className="chrome mt-[7px] border-l pl-[11px] text-[13.5px] leading-[1.65] whitespace-pre-wrap text-ink-dim"
+          style={{ borderColor: "var(--onsen-color-rule)" }}
+        >
+          {trimmed}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
  * Paragraphs are split on blank lines, which is how a model emits them, and set
  * with `text-wrap: pretty` for the sake of the person reading for hours.
  */
@@ -450,8 +484,8 @@ function TurnRow({
 }) {
   const [copied, setCopied] = useState(false);
 
-  const items: { glyph: string; name: string; run(): void; on?: boolean; text?: boolean }[] = [
-    { glyph: strings.chat.turnReroll, name: strings.chat.reroll, run: onReroll, text: true },
+  const items: { glyph: string; name: string; run(): void; on?: boolean }[] = [
+    { glyph: strings.chat.turnReroll, name: strings.chat.reroll, run: onReroll },
     ...(message.siblingCount > 1
       ? [
           {
@@ -461,8 +495,8 @@ function TurnRow({
           },
         ]
       : []),
-    { glyph: strings.chat.turnBranch, name: strings.chat.branch, run: actions.onBranch, text: true },
-    { glyph: strings.chat.turnEdit, name: strings.chat.edit, run: actions.onEdit, text: true },
+    { glyph: strings.chat.turnBranch, name: strings.chat.branch, run: actions.onBranch },
+    { glyph: strings.chat.turnEdit, name: strings.chat.edit, run: actions.onEdit },
     {
       glyph: strings.chat.turnCopy,
       name: copied ? strings.chat.turnCopied : strings.chat.copy,
@@ -495,14 +529,9 @@ function TurnRow({
           className="chrome flex items-center justify-center text-[13px] text-ink-muted hover:text-ink-label"
           style={item.on === false ? { color: "var(--onsen-color-text-dim)" } : undefined}
         >
-          {/* The three story actions say their names — the mockup's words
-              rather than the proofreading glyphs — while the utilities (copy,
-              hide, more) stay compact glyphs. */}
-          {item.text === true ? (
-            <span className="px-[4px] text-[11.5px]">{item.name}</span>
-          ) : (
-            item.glyph
-          )}
+          {/* Every action is a glyph, labelled for a screen reader and on
+              hover; the words live in the palette and the long-press sheet. */}
+          {item.glyph}
         </button>
       ))}
     </span>
@@ -629,6 +658,10 @@ export function MessageBlock({
         {/* Collapsed by default, above the prose it produced: reasoning happened
             first, and putting it after would read as an afterword (§13). */}
         <Reasoning text={streamingReasoning ?? message.reasoning ?? ""} />
+
+        {/* The direction that produced this reply, collapsed the same way —
+            attached to what it made rather than a message of its own (§130). */}
+        <Direction text={message.generation?.nudge ?? ""} />
 
         {/* A beat is rendered by its parts; every other message is its own text.
             While one is streaming there are no parts yet, so the raw output

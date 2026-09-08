@@ -476,6 +476,9 @@ export class GenerationService {
       lastPersistAt: startedAt,
       retries: options.retries ?? { continued: 0, swiped: 0 },
     };
+    // The direction is recorded on the reply it produced, not as a message of
+    // its own (§20 phase 130): it travels in the meta and is shown collapsed.
+    generation.meta.nudge = generation.nudge;
     this.active.set(id, generation);
 
     // Deliberately not awaited: SPEC §5.1 returns the identifier immediately and

@@ -3733,6 +3733,11 @@ Each phase ends in a working, usable application.
     line — used, budget, and the free percent — and the budget bar is the stripe
     alone, the labels living in the block list below. See §16,
     `test/leftrail.test.ts`.
+130. **The chat surface, three touches** — a nudge is now recorded on the reply
+    it produced and shown collapsed on that turn rather than as a message of its
+    own; the turn actions return to glyphs, their words living in the palette;
+    and a leading `/` in the composer opens the palette with the rest as its
+    query. See §7, §16, `test/guided-ops.test.ts`, `test/turn-surface.test.ts`.
 
 Settled while building phase 15.
 

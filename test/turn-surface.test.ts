@@ -27,10 +27,13 @@ const STRINGS = readFileSync(join(import.meta.dir, "..", "client", "strings.ts")
 const CHAT = readFileSync(join(import.meta.dir, "..", "client", "screens", "ChatScreen.tsx"), "utf8");
 
 describe("the turn surface", () => {
-  test("the story actions say their names, the utilities stay glyphs", () => {
-    expect(BLOCK).toContain("text: true");
-    expect(BLOCK).toContain("item.text === true");
-    expect(BLOCK).toContain('px-[4px] text-[11.5px]"');
+  test("every turn action is a glyph, the words live in the palette", () => {
+    // The three story actions went back to glyphs (§20 phase 130); the words
+    // stay in the palette and the long-press sheet, which is their one home.
+    expect(BLOCK).not.toContain("text: true");
+    expect(BLOCK).toContain("turnReroll");
+    expect(BLOCK).toContain("turnBranch");
+    expect(BLOCK).toContain("turnEdit");
   });
 
   test("a streaming turn ends in the amber cursor", () => {
@@ -65,5 +68,17 @@ describe("the composer", () => {
     expect(CHAT).toContain("remove.mutate(sibling.id)");
     expect(CHAT).toContain("StatsSheet");
     expect(CHAT).toContain("useSceneStats");
+  });
+
+  test("a direction is attached to its reply, collapsed, not a message", () => {
+    expect(BLOCK).toContain("function Direction");
+    expect(BLOCK).toContain("message.generation?.nudge");
+    expect(BLOCK).toContain("directionNote");
+  });
+
+  test("a leading slash opens the palette from the composer", () => {
+    expect(CHAT).toContain("handleDraftChange");
+    expect(CHAT).toContain("startsWith(\"/\")");
+    expect(CHAT).toContain("initialQuery={paletteSeed}");
   });
 });

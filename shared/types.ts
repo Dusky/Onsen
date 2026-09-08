@@ -573,6 +573,12 @@ export interface GenerationMeta {
   promptTokens: number;
   tokensAreEstimated: boolean;
   samplers: SamplerSettings;
+  /**
+   * The one-shot direction that produced this turn (§7, §20 phase 130).
+   * Null for turns that had none. Rendered collapsed on the turn, never fed
+   * back into a later prompt.
+   */
+  nudge?: string | null;
 }
 
 /** A scene rolled up: messages, words, and who carried it (§20 phase 128). */

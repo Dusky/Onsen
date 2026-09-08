@@ -6791,3 +6791,18 @@ and its provenance.
 
 **Verified** by a leftrail case pinning the summary line and the absence of the
 old legend.
+
+## Phase 130 — The chat surface, three touches
+
+A nudge is now recorded on the reply it produced — stored in the message's
+generation meta, never as a message of its own — and rendered collapsed on that
+turn, the same treatment as reasoning, so a direction reads as an annotation on
+what it made rather than as a line the reader said in the scene. The turn
+actions return to glyphs (the words already live in the palette and the
+long-press sheet, which is their one home). And a leading `/` in the composer
+opens the palette with the rest of the line as its query, so the main input is
+also the command entry.
+
+**Verified** by a guided-ops case (the nudge lands in the reply's meta and not
+in the log), and turn-surface cases pinning the glyphs, the collapsed direction
+strip and the slash-to-palette path.

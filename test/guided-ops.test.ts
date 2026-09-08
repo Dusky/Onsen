@@ -144,6 +144,17 @@ describe("nudge — one turn only", () => {
     expect(block.placement).toEqual({ kind: "depth", depth: 0 });
   });
 
+  test("is recorded on the reply it produced, collapsed, never a message", async () => {
+    const t = await signedIn();
+    const { sceneId } = await scene(t);
+    await run(t, `/api/scenes/${sceneId}/generate`, { nudge: "Make it colder." }, "Ok.");
+
+    const reply = [...(await messages(t, sceneId))].reverse().find((m) => m.authorType !== "user")!;
+    expect(reply.generation?.nudge).toBe("Make it colder.");
+    // The nudge did not become a message of its own.
+    expect((await messages(t, sceneId)).some((m) => m.content.includes("colder"))).toBe(false);
+  });
+
   test("is never persisted as a message", async () => {
     const t = await signedIn();
     const { sceneId } = await scene(t);

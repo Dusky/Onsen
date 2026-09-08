@@ -16,16 +16,19 @@ import { GROUP_ORDER, matchCommands, type Command, type CommandGroup } from "../
 export function CommandPalette({
   hasScene,
   selectedSpeaker,
+  initialQuery = "",
   onRun,
   onClose,
 }: {
   hasScene: boolean;
   /** Null when no turn is selected — which hides every turn-scoped command. */
   selectedSpeaker: string | null;
+  /** Text after the `/` when the composer opened this (§20 phase 130). */
+  initialQuery?: string;
   onRun(id: string): void;
   onClose(): void;
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [at, setAt] = useState(0);
   const listRef = useRef<HTMLDivElement | null>(null);
 

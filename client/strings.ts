@@ -164,6 +164,9 @@ export const strings = {
     edited: "Edited",
     /** The reasoning strip (SPEC §13), collapsed by default. */
     reasoning: (chars: number) => `Model reasoning · ${chars} chars · not sent back`,
+    /** The direction that produced this turn (§7, §20 phase 130), collapsed. */
+    direction: "Direction",
+    directionNote: (chars: number) => `Direction · ${chars} chars`,
     save: "Save",
     versionCounter: (index: number, total: number) => `◂ ${index}/${total} ▸`,
     versions: "Versions",
