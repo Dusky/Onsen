@@ -2,9 +2,8 @@
 
 A short, honest list. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 122, on `glm/sillytavern-replacement-dyp30w`. 1442 tests across
-108 files, typecheck clean. Feature complete against `SPEC.md` §20 apart from
-the deferred phase 42.
+**State:** phase 154. 1498 tests across 112 files, typecheck clean. Feature
+complete against `SPEC.md` §20 apart from the deferred phase 42.
 
 ## The queue
 
@@ -29,7 +28,8 @@ that gate the rest. Each line is a todo; check one off by closing its phase in
 ### Gated on a decision
 
 3. **Web search.** Needs a provider/backend decision. Build as an **extension**
-   (not core), per the earlier product note.
+   (not core), per the earlier product note. **Deferred by the user: not wanted
+   until we run out of better things.**
 
 4. **Self-responses.** A product conversation under the author model — how the
    author may answer itself without a second inference path. Decide first;
@@ -41,6 +41,12 @@ that gate the rest. Each line is a todo; check one off by closing its phase in
 
 6. **Chub import / community browsing** (§20 phase 42, deferred). Gated on the
    app's stance toward third-party services.
+
+### Not wanted (deferred until better things run out)
+
+- **Translate extension** (port ST's). Deferred by the user — the app already
+  surfaces enough, and this is a capability, not a missing piece.
+- **Web search** (item 3 above) — same note.
 
 ### Carried forward from the phase-108 queue
 
