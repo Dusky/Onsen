@@ -1,4 +1,4 @@
-import type { ExtensionAction, ExtensionInjection, ExtensionTask, ExtensionLifecycle } from "./api.ts";
+import type { ExtensionAction, ExtensionInjection, ExtensionTask, ExtensionLifecycle, ExtensionEventHandler } from "./api.ts";
 import type { Database } from "bun:sqlite";
 import type { BlockPlacement, PromptExtensionBlock } from "../prompt/types.ts";
 
@@ -30,6 +30,7 @@ const tasks = new Map<string, RegisteredTask>();
 const injections = new Map<string, RegisteredInjection>();
 const actions = new Map<string, RegisteredAction>();
 const lifecycles = new Map<string, ExtensionLifecycle>();
+const eventHandlers = new Map<string, { moduleName: string; handler: ExtensionEventHandler }[]>();
 
 export function registerExtensionTask(task: ExtensionTask, moduleName: string): void {
   tasks.set(task.key, { task, moduleName });
@@ -47,8 +48,33 @@ export function registerExtensionLifecycle(moduleName: string, lifecycle: Extens
   lifecycles.set(moduleName, lifecycle);
 }
 
+export function registerExtensionEventHandler(moduleName: string, event: string, handler: ExtensionEventHandler): void {
+  const list = eventHandlers.get(event) ?? [];
+  list.push({ moduleName, handler });
+  eventHandlers.set(event, list);
+}
+
 export function extensionLifecycleOf(moduleName: string): ExtensionLifecycle | null {
   return lifecycles.get(moduleName) ?? null;
+}
+
+/**
+ * Fire every handler subscribed to an event, fire-and-forget (§152). An async
+ * handler that throws is swallowed: an event can never fail a turn.
+ */
+export function dispatchExtensionEvent(
+  db: Database,
+  event: string,
+  sceneId: number,
+  payload: Record<string, unknown>,
+): void {
+  for (const entry of eventHandlers.get(event) ?? []) {
+    try {
+      void Promise.resolve(entry.handler({ db, sceneId, payload })).catch(() => {});
+    } catch {
+      /* A synchronous throw must not reach the caller either. */
+    }
+  }
 }
 
 export function clearExtensionTasks(): void {
@@ -56,6 +82,7 @@ export function clearExtensionTasks(): void {
   injections.clear();
   actions.clear();
   lifecycles.clear();
+  eventHandlers.clear();
 }
 
 /**
@@ -77,6 +104,11 @@ export function unregisterExtensionModule(moduleName: string): void {
     if (entry.moduleName === moduleName) actions.delete(key);
   }
   lifecycles.delete(moduleName);
+  for (const [event, list] of eventHandlers) {
+    const rest = list.filter((entry) => entry.moduleName !== moduleName);
+    if (rest.length === 0) eventHandlers.delete(event);
+    else eventHandlers.set(event, rest);
+  }
 }
 
 export function extensionTaskOf(key: string): RegisteredTask | null {

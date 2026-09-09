@@ -19,7 +19,8 @@ export interface ExtensionTask {
   description?: string;
   /** The prompt, with `{{transcript}}` and `{{lastMessage}}` filled in. */
   prompt: string;
-  stage: "pre_generation" | "sidecar" | "post_generation";
+  /** Extensions run after each turn. A manual run is an action, not a task. */
+  stage: "post_generation";
   replyLimit?: number;
   timeoutMs?: number;
   samplers?: SamplerSettings;
@@ -94,11 +95,42 @@ export interface ExtensionLifecycle {
   onUninstall?(context: { db: Database }): void | Promise<void>;
 }
 
+/**
+ * An in-process event handler (§20 phase 152). Same names as the outbound
+ * webhooks — `message.created`, `generation.complete`, `beat.parsed`,
+ * `tracker.updated`, `lore.activated` — but delivered to the extension in
+ * process, fire-and-forget, and never able to fail a turn.
+ */
+export type ExtensionEventHandler = (context: {
+  db: Database;
+  sceneId: number;
+  payload: Record<string, unknown>;
+}) => void | Promise<void>;
+
 export interface ExtensionApi {
   task(config: ExtensionTask): void;
   inject(config: ExtensionInjection): void;
   action(config: ExtensionAction): void;
   lifecycle(config: ExtensionLifecycle): void;
+  /** Subscribe to an in-process event (§152). `event` is a webhook event name. */
+  on(event: string, handler: ExtensionEventHandler): void;
+  /**
+   * Typed access to the settings the host stored (§153). `raw` is the whole
+   * object; `str`/`num`/`bool` coerce a single key to its declared type, so an
+   * author never hand-rolls the coercion.
+   */
+  settings: {
+    raw: Record<string, unknown>;
+    str(key: string, fallback: string): string;
+    num(key: string, fallback: number): number;
+    bool(key: string, fallback: boolean): boolean;
+  };
+  /** A logger tagged with the extension's name (§153). */
+  log: {
+    info(...args: unknown[]): void;
+    warn(...args: unknown[]): void;
+    error(...args: unknown[]): void;
+  };
   /**
    * Per-scene key/value storage, pre-bound to this extension's name. Writes
    * happen in `apply`; reads happen in `shouldRun`, `render`, and the
@@ -124,10 +156,14 @@ export interface ExtensionRegistration {
   injections: ExtensionInjection[];
   actions: ExtensionAction[];
   lifecycle: ExtensionLifecycle | null;
+  eventHandlers: { event: string; handler: ExtensionEventHandler }[];
 }
 
-export function createExtensionApi(name: string): { api: ExtensionApi; registration: ExtensionRegistration } {
-  const registration: ExtensionRegistration = { name, tasks: [], injections: [], actions: [], lifecycle: null };
+export function createExtensionApi(
+  name: string,
+  settings: Record<string, unknown> = {},
+): { api: ExtensionApi; registration: ExtensionRegistration } {
+  const registration: ExtensionRegistration = { name, tasks: [], injections: [], actions: [], lifecycle: null, eventHandlers: [] };
   const api: ExtensionApi = {
     task(config) {
       registration.tasks.push(config);
@@ -140,6 +176,26 @@ export function createExtensionApi(name: string): { api: ExtensionApi; registrat
     },
     lifecycle(config) {
       registration.lifecycle = config;
+    },
+    on(event, handler) {
+      registration.eventHandlers.push({ event, handler });
+    },
+    settings: {
+      raw: settings,
+      str: (key, fallback) =>
+        typeof settings[key] === "string" && settings[key] !== ""
+          ? (settings[key] as string)
+          : fallback,
+      num: (key, fallback) =>
+        typeof settings[key] === "number" && Number.isFinite(settings[key])
+          ? (settings[key] as number)
+          : fallback,
+      bool: (key, fallback) => (typeof settings[key] === "boolean" ? (settings[key] as boolean) : fallback),
+    },
+    log: {
+      info: (...args) => console.log(`[ext:${name}]`, ...args),
+      warn: (...args) => console.warn(`[ext:${name}]`, ...args),
+      error: (...args) => console.error(`[ext:${name}]`, ...args),
     },
     state: {
       read: (db, sceneId, key) => readExtensionState(db, name, sceneId, key),

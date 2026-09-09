@@ -24,7 +24,7 @@ export async function loadBuiltin(
   extension: BuiltinExtension,
   settings: Record<string, unknown>,
 ): Promise<ExtensionRegistration> {
-  const { api, registration } = createExtensionApi(extension.name);
+  const { api, registration } = createExtensionApi(extension.name, settings);
   await extension.register(api, settings);
   return registration;
 }

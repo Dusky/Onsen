@@ -3851,6 +3851,22 @@ Each phase ends in a working, usable application.
     than the composer. Also fixes `unregisterExtensionModule`, which left an
     extension's injections and actions running after uninstall. See §15,
     `server/extensions/state.ts`.
+151. **Extension lifecycle** — `ctx.lifecycle({ onStartup, onEnable, onDisable,
+    onUninstall })` runs at the right moments: startup once per process, the
+    toggles, and uninstall before the directory is removed. A hook that throws
+    cannot break a reload or an uninstall. See §15, `install.ts`.
+152. **Extension events** — `ctx.on(event, handler)` subscribes to the same
+    in-process events the outbound webhooks forward (`message.created`,
+    `generation.complete`, `beat.parsed`, `tracker.updated`, `lore.activated`),
+    dispatched fire-and-forget so an event can never fail a turn. See §15,
+    `server/extensions/registry.ts`.
+153. **Extension host services** — `ctx.settings` gives typed access to stored
+    settings (`str`/`num`/`bool`), so an author never hand-rolls coercion, and
+    `ctx.log` is a name-tagged logger. See §15, `server/extensions/api.ts`.
+154. **Extension tasks are post-generation only** — the `pre_generation` and
+    `sidecar` stages on `ctx.task` were declared but never run; the type now
+    says the one thing that is true: an extension task runs after each turn,
+    and a manual run is an action. See §15, `server/extensions/api.ts`.
 
 Settled while building phase 15.
 

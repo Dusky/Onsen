@@ -14,7 +14,7 @@ export async function loadExtensionModule(
   name: string,
   settings: Record<string, unknown> = {},
 ): Promise<ExtensionRegistration> {
-  const { api, registration } = createExtensionApi(name);
+  const { api, registration } = createExtensionApi(name, settings);
   // A cache-busting query so a reinstalled extension reloads, not a stale copy.
   const loaded = (await import(`${path}?t=${Date.now()}`)) as Record<string, unknown>;
   const register = loaded["register"] ?? (loaded["default"] as Record<string, unknown> | undefined)?.["register"];

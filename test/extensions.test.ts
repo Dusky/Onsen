@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { completeSetup, createHarness, type TestHarness } from "./helpers.ts";
 import { loadExtensionModule } from "../server/extensions/loader.ts";
 import { loadInstalledExtensions, installShippedExtensions } from "../server/extensions/install.ts";
-import { postGenerationExtensionTasks, clearExtensionTasks, collectExtensionInjections } from "../server/extensions/registry.ts";
+import { postGenerationExtensionTasks, clearExtensionTasks, collectExtensionInjections, dispatchExtensionEvent } from "../server/extensions/registry.ts";
 import { writeExtensionState } from "../server/extensions/state.ts";
 import { isSummariseSuppressed } from "../server/db/queries/settings.ts";
 
@@ -632,6 +632,61 @@ describe("extension lifecycle", () => {
 
       await t.fetch(`/api/extensions/${id}`, { method: "DELETE" });
       expect(g("uninstall")).toBe("1");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* Events and host services (SPEC §15, §20 phases 152–153)             */
+/* ------------------------------------------------------------------ */
+
+describe("events and host services", () => {
+  test("ctx.on receives events, and ctx.settings coerces typed values", async () => {
+    const t = await signedIn();
+    const dir = repoWith({
+      "pack.json": JSON.stringify({
+        name: "Wiredup",
+        version: "1.0.0",
+        author: "me",
+        description: "",
+        settings: [{ key: "n", label: "N", type: "number", default: 7 }],
+      }),
+      "server.ts": `export function register(ctx) {
+  ctx.on("message.created", ({ db, payload }) => {
+    ctx.globalState.write(db, "last", String(payload.content ?? ""));
+  });
+  ctx.action({
+    key: "show",
+    label: "Show",
+    scope: "global",
+    run({ db }) {
+      ctx.globalState.write(db, "n", String(ctx.settings.num("n", -1)));
+    },
+  });
+}`,
+    });
+    try {
+      const installed = await t.fetch("/api/packs/install-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: dir }),
+      });
+      expect(installed.status).toBe(201);
+
+      const g = (key: string) =>
+        (t.ctx.db
+          .query("SELECT value FROM extension_global_state WHERE extension_name = 'Wiredup' AND key = $key")
+          .get({ key }) as { value: string } | undefined)?.value ?? null;
+
+      // The event fires in process, synchronously for a synchronous handler.
+      dispatchExtensionEvent(t.ctx.db, "message.created", 1, { content: "hello" });
+      expect(g("last")).toBe("hello");
+
+      // The action reads the schema default through the typed accessor.
+      await t.fetch("/api/extensions/actions/show/run", { method: "POST" });
+      expect(g("n")).toBe("7");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

@@ -7064,3 +7064,37 @@ not just its tasks, so an uninstall stops every callback in the running process.
 **Verified** by two cases — global state is app-wide and a global action runs
 with no scene, and uninstalling removes injections and actions — plus the full
 suite (1496 pass).
+
+## Phase 151 — Extension lifecycle
+
+`ctx.lifecycle({ onStartup, onEnable, onDisable, onUninstall })` runs at the
+right moments: startup once per process after the first load, the toggles, and
+uninstall before the directory is removed. Hooks are fire-and-forget and can
+never break a reload or an uninstall.
+
+**Verified** by one case — all four hooks run once, at their moment — plus the
+full suite.
+
+## Phase 152 — Extension events
+
+`ctx.on(event, handler)` subscribes to the same in-process events the outbound
+webhooks forward (`message.created`, `generation.complete`, `beat.parsed`,
+`tracker.updated`, `lore.activated`). Dispatched from the one `emitWebhook`
+site, fire-and-forget, and unsubscribed on uninstall.
+
+**Verified** by one case — a handler receives a dispatched event.
+
+## Phase 153 — Extension host services
+
+`ctx.settings` gives typed access to the stored settings (`str`/`num`/`bool`), so
+an author never hand-rolls coercion, and `ctx.log` is a name-tagged logger.
+
+**Verified** by one case — `ctx.settings.num` reads the schema default.
+
+## Phase 154 — Extension tasks are post-generation only
+
+The `pre_generation` and `sidecar` stages on `ctx.task` were declared but never
+run; the type now says the one thing that is true: an extension task runs after
+each turn, and a manual run is an action.
+
+**Verified** by the suite (1498 pass).

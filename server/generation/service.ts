@@ -39,7 +39,7 @@ import {
 } from "./classifier.ts";
 import { castRowsOf } from "../db/queries/authors.ts";
 import { taskKind, TURN_CLASSIFIER, BACKGROUND_DETECT, type SideCallOp } from "../tasks/registry.ts";
-import { postGenerationExtensionTasks, extensionActionOf } from "../extensions/registry.ts";
+import { postGenerationExtensionTasks, extensionActionOf, dispatchExtensionEvent } from "../extensions/registry.ts";
 import { readExtensionState, readGlobalExtensionState } from "../extensions/state.ts";
 import type { TaskRunner } from "../tasks/runner.ts";
 import type { PassPipeline } from "../passes/pipeline.ts";
@@ -923,6 +923,9 @@ export class GenerationService {
     sceneId: number,
     data: Record<string, unknown>,
   ): void {
+    // Extensions receive the same event in process, whether or not any webhook
+    // subscribes to it (§152). Fire-and-forget, and never able to fail a turn.
+    dispatchExtensionEvent(this.db, event, sceneId, data);
     const sender = this.webhooks;
     if (sender === null || !sender.anyFor(event)) return;
     try {
