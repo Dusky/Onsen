@@ -3,7 +3,7 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSyn
 import type { Database } from "bun:sqlite";
 import { loadExtensionModule } from "./loader.ts";
 import { loadBuiltin, BUILTINS } from "./builtins.ts";
-import { registerExtensionTask, registerExtensionInjection, registerExtensionAction, clearExtensionTasks } from "./registry.ts";
+import { registerExtensionTask, registerExtensionInjection, registerExtensionAction, registerExtensionLifecycle, extensionLifecycleOf, clearExtensionTasks } from "./registry.ts";
 import { applySuppression } from "./suppress.ts";
 import {
   deleteExtensionTasks,
@@ -44,6 +44,25 @@ function copyDir(from: string, to: string): void {
 
 function taskKey(extensionName: string, key: string): string {
   return `ext:${extensionName}:${key}`;
+}
+
+/** Extensions whose `onStartup` has run this process (§151). */
+const started = new Set<string>();
+
+/** Invoke one lifecycle hook without letting it break the host (§151). */
+export async function runExtensionLifecycle(
+  moduleName: string,
+  hook: "onStartup" | "onEnable" | "onDisable" | "onUninstall",
+  db: Database,
+): Promise<void> {
+  const lifecycle = extensionLifecycleOf(moduleName);
+  const handler = lifecycle?.[hook];
+  if (handler === undefined) return;
+  try {
+    await handler({ db });
+  } catch {
+    /* A lifecycle hook that throws must not break a reload or an uninstall. */
+  }
 }
 
 /** The manifest an extension repo carries: `pack.json`, or a bare `extension.json`. */
@@ -166,6 +185,9 @@ export async function installExtensionCode(opts: {
   for (const action of registration.actions) {
     registerExtensionAction(action, opts.name);
   }
+  if (registration.lifecycle !== null) {
+    registerExtensionLifecycle(opts.name, registration.lifecycle);
+  }
   return { hasCode: true, tasks: registration.tasks.length };
 }
 
@@ -202,6 +224,14 @@ export async function loadInstalledExtensions(db: Database, extensionsDir: strin
     }
     for (const action of registration.actions) {
       registerExtensionAction(action, row.name);
+    }
+    if (registration.lifecycle !== null) {
+      registerExtensionLifecycle(row.name, registration.lifecycle);
+      // Startup runs once per process, after the first successful load (§151).
+      if (!started.has(row.name)) {
+        started.add(row.name);
+        await runExtensionLifecycle(row.name, "onStartup", db);
+      }
     }
   }
   applySuppression(db, disabled);

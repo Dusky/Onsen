@@ -1,4 +1,4 @@
-import type { ExtensionAction, ExtensionInjection, ExtensionTask } from "./api.ts";
+import type { ExtensionAction, ExtensionInjection, ExtensionTask, ExtensionLifecycle } from "./api.ts";
 import type { Database } from "bun:sqlite";
 import type { BlockPlacement, PromptExtensionBlock } from "../prompt/types.ts";
 
@@ -29,6 +29,7 @@ interface RegisteredAction {
 const tasks = new Map<string, RegisteredTask>();
 const injections = new Map<string, RegisteredInjection>();
 const actions = new Map<string, RegisteredAction>();
+const lifecycles = new Map<string, ExtensionLifecycle>();
 
 export function registerExtensionTask(task: ExtensionTask, moduleName: string): void {
   tasks.set(task.key, { task, moduleName });
@@ -42,10 +43,19 @@ export function registerExtensionAction(action: ExtensionAction, moduleName: str
   actions.set(action.key, { action, moduleName });
 }
 
+export function registerExtensionLifecycle(moduleName: string, lifecycle: ExtensionLifecycle): void {
+  lifecycles.set(moduleName, lifecycle);
+}
+
+export function extensionLifecycleOf(moduleName: string): ExtensionLifecycle | null {
+  return lifecycles.get(moduleName) ?? null;
+}
+
 export function clearExtensionTasks(): void {
   tasks.clear();
   injections.clear();
   actions.clear();
+  lifecycles.clear();
 }
 
 /**
@@ -66,6 +76,7 @@ export function unregisterExtensionModule(moduleName: string): void {
   for (const [key, entry] of actions) {
     if (entry.moduleName === moduleName) actions.delete(key);
   }
+  lifecycles.delete(moduleName);
 }
 
 export function extensionTaskOf(key: string): RegisteredTask | null {

@@ -79,10 +79,26 @@ export interface ExtensionAction {
   run?(context: { db: Database }): void | Promise<void>;
 }
 
+/**
+ * Lifecycle callbacks the host invokes at the right moments (§20 phase 151).
+ *
+ * `onStartup` runs once per process, after the first load. `onEnable`/
+ * `onDisable` run when the operator toggles the extension. `onUninstall` runs
+ * before the directory is removed. All take `db`, so a callback can migrate or
+ * clean up its own state. None may throw.
+ */
+export interface ExtensionLifecycle {
+  onStartup?(context: { db: Database }): void | Promise<void>;
+  onEnable?(context: { db: Database }): void | Promise<void>;
+  onDisable?(context: { db: Database }): void | Promise<void>;
+  onUninstall?(context: { db: Database }): void | Promise<void>;
+}
+
 export interface ExtensionApi {
   task(config: ExtensionTask): void;
   inject(config: ExtensionInjection): void;
   action(config: ExtensionAction): void;
+  lifecycle(config: ExtensionLifecycle): void;
   /**
    * Per-scene key/value storage, pre-bound to this extension's name. Writes
    * happen in `apply`; reads happen in `shouldRun`, `render`, and the
@@ -107,10 +123,11 @@ export interface ExtensionRegistration {
   tasks: ExtensionTask[];
   injections: ExtensionInjection[];
   actions: ExtensionAction[];
+  lifecycle: ExtensionLifecycle | null;
 }
 
 export function createExtensionApi(name: string): { api: ExtensionApi; registration: ExtensionRegistration } {
-  const registration: ExtensionRegistration = { name, tasks: [], injections: [], actions: [] };
+  const registration: ExtensionRegistration = { name, tasks: [], injections: [], actions: [], lifecycle: null };
   const api: ExtensionApi = {
     task(config) {
       registration.tasks.push(config);
@@ -120,6 +137,9 @@ export function createExtensionApi(name: string): { api: ExtensionApi; registrat
     },
     action(config) {
       registration.actions.push(config);
+    },
+    lifecycle(config) {
+      registration.lifecycle = config;
     },
     state: {
       read: (db, sceneId, key) => readExtensionState(db, name, sceneId, key),

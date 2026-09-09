@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { rmSync } from "node:fs";
 import type { AppContext, AppEnv } from "../context.ts";
 import { requireAuth } from "../middleware/session.ts";
-import { loadInstalledExtensions } from "../extensions/install.ts";
+import { loadInstalledExtensions, runExtensionLifecycle } from "../extensions/install.ts";
 import { unregisterExtensionModule, extensionActions, extensionActionOf } from "../extensions/registry.ts";
 import {
   deleteExtension,
@@ -111,19 +111,29 @@ export function extensionRoutes(ctx: AppContext): Hono<AppEnv> {
       return c.json({ error: { code: "bad_request", message: "Nothing to change." } }, 400);
     }
 
+    const wasEnabled = extension.enabled === 1;
     const updated = updateExtension(ctx.db, extension.id, patch);
-    // Reload so a toggle or a settings change takes effect without a restart.
+    // Disabling runs `onDisable` before the reload clears the lifecycle; a
+    // reload then rebuilds the registry, and enabling runs `onEnable` after it
+    // re-registered the module's hooks (§151).
+    if (patch.enabled === false && wasEnabled) {
+      await runExtensionLifecycle(extension.name, "onDisable", ctx.db);
+    }
     await loadInstalledExtensions(ctx.db, ctx.config.extensionsDir);
+    if (patch.enabled === true && !wasEnabled) {
+      await runExtensionLifecycle(extension.name, "onEnable", ctx.db);
+    }
     return c.json(toExtensionDto(updated));
   });
 
-  app.delete("/:extensionId", (c) => {
+  app.delete("/:extensionId", async (c) => {
     const extension = findExtension(ctx.db, c.req.param("extensionId"));
     if (extension === null) return c.json({ error: { code: "not_found", message: "No such extension." } }, 404);
     if (extension.built_in === 1) {
       return c.json({ error: { code: "bad_request", message: "Built-in extensions cannot be removed." } }, 400);
     }
 
+    await runExtensionLifecycle(extension.name, "onUninstall", ctx.db);
     unregisterExtensionModule(extension.name);
     deleteExtensionTasks(ctx.db, extension.name);
     deleteExtension(ctx.db, extension.id);

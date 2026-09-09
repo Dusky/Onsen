@@ -577,3 +577,63 @@ describe("chat scope and global scope", () => {
     }
   });
 });
+
+/* ------------------------------------------------------------------ */
+/* Lifecycle hooks (SPEC §15, §20 phase 151)                          */
+/* ------------------------------------------------------------------ */
+
+describe("extension lifecycle", () => {
+  test("startup, enable, disable and uninstall each run once, at their moment", async () => {
+    const t = await signedIn();
+    const dir = repoWith({
+      "pack.json": JSON.stringify({ name: "Hooked", version: "1.0.0", author: "me", description: "" }),
+      "server.ts": `export function register(ctx) {
+  ctx.lifecycle({
+    onStartup({ db }) { ctx.globalState.write(db, "startup", "1"); },
+    onEnable({ db }) { ctx.globalState.write(db, "enable", "1"); },
+    onDisable({ db }) { ctx.globalState.write(db, "disable", "1"); },
+    onUninstall({ db }) { ctx.globalState.write(db, "uninstall", "1"); },
+  });
+}`,
+    });
+    try {
+      const installed = await t.fetch("/api/packs/install-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: dir }),
+      });
+      expect(installed.status).toBe(201);
+
+      const g = (key: string) =>
+        (t.ctx.db
+          .query("SELECT value FROM extension_global_state WHERE extension_name = 'Hooked' AND key = $key")
+          .get({ key }) as { value: string } | undefined)?.value ?? null;
+
+      // Startup fires on the first reload (as boot would).
+      await loadInstalledExtensions(t.ctx.db, t.config.extensionsDir);
+      expect(g("startup")).toBe("1");
+
+      // Disable runs before the reload clears the hooks; enable after re-register.
+      const list = (await (await t.fetch("/api/extensions")).json()) as Array<{ id: string; name: string }>;
+      const id = list.find((entry) => entry.name === "Hooked")!.id;
+      await t.fetch(`/api/extensions/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: false }),
+      });
+      expect(g("disable")).toBe("1");
+
+      await t.fetch(`/api/extensions/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: true }),
+      });
+      expect(g("enable")).toBe("1");
+
+      await t.fetch(`/api/extensions/${id}`, { method: "DELETE" });
+      expect(g("uninstall")).toBe("1");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
