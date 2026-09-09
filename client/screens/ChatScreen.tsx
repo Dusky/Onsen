@@ -38,6 +38,8 @@ import { QuickReplyRow, QuickReplySheet } from "../components/QuickReplies.tsx";
 import { CastRail } from "../components/CastRail.tsx";
 import { CastEditPane } from "../components/CastEditPane.tsx";
 import { PersonaEditPane } from "../components/PersonaEditPane.tsx";
+import { speakerFor, initialsOf } from "./chat/attribution.ts";
+import { StatsSheet } from "./chat/StatsSheet.tsx";
 import { VnStage } from "../components/VnStage.tsx";
 import { TrackerPanel } from "../components/TrackerPanel.tsx";
 import { VirtualizedLog } from "../components/VirtualizedLog.tsx";
@@ -75,7 +77,6 @@ import type {
   NextSpeakerDto,
   ReviseMode,
   SceneMemberDto,
-  SceneStatsDto,
   TurnScope,
 } from "@shared/types.ts";
 import { api } from "../lib/api.ts";
@@ -92,29 +93,10 @@ import { api } from "../lib/api.ts";
  */
 
 /**
- * Who a turn is attributed to. A character voices the turn; the author is the
- * one writing them, and is named only when there is no cast member to name.
- */
-function speakerFor(message: MessageDto, authorName: string | null): string {
-  if (message.authorType === "user") return strings.chat.you;
-  // A beat is the author writing several characters at once, so attributing the
-  // whole thing to whoever opened it would be wrong: the parts name themselves.
-  if (message.kind === "beat") return authorName ?? strings.chat.beatLabel;
-  return message.speakerName ?? authorName ?? strings.chat.narratorName;
-}
-
-function initialsOf(name: string): string {
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0] ?? "")
-    .join("")
-    .toUpperCase();
-}
-
-/** Below this many messages the plain render runs; above it, the virtualized
+ * Below this many messages the plain render runs; above it, the virtualized
  * log (DESIGN §415). The threshold keeps short scenes on the exact behaviour
- * the reader has been using, and only long ones pay for virtualization. */
+ * the reader has been using, and only long ones pay for virtualization.
+ */
 const LOG_VIRTUALIZE_THRESHOLD = 200;
 
 export function ChatScreen({ sceneId }: { sceneId: string }) {
@@ -1761,55 +1743,6 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         <QuickReplySheet onClose={() => setQuickRepliesOpen(false)} />
       ) : null}
       {confirmNode}
-    </div>
-  );
-}
-
-/**
- * A scene rolled up (§20 phase 128): messages, words, and who carried them.
- * A plain readout, no charts — the per-message gutter already carries the
- * fine-grained numbers.
- */
-function StatsSheet({ stats, onClose }: { stats: SceneStatsDto | null; onClose(): void }) {
-  return (
-    <Sheet title={strings.chat.stats} onClose={onClose}>
-      {stats === null ? (
-        <p className="meta py-[10px]">{strings.common.working}</p>
-      ) : (
-        <div className="pb-[6px]">
-          <div className="flex flex-wrap gap-[6px] py-[8px]">
-            <Stat label={strings.chat.statsMessages} value={String(stats.messages)} />
-            <Stat label={strings.chat.statsUser} value={String(stats.userMessages)} />
-            <Stat label={strings.chat.statsAi} value={String(stats.aiMessages)} />
-            <Stat label={strings.chat.statsWords} value={String(stats.words)} />
-          </div>
-          {stats.byCharacter.length === 0 ? null : (
-            <>
-              <p className="section-label mt-[10px] mb-[6px]">{strings.chat.statsByCharacter}</p>
-              {stats.byCharacter.map((row) => (
-                <div
-                  key={row.name}
-                  className="flex items-baseline gap-[10px] border-b border-rule py-[9px]"
-                >
-                  <span className="min-w-0 flex-1 truncate text-[13.5px]">{row.name}</span>
-                  <span className="meta flex-none">
-                    {strings.chat.statsCharacterLine(row.messages, row.words)}
-                  </span>
-                </div>
-              ))}
-            </>
-          )}
-        </div>
-      )}
-    </Sheet>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex-1 border border-rule px-[10px] py-[8px]">
-      <p className="section-label mb-[4px]">{label}</p>
-      <p className="meta tabular-nums text-[15px]">{value}</p>
     </div>
   );
 }

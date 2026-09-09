@@ -25,6 +25,10 @@ const TOKENIZER = readFileSync(
 );
 const STRINGS = readFileSync(join(import.meta.dir, "..", "client", "strings.ts"), "utf8");
 const CHAT = readFileSync(join(import.meta.dir, "..", "client", "screens", "ChatScreen.tsx"), "utf8");
+const STATS_SHEET = readFileSync(
+  join(import.meta.dir, "..", "client", "screens", "chat", "StatsSheet.tsx"),
+  "utf8",
+);
 
 describe("the turn surface", () => {
   test("every turn action is a glyph, the words live in the palette", () => {
@@ -66,7 +70,10 @@ describe("the composer", () => {
   test("the versions sheet can delete a sibling, and the scene rolls up as stats", () => {
     expect(CHAT).toContain("deleteVersionConfirm");
     expect(CHAT).toContain("remove.mutate(sibling.id)");
-    expect(CHAT).toContain("StatsSheet");
+    // The sheet itself lives beside the screen (§20 phase 149); the screen
+    // wires it, and the hook that feeds it stays here.
+    expect(STATS_SHEET).toContain("StatsSheet");
+    expect(CHAT).toContain("<StatsSheet");
     expect(CHAT).toContain("useSceneStats");
   });
 
