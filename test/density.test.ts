@@ -116,7 +116,8 @@ describe("every turn command is reachable", () => {
    * prop it was given, and the screen passed a prop conditionally.
    */
   test("the turn's actions are not gated on a width", () => {
-    const chat = readFileSync(join(ROOT, "client", "screens", "ChatScreen.tsx"), "utf8");
+    // The log renders beside the screen (§20 phase 149); the screen wires it.
+    const log = readFileSync(join(ROOT, "client", "screens", "chat", "MessageLog.tsx"), "utf8");
     // Comments stripped first, as `reachable-fields` does: this file explains
     // the `isDesktop` mistake in prose, and a guard that reads its own
     // explanation as the defect is a guard that cannot be written about.
@@ -125,6 +126,6 @@ describe("every turn command is reachable", () => {
       .replace(/\/\/[^\n]*/g, "");
     expect(block).not.toMatch(/isDesktop/);
     // The actions prop is passed unconditionally, not inside a spread ternary.
-    expect(chat).toMatch(/\n\s*actions=\{\{/);
+    expect(log).toMatch(/\n\s*actions=\{\{/);
   });
 });

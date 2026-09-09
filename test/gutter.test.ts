@@ -20,6 +20,10 @@ const CHAT = readFileSync(
   join(import.meta.dir, "..", "client", "screens", "ChatScreen.tsx"),
   "utf8",
 );
+const LOG = readFileSync(
+  join(import.meta.dir, "..", "client", "screens", "chat", "MessageLog.tsx"),
+  "utf8",
+);
 
 describe("the gutter's number is a doorway", () => {
   test("the stats render as a button when the turn can be inspected", () => {
@@ -29,6 +33,8 @@ describe("the gutter's number is a doorway", () => {
   });
 
   test("every turn passes the inspector in", () => {
-    expect(CHAT).toContain("onInspect={() => setInspecting(message)}");
+    // The log renders beside the screen (§20 phase 149); the screen wires it.
+    expect(LOG).toContain("onInspect={() => onInspect(message)}");
+    expect(CHAT).toContain("onInspect={(message) => setInspecting(message)}");
   });
 });

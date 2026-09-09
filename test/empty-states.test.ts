@@ -38,7 +38,7 @@ const CAN_BE_EMPTY = [
   "screens/AuthorsScreen.tsx",
   "screens/LoreScreen.tsx",
   "screens/SceneSetupScreen.tsx",
-  "screens/ChatScreen.tsx",
+  "screens/chat/MessageLog.tsx",
 ];
 
 describe("empty screens", () => {
