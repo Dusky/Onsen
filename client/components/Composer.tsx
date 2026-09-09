@@ -19,11 +19,9 @@ import { CHARS_PER_TOKEN } from "@shared/types.ts";
 interface ComposerProps {
   onSend(text: string): void;
   disabled: boolean;
-  /** Initials of the speaker the send button will produce. */
-  speakerInitials: string;
   /**
-   * Who will reply, named on the send button (the redesign phase 92): the
-   * button says "then Sister Bell replies" rather than only showing initials.
+   * Who will reply next, shown in the footer opposite the model — never
+   * crammed onto the send button, which stays a fixed icon (§149).
    */
   speakerName?: string | null;
   /** The model that answers, beside the input (§20 phase 101). */
@@ -63,7 +61,6 @@ interface ComposerProps {
 export function Composer({
   onSend,
   disabled,
-  speakerInitials,
   speakerName,
   model,
   draft,
@@ -204,43 +201,26 @@ export function Composer({
         </button>
         )}
 
-        {/* Send posts the message and asks for a reply. With room it names who
-            will reply; on a phone it stays the compact initials + arrow. */}
-        {wide ? (
-          <button
-            type="button"
-            onClick={send}
-            disabled={disabled || draft.trim() === ""}
-            className="flex h-[46px] min-w-[124px] flex-none flex-col items-start justify-center gap-[1px] px-[13px]"
-            style={{ background: "var(--onsen-color-blue)", color: "#0b1219" }}
-          >
-            <span className="text-[12px] leading-none font-semibold">{strings.chat.send}</span>
-            <span className="text-[11px] leading-none opacity-80">
-              {speakerName === null || speakerName === undefined || speakerName === ""
-                ? strings.chat.chooseInitials
-                : strings.chat.sendThen(speakerName)}
-            </span>
-          </button>
-        ) : (
+        {/* Send posts the message and asks for a reply. A fixed icon — the
+            speaker is named in the footer below, so the button never deforms
+            to carry a name (§149). */}
         <button
           type="button"
           onClick={send}
           disabled={disabled || draft.trim() === ""}
           aria-label={strings.chat.send}
-          className="btn btn-primary flex h-[46px] w-[46px] flex-none flex-col items-center justify-center gap-[1px] px-0"
+          title={strings.chat.send}
+          className={`flex flex-none items-center justify-center ${wide ? "h-[62px] w-[62px]" : "h-[46px] w-[46px]"}`}
+          style={{ background: "var(--onsen-color-blue)", color: "#0b1219" }}
         >
-          <span className="text-[12.5px] leading-none font-semibold">
-            {speakerInitials}
-          </span>
-          <span className="text-[12px] leading-none">↑</span>
+          <span className="text-[18px] leading-none font-semibold">↑</span>
         </button>
-        )}
       </div>
 
-      {/* The model that answers, beside the input, and the draft's rough cost
-          as it is typed (§20 phases 99, 101). One hairline footer, not a row
-          of its own: dense, per §Density. */}
-      {model === undefined && draft.trim() === "" ? null : (
+      {/* The bottom footer: who answers (the model) left, who replies next and
+          the draft's cost right — opposite ends, one hairline line. The send
+          button no longer carries this (§149). */}
+      {model === undefined && draft.trim() === "" && speakerName == null ? null : (
         <div className="mt-[8px] flex items-baseline justify-between gap-[10px] border-t border-rule pt-[7px]">
           {model === undefined ? (
             <span />
@@ -261,11 +241,18 @@ export function Composer({
               {model.label}
             </span>
           )}
-          {draft.trim() === "" ? null : (
-            <span className="meta tabular-nums">
-              {strings.chat.draftTokens(Math.max(1, Math.ceil(draft.length / CHARS_PER_TOKEN)))}
-            </span>
-          )}
+          <span className="flex items-baseline gap-[6px]">
+            {speakerName === null || speakerName === undefined || speakerName === "" ? null : (
+              <span className="chrome text-[11.5px] text-ink-muted">
+                {strings.chat.willReply(speakerName)}
+              </span>
+            )}
+            {draft.trim() === "" ? null : (
+              <span className="meta tabular-nums">
+                {strings.chat.draftTokens(Math.max(1, Math.ceil(draft.length / CHARS_PER_TOKEN)))}
+              </span>
+            )}
+          </span>
         </div>
       )}
 

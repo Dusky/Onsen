@@ -290,7 +290,6 @@ export const strings = {
     scopeAuto: "Let it decide",
     /** Before the director has answered — with a classifier, that takes a moment. */
     choosing: "Choosing who speaks",
-    chooseInitials: "?",
     /** The reader, as the history listing names them. */
     youLabel: "You",
     /** The cast rail's heading, and the statuses a card can be in (design 4a). */
@@ -326,8 +325,6 @@ export const strings = {
     scopeBeat: "The room",
     scopeBeatHint: (names: string) => `${names} — one exchange, written together`,
     beatLabel: "Beat",
-    /** The send button reads initials; a beat has no single speaker. */
-    beatInitials: "ALL",
     beatUnparsed: "The speaker labels did not come through — kept as written",
     recast: "Rewrite this part",
     recasting: (name: string) => `Rewriting ${name}`,
@@ -465,7 +462,7 @@ export const strings = {
     /** The composer's Direct row (the redesign phase 92). */
     direct: "Direct:",
     steering: "Steering:",
-    sendThen: (name: string) => `then ${name} replies`,
+    willReply: (name: string) => `→ ${name}`,
     /** One line replacing the cast strip while the ops grid is open. */
     cueAuto: (name: string) => `Cued: auto · ${name}`,
     cueYours: (name: string) => `Cued: you · ${name}`,

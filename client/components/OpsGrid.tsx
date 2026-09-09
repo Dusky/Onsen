@@ -56,7 +56,7 @@ const BLUE = {
  */
 export function OpsRow({ ops, hint }: { ops: Op[]; hint?: string | undefined }) {
   return (
-    <div className="flex flex-wrap items-center gap-[6px]">
+    <div className="flex flex-wrap items-center gap-[4px]">
       {ops.map((op) => {
         const disabled =
           op.disabled === true || (op.unavailable !== undefined && op.unavailable !== "");
@@ -69,27 +69,19 @@ export function OpsRow({ ops, hint }: { ops: Op[]; hint?: string | undefined }) 
             type="button"
             onClick={op.onPress}
             disabled={disabled}
-            title={why}
-            className="chrome flex items-center gap-[6px] border border-border-quiet px-[9px] py-[6px] text-[12px] disabled:opacity-40"
-            style={blue === undefined ? undefined : { borderColor: blue.border }}
+            aria-label={op.label}
+            // The glyph is the icon; the label and the reason live in the
+            // tooltip, so nine ops fit one row (§149).
+            title={why === undefined ? op.label : `${op.label} — ${why}`}
+            className="chrome flex h-[34px] min-w-[34px] items-center justify-center border border-border-quiet px-[8px] text-[13.5px] leading-none disabled:opacity-40"
+            style={blue === undefined ? undefined : { borderColor: blue.border, color: blue.glyph }}
           >
-            <span
-              className="text-[13.5px] leading-none text-ink-label"
-              style={blue === undefined ? undefined : { color: blue.glyph }}
-            >
-              {op.glyph}
-            </span>
-            <span
-              className="leading-none text-ink-muted"
-              style={blue === undefined ? undefined : { color: blue.label }}
-            >
-              {op.label}
-            </span>
+            {op.glyph}
           </button>
         );
       })}
       {hint === undefined ? null : (
-        <span className="chrome ml-auto text-[12px] text-ink-dim">
+        <span className="chrome ml-auto pl-[6px] text-[12px] text-ink-dim">
           {hint}
         </span>
       )}

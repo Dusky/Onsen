@@ -25,7 +25,7 @@ import { Sheet, SheetAction } from "../components/Sheet.tsx";
 import { StatusBar } from "../components/StatusBar.tsx";
 import { CastStrip } from "../components/CastStrip.tsx";
 import { Deck } from "../components/Deck.tsx";
-import { speakerFor, initialsOf } from "./chat/attribution.ts";
+import { speakerFor } from "./chat/attribution.ts";
 import { ScenePane } from "./chat/ScenePane.tsx";
 import { MessageLog } from "./chat/MessageLog.tsx";
 import { ChatSheets } from "./chat/ChatSheets.tsx";
@@ -966,13 +966,6 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         <Composer
           onSend={(text) => void sendAndReply(text)}
           disabled={isGenerating}
-          speakerInitials={
-            scope === "beat"
-              ? strings.chat.beatInitials
-              : speakerName === null
-                ? strings.chat.chooseInitials
-                : initialsOf(speakerName)
-          }
           speakerName={scope === "beat" ? null : speakerName}
           model={{
             label:

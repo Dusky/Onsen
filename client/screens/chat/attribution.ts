@@ -13,12 +13,3 @@ export function speakerFor(message: MessageDto, authorName: string | null): stri
   if (message.kind === "beat") return authorName ?? strings.chat.beatLabel;
   return message.speakerName ?? authorName ?? strings.chat.narratorName;
 }
-
-export function initialsOf(name: string): string {
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0] ?? "")
-    .join("")
-    .toUpperCase();
-}

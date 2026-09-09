@@ -25,6 +25,10 @@ const TOKENIZER = readFileSync(
 );
 const STRINGS = readFileSync(join(import.meta.dir, "..", "client", "strings.ts"), "utf8");
 const CHAT = readFileSync(join(import.meta.dir, "..", "client", "screens", "ChatScreen.tsx"), "utf8");
+const OPS_GRID = readFileSync(
+  join(import.meta.dir, "..", "client", "components", "OpsGrid.tsx"),
+  "utf8",
+);
 const STATS_SHEET = readFileSync(
   join(import.meta.dir, "..", "client", "screens", "chat", "StatsSheet.tsx"),
   "utf8",
@@ -102,5 +106,21 @@ describe("the composer", () => {
     expect(CHAT).not.toContain("strings.chat.checkpoints");
     // The desktop Direct row carries the keyboard hints the design specifies.
     expect(CHAT).toContain("hint={strings.chat.keyboardHints}");
+  });
+
+  test("the desktop ops are glyph-only with tooltips, so nine fit one row", () => {
+    // §149: a glyph is the icon; the words live in the tooltip (title) and the
+    // accessible label, not inline as a second span that forces a wrap.
+    expect(OPS_GRID).toContain("aria-label={op.label}");
+    expect(OPS_GRID).toContain("title={why === undefined ? op.label : `${op.label} — ${why}`}");
+  });
+
+  test("the send button is a fixed icon; who replies lives in the footer", () => {
+    // §149: the button used to grow and carry a name ("then X replies") or the
+    // speaker's initials. It is now a fixed ↑; the speaker is the footer's
+    // right side, opposite the model.
+    expect(COMPOSER).not.toContain("speakerInitials");
+    expect(COMPOSER).not.toContain("sendThen");
+    expect(COMPOSER).toContain("strings.chat.willReply");
   });
 });
