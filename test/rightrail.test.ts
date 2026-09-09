@@ -18,6 +18,10 @@ const RAIL = readFileSync(
   "utf8",
 );
 const CHAT = readFileSync(join(import.meta.dir, "..", "client", "screens", "ChatScreen.tsx"), "utf8");
+const SCENE_PANE = readFileSync(
+  join(import.meta.dir, "..", "client", "screens", "chat", "ScenePane.tsx"),
+  "utf8",
+);
 
 describe("the global right rail", () => {
   test("is part of the shell, not a screen", () => {
@@ -57,13 +61,15 @@ describe("the global right rail", () => {
 
 describe("the scene pane carries the cast and the scene's people", () => {
   test("the cast rail and the reader/author footer are one pane", () => {
-    expect(CHAT).toContain("<CastRail");
-    expect(CHAT).toContain("strings.rightRail.you");
-    expect(CHAT).toContain("strings.rightRail.author");
+    // The pane lives beside the screen (§20 phase 149); the screen wires it.
+    expect(CHAT).toContain("<ScenePane");
+    expect(SCENE_PANE).toContain("<CastRail");
+    expect(SCENE_PANE).toContain("strings.rightRail.you");
+    expect(SCENE_PANE).toContain("strings.rightRail.author");
   });
 
   test("the persona edits inline, the author in its own tab", () => {
-    expect(CHAT).toContain("<PersonaEditPane");
+    expect(SCENE_PANE).toContain("<PersonaEditPane");
     expect(CHAT).toContain("setRightTab(\"authors\")");
   });
 

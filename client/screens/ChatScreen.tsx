@@ -31,15 +31,13 @@ import { StatusBar } from "../components/StatusBar.tsx";
 import { COMMANDS } from "../lib/commands.ts";
 import { InspectorSheet } from "../components/InspectorSheet.tsx";
 import { CastStrip } from "../components/CastStrip.tsx";
-import { Deck, Readouts } from "../components/Deck.tsx";
+import { Deck } from "../components/Deck.tsx";
+import { speakerFor, initialsOf } from "./chat/attribution.ts";
+import { StatsSheet } from "./chat/StatsSheet.tsx";
+import { ScenePane } from "./chat/ScenePane.tsx";
 import { OpsGrid, OpsRow, OpPrompt, SteerOp, type Op } from "../components/OpsGrid.tsx";
 import { ExtensionActionsButton } from "../components/ExtensionActions.tsx";
 import { QuickReplyRow, QuickReplySheet } from "../components/QuickReplies.tsx";
-import { CastRail } from "../components/CastRail.tsx";
-import { CastEditPane } from "../components/CastEditPane.tsx";
-import { PersonaEditPane } from "../components/PersonaEditPane.tsx";
-import { speakerFor, initialsOf } from "./chat/attribution.ts";
-import { StatsSheet } from "./chat/StatsSheet.tsx";
 import { VnStage } from "../components/VnStage.tsx";
 import { TrackerPanel } from "../components/TrackerPanel.tsx";
 import { VirtualizedLog } from "../components/VirtualizedLog.tsx";
@@ -1235,103 +1233,39 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     </>
   );
 
-  const scenePane = editingCastId !== null ? (
-    <CastEditPane
-      characterId={editingCastId}
-      onClose={() => setEditingCastId(null)}
+  const scenePane = (
+    <ScenePane
+      editingCastId={editingCastId}
+      onCloseCastEdit={() => setEditingCastId(null)}
+      personaEditing={personaEditing}
+      onClosePersona={() => setPersonaEditing(false)}
+      sceneId={sceneId}
+      personaId={scene.data?.scene.personaId ?? null}
       contextSize={scene.data?.scene.contextSize ?? null}
+      layout={layout}
+      guides={guides}
+      summaryCount={scene.data?.scene.summaryCount ?? 0}
+      mediaOn={scene.data?.scene.vnModeEnabled ?? false}
+      onOpenContext={(pane) => {
+        setContextTab(pane === "memory" ? "memory" : "guides");
+        setGuidesOpen(true);
+      }}
+      cast={cast}
+      nextSpeaker={nextSpeaker}
+      messages={messages}
+      scope={scope}
+      onScope={setScope}
+      onCue={(characterId) => setCued(characterId)}
+      onMember={(member) => setCastActing(member)}
+      writingName={isGenerating ? active.speaker : null}
+      autopilotOn={scene.data?.scene.autopilotEnabled ?? false}
+      onToggleAutopilot={(on) => updateScene.mutate({ autopilotEnabled: on })}
+      personaName={scene.data?.scene.personaName ?? strings.sceneSetup.personaNone}
+      authorName={scene.data?.scene.authorName ?? strings.chat.narratorName}
+      authorTokens={authorTokens}
+      onEditPersona={() => setPersonaEditing(true)}
+      onEditAuthor={() => setRightTab("authors")}
     />
-  ) : personaEditing ? (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex-none px-[16px] pt-[12px]">
-        <button
-          type="button"
-          className="chrome text-[12.5px] text-ink-muted"
-          onClick={() => setPersonaEditing(false)}
-        >
-          {strings.chat.back}
-        </button>
-      </div>
-      <PersonaEditPane sceneId={sceneId} personaId={scene.data?.scene.personaId ?? null} />
-    </div>
-  ) : (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex-none px-[14px] pt-[10px]" hidden={!layout.readouts}>
-        <Readouts
-          guides={guides}
-          summaryCount={scene.data?.scene.summaryCount ?? 0}
-          mediaOn={scene.data?.scene.vnModeEnabled ?? false}
-          onOpen={(pane) => {
-            setContextTab(pane === "memory" ? "memory" : "guides");
-            setGuidesOpen(true);
-          }}
-        />
-      </div>
-      <CastRail
-        embedded
-        cast={cast}
-        nextSpeaker={nextSpeaker}
-        messages={messages}
-        guides={guides}
-        scope={scope}
-        onScope={setScope}
-        onCue={(characterId) => setCued(characterId)}
-        onMember={(member) => setCastActing(member)}
-        writingName={isGenerating ? active.speaker : null}
-        guidesCost={guides.reduce((sum, guide) => sum + guide.tokenCount, 0)}
-        autopilotOn={scene.data?.scene.autopilotEnabled ?? false}
-        onToggleAutopilot={(on) => updateScene.mutate({ autopilotEnabled: on })}
-        onGuides={() => {
-          setContextTab("guides");
-          setGuidesOpen(true);
-        }}
-      />
-      {/* The scene's people in one footer: the reader, edited inline, and the
-          author, edited in its own tab (§20 phase 90). */}
-      <div className="flex-none border-t border-rule px-[14px] py-[10px]">
-        <div className="flex items-center gap-[8px]">
-          <span
-            className="chrome flex-none text-[11px]"
-            style={{ color: "var(--onsen-color-text-dim)" }}
-          >
-            {strings.rightRail.you}
-          </span>
-          <span className="min-w-0 flex-1 truncate text-[12.5px]">
-            {scene.data?.scene.personaName ?? strings.sceneSetup.personaNone}
-          </span>
-          <button
-            type="button"
-            className="chrome text-[12.5px]"
-            style={{ color: "var(--onsen-color-blue-text)" }}
-            onClick={() => setPersonaEditing(true)}
-          >
-            {strings.rightRail.edit}
-          </button>
-        </div>
-        <div className="mt-[6px] flex items-center gap-[8px]">
-          <span
-            className="chrome flex-none text-[11px]"
-            style={{ color: "var(--onsen-color-text-dim)" }}
-          >
-            {strings.rightRail.author}
-          </span>
-          <span className="min-w-0 flex-1 truncate text-[12.5px]">
-            {scene.data?.scene.authorName ?? strings.chat.narratorName}
-          </span>
-          {authorTokens === null ? null : (
-            <span className="meta flex-none">{strings.characters.tokens(authorTokens)}</span>
-          )}
-          <button
-            type="button"
-            className="chrome text-[12.5px]"
-            style={{ color: "var(--onsen-color-blue-text)" }}
-            onClick={() => setRightTab("authors")}
-          >
-            {strings.rightRail.edit}
-          </button>
-        </div>
-      </div>
-    </div>
   );
 
   // The scene panes render in the shell's global right rail, not here (§20

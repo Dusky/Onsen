@@ -20,6 +20,10 @@ const CHAT = readFileSync(
   join(import.meta.dir, "..", "client", "screens", "ChatScreen.tsx"),
   "utf8",
 );
+const SCENE_PANE = readFileSync(
+  join(import.meta.dir, "..", "client", "screens", "chat", "ScenePane.tsx"),
+  "utf8",
+);
 
 describe("the mid-scene edit pane", () => {
   test("renders the shared editor fields, not its own", () => {
@@ -29,7 +33,7 @@ describe("the mid-scene edit pane", () => {
   });
 
   test("the pane swaps in on desktop and the action reaches it", () => {
-    expect(CHAT).toContain("<CastEditPane");
+    expect(SCENE_PANE).toContain("<CastEditPane");
     expect(CHAT).toContain("setEditingCastId(castActing.characterId)");
     expect(CHAT).toContain("strings.chat.editCard");
   });
@@ -47,6 +51,7 @@ describe("the persona pane", () => {
   });
 
   test("is a pane the chat shows, not a screen", () => {
-    expect(CHAT).toContain("<PersonaEditPane");
+    expect(CHAT).toContain("<ScenePane");
+    expect(SCENE_PANE).toContain("<PersonaEditPane");
   });
 });
