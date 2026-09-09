@@ -7027,3 +7027,25 @@ even while updates are paused.
 
 **Verified** by two cases — a declared action is listed, and the shipped
 Summarize offers its manual action — plus the full suite (1491 pass).
+
+## Phase 149 — The chat screen, taken apart and re-dressed
+
+Two passes, one phase. First, the 1,815-line `ChatScreen` monolith is extracted
+into `client/screens/chat/` — `attribution` (pure helpers), `StatsSheet`,
+`ScenePane` (the desktop right rail), `MessageLog` (log, virtualization, the
+streaming tail), `ChatSheets` (all ~13 overlays), and `useCommandKeys` (⌘K,
+j/k, accelerators and the palette state) — leaving the screen a coordinator of
+state and handlers. Seven structural guards read the file as text, so each
+extraction re-pointed its guard in the same commit.
+
+Then the composer gets a design pass: `→ CONTINUE` and `⋯ TOOLS` ops (the
+header shrinks to just Setup, with Marks/Stats folded into the tools sheet),
+quick replies fold away once the draft is non-empty, the send button becomes a
+fixed icon, and who-replies-next plus the `⌘↵ SEND · ⌘K CAST` hints move to a
+bottom footer opposite the model. Ops switch from lettered proofreading keys to
+lucide linework icons, with the words in tooltips.
+
+**Verified** by `test/turn-surface.test.ts` (tools/continue in the grid, the
+header shorn of stats/checkpoints, the ops are ReactNode lucide glyphs with
+tooltips, the send button is a fixed icon and the hints live in the footer) and
+the full suite (1494 pass).

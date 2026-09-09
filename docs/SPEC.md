@@ -3835,6 +3835,14 @@ Each phase ends in a working, usable application.
     ops-drawer entry). Pressing one runs the prompt against the scene and shows
     the answer; the Summarize extension gains a manual "Summarize now". See §15,
     `client/components/ExtensionActions.tsx`.
+149. **The chat screen, taken apart and re-dressed** — the 1,815-line
+    `ChatScreen` is extracted into `client/screens/chat/` (`MessageLog`,
+    `ScenePane`, `ChatSheets`, `useCommandKeys`, `StatsSheet`, `attribution`),
+    and the composer gets a design pass: `→ CONTINUE` and `⋯ TOOLS` ops (the
+    header shrinks to Setup), quick replies fold away while typing, the send
+    button becomes a fixed icon, and who-replies-next plus the `⌘↵ SEND · ⌘K
+    CAST` hints move to a bottom footer opposite the model. Ops switch from
+    lettered keys to lucide linework icons. See `test/turn-surface.test.ts`.
 
 Settled while building phase 15.
 

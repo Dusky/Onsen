@@ -37,6 +37,10 @@ const SHEETS = readFileSync(
   join(import.meta.dir, "..", "client", "screens", "chat", "ChatSheets.tsx"),
   "utf8",
 );
+const USE_OPS = readFileSync(
+  join(import.meta.dir, "..", "client", "screens", "chat", "useOps.tsx"),
+  "utf8",
+);
 
 describe("the turn surface", () => {
   test("every turn action is a glyph, the words live in the palette", () => {
@@ -91,16 +95,20 @@ describe("the composer", () => {
   });
 
   test("a leading slash opens the palette from the composer", () => {
-    expect(CHAT).toContain("handleDraftChange");
-    expect(CHAT).toContain("startsWith(\"/\")");
+    // The draft handler lives in the ops surface (§20 phase 149); the screen
+    // wires it into the composer.
+    expect(USE_OPS).toContain("handleDraftChange");
+    expect(USE_OPS).toContain("startsWith(\"/\")");
+    expect(CHAT).toContain("onDraftChange={handleDraftChange}");
     expect(SHEETS).toContain("initialQuery={paletteSeed}");
   });
 
   test("the ops grid carries CONTINUE and TOOLS, and the header shrinks to SETUP", () => {
     // §149: the full-width "reply without me" button folded into a `→ CONTINUE`
-    // cell, the marks/stats header chips folded into a `⋯ TOOLS` sheet.
-    expect(CHAT).toContain('key: "run_on"');
-    expect(CHAT).toContain('key: "tools"');
+    // cell, the marks/stats header chips folded into a `⋯ TOOLS` sheet. The ops
+    // list lives in the useOps hook; the screen wires it.
+    expect(USE_OPS).toContain('key: "run_on"');
+    expect(USE_OPS).toContain('key: "tools"');
     expect(SHEETS).toContain("strings.chat.opTools");
     expect(CHAT).not.toContain("strings.chat.stats");
     expect(CHAT).not.toContain("strings.chat.checkpoints");
@@ -114,7 +122,7 @@ describe("the composer", () => {
     // §149: a linework lucide icon is the glyph; the words live in the tooltip
     // (title) and the accessible label, not inline as a second span.
     expect(OPS_GRID).toContain("glyph: ReactNode");
-    expect(CHAT).toContain('from "lucide-react"');
+    expect(USE_OPS).toContain('from "lucide-react"');
     expect(OPS_GRID).toContain("aria-label={op.label}");
     expect(OPS_GRID).toContain("title={why === undefined ? op.label : `${op.label} — ${why}`}");
   });
