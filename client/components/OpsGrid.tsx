@@ -1,14 +1,12 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { strings } from "../strings.ts";
 
 /**
  * The ops grid (design handoff, composer stack row 5).
  *
- * A 3 × 2 grid of 52px cells, each a mono glyph over a mono caption.
- * **Lettered keys, like proofreading marks — deliberately not emoji.** The
- * design is specific about this and it is the right call: a proofreader's mark
- * is learned once and then read at a glance, where an emoji has to be decoded
- * every time and means something different to everyone.
+ * A 3 × 2 grid of 52px cells, each a linework icon over a mono caption.
+ * Lucide icons, not letters — linework, minimal colour, one stroke weight
+ * across the whole row, taking the cell's colour (stroke is `currentColor`).
  *
  * When the grid is open the cast strip and the director's reason collapse away
  * and are replaced by a single line summarising the cue, so the whole composer
@@ -17,8 +15,11 @@ import { strings } from "../strings.ts";
 
 export interface Op {
   key: string;
-  /** The glyph. One character, so the cell reads as a key on a keyboard. */
-  glyph: string;
+  /**
+   * The icon. Linework, minimal colour — a lucide glyph, drawn at the cell's
+   * own size, taking the button's colour (stroke is `currentColor`).
+   */
+  glyph: ReactNode;
   label: string;
   /**
    * Off for a reason nobody needs told — an empty composer, nothing to reroll.

@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
+import { ArrowUp, ImagePlus } from "lucide-react";
 import { strings } from "../strings.ts";
 import { CHARS_PER_TOKEN } from "@shared/types.ts";
 
@@ -165,7 +166,7 @@ export function Composer({
             aria-label={strings.media.attach}
             title={strings.media.attach}
           >
-            {attaching === true ? "…" : "+"}
+            {attaching === true ? "…" : <ImagePlus size={18} strokeWidth={1.75} />}
             <input
               type="file"
               accept="image/*"
@@ -213,14 +214,14 @@ export function Composer({
           className={`flex flex-none items-center justify-center ${wide ? "h-[62px] w-[62px]" : "h-[46px] w-[46px]"}`}
           style={{ background: "var(--onsen-color-blue)", color: "#0b1219" }}
         >
-          <span className="text-[18px] leading-none font-semibold">↑</span>
+          <ArrowUp size={20} strokeWidth={2} />
         </button>
       </div>
 
-      {/* The bottom footer: who answers (the model) left, who replies next and
-          the draft's cost right — opposite ends, one hairline line. The send
-          button no longer carries this (§149). */}
-      {model === undefined && draft.trim() === "" && speakerName == null ? null : (
+      {/* The bottom footer: who answers (the model) left; who replies next,
+          the draft's cost, and the keyboard hints right — the hints sit
+          opposite the provider, where the send affordance lives (§149). */}
+      {model === undefined && draft.trim() === "" && speakerName == null && !wide ? null : (
         <div className="mt-[8px] flex items-baseline justify-between gap-[10px] border-t border-rule pt-[7px]">
           {model === undefined ? (
             <span />
@@ -241,7 +242,7 @@ export function Composer({
               {model.label}
             </span>
           )}
-          <span className="flex items-baseline gap-[6px]">
+          <span className="flex items-baseline gap-[8px]">
             {speakerName === null || speakerName === undefined || speakerName === "" ? null : (
               <span className="chrome text-[11.5px] text-ink-muted">
                 {strings.chat.willReply(speakerName)}
@@ -252,6 +253,11 @@ export function Composer({
                 {strings.chat.draftTokens(Math.max(1, Math.ceil(draft.length / CHARS_PER_TOKEN)))}
               </span>
             )}
+            {wide ? (
+              <span className="chrome pl-[4px] text-[11.5px] text-ink-dim">
+                {strings.chat.keyboardHints}
+              </span>
+            ) : null}
           </span>
         </div>
       )}

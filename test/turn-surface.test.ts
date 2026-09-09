@@ -104,13 +104,17 @@ describe("the composer", () => {
     expect(SHEETS).toContain("strings.chat.opTools");
     expect(CHAT).not.toContain("strings.chat.stats");
     expect(CHAT).not.toContain("strings.chat.checkpoints");
-    // The desktop Direct row carries the keyboard hints the design specifies.
-    expect(CHAT).toContain("hint={strings.chat.keyboardHints}");
+    // The keyboard hints live in the composer's bottom footer, opposite the
+    // model, not on the Direct row above it.
+    expect(COMPOSER).toContain("strings.chat.keyboardHints");
+    expect(CHAT).not.toContain("hint={strings.chat.keyboardHints}");
   });
 
   test("the desktop ops are glyph-only with tooltips, so nine fit one row", () => {
-    // §149: a glyph is the icon; the words live in the tooltip (title) and the
-    // accessible label, not inline as a second span that forces a wrap.
+    // §149: a linework lucide icon is the glyph; the words live in the tooltip
+    // (title) and the accessible label, not inline as a second span.
+    expect(OPS_GRID).toContain("glyph: ReactNode");
+    expect(CHAT).toContain('from "lucide-react"');
     expect(OPS_GRID).toContain("aria-label={op.label}");
     expect(OPS_GRID).toContain("title={why === undefined ? op.label : `${op.label} — ${why}`}");
   });

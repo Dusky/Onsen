@@ -36,6 +36,17 @@ import { QuickReplyRow } from "../components/QuickReplies.tsx";
 import { VnStage } from "../components/VnStage.tsx";
 import { TrackerPanel } from "../components/TrackerPanel.tsx";
 import { useIsDesktop } from "../lib/breakpoint.ts";
+import {
+  ArrowDownToLine,
+  Compass,
+  Feather,
+  MessageSquareOff,
+  NotebookPen,
+  PenLine,
+  Play,
+  RefreshCw,
+  Wrench,
+} from "lucide-react";
 import { useUiStore } from "../state/ui.ts";
 import type { ContextTab } from "../components/ContextSheet.tsx";
 import {
@@ -614,13 +625,13 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const ops: Op[] = [
     {
       key: "nudge",
-      glyph: strings.chat.opNudgeKey,
+      glyph: <PenLine size={16} strokeWidth={1.75} />,
       label: strings.chat.opNudge,
       onPress: () => setOpsPanel("nudge"),
     },
     {
       key: "guided_swipe",
-      glyph: strings.chat.opGuidedSwipeKey,
+      glyph: <RefreshCw size={16} strokeWidth={1.75} />,
       label: strings.chat.opGuidedSwipe,
       // Only when the last message is from the AI — there is nothing else to
       // reroll, and §7 says so explicitly.
@@ -629,19 +640,19 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     },
     {
       key: "impersonate",
-      glyph: strings.chat.opImpersonateKey,
+      glyph: <Feather size={16} strokeWidth={1.75} />,
       label: strings.chat.opImpersonate,
       onPress: () => setOpsPanel("impersonate"),
     },
     {
       key: "steer",
-      glyph: strings.chat.opSteerKey,
+      glyph: <Compass size={16} strokeWidth={1.75} />,
       label: strings.chat.opSteer,
       onPress: () => setOpsPanel("steer"),
     },
     {
       key: "guides",
-      glyph: strings.chat.opGuidesKey,
+      glyph: <NotebookPen size={16} strokeWidth={1.75} />,
       // The count is on the cell because a guide costs tokens on every single
       // turn, and the design's rule is that cost is never hidden a level down.
       label:
@@ -656,7 +667,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     },
     {
       key: "ooc",
-      glyph: strings.chat.opOocKey,
+      glyph: <MessageSquareOff size={16} strokeWidth={1.75} />,
       label: strings.chat.opOoc,
       // The author's own voice, so the author's own colour (design 2a).
       tone: "blue",
@@ -667,7 +678,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     },
     {
       key: "no_reply",
-      glyph: strings.chat.opNoReplyKey,
+      glyph: <ArrowDownToLine size={16} strokeWidth={1.75} />,
       label: strings.chat.opNoReply,
       // An empty composer needs no explanation.
       disabled: draft.trim() === "",
@@ -675,7 +686,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     },
     {
       key: "run_on",
-      glyph: strings.chat.opRunOnKey,
+      glyph: <Play size={16} strokeWidth={1.75} />,
       label: strings.chat.opRunOn,
       // Let the scene run on: ask for a reply without saying anything. The one
       // thing a director does more than direct.
@@ -687,7 +698,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     },
     {
       key: "tools",
-      glyph: strings.chat.opToolsKey,
+      glyph: <Wrench size={16} strokeWidth={1.75} />,
       label: strings.chat.opTools,
       onPress: () => {
         setOpsPanel(null);
@@ -938,7 +949,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                 <span className="chrome text-[11px]" style={{ color: "var(--onsen-color-text-dim)" }}>
                   {strings.chat.direct}
                 </span>
-                <OpsRow ops={shownOps} hint={strings.chat.keyboardHints} />
+                <OpsRow ops={shownOps} />
                 <ExtensionActionsButton sceneId={sceneId} wide />
                 {steer === null ? null : (
                   <span className="chrome ml-auto flex min-w-0 items-center gap-[6px] text-[11px]">
