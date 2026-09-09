@@ -7049,3 +7049,18 @@ lucide linework icons, with the words in tooltips.
 header shorn of stats/checkpoints, the ops are ReactNode lucide glyphs with
 tooltips, the send button is a fixed icon and the hints live in the footer) and
 the full suite (1494 pass).
+
+## Phase 150 — Extension scope: chat vs global
+
+The extension API grows a scope distinction. `ctx.globalState` is app-wide
+key/value storage (migration 0070) that survives scene deletion, where `ctx.state`
+dies with its scene; task prompts read it with `{{globalState:<key>}}`.
+`ctx.action({ scope: "global", run })` is a pure-code action — no scene, no
+model — surfaced in the extension manager beside the extension list, while the
+composer's actions sheet shows only chat-scoped actions. And a real bug closes:
+`unregisterExtensionModule` now drops an extension's injections and actions too,
+not just its tasks, so an uninstall stops every callback in the running process.
+
+**Verified** by two cases — global state is app-wide and a global action runs
+with no scene, and uninstalling removes injections and actions — plus the full
+suite (1496 pass).

@@ -40,7 +40,7 @@ import {
 import { castRowsOf } from "../db/queries/authors.ts";
 import { taskKind, TURN_CLASSIFIER, BACKGROUND_DETECT, type SideCallOp } from "../tasks/registry.ts";
 import { postGenerationExtensionTasks, extensionActionOf } from "../extensions/registry.ts";
-import { readExtensionState } from "../extensions/state.ts";
+import { readExtensionState, readGlobalExtensionState } from "../extensions/state.ts";
 import type { TaskRunner } from "../tasks/runner.ts";
 import type { PassPipeline } from "../passes/pipeline.ts";
 import type { GuideRunner } from "../guides/runner.ts";
@@ -1045,10 +1045,50 @@ export class GenerationService {
   ): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
     const entry = extensionActionOf(actionKey);
     if (entry === null) return { ok: false, error: "No such extension action." };
+    const action = entry.action;
+    if (action.scope === "global" || action.run !== undefined) {
+      try {
+        await action.run!({ db: this.db });
+        return { ok: true, text: "" };
+      } catch {
+        return { ok: false, error: "The action failed." };
+      }
+    }
+    if (action.prompt === undefined) return { ok: false, error: "This action has nothing to run." };
     try {
-      const text = await this.runExtensionCall(sceneId, entry.moduleName, "sidecar", entry.action);
+      const text = await this.runExtensionCall(sceneId, entry.moduleName, "sidecar", {
+        key: action.key,
+        label: action.label,
+        prompt: action.prompt,
+        ...(action.description === undefined ? {} : { description: action.description }),
+        ...(action.samplers === undefined ? {} : { samplers: action.samplers }),
+        ...(action.timeoutMs === undefined ? {} : { timeoutMs: action.timeoutMs }),
+        ...(action.replyLimit === undefined ? {} : { replyLimit: action.replyLimit }),
+        ...(action.apply === undefined ? {} : { apply: action.apply }),
+      });
       if (text === null) return { ok: false, error: "The action produced nothing." };
       return { ok: true, text };
+    } catch {
+      return { ok: false, error: "The action failed." };
+    }
+  }
+
+  /**
+   * Run a global extension action (§20 phase 150): pure code, no scene, no
+   * model. The host surfaces it in the extension manager.
+   */
+  public async runGlobalExtensionAction(
+    actionKey: string,
+  ): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
+    const entry = extensionActionOf(actionKey);
+    if (entry === null) return { ok: false, error: "No such extension action." };
+    const action = entry.action;
+    if (action.scope !== "global" && action.run === undefined) {
+      return { ok: false, error: "That action belongs to a chat." };
+    }
+    try {
+      await action.run!({ db: this.db });
+      return { ok: true, text: "" };
     } catch {
       return { ok: false, error: "The action failed." };
     }
@@ -1071,7 +1111,7 @@ export class GenerationService {
       samplers?: SamplerSettings;
       timeoutMs?: number;
       replyLimit?: number;
-      apply?: (reply: string, context: { db: Database; sceneId: number; messageCount: number }) => void | Promise<void>;
+      apply?: (reply: string, context: { db: Database; sceneId: number | null; messageCount: number | null }) => void | Promise<void>;
     },
   ): Promise<string | null> {
     const scene = findSceneById(this.db, sceneId);
@@ -1089,6 +1129,10 @@ export class GenerationService {
       // earlier `apply` (§146) — the previous summary, a counter, etc.
       .replace(/\{\{state:([^}]+)\}\}/g, (_all, key: string) =>
         readExtensionState(this.db, moduleName, sceneId, key.trim()) ?? "",
+      )
+      // `{{globalState:<key>}}` reads app-wide state, which survives scenes (§150).
+      .replace(/\{\{globalState:([^}]+)\}\}/g, (_all, key: string) =>
+        readGlobalExtensionState(this.db, moduleName, key.trim()) ?? "",
       );
 
     const kind: SideCallOp = {

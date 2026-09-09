@@ -3843,6 +3843,14 @@ Each phase ends in a working, usable application.
     button becomes a fixed icon, and who-replies-next plus the `⌘↵ SEND · ⌘K
     CAST` hints move to a bottom footer opposite the model. Ops switch from
     lettered keys to lucide linework icons. See `test/turn-surface.test.ts`.
+150. **Extension scope: chat vs global** — the extension API gains a scope
+    distinction. `ctx.globalState` is app-wide key/value storage that survives
+    scene deletion (migration 0070), read in task prompts via
+    `{{globalState:key}}`; `ctx.action({ scope: "global", run })` is a pure-code
+    action with no scene or model, surfaced in the extension manager rather
+    than the composer. Also fixes `unregisterExtensionModule`, which left an
+    extension's injections and actions running after uninstall. See §15,
+    `server/extensions/state.ts`.
 
 Settled while building phase 15.
 

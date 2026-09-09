@@ -61,7 +61,8 @@ export function register(ctx: ExtensionApi, settings: Record<string, unknown> = 
     },
   });
 
-  const applySummary = (reply: string, { db, sceneId, messageCount }: { db: Database; sceneId: number; messageCount: number }) => {
+  const applySummary = (reply: string, { db, sceneId, messageCount }: { db: Database; sceneId: number | null; messageCount: number | null }) => {
+    if (sceneId === null || messageCount === null) return;
     const summary = reply.trim();
     if (summary === "") return;
     ctx.state.write(db, sceneId, "summary", summary);

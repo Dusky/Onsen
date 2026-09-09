@@ -496,3 +496,84 @@ describe("extension actions", () => {
     expect(list.find((entry) => entry.key === "summarize-now")?.label).toBe("Summarize now");
   });
 });
+
+/* ------------------------------------------------------------------ */
+/* Scope: chat vs global (SPEC §15, §20 phase 150)                    */
+/* ------------------------------------------------------------------ */
+
+describe("chat scope and global scope", () => {
+  test("ctx.globalState is app-wide, and a global action runs with no scene", async () => {
+    const t = await signedIn();
+    const dir = repoWith({
+      "pack.json": JSON.stringify({ name: "Global", version: "1.0.0", author: "me", description: "" }),
+      "server.ts": `export function register(ctx) {
+  ctx.action({
+    key: "ping",
+    label: "Ping",
+    scope: "global",
+    run({ db }) {
+      const n = Number(ctx.globalState.read(db, "pings") ?? "0") + 1;
+      ctx.globalState.write(db, "pings", String(n));
+    },
+  });
+}`,
+    });
+    try {
+      const installed = await t.fetch("/api/packs/install-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: dir }),
+      });
+      expect(installed.status).toBe(201);
+
+      // Listed with its scope, and distinct from the chat actions.
+      const list = (await (await t.fetch("/api/extensions/actions")).json()) as Array<{ key: string; scope: string }>;
+      expect(list.find((entry) => entry.key === "ping")?.scope).toBe("global");
+
+      // Runs twice, with no scene id anywhere in the call.
+      expect((await t.fetch("/api/extensions/actions/ping/run", { method: "POST" })).status).toBe(200);
+      expect((await t.fetch("/api/extensions/actions/ping/run", { method: "POST" })).status).toBe(200);
+      const row = t.ctx.db
+        .query("SELECT value FROM extension_global_state WHERE extension_name = 'Global' AND key = 'pings'")
+        .get() as { value: string };
+      expect(row.value).toBe("2");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("uninstalling removes injections and actions, not just tasks", async () => {
+    const t = await signedIn();
+    const dir = repoWith({
+      "pack.json": JSON.stringify({ name: "All", version: "1.0.0", author: "me", description: "" }),
+      "server.ts": `export function register(ctx) {
+  ctx.task({ key: "t", label: "T", prompt: "hi", stage: "post_generation" });
+  ctx.inject({ key: "i", label: "I", position: "before", render: () => "[I]" });
+  ctx.action({ key: "a", label: "A", prompt: "do it" });
+}`,
+    });
+    try {
+      const installed = await t.fetch("/api/packs/install-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: dir }),
+      });
+      expect(installed.status).toBe(201);
+      expect(postGenerationExtensionTasks().map((entry) => entry.task.key)).toContain("t");
+      expect(collectExtensionInjections(t.ctx.db, 1).map((block) => block.key)).toContain("All:i");
+
+      const list = (await (await t.fetch("/api/extensions")).json()) as Array<{ id: string; name: string }>;
+      const id = list.find((entry) => entry.name === "All")!.id;
+      const removed = await t.fetch(`/api/extensions/${id}`, { method: "DELETE" });
+      expect(removed.status).toBe(200);
+
+      // All three surfaces are gone now, not merely after a restart.
+      expect(postGenerationExtensionTasks().map((entry) => entry.task.key)).not.toContain("t");
+      expect(collectExtensionInjections(t.ctx.db, 1)).toEqual([]);
+      const actions = (await (await t.fetch("/api/extensions/actions")).json()) as Array<{ key: string }>;
+      expect(actions.map((entry) => entry.key)).not.toContain("a");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

@@ -49,15 +49,22 @@ export function clearExtensionTasks(): void {
 }
 
 /**
- * Drop every task one extension registered, without touching the others.
+ * Drop everything one extension registered, without touching the others.
  *
- * This is the uninstall half of `registerExtensionTask`: it stops an extension's
- * `apply` callbacks firing in the running process the moment its pack is
- * removed, rather than waiting for the next restart to rebuild the registry.
+ * This is the uninstall half of `registerExtensionTask`/`registerExtensionInjection`/
+ * `registerExtensionAction`: it stops an extension's callbacks firing in the
+ * running process the moment its pack is removed, rather than waiting for the
+ * next restart to rebuild the registry.
  */
 export function unregisterExtensionModule(moduleName: string): void {
   for (const [key, entry] of tasks) {
     if (entry.moduleName === moduleName) tasks.delete(key);
+  }
+  for (const [key, entry] of injections) {
+    if (entry.moduleName === moduleName) injections.delete(key);
+  }
+  for (const [key, entry] of actions) {
+    if (entry.moduleName === moduleName) actions.delete(key);
   }
 }
 

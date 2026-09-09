@@ -3,7 +3,7 @@ import { rmSync } from "node:fs";
 import type { AppContext, AppEnv } from "../context.ts";
 import { requireAuth } from "../middleware/session.ts";
 import { loadInstalledExtensions } from "../extensions/install.ts";
-import { unregisterExtensionModule, extensionActions } from "../extensions/registry.ts";
+import { unregisterExtensionModule, extensionActions, extensionActionOf } from "../extensions/registry.ts";
 import {
   deleteExtension,
   deleteExtensionTasks,
@@ -62,16 +62,34 @@ export function extensionRoutes(ctx: AppContext): Hono<AppEnv> {
 
   app.get("/", (c) => c.json(listExtensions(ctx.db).map(toExtensionDto)));
 
-  /** The on-demand actions enabled extensions offer near the input (§148). */
+  /** The on-demand actions enabled extensions offer (§148, §150). */
   app.get("/actions", (c) =>
     c.json(
       extensionActions().map((entry) => ({
         key: entry.action.key,
         label: entry.action.label,
         description: entry.action.description ?? null,
+        scope: entry.action.scope ?? "chat",
       })),
     ),
   );
+
+  /**
+   * Run a global extension action (§150): pure code, no scene, no model. The
+   * chat-scoped counterpart lives on the scene routes, where the service is.
+   */
+  app.post("/actions/:key/run", async (c) => {
+    const entry = extensionActionOf(c.req.param("key"));
+    if (entry === null || (entry.action.scope !== "global" && entry.action.run === undefined)) {
+      return c.json({ error: { code: "not_found", message: "No such global action." } }, 404);
+    }
+    try {
+      await entry.action.run!({ db: ctx.db });
+      return c.json({ ok: true });
+    } catch {
+      return c.json({ error: { code: "failed", message: "The action failed." } }, 500);
+    }
+  });
 
   app.patch("/:extensionId", async (c) => {
     const extension = findExtension(ctx.db, c.req.param("extensionId"));

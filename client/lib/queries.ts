@@ -2188,6 +2188,13 @@ export function useRunExtensionAction(sceneId: string) {
   });
 }
 
+/** Run a global (app-wide) extension action from the manager (§150). */
+export function useRunGlobalExtensionAction() {
+  return useMutation({
+    mutationFn: (key: string) => api.post<void>(`/extensions/actions/${key}/run`, {}),
+  });
+}
+
 function packForm(file: File): FormData {
   const form = new FormData();
   form.append("file", file);

@@ -37,3 +37,36 @@ export function writeExtensionState(
        value = excluded.value, updated_at = excluded.updated_at`,
   ).run({ name: extensionName, scene: sceneId, key, value, now: Date.now() });
 }
+
+/* ------------------------------------------------------------------ */
+/* Global state (SPEC §15, §20 phase 150)                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * App-wide state, where `extension_state` is per-scene. Survives scene
+ * deletion — it is about the app, not a chat: an index, a cache, a preference.
+ */
+export function readGlobalExtensionState(
+  db: Database,
+  extensionName: string,
+  key: string,
+): string | null {
+  const row = db
+    .query("SELECT value FROM extension_global_state WHERE extension_name = $name AND key = $key")
+    .get({ name: extensionName, key }) as { value: string } | null;
+  return row?.value ?? null;
+}
+
+export function writeGlobalExtensionState(
+  db: Database,
+  extensionName: string,
+  key: string,
+  value: string,
+): void {
+  db.query(
+    `INSERT INTO extension_global_state (extension_name, key, value, updated_at)
+     VALUES ($name, $key, $value, $now)
+     ON CONFLICT (extension_name, key) DO UPDATE SET
+       value = excluded.value, updated_at = excluded.updated_at`,
+  ).run({ name: extensionName, key, value, now: Date.now() });
+}

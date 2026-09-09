@@ -25,6 +25,7 @@ export const strings = {
 
   common: {
     continue: "Continue",
+    run: "Run",
     back: "Back",
     cancel: "Cancel",
     optional: "Optional",

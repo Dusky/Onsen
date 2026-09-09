@@ -1085,11 +1085,13 @@ export interface ExtensionDto {
   settingsSchema: ExtensionSettingsField[];
 }
 
-/** An on-demand action an extension offers near the input (§148). */
+/** An on-demand action an extension offers (§148, §150). */
 export interface ExtensionActionDto {
   key: string;
   label: string;
   description: string | null;
+  /** `chat` actions appear in the composer; `global` ones in the manager. */
+  scope: "chat" | "global";
 }
 
 /* ------------------------------------------------------------------ */

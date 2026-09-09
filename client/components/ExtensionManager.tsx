@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useExtensions, useUpdateExtension, useDeleteExtension } from "../lib/queries.ts";
+import { useExtensions, useUpdateExtension, useDeleteExtension, useExtensionActions, useRunGlobalExtensionAction } from "../lib/queries.ts";
 import { Sheet } from "./Sheet.tsx";
 import { strings } from "../strings.ts";
 import type { ExtensionDto, ExtensionSettingsField } from "@shared/types.ts";
@@ -114,9 +114,12 @@ export function ExtensionsSection() {
   const extensions = useExtensions();
   const update = useUpdateExtension();
   const remove = useDeleteExtension();
+  const actions = useExtensionActions();
+  const runGlobal = useRunGlobalExtensionAction();
   const [settingsFor, setSettingsFor] = useState<ExtensionDto | null>(null);
 
   const list = extensions.data ?? [];
+  const globalActions = (actions.data ?? []).filter((action) => action.scope === "global");
   const settingsTarget = settingsFor === null
     ? null
     : list.find((e) => e.id === settingsFor.id) ?? settingsFor;
@@ -124,6 +127,25 @@ export function ExtensionsSection() {
   return (
     <section>
       <p className="chrome mb-[2px] text-[11px]">{strings.settings.extensionInstallNote}</p>
+      {/* Global actions: app-wide, no scene (§150). */}
+      {globalActions.map((action) => (
+        <div key={action.key} className="row flex items-center gap-[9px]">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[14px] font-medium">{action.label}</p>
+            {action.description === null || action.description === "" ? null : (
+              <p className="chrome truncate text-[12.5px] text-ink-dim">{action.description}</p>
+            )}
+          </div>
+          <button
+            type="button"
+            className="btn flex-none px-[12px]"
+            disabled={runGlobal.isPending}
+            onClick={() => runGlobal.mutate(action.key)}
+          >
+            {strings.common.run}
+          </button>
+        </div>
+      ))}
       {list.length === 0 ? (
         <p className="row chrome text-[13px] text-ink-dim">{strings.settings.extensionNone}</p>
       ) : (

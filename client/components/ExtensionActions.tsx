@@ -17,7 +17,9 @@ export function ExtensionActionsSheet({ sceneId, onClose }: { sceneId: string; o
   const run = useRunExtensionAction(sceneId);
   const [result, setResult] = useState<string | null>(null);
 
-  const list = actions.data ?? [];
+  // The composer shows only chat-scoped actions; global ones live in the
+  // extension manager (§150).
+  const list = (actions.data ?? []).filter((action) => action.scope !== "global");
 
   return (
     <Sheet title={strings.chat.extensionActions} onClose={onClose}>
