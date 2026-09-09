@@ -370,6 +370,15 @@ export function sceneRoutes(
       }
       setTurnStrategy(ctx.db, row.id, input.turnStrategy as string);
     }
+    // The "never twice consecutively" rule can be relaxed per scene (§155).
+    if ("allowSelfResponses" in input) {
+      if (typeof input.allowSelfResponses !== "boolean") {
+        return c.json(badRequest("allowSelfResponses must be a boolean."), 400);
+      }
+      ctx.db
+        .query("UPDATE scenes SET allow_self_responses = $on WHERE id = $id")
+        .run({ id: row.id, on: input.allowSelfResponses ? 1 : 0 });
+    }
     // Steer (SPEC §7): a note applied to every turn until cleared. An empty
     // string is a clear, not an empty instruction. Depth, interval and role
     // travel with it (§20 phase 125); each defaults to the current value when

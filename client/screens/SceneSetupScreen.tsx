@@ -331,7 +331,20 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               </button>
             ))}
           </div>
-          <div className="mb-[22px]" />
+          <p className="section-label mb-[8px]">{strings.sceneSetup.allowSelfResponses}</p>
+          <div className="mb-[8px] flex gap-[6px]">
+            {[true, false].map((on) => (
+              <button
+                key={String(on)}
+                type="button"
+                onClick={() => setup.mutate({ allowSelfResponses: on })}
+                className={`btn flex-1 ${scene.allowSelfResponses === on ? "btn-primary" : ""}`}
+              >
+                {on ? strings.sceneSetup.allowSelfResponsesOn : strings.sceneSetup.allowSelfResponsesOff}
+              </button>
+            ))}
+          </div>
+          <p className="explain mb-[22px]">{strings.sceneSetup.allowSelfResponsesNote}</p>
 
           {/* The classifier is a one-line question, so it wants a small model —
               which is the whole reason it can be routed separately (SPEC §6). */}

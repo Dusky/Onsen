@@ -74,6 +74,8 @@ export interface SceneRow {
   persona_id: number | null;
   /** Who speaks next, when the user has not said (SPEC §6). */
   turn_strategy: "manual" | "round_robin" | "mention" | "classifier";
+  /** The "never twice consecutively" rule can be relaxed per scene (§155). */
+  allow_self_responses: number;
   /** Where the classifier runs; null falls back to the scene's own (SPEC §6). */
   director_profile_id: number | null;
   /** Steer: a persistent director note, applied until cleared (SPEC §7). */
@@ -311,6 +313,7 @@ function toSceneDto(
     connectionProfileId: extras.profileUlid,
     connectionProfileName: extras.profileName,
     turnStrategy: extras.turnStrategy,
+    allowSelfResponses: row.allow_self_responses === 1,
     directorProfileId: extras.directorProfileUlid,
     directorNote: row.director_note,
     directorNoteDepth: row.director_note_depth,

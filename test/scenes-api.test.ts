@@ -211,8 +211,7 @@ describe("the scene's own scenario", () => {
     await send<SceneDto>(t, "PATCH", `/api/scenes/${scene.id}`, { scenarioOverride: "Mine." });
     const cleared = await send<SceneDto>(t, "PATCH", `/api/scenes/${scene.id}`, {
       scenarioOverride: "",
-    });
-    // Empty is a clear rather than a scenario of nothing.
+    });    // Empty is a clear rather than a scenario of nothing.
     expect(cleared.body.scenarioOverride).toBeNull();
     expect(scenarioBlock(t, scene.id)).toBeNull();
   });
@@ -222,6 +221,24 @@ describe("the scene's own scenario", () => {
     const scene = await newScene(t);
     const bad = await send(t, "PATCH", `/api/scenes/${scene.id}`, { scenarioOverride: 42 });
     expect(bad.status).toBe(400);
+  });
+});
+
+describe("self-responses (§155)", () => {
+  test("the toggle round-trips on the scene", async () => {
+    const t = await signedIn();
+    const scene = await newScene(t);
+    expect(scene.allowSelfResponses).toBe(false);
+
+    const on = await send<SceneDto>(t, "PATCH", `/api/scenes/${scene.id}`, {
+      allowSelfResponses: true,
+    });
+    expect(on.body.allowSelfResponses).toBe(true);
+
+    const off = await send<SceneDto>(t, "PATCH", `/api/scenes/${scene.id}`, {
+      allowSelfResponses: false,
+    });
+    expect(off.body.allowSelfResponses).toBe(false);
   });
 });
 

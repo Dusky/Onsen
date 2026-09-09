@@ -40,6 +40,7 @@ export function resolveNextSpeaker(
 
   const decision = chooseSpeaker({
     strategy: scene.turn_strategy,
+    allowSelfResponses: scene.allow_self_responses === 1,
     cast: castRows.map((row) => ({
       id: row.ulid,
       name: row.name,

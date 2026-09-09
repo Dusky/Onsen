@@ -40,6 +40,12 @@ export interface DirectorInput {
   history: DirectorHistoryEntry[];
   /** A character the user explicitly cued. Always wins (SPEC §6). */
   requested?: string | null;
+  /**
+   * Relax the "never twice consecutively" rule: the previous speaker stays
+   * eligible, so the same character may answer itself (§155). Round robin
+   * keeps alternating regardless — that is its contract.
+   */
+  allowSelfResponses?: boolean;
 }
 
 export interface DirectorDecision {
@@ -109,13 +115,14 @@ export function chooseSpeaker(input: DirectorInput): DirectorDecision | null {
   }
 
   const previous = lastSpeaker(input.history);
+  const allowSelf = input.allowSelfResponses === true;
 
   switch (input.strategy) {
     case "manual": {
       // Nothing was cued, so the director offers a sensible default rather than
       // refusing: whoever has been quiet longest, which is the choice a person
       // would most often make anyway.
-      const chosen = quietestOf(active, input.history, previous);
+      const chosen = quietestOf(active, input.history, previous, allowSelf);
       return {
         characterId: chosen.id,
         name: chosen.name,
@@ -125,6 +132,7 @@ export function chooseSpeaker(input: DirectorInput): DirectorDecision | null {
     }
 
     case "round_robin": {
+      // Alternation is the whole contract, so self-responses never apply.
       const chosen = nextInOrder(active, previous);
       const after = previous === null ? null : input.cast.find((m) => m.id === previous);
       return {
@@ -146,11 +154,12 @@ export function chooseSpeaker(input: DirectorInput): DirectorDecision | null {
      * over the whole path would keep re-electing whoever was named ten turns
      * ago. The previous speaker is not eligible — the never-twice rule holds
      * here as everywhere, and "unless requested" is the explicit pick handled
-     * above, not a name that happens to appear in the prose.
+     * above, not a name that happens to appear in the prose. Self-responses
+     * relax it: a mentioned speaker may answer even if they just spoke.
      */
     case "mention": {
       const last = input.history.at(-1);
-      const eligible = active.filter((member) => member.id !== previous);
+      const eligible = allowSelf ? active : active.filter((member) => member.id !== previous);
       const named =
         last === undefined || eligible.length === 0
           ? null
@@ -214,15 +223,16 @@ function nextInOrder(active: DirectorCandidate[], previous: string | null): Dire
 
 /**
  * Whoever has been quiet longest, never the character who just spoke unless
- * they are the only one active.
+ * they are the only one active — or self-responses are allowed (§155).
  */
 function quietestOf(
   active: DirectorCandidate[],
   history: DirectorHistoryEntry[],
   previous: string | null,
+  allowSelf: boolean,
 ): DirectorCandidate {
   const eligible =
-    active.length > 1 ? active.filter((member) => member.id !== previous) : active;
+    active.length > 1 && !allowSelf ? active.filter((member) => member.id !== previous) : active;
 
   let best = eligible[0]!;
   let bestSilence = -1;

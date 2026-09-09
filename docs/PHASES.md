@@ -7098,3 +7098,16 @@ run; the type now says the one thing that is true: an extension task runs after
 each turn, and a manual run is an action.
 
 **Verified** by the suite (1498 pass).
+
+## Phase 155 — Self-responses
+
+The turn director's "never twice consecutively" rule can now be relaxed per
+scene. Migration 0071 adds `allow_self_responses`; when on, a character may
+answer its own turn. This matters for the strategies that *choose* — a mention
+of the character who just spoke now elects them, and the classifier is offered
+them again — while round robin keeps its alternation contract. Surfaced in
+Scene Setup as a three-way "Allowed / Never" toggle.
+
+**Verified** by three director cases (mention respects the rule by default,
+allowing it lets a mentioned speaker repeat, round robin still alternates) and a
+scene round-trip, plus the full suite (1502 pass).

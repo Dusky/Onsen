@@ -1371,8 +1371,12 @@ export class GenerationService {
     );
 
     // Never twice consecutively (SPEC §6) is enforced by not offering them,
-    // rather than by asking the model nicely and hoping.
-    const offered = cast.length > 1 ? cast.filter((row) => row.id !== lastSpoke) : cast;
+    // rather than by asking the model nicely and hoping — unless the scene
+    // allows self-responses (§155).
+    const offered =
+      cast.length > 1 && scene.allow_self_responses !== 1
+        ? cast.filter((row) => row.id !== lastSpoke)
+        : cast;
     // With the speaker already pinned and no scope to decide, there is nothing
     // left to ask; with one candidate and no scope question, likewise.
     const nothingToAsk =

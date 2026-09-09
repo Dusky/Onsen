@@ -1304,6 +1304,8 @@ export interface SceneDto {
    */
   contextSize: number | null;
   turnStrategy: TurnStrategy;
+  /** The "never twice consecutively" rule can be relaxed per scene (§155). */
+  allowSelfResponses: boolean;
   /**
    * Where the classifier turn director runs (SPEC §6). Null means the scene's
    * own profile — correct, but it spends a roleplay model on a one-line
@@ -1441,6 +1443,8 @@ export interface UpdateSceneRequest {
   tags?: string[];
   folder?: string | null;
   isFavourite?: boolean;
+  /** Relax the "never twice consecutively" rule (§155). */
+  allowSelfResponses?: boolean;
   /** Display-only translation's target language (§20 phase 78). */
   translateTo?: string | null;
   /** A per-scene order for guides; null resets to the default (§20 phase 96). */
@@ -2922,6 +2926,8 @@ export interface SceneSetupRequest {
   presetId?: string | null;
   connectionProfileId?: string | null;
   turnStrategy?: TurnStrategy;
+  /** Relax the "never twice consecutively" rule (§155). */
+  allowSelfResponses?: boolean;
   /** Where the classifier runs. Null falls back to the scene's own profile. */
   directorProfileId?: string | null;
   /** Steer: a persistent director note, applied until cleared (SPEC §7). */

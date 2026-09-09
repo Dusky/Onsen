@@ -1460,6 +1460,10 @@ export const strings = {
     strategyRoundRobin: "Round robin",
     strategyMention: "By mention",
     strategyClassifier: "Let a model decide",
+    allowSelfResponses: "Same character twice",
+    allowSelfResponsesOn: "Allowed",
+    allowSelfResponsesOff: "Never",
+    allowSelfResponsesNote: "Let a character answer its own turn, instead of always switching.",
 
     /** The run log (SPEC §7): a side call's failures are swallowed by design. */
     directorRuns: "Recent decisions",

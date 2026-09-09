@@ -312,3 +312,35 @@ describe("strategies that do not decide here", () => {
     expect(classifier!.reason).toBe("The classifier decides when you send");
   });
 });
+
+describe("self-responses (§155)", () => {
+  test("mention respects the never-twice rule by default", () => {
+    const decision = chooseSpeaker({
+      strategy: "mention",
+      cast: cast("Bell", "Mira"),
+      history: [said("bell", "Bell, say more.")],
+    });
+    // Bell just spoke, so the mention of Bell is not eligible — Mira is.
+    expect(decision!.characterId).toBe("mira");
+  });
+
+  test("allowing self-responses lets a mentioned speaker answer their own turn", () => {
+    const decision = chooseSpeaker({
+      strategy: "mention",
+      cast: cast("Bell", "Mira"),
+      history: [said("bell", "Bell, say more.")],
+      allowSelfResponses: true,
+    });
+    expect(decision!.characterId).toBe("bell");
+  });
+
+  test("round robin keeps alternating even with self-responses", () => {
+    const decision = chooseSpeaker({
+      strategy: "round_robin",
+      cast: cast("Bell", "Mira"),
+      history: [said("bell")],
+      allowSelfResponses: true,
+    });
+    expect(decision!.characterId).toBe("mira");
+  });
+});

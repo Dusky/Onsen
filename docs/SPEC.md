@@ -3867,6 +3867,11 @@ Each phase ends in a working, usable application.
     `sidecar` stages on `ctx.task` were declared but never run; the type now
     says the one thing that is true: an extension task runs after each turn,
     and a manual run is an action. See §15, `server/extensions/api.ts`.
+155. **Self-responses** — the turn director's "never twice consecutively" rule
+    can be relaxed per scene (migration 0071): `allowSelfResponses` lets a
+    character answer its own turn, which matters for the mention and classifier
+    strategies; round robin keeps its alternation contract. Surfaced in Scene
+    Setup. See §6, `server/generation/director.ts`.
 
 Settled while building phase 15.
 
