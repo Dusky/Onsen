@@ -24,6 +24,10 @@ const SCENE_PANE = readFileSync(
   join(import.meta.dir, "..", "client", "screens", "chat", "ScenePane.tsx"),
   "utf8",
 );
+const SHEETS = readFileSync(
+  join(import.meta.dir, "..", "client", "screens", "chat", "ChatSheets.tsx"),
+  "utf8",
+);
 
 describe("the mid-scene edit pane", () => {
   test("renders the shared editor fields, not its own", () => {
@@ -34,8 +38,9 @@ describe("the mid-scene edit pane", () => {
 
   test("the pane swaps in on desktop and the action reaches it", () => {
     expect(SCENE_PANE).toContain("<CastEditPane");
-    expect(CHAT).toContain("setEditingCastId(castActing.characterId)");
-    expect(CHAT).toContain("strings.chat.editCard");
+    // The action lives in the overlays (§20 phase 149); the screen wires it.
+    expect(SHEETS).toContain("strings.chat.editCard");
+    expect(CHAT).toContain("setEditingCastId(characterId)");
   });
 });
 

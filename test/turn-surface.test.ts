@@ -29,6 +29,10 @@ const STATS_SHEET = readFileSync(
   join(import.meta.dir, "..", "client", "screens", "chat", "StatsSheet.tsx"),
   "utf8",
 );
+const SHEETS = readFileSync(
+  join(import.meta.dir, "..", "client", "screens", "chat", "ChatSheets.tsx"),
+  "utf8",
+);
 
 describe("the turn surface", () => {
   test("every turn action is a glyph, the words live in the palette", () => {
@@ -68,12 +72,11 @@ describe("the composer", () => {
   });
 
   test("the versions sheet can delete a sibling, and the scene rolls up as stats", () => {
-    expect(CHAT).toContain("deleteVersionConfirm");
-    expect(CHAT).toContain("remove.mutate(sibling.id)");
-    // The sheet itself lives beside the screen (§20 phase 149); the screen
-    // wires it, and the hook that feeds it stays here.
+    // The overlays live beside the screen (§20 phase 149); the screen wires them.
+    expect(SHEETS).toContain("deleteVersionConfirm");
+    expect(CHAT).toContain("onDeleteMessage={(messageId) => remove.mutate(messageId)}");
     expect(STATS_SHEET).toContain("StatsSheet");
-    expect(CHAT).toContain("<StatsSheet");
+    expect(CHAT).toContain("<ChatSheets");
     expect(CHAT).toContain("useSceneStats");
   });
 
@@ -86,6 +89,6 @@ describe("the composer", () => {
   test("a leading slash opens the palette from the composer", () => {
     expect(CHAT).toContain("handleDraftChange");
     expect(CHAT).toContain("startsWith(\"/\")");
-    expect(CHAT).toContain("initialQuery={paletteSeed}");
+    expect(SHEETS).toContain("initialQuery={paletteSeed}");
   });
 });

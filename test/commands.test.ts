@@ -14,6 +14,7 @@ import { COMMANDS, matchCommands, score } from "../client/lib/commands.ts";
 
 const ROOT = join(import.meta.dir, "..");
 const chatScreen = readFileSync(join(ROOT, "client/screens/ChatScreen.tsx"), "utf8");
+const sheets = readFileSync(join(ROOT, "client/screens/chat/ChatSheets.tsx"), "utf8");
 
 describe("the registry", () => {
   test("ids are unique", () => {
@@ -107,8 +108,9 @@ describe("the screens render from the registry", () => {
     // Sixteen hand-written <SheetAction> rows lived in a sheet titled
     // `strings.chat.actions`. Any list of message commands that comes back is a
     // second one to keep in step with the registry, which is how they drift.
-    expect(chatScreen).not.toContain("strings.chat.actions");
-    expect(chatScreen).toContain("<CommandPalette");
+    // The overlays live beside the screen (§20 phase 149).
+    expect(sheets).not.toContain("strings.chat.actions");
+    expect(sheets).toContain("<CommandPalette");
   });
 
   test("the palette is reachable without a turn", () => {

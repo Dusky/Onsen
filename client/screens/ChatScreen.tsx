@@ -20,28 +20,24 @@ import {
   useSignOut,
 } from "../lib/queries.ts";
 import { useGeneration } from "../lib/generation.ts";
-import { OocChannel } from "../components/OocChannel.tsx";
 import { Composer } from "../components/Composer.tsx";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
-import { CheckpointsSheet, MarkSheet } from "../components/Checkpoints.tsx";
-import { CommandPalette } from "../components/CommandPalette.tsx";
 import { StatusBar } from "../components/StatusBar.tsx";
 import { COMMANDS } from "../lib/commands.ts";
-import { InspectorSheet } from "../components/InspectorSheet.tsx";
 import { CastStrip } from "../components/CastStrip.tsx";
 import { Deck } from "../components/Deck.tsx";
 import { speakerFor, initialsOf } from "./chat/attribution.ts";
-import { StatsSheet } from "./chat/StatsSheet.tsx";
 import { ScenePane } from "./chat/ScenePane.tsx";
 import { MessageLog } from "./chat/MessageLog.tsx";
+import { ChatSheets } from "./chat/ChatSheets.tsx";
 import { OpsGrid, OpsRow, OpPrompt, SteerOp, type Op } from "../components/OpsGrid.tsx";
 import { ExtensionActionsButton } from "../components/ExtensionActions.tsx";
-import { QuickReplyRow, QuickReplySheet } from "../components/QuickReplies.tsx";
+import { QuickReplyRow } from "../components/QuickReplies.tsx";
 import { VnStage } from "../components/VnStage.tsx";
 import { TrackerPanel } from "../components/TrackerPanel.tsx";
 import { useIsDesktop } from "../lib/breakpoint.ts";
 import { useUiStore } from "../state/ui.ts";
-import { ContextSheet, type ContextTab } from "../components/ContextSheet.tsx";
+import type { ContextTab } from "../components/ContextSheet.tsx";
 import {
   useBenchMember,
   useEditGuide,
@@ -1254,262 +1250,101 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         </Sheet>
       ) : null}
 
-      {/* §20 phase 43: the message sheet IS the palette, opened on a turn.
-          One list of commands, two ways in, so an action added to one surface
-          cannot go missing from the other. Sixteen stacked identical buttons
-          were a menu pretending to be a form. */}
-      {acting !== null || paletteOpen ? (
-        <CommandPalette
-          hasScene
-          selectedSpeaker={paletteTurn === null ? null : speakerFor(paletteTurn, authorName)}
-          initialQuery={paletteSeed}
-          onRun={(id) => runCommand(id, paletteTurn)}
-          onClose={() => {
-            setActing(null);
-            setPaletteOpen(false);
-            setPaletteSeed("");
-          }}
-        />
-      ) : null}
-
-      {marking !== null ? (
-        <MarkSheet sceneId={sceneId} message={marking} onClose={() => setMarking(null)} />
-      ) : null}
-
-      {marksOpen ? (
-        <CheckpointsSheet sceneId={sceneId} onClose={() => setMarksOpen(false)} />
-      ) : null}
-
-      {statsOpen ? (
-        <StatsSheet stats={stats.data ?? null} onClose={() => setStatsOpen(false)} />
-      ) : null}
-
-      {guidesOpen ? (
-        <ContextSheet
-          tab={contextTab}
-          onTab={setContextTab}
-          guides={guides}
-          tasks={tasks.data ?? []}
-          customPrompt={scene.data?.scene.customGuidePrompt ?? null}
-          guideWorking={guideWorking}
-          onRebuild={(kind) => {
-            setGuideWorking(kind);
-            rebuildGuides.mutate(kind === "all" ? {} : { kind }, {
-              onSettled: () => setGuideWorking(null),
-            });
-          }}
-          onEditGuide={(guideId, content) => editGuide.mutate({ guideId, content })}
-          onFlush={(kind) => flushGuides.mutate(kind)}
-          summaries={summaries.data}
-          evicting={scene.data?.scene.summariseEvict ?? false}
-          summaryWorking={
-            summariseNow.isPending || rewriteSummary.isPending || forgetSummary.isPending
+      <ChatSheets
+        sceneId={sceneId}
+        messages={messages}
+        authorName={authorName}
+        isDesktop={isDesktop}
+        isGenerating={isGenerating}
+        oocInFlight={oocInFlight}
+        oocText={active?.text ?? ""}
+        confirm={confirm}
+        paletteOpen={paletteOpen}
+        acting={acting}
+        paletteTurn={paletteTurn}
+        paletteSeed={paletteSeed}
+        onRunCommand={(id, turn) => runCommand(id, turn)}
+        onClosePalette={() => {
+          setActing(null);
+          setPaletteOpen(false);
+          setPaletteSeed("");
+        }}
+        marking={marking}
+        onCloseMark={() => setMarking(null)}
+        marksOpen={marksOpen}
+        onCloseMarks={() => setMarksOpen(false)}
+        statsOpen={statsOpen}
+        stats={stats.data ?? null}
+        onCloseStats={() => setStatsOpen(false)}
+        guidesOpen={guidesOpen}
+        contextTab={contextTab}
+        onContextTab={setContextTab}
+        guides={guides}
+        tasks={tasks.data ?? []}
+        customPrompt={scene.data?.scene.customGuidePrompt ?? null}
+        guideWorking={guideWorking}
+        onRebuildGuide={(kind) => {
+          setGuideWorking(kind);
+          rebuildGuides.mutate(kind === "all" ? {} : { kind }, {
+            onSettled: () => setGuideWorking(null),
+          });
+        }}
+        onEditGuide={(guideId, content) => editGuide.mutate({ guideId, content })}
+        onFlushGuide={(kind) => flushGuides.mutate(kind)}
+        summaries={summaries.data}
+        evicting={scene.data?.scene.summariseEvict ?? false}
+        summaryWorking={
+          summariseNow.isPending || rewriteSummary.isPending || forgetSummary.isPending
+        }
+        onSummarise={() => summariseNow.mutate(undefined)}
+        onRewriteSummary={(summaryId) => rewriteSummary.mutate(summaryId)}
+        onEditSummary={(summaryId, content) => editSummary.mutate({ summaryId, content })}
+        onForgetSummary={(summaryId) => forgetSummary.mutate(summaryId)}
+        onCloseContext={() => setGuidesOpen(false)}
+        inspecting={inspecting}
+        inspection={inspector.data}
+        onCloseInspector={() => setInspecting(null)}
+        previewOpen={previewOpen}
+        previewInspection={preview.data}
+        previewPending={preview.isPending}
+        previewError={preview.error?.message ?? null}
+        onClosePreview={() => setPreviewOpen(false)}
+        correcting={correcting}
+        onCloseCorrecting={() => setCorrecting(null)}
+        onRevise={(message, mode, instructions) => void revise(message, mode, instructions)}
+        recasting={recasting}
+        onCloseRecasting={() => setRecasting(null)}
+        onRecast={(message, ordinal, name) => void recast(message, ordinal, name)}
+        castActing={castActing}
+        onCloseCastActing={() => setCastActing(null)}
+        onBench={(patch) => bench.mutate(patch)}
+        onEditCard={(characterId) => {
+          if (isDesktop) {
+            setEditingCastId(characterId);
+            setCastActing(null);
+          } else {
+            navigate({ name: "character", characterId });
           }
-          onSummarise={() => summariseNow.mutate(undefined)}
-          onRewriteSummary={(summaryId) => rewriteSummary.mutate(summaryId)}
-          onEditSummary={(summaryId, content) => editSummary.mutate({ summaryId, content })}
-          onForgetSummary={(summaryId) => forgetSummary.mutate(summaryId)}
-          onClose={() => setGuidesOpen(false)}
-        />
-      ) : null}
-
-      {/* The inspector (§16): the exact prompt behind the message, with its
-          costs, its evictions and its lore verdicts. Opened only with something
-          to show — a message with no built prompt behind it gets a 404, and a
-          sheet that opens to say nothing is not worth the trip. */}
-      {inspecting !== null && inspector.data !== undefined ? (
-        <InspectorSheet
-          inspection={inspector.data}
-          messages={messages}
-          onClose={() => setInspecting(null)}
-        />
-      ) : null}
-
-      {/* The next-turn preview (§20 phase 68): the same sheet, the forward
-          answer. While the build runs the sheet shows a line rather than
-          opening empty. */}
-      {previewOpen ? (
-        preview.data !== undefined ? (
-          <InspectorSheet
-            inspection={preview.data}
-            messages={messages}
-            onClose={() => setPreviewOpen(false)}
-          />
-        ) : (
-          <Sheet title={strings.chat.inspectorTitle} onClose={() => setPreviewOpen(false)}>
-            <p className="meta py-[10px] leading-[1.5]">
-              {preview.isPending
-                ? strings.chat.promptPreviewWorking
-                : preview.error !== null
-                  ? strings.chat.promptPreviewFailed
-                  : strings.chat.promptPreviewWorking}
-            </p>
-            {preview.error !== null ? (
-              <p className="explain explain-alert">{preview.error.message}</p>
-            ) : null}
-          </Sheet>
-        )
-      ) : null}
-
-      {correcting !== null ? (
-        <Sheet title={strings.chat.opCorrectTitle} onClose={() => setCorrecting(null)}>
-          <div className="pt-[6px] pb-[10px]">
-            <OpPrompt
-              title={strings.chat.opCorrectTitle}
-              placeholder={strings.chat.opCorrectPlaceholder}
-              submitLabel={strings.chat.opApply}
-              onSubmit={(value) => void revise(correcting, "correct", value.trim() || undefined)}
-              onCancel={() => setCorrecting(null)}
-            />
-          </div>
-        </Sheet>
-      ) : null}
-
-      {/* Which part to rewrite. A separate sheet rather than a long-press on the
-          part itself: nesting a gesture target inside the beat's own would cost
-          the beat its swipe, and both would fire at once. */}
-      {recasting !== null ? (
-        <Sheet title={strings.chat.recast} onClose={() => setRecasting(null)}>
-          {(recasting.segments ?? []).map((segment) => (
-            <button
-              key={segment.ordinal}
-              type="button"
-              disabled={segment.speakerType !== "character"}
-              onClick={() => void recast(recasting, segment.ordinal, segment.speakerName)}
-              className="row w-full text-left disabled:opacity-40"
-            >
-              <span className="chrome text-[12.5px] text-ink-label">
-                {segment.speakerName ?? strings.chat.narrationPart}
-              </span>
-              <p className="mt-[5px] line-clamp-2 text-[length:var(--onsen-text-prose-excerpt)] leading-[1.5] text-ink-prose-muted">
-                {segment.content}
-              </p>
-            </button>
-          ))}
-        </Sheet>
-      ) : null}
-
-      {castActing !== null ? (
-        <Sheet title={strings.chat.castMember} onClose={() => setCastActing(null)}>
-          {/* Two states, not one (§20 phase 62). Muted keeps them in the
-              prompt and out of the rotation — the author can write about
-              somebody standing there silently. Benched takes them out of the
-              prompt altogether. Both keep every line they have written. */}
-          <SheetAction
-            label={castActing.isMuted ? strings.chat.unmute : strings.chat.mute}
-            onClick={() => {
-              bench.mutate({
-                characterId: castActing.characterId,
-                isMuted: !castActing.isMuted,
-              });
-              setCastActing(null);
-            }}
-          />
-          <SheetAction
-            label={castActing.isActive ? strings.chat.bench : strings.chat.unbench}
-            onClick={() => {
-              bench.mutate({
-                characterId: castActing.characterId,
-                isActive: !castActing.isActive,
-              });
-              setCastActing(null);
-            }}
-          />
-          <SheetAction
-            label={strings.chat.editCard}
-            onClick={() => {
-              if (isDesktop) {
-                setEditingCastId(castActing.characterId);
-                setCastActing(null);
-              } else {
-                navigate({ name: "character", characterId: castActing.characterId });
-              }
-            }}
-          />
-          <SheetAction
-            label={strings.chat.viewCard}
-            onClick={() =>
-              navigate({ name: "character", characterId: castActing.characterId })
-            }
-          />
-        </Sheet>
-      ) : null}
-
-      {oocOpen ? (
-        <OocChannel
-          messages={messages.filter((message) => message.kind === "ooc")}
-          authorName={authorName}
-          personaName={strings.ooc.reader}
-          // An out-of-character answer streams like any other generation, but
-          // it never appears in the log behind the sheet — so it is drawn here
-          // instead, in the bubble it is going to land in.
-          pending={isGenerating && oocInFlight ? active.text : null}
-          onSend={(question) => {
-            setOocAsked(true);
-            void generation.start({
-              sceneId,
-              sceneTitle: scene.data?.scene.title ?? "",
-              speaker: authorName,
-              ooc: { question },
-            });
-          }}
-          onClose={() => setOocOpen(false)}
-        />
-      ) : null}
-
-      {versionsFor !== null ? (
-        <Sheet title={strings.chat.versions} onClose={() => setVersionsFor(null)}>
-          {(siblings.data ?? []).map((sibling) => (
-            <div
-              key={sibling.id}
-              className="flex items-start gap-[8px]"
-              style={{
-                borderTop:
-                  sibling.id === versionsFor.id ? "2px solid var(--onsen-color-red)" : undefined,
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => {
-                  setLeaf.mutate({ messageId: sibling.id });
-                  setVersionsFor(null);
-                }}
-                className="min-w-0 flex-1 py-[12px] text-left"
-              >
-                <span className="chrome text-[12.5px] text-ink-dim">
-                  {sibling.siblingIndex + 1} / {sibling.siblingCount}
-                </span>
-                <p className="mt-[6px] line-clamp-3 text-[length:var(--onsen-text-prose-excerpt)] leading-[1.5] text-ink-prose-muted">
-                  {sibling.content}
-                </p>
-              </button>
-              {sibling.siblingCount <= 1 ? null : (
-                <button
-                  type="button"
-                  aria-label={strings.common.delete}
-                  className="chrome flex-none py-[12px] text-[13px]"
-                  style={{ color: "var(--onsen-color-red)" }}
-                  onClick={() =>
-                    confirm(
-                      strings.chat.deleteVersionConfirm,
-                      () => {
-                        remove.mutate(sibling.id);
-                        setVersionsFor(null);
-                      },
-                      { confirmLabel: strings.common.delete },
-                    )
-                  }
-                >
-                  {"\u00d7"}
-                </button>
-              )}
-            </div>
-          ))}
-        </Sheet>
-      ) : null}
-      {quickRepliesOpen ? (
-        <QuickReplySheet onClose={() => setQuickRepliesOpen(false)} />
-      ) : null}
+        }}
+        oocOpen={oocOpen}
+        onCloseOoc={() => setOocOpen(false)}
+        onStartOoc={(question) => {
+          setOocAsked(true);
+          void generation.start({
+            sceneId,
+            sceneTitle: scene.data?.scene.title ?? "",
+            speaker: authorName,
+            ooc: { question },
+          });
+        }}
+        versionsFor={versionsFor}
+        siblings={siblings.data ?? []}
+        onSetLeaf={(messageId) => setLeaf.mutate({ messageId })}
+        onDeleteMessage={(messageId) => remove.mutate(messageId)}
+        onCloseVersions={() => setVersionsFor(null)}
+        quickRepliesOpen={quickRepliesOpen}
+        onCloseQuickReplies={() => setQuickRepliesOpen(false)}
+      />
       {confirmNode}
     </div>
   );
