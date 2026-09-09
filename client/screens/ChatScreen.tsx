@@ -23,13 +23,13 @@ import { useGeneration } from "../lib/generation.ts";
 import { Composer } from "../components/Composer.tsx";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
 import { StatusBar } from "../components/StatusBar.tsx";
-import { COMMANDS } from "../lib/commands.ts";
 import { CastStrip } from "../components/CastStrip.tsx";
 import { Deck } from "../components/Deck.tsx";
 import { speakerFor, initialsOf } from "./chat/attribution.ts";
 import { ScenePane } from "./chat/ScenePane.tsx";
 import { MessageLog } from "./chat/MessageLog.tsx";
 import { ChatSheets } from "./chat/ChatSheets.tsx";
+import { useCommandKeys } from "./chat/useCommandKeys.ts";
 import { OpsGrid, OpsRow, OpPrompt, SteerOp, type Op } from "../components/OpsGrid.tsx";
 import { ExtensionActionsButton } from "../components/ExtensionActions.tsx";
 import { QuickReplyRow } from "../components/QuickReplies.tsx";
@@ -312,10 +312,6 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   /** The message being marked, while the name is being typed (§2). */
   const [marking, setMarking] = useState<MessageDto | null>(null);
   const signOut = useSignOut();
-  /** The palette opened on nothing, by key, rather than on a turn. */
-  const [paletteOpen, setPaletteOpen] = useState(false);
-  /** Text after the `/` when the composer opened the palette (§20 phase 130). */
-  const [paletteSeed, setPaletteSeed] = useState("");
   /**
    * The turn ⌘K and the single-key accelerators act on (§20 phase 43).
    *
@@ -323,6 +319,15 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
    * turn, so a stray keystroke cannot reroll something they were only reading.
    */
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // ⌘K, j/k, Escape and the single-key accelerators, plus the palette state
+  // they drive (§149). `runCommand` is hoisted, so the hook can take it.
+  const { paletteOpen, setPaletteOpen, paletteSeed, setPaletteSeed } = useCommandKeys({
+    messages,
+    selectedId,
+    setSelectedId,
+    runCommand,
+  });
 
   /**
    * What the palette acts on: a long-press names a turn explicitly, otherwise
@@ -335,65 +340,6 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
    */
   const paletteTurn =
     acting ?? messages.find((message) => message.id === selectedId) ?? null;
-
-  /**
-   * ⌘K anywhere in a roleplay.
-   *
-   * Ignored while a field has focus so it cannot eat a keystroke someone meant
-   * for the composer, and registered once for the screen rather than per turn.
-   */
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      // Never steal a keystroke meant for a field, and never fight a modifier
-      // combination the browser or the OS owns.
-      const inField = document.activeElement?.matches("input, textarea, [contenteditable]");
-      if (inField === true) return;
-
-      if (event.key === "k" && (event.metaKey || event.ctrlKey)) {
-        event.preventDefault();
-        setPaletteOpen(true);
-        return;
-      }
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
-
-      // j/k walk the log, the way every reader-shaped tool does. Down is
-      // towards the newest turn, because that is the direction a scene runs.
-      if (event.key === "j" || event.key === "k") {
-        const ids = messages.map((message) => message.id);
-        if (ids.length === 0) return;
-        event.preventDefault();
-        const at = selectedId === null ? -1 : ids.indexOf(selectedId);
-        const next =
-          event.key === "j"
-            ? Math.min(ids.length - 1, at + 1)
-            : Math.max(0, at === -1 ? ids.length - 1 : at - 1);
-        setSelectedId(ids[next] ?? null);
-        document
-          .querySelector(`[data-message-id="${ids[next]}"]`)
-          ?.scrollIntoView({ block: "nearest" });
-        return;
-      }
-
-      if (event.key === "Escape") {
-        setSelectedId(null);
-        return;
-      }
-
-      // Single-key accelerators, only with a turn selected — which is what
-      // makes them safe: there is nothing to act on until the reader picks one.
-      if (selectedId === null) return;
-      const command = COMMANDS.find(
-        (candidate) => candidate.key === event.key && candidate.unavailable === undefined,
-      );
-      if (command === undefined) return;
-      const turn = messages.find((message) => message.id === selectedId);
-      if (turn === undefined) return;
-      event.preventDefault();
-      runCommand(command.id, turn);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  });
 
   /**
    * Run a command by id (§20 phase 43).

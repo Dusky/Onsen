@@ -15,6 +15,10 @@ import { COMMANDS, matchCommands, score } from "../client/lib/commands.ts";
 const ROOT = join(import.meta.dir, "..");
 const chatScreen = readFileSync(join(ROOT, "client/screens/ChatScreen.tsx"), "utf8");
 const sheets = readFileSync(join(ROOT, "client/screens/chat/ChatSheets.tsx"), "utf8");
+const useCommandKeysSource = readFileSync(
+  join(ROOT, "client/screens/chat/useCommandKeys.ts"),
+  "utf8",
+);
 
 describe("the registry", () => {
   test("ids are unique", () => {
@@ -115,8 +119,9 @@ describe("the screens render from the registry", () => {
 
   test("the palette is reachable without a turn", () => {
     // ⌘K opens it on nothing; long-pressing a turn opens it scoped. Both go
-    // through the same component, so there is one list and two ways in.
+    // through the same component, so there is one list and two ways in. The
+    // key handler lives beside the screen (§20 phase 149); the screen wires it.
     expect(chatScreen).toContain("setPaletteOpen");
-    expect(chatScreen).toMatch(/metaKey \|\| event\.ctrlKey/);
+    expect(useCommandKeysSource).toMatch(/metaKey \|\| event\.ctrlKey/);
   });
 });
