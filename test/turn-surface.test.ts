@@ -91,4 +91,16 @@ describe("the composer", () => {
     expect(CHAT).toContain("startsWith(\"/\")");
     expect(SHEETS).toContain("initialQuery={paletteSeed}");
   });
+
+  test("the ops grid carries CONTINUE and TOOLS, and the header shrinks to SETUP", () => {
+    // §149: the full-width "reply without me" button folded into a `→ CONTINUE`
+    // cell, the marks/stats header chips folded into a `⋯ TOOLS` sheet.
+    expect(CHAT).toContain('key: "run_on"');
+    expect(CHAT).toContain('key: "tools"');
+    expect(SHEETS).toContain("strings.chat.opTools");
+    expect(CHAT).not.toContain("strings.chat.stats");
+    expect(CHAT).not.toContain("strings.chat.checkpoints");
+    // The desktop Direct row carries the keyboard hints the design specifies.
+    expect(CHAT).toContain("hint={strings.chat.keyboardHints}");
+  });
 });

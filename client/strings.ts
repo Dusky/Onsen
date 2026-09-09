@@ -144,7 +144,6 @@ export const strings = {
     /** The draft's rough cost, shown as it is typed (§20 phase 99). */
     draftTokens: (n: number) => `~${n} tok`,
     send: "Send",
-    continueWithout: "Reply without me",
     writing: (speaker: string) => `${speaker} is writing`,
     stop: "Stop",
 
@@ -340,6 +339,7 @@ export const strings = {
     /** Guided ops (SPEC §7). Lettered keys, like proofreading marks. */
     ops: "Ops",
     opsClose: "Close",
+    keyboardHints: "⌘↵ SEND · ⌘K CAST",
     extensionActions: "Extension actions",
     extensionActionsShort: "Ext",
     extensionActionsNone: "Nothing here. Enable an extension that offers actions.",
@@ -370,6 +370,12 @@ export const strings = {
     steerRole: "As",
     opNoReply: "No reply",
     opNoReplyKey: "⇥",
+    opRunOn: "Continue",
+    opRunOnKey: "→",
+    opTools: "Tools",
+    opToolsKey: "⋯",
+    opToolsCheckpoints: "Checkpoints",
+    opToolsStats: "Stats",
     opContinue: "Continue",
     opContinueKey: "→",
     opContinueUnavailable: "This provider cannot continue a finished message.",

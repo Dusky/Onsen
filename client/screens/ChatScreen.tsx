@@ -416,6 +416,8 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const checkpoints = useCheckpoints(sceneId);
   const stats = useSceneStats(sceneId);
   const [statsOpen, setStatsOpen] = useState(false);
+  /** The `⋯ TOOLS` sheet, behind the ops cell (design handoff). */
+  const [toolsOpen, setToolsOpen] = useState(false);
   const illustrate = useIllustrate(sceneId);
   const speak = useSpeak(sceneId);
   const attach = useAttachImage(sceneId);
@@ -671,6 +673,27 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       disabled: draft.trim() === "",
       onPress: () => void sendWithoutReply(),
     },
+    {
+      key: "run_on",
+      glyph: strings.chat.opRunOnKey,
+      label: strings.chat.opRunOn,
+      // Let the scene run on: ask for a reply without saying anything. The one
+      // thing a director does more than direct.
+      disabled: isGenerating,
+      onPress: () => {
+        setOpsPanel(null);
+        void generation.start(nextTurn()).then(() => setCued(null));
+      },
+    },
+    {
+      key: "tools",
+      glyph: strings.chat.opToolsKey,
+      label: strings.chat.opTools,
+      onPress: () => {
+        setOpsPanel(null);
+        setToolsOpen(true);
+      },
+    },
   ];
 
   /**
@@ -915,7 +938,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                 <span className="chrome text-[11px]" style={{ color: "var(--onsen-color-text-dim)" }}>
                   {strings.chat.direct}
                 </span>
-                <OpsRow ops={shownOps} />
+                <OpsRow ops={shownOps} hint={strings.chat.keyboardHints} />
                 <ExtensionActionsButton sceneId={sceneId} wide />
                 {steer === null ? null : (
                   <span className="chrome ml-auto flex min-w-0 items-center gap-[6px] text-[11px]">
@@ -942,7 +965,6 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
 
         <Composer
           onSend={(text) => void sendAndReply(text)}
-          onGenerate={() => void generation.start(nextTurn()).then(() => setCued(null))}
           disabled={isGenerating}
           speakerInitials={
             scope === "beat"
@@ -1087,24 +1109,6 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             Both are chips onto screens that do not exist yet — the inspector is
             phase 25 and the VN stage is phase 29 — and a number with nothing
             behind it to open is worse than the space it saves. */}
-        {/* §2's marked places. Only offered once there is one: a chip onto an
-            empty list is the thing the comment above argues against. */}
-        {(checkpoints.data?.length ?? 0) > 0 ? (
-          <button
-            type="button"
-            onClick={() => setMarksOpen(true)}
-            className="chrome flex-none border border-border-quiet px-[9px] py-[6px] text-[12.5px] text-ink-muted"
-          >
-            {`${strings.chat.checkpoints} · ${checkpoints.data?.length ?? 0}`}
-          </button>
-        ) : null}
-        <button
-          type="button"
-          onClick={() => setStatsOpen(true)}
-          className="chrome flex-none border border-border-quiet px-[9px] py-[6px] text-[12.5px] text-ink-muted"
-        >
-          {strings.chat.stats}
-        </button>
         <button
           type="button"
           onClick={() => navigate({ name: "setup", sceneId })}
@@ -1222,6 +1226,17 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         statsOpen={statsOpen}
         stats={stats.data ?? null}
         onCloseStats={() => setStatsOpen(false)}
+        toolsOpen={toolsOpen}
+        onCloseTools={() => setToolsOpen(false)}
+        checkpointCount={checkpoints.data?.length ?? 0}
+        onOpenCheckpoints={() => {
+          setToolsOpen(false);
+          setMarksOpen(true);
+        }}
+        onOpenStats={() => {
+          setToolsOpen(false);
+          setStatsOpen(true);
+        }}
         guidesOpen={guidesOpen}
         contextTab={contextTab}
         onContextTab={setContextTab}

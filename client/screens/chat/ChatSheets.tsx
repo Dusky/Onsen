@@ -58,6 +58,11 @@ export function ChatSheets({
   statsOpen,
   stats,
   onCloseStats,
+  toolsOpen,
+  onCloseTools,
+  checkpointCount,
+  onOpenCheckpoints,
+  onOpenStats,
   // context (guides + memory)
   guidesOpen,
   contextTab,
@@ -133,6 +138,11 @@ export function ChatSheets({
   statsOpen: boolean;
   stats: SceneStatsDto | null;
   onCloseStats(): void;
+  toolsOpen: boolean;
+  onCloseTools(): void;
+  checkpointCount: number;
+  onOpenCheckpoints(): void;
+  onOpenStats(): void;
   guidesOpen: boolean;
   contextTab: ContextTab;
   onContextTab(tab: ContextTab): void;
@@ -205,6 +215,22 @@ export function ChatSheets({
 
       {statsOpen ? (
         <StatsSheet stats={stats} onClose={onCloseStats} />
+      ) : null}
+
+      {/* The `⋯ TOOLS` cell (design handoff): the scene's instruments, one
+          sheet instead of header chips. */}
+      {toolsOpen ? (
+        <Sheet title={strings.chat.opTools} onClose={onCloseTools}>
+          <SheetAction
+            label={
+              checkpointCount === 0
+                ? strings.chat.opToolsCheckpoints
+                : `${strings.chat.opToolsCheckpoints} · ${checkpointCount}`
+            }
+            onClick={onOpenCheckpoints}
+          />
+          <SheetAction label={strings.chat.opToolsStats} onClick={onOpenStats} />
+        </Sheet>
       ) : null}
 
       {guidesOpen ? (

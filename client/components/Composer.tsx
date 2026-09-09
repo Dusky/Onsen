@@ -18,7 +18,6 @@ import { CHARS_PER_TOKEN } from "@shared/types.ts";
 
 interface ComposerProps {
   onSend(text: string): void;
-  onGenerate(): void;
   disabled: boolean;
   /** Initials of the speaker the send button will produce. */
   speakerInitials: string;
@@ -63,7 +62,6 @@ interface ComposerProps {
 
 export function Composer({
   onSend,
-  onGenerate,
   disabled,
   speakerInitials,
   speakerName,
@@ -112,8 +110,12 @@ export function Composer({
 
       {/* Quick replies stay above the field even while the ops drawer is open:
           their whole point is one tap, and a button that hides when the
-          keyboard does is a button that never fires. */}
-      {quickReplies === undefined ? null : <div className="mb-[9px]">{quickReplies}</div>}
+          keyboard does is a button that never fires. But a nudge is a *start*;
+          once a turn is half-written they are noise, so they fold away while
+          the draft is not empty (§149). */}
+      {quickReplies === undefined || draft.trim() !== "" ? null : (
+        <div className="mb-[9px]">{quickReplies}</div>
+      )}
 
       {/* What is going with the next line (§20 phase 41). Above the field
           rather than inside it: a picture is not text, and the row it sits in
@@ -136,7 +138,7 @@ export function Composer({
         <textarea
           ref={field}
           rows={1}
-          className="field min-h-[46px] flex-1 resize-none py-[13px]"
+          className={`field flex-1 resize-none py-[13px] ${wide ? "min-h-[62px]" : "min-h-[46px]"}`}
           placeholder={strings.chat.composerPlaceholder}
           value={draft}
           onChange={(event) => onDraftChange(event.target.value)}
@@ -236,9 +238,10 @@ export function Composer({
       </div>
 
       {/* The model that answers, beside the input, and the draft's rough cost
-          as it is typed (§20 phases 99, 101). */}
+          as it is typed (§20 phases 99, 101). One hairline footer, not a row
+          of its own: dense, per §Density. */}
       {model === undefined && draft.trim() === "" ? null : (
-        <div className="mt-[8px] flex items-baseline justify-between gap-[10px]">
+        <div className="mt-[8px] flex items-baseline justify-between gap-[10px] border-t border-rule pt-[7px]">
           {model === undefined ? (
             <span />
           ) : (
@@ -266,15 +269,9 @@ export function Composer({
         </div>
       )}
 
-      {/* Asking for a reply without saying anything is how you let a scene run on. */}
-      <button
-        type="button"
-        onClick={onGenerate}
-        disabled={disabled}
-        className="chrome mt-[10px] w-full border border-border-quiet py-[11px] text-[13px] text-ink-muted disabled:opacity-40"
-      >
-        {strings.chat.continueWithout}
-      </button>
+      {/* Asking for a reply without saying anything is the `→ CONTINUE` op
+          (§149), not a permanent row here — the composer's resting state stays
+          two rows, per the design handoff. */}
       </div>
     </div>
   );
