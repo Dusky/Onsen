@@ -458,3 +458,41 @@ describe("shipped extensions", () => {
     expect(after.suppressed).toBe(false);
   });
 });
+
+/* ------------------------------------------------------------------ */
+/* Extension actions (SPEC §15, §20 phase 148)                        */
+/* ------------------------------------------------------------------ */
+
+describe("extension actions", () => {
+  test("an action an extension declares is listed near the input", async () => {
+    const t = await signedIn();
+    const dir = repoWith({
+      "pack.json": JSON.stringify({ name: "Buttons", version: "1.0.0", author: "me", description: "" }),
+      "server.ts": "export function register(ctx) { ctx.action({ key: 'poke', label: 'Poke', prompt: 'do it', apply() {} }); }",
+    });
+    try {
+      const installed = await t.fetch("/api/packs/install-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: dir }),
+      });
+      expect(installed.status).toBe(201);
+
+      const list = (await (await t.fetch("/api/extensions/actions")).json()) as Array<{ key: string; label: string; description: string | null }>;
+      const poke = list.find((entry) => entry.key === "poke");
+      expect(poke?.label).toBe("Poke");
+      expect(poke?.description).toBeNull();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("the shipped Summarize offers a manual Summarize now action", async () => {
+    const t = await signedIn();
+    await installShippedExtensions(t.ctx.db, t.config.extensionsDir);
+    await loadInstalledExtensions(t.ctx.db, t.config.extensionsDir);
+
+    const list = (await (await t.fetch("/api/extensions/actions")).json()) as Array<{ key: string; label: string }>;
+    expect(list.find((entry) => entry.key === "summarize-now")?.label).toBe("Summarize now");
+  });
+});

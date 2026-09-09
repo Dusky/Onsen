@@ -7015,3 +7015,15 @@ act.
 extension exactly once, and its summary injects through the template while its
 task gates on the interval — plus a suppression case (enabled suppresses the
 native summarizer, disabled hands it back) and the full suite (1489 pass).
+
+## Phase 148 — Extension actions
+
+`ctx.action` registers an on-demand button, surfaced by the host near the
+input — a wide-screen entry in the Direct row and a phone entry in the ops
+drawer. Pressing one runs the prompt against the scene through the same
+side-call path a task uses, hands the answer to `apply`, and shows the result
+in the sheet. The Summarize extension gains a manual "Summarize now" that works
+even while updates are paused.
+
+**Verified** by two cases — a declared action is listed, and the shipped
+Summarize offers its manual action — plus the full suite (1491 pass).

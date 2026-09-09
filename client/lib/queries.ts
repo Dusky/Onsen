@@ -25,6 +25,7 @@ import type {
   TriggerOutcomeDto,
   PackListDto,
   ExtensionDto,
+  ExtensionActionDto,
   PackPlanDto,
   PackInstallDto,
   PackUninstallPreviewDto,
@@ -2164,6 +2165,26 @@ export function useDeleteExtension() {
   return useMutation({
     mutationFn: (id: string) => api.delete<void>(`/extensions/${id}`),
     onSuccess: () => void client.invalidateQueries({ queryKey: connectionKeys.extensions }),
+  });
+}
+
+/** The on-demand actions enabled extensions offer near the input (§148). */
+export function useExtensionActions() {
+  return useQuery({
+    queryKey: ["extension-actions"] as const,
+    queryFn: () => api.get<ExtensionActionDto[]>("/extensions/actions"),
+  });
+}
+
+export function useRunExtensionAction(sceneId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (key: string) =>
+      api.post<{ text: string }>(`/scenes/${sceneId}/extensions/${key}/run`, {}),
+    onSuccess: () => {
+      // The action may have written summaries, guides, or any scene state.
+      void client.invalidateQueries({ queryKey: ["scenes", sceneId] });
+    },
   });
 }
 

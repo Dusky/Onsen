@@ -340,6 +340,9 @@ export const strings = {
     /** Guided ops (SPEC §7). Lettered keys, like proofreading marks. */
     ops: "Ops",
     opsClose: "Close",
+    extensionActions: "Extension actions",
+    extensionActionsShort: "Ext",
+    extensionActionsNone: "Nothing here. Enable an extension that offers actions.",
     opNudge: "Nudge",
     opNudgeKey: "N",
     opNudgeTitle: "Direct this turn",

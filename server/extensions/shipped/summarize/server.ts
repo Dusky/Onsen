@@ -61,6 +61,17 @@ export function register(ctx: ExtensionApi, settings: Record<string, unknown> = 
     },
   });
 
+  const applySummary = (reply: string, { db, sceneId, messageCount }: { db: Database; sceneId: number; messageCount: number }) => {
+    const summary = reply.trim();
+    if (summary === "") return;
+    ctx.state.write(db, sceneId, "summary", summary);
+    ctx.state.write(db, sceneId, "anchorCount", String(messageCount));
+    const last = db
+      .query("SELECT id FROM messages WHERE scene_id = $scene ORDER BY id DESC LIMIT 1")
+      .get({ scene: sceneId }) as { id: number } | undefined;
+    if (last !== undefined) ctx.state.write(db, sceneId, "anchorId", String(last.id));
+  };
+
   ctx.task({
     key: "summarize",
     label: "Summarize",
@@ -79,16 +90,19 @@ export function register(ctx: ExtensionApi, settings: Record<string, unknown> = 
       }
       return false;
     },
-    apply(reply, { db, sceneId, messageCount }) {
-      const summary = reply.trim();
-      if (summary === "") return;
-      ctx.state.write(db, sceneId, "summary", summary);
-      ctx.state.write(db, sceneId, "anchorCount", String(messageCount));
-      const last = db
-        .query("SELECT id FROM messages WHERE scene_id = $scene ORDER BY id DESC LIMIT 1")
-        .get({ scene: sceneId }) as { id: number } | undefined;
-      if (last !== undefined) ctx.state.write(db, sceneId, "anchorId", String(last.id));
-    },
+    apply: applySummary,
+  });
+
+  // The manual counterpart to the interval: a button near the input (§148),
+  // which works even while updates are paused — asking is not scheduling.
+  ctx.action({
+    key: "summarize-now",
+    label: "Summarize now",
+    description: "Write the running summary from the story so far.",
+    prompt: taskPrompt(prompt, words, includePrevious),
+    samplers: { temperature: 0.3, top_p: 0.9 },
+    replyLimit: Math.max(200, words * 4),
+    apply: applySummary,
   });
 }
 

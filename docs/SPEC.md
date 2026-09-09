@@ -3830,6 +3830,11 @@ Each phase ends in a working, usable application.
     summariser while the extension is enabled — the Summarize extension is more
     featureful, so the two never both describe the story. See §15,
     `installShippedExtensions`, `server/extensions/suppress.ts`.
+148. **Extension actions** — `ctx.action` registers an on-demand button the
+    host shows near the input (a wide-screen Direct-row entry and a phone
+    ops-drawer entry). Pressing one runs the prompt against the scene and shows
+    the answer; the Summarize extension gains a manual "Summarize now". See §15,
+    `client/components/ExtensionActions.tsx`.
 
 Settled while building phase 15.
 

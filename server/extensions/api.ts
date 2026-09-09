@@ -54,9 +54,28 @@ export interface ExtensionInjection {
   render(context: { db: Database; sceneId: number }): string | null;
 }
 
+/**
+ * An action button the host surfaces near the input (§20 phase 148).
+ *
+ * A task an extension does not want on a schedule but on demand: the operator
+ * presses it, the host runs the prompt against the scene, and `apply` stores
+ * the answer. Same macro surface as a task.
+ */
+export interface ExtensionAction {
+  key: string;
+  label: string;
+  description?: string;
+  prompt: string;
+  samplers?: SamplerSettings;
+  replyLimit?: number;
+  timeoutMs?: number;
+  apply?(reply: string, context: { db: Database; sceneId: number; messageCount: number }): void | Promise<void>;
+}
+
 export interface ExtensionApi {
   task(config: ExtensionTask): void;
   inject(config: ExtensionInjection): void;
+  action(config: ExtensionAction): void;
   /**
    * Per-scene key/value storage, pre-bound to this extension's name. Writes
    * happen in `apply`; reads happen in `shouldRun`, `render`, and the
@@ -72,16 +91,20 @@ export interface ExtensionRegistration {
   name: string;
   tasks: ExtensionTask[];
   injections: ExtensionInjection[];
+  actions: ExtensionAction[];
 }
 
 export function createExtensionApi(name: string): { api: ExtensionApi; registration: ExtensionRegistration } {
-  const registration: ExtensionRegistration = { name, tasks: [], injections: [] };
+  const registration: ExtensionRegistration = { name, tasks: [], injections: [], actions: [] };
   const api: ExtensionApi = {
     task(config) {
       registration.tasks.push(config);
     },
     inject(config) {
       registration.injections.push(config);
+    },
+    action(config) {
+      registration.actions.push(config);
     },
     state: {
       read: (db, sceneId, key) => readExtensionState(db, name, sceneId, key),

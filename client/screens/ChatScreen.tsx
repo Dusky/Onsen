@@ -33,6 +33,7 @@ import { InspectorSheet } from "../components/InspectorSheet.tsx";
 import { CastStrip } from "../components/CastStrip.tsx";
 import { Deck, Readouts } from "../components/Deck.tsx";
 import { OpsGrid, OpsRow, OpPrompt, SteerOp, type Op } from "../components/OpsGrid.tsx";
+import { ExtensionActionsButton } from "../components/ExtensionActions.tsx";
 import { QuickReplyRow, QuickReplySheet } from "../components/QuickReplies.tsx";
 import { CastRail } from "../components/CastRail.tsx";
 import { CastEditPane } from "../components/CastEditPane.tsx";
@@ -774,7 +775,14 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         return undefined;
       case "grid":
         // Already a visible row up there, so the drawer has nothing to add.
-        return isDesktop ? undefined : <OpsGrid ops={shownOps} cue={cueSummary()} />;
+        return isDesktop ? undefined : (
+          <>
+            <OpsGrid ops={shownOps} cue={cueSummary()} />
+            <div className="mt-[11px] flex justify-end">
+              <ExtensionActionsButton sceneId={sceneId} />
+            </div>
+          </>
+        );
       case "nudge":
         return (
           <OpPrompt
@@ -1152,6 +1160,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                   {strings.chat.direct}
                 </span>
                 <OpsRow ops={shownOps} />
+                <ExtensionActionsButton sceneId={sceneId} wide />
                 {steer === null ? null : (
                   <span className="chrome ml-auto flex min-w-0 items-center gap-[6px] text-[11px]">
                     <span className="flex-none" style={{ color: "var(--onsen-color-text-dim)" }}>

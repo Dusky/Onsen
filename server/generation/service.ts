@@ -39,7 +39,7 @@ import {
 } from "./classifier.ts";
 import { castRowsOf } from "../db/queries/authors.ts";
 import { taskKind, TURN_CLASSIFIER, BACKGROUND_DETECT, type SideCallOp } from "../tasks/registry.ts";
-import { postGenerationExtensionTasks } from "../extensions/registry.ts";
+import { postGenerationExtensionTasks, extensionActionOf } from "../extensions/registry.ts";
 import { readExtensionState } from "../extensions/state.ts";
 import type { TaskRunner } from "../tasks/runner.ts";
 import type { PassPipeline } from "../passes/pipeline.ts";
@@ -1015,11 +1015,11 @@ export class GenerationService {
     for (const entry of postGenerationExtensionTasks()) {
       const task = entry.task;
       try {
+        // A gated task decides against the settled scene whether to run, so an
+        // extension can fire every N messages rather than every turn (§145).
         const scene = findSceneById(this.db, sceneId);
         if (scene === null) continue;
         const path = activePathOf(this.db, sceneId);
-        // A gated task decides against the settled scene whether to run, so an
-        // extension can fire every N messages rather than every turn (§145).
         if (task.shouldRun !== undefined && !task.shouldRun({
           db: this.db,
           sceneId,
@@ -1027,46 +1027,93 @@ export class GenerationService {
         })) {
           continue;
         }
-        const transcript = path
-          .slice(-24)
-          .map((message) => `${message.author_type === "user" ? "You" : "Character"}: ${message.content}`)
-          .join("\n");
-        const lastMessage = path[path.length - 1]?.content ?? "";
-        const question = task.prompt
-          .replace(/\{\{transcript\}\}/g, transcript)
-          .replace(/\{\{lastMessage\}\}/g, lastMessage)
-          // `{{state:<key>}}` reads the extension's own scene state, written by
-          // an earlier `apply` (§146) — the previous summary, a counter, etc.
-          .replace(/\{\{state:([^}]+)\}\}/g, (_all, key: string) =>
-            readExtensionState(this.db, entry.moduleName, sceneId, key.trim()) ?? "",
-          );
-
-        const kind: SideCallOp = {
-          key: `ext:${entry.moduleName}:${task.key}`,
-          runs: "side_call",
-          label: task.label,
-          description: task.description ?? "",
-          stage: task.stage,
-          samplers: task.samplers ?? {},
-          timeoutMs: task.timeoutMs ?? 12_000,
-          replyLimit: task.replyLimit ?? 2_000,
-          variables: [],
-          hideable: false,
-        };
-        const outcome = await this.tasks.run({
-          kind,
-          sceneId,
-          prompt: buildSideCallPrompt(question, "You are a background assistant answering a task."),
-          fallbackProfileId: scene.connection_profile_id,
-        });
-        if (!outcome.ok) continue;
-        if (task.apply !== undefined) {
-          await task.apply(outcome.text, { db: this.db, sceneId, messageCount: path.length });
-        }
+        await this.runExtensionCall(sceneId, entry.moduleName, task.stage, task);
       } catch {
         /* A broken extension task must not reach the turn. */
       }
     }
+  }
+
+  /**
+   * Run one extension action on demand (§20 phase 148). The button the host
+   * shows near the input calls here; the outcome returns so the caller can
+   * tell the operator what happened rather than failing silently.
+   */
+  public async runExtensionAction(
+    sceneId: number,
+    actionKey: string,
+  ): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
+    const entry = extensionActionOf(actionKey);
+    if (entry === null) return { ok: false, error: "No such extension action." };
+    try {
+      const text = await this.runExtensionCall(sceneId, entry.moduleName, "sidecar", entry.action);
+      if (text === null) return { ok: false, error: "The action produced nothing." };
+      return { ok: true, text };
+    } catch {
+      return { ok: false, error: "The action failed." };
+    }
+  }
+
+  /**
+   * The shared half of a task and an action: fill the macros against the
+   * settled scene, run the side call, and hand the answer to `apply`. Returns
+   * the answer, or null when there was no scene or the model produced nothing.
+   */
+  private async runExtensionCall(
+    sceneId: number,
+    moduleName: string,
+    stage: "pre_generation" | "sidecar" | "post_generation",
+    call: {
+      key: string;
+      label: string;
+      description?: string;
+      prompt: string;
+      samplers?: SamplerSettings;
+      timeoutMs?: number;
+      replyLimit?: number;
+      apply?: (reply: string, context: { db: Database; sceneId: number; messageCount: number }) => void | Promise<void>;
+    },
+  ): Promise<string | null> {
+    const scene = findSceneById(this.db, sceneId);
+    if (scene === null) return null;
+    const path = activePathOf(this.db, sceneId);
+    const transcript = path
+      .slice(-24)
+      .map((message) => `${message.author_type === "user" ? "You" : "Character"}: ${message.content}`)
+      .join("\n");
+    const lastMessage = path[path.length - 1]?.content ?? "";
+    const question = call.prompt
+      .replace(/\{\{transcript\}\}/g, transcript)
+      .replace(/\{\{lastMessage\}\}/g, lastMessage)
+      // `{{state:<key>}}` reads the extension's own scene state, written by an
+      // earlier `apply` (§146) — the previous summary, a counter, etc.
+      .replace(/\{\{state:([^}]+)\}\}/g, (_all, key: string) =>
+        readExtensionState(this.db, moduleName, sceneId, key.trim()) ?? "",
+      );
+
+    const kind: SideCallOp = {
+      key: `ext:${moduleName}:${call.key}`,
+      runs: "side_call",
+      label: call.label,
+      description: call.description ?? "",
+      stage,
+      samplers: call.samplers ?? {},
+      timeoutMs: call.timeoutMs ?? 12_000,
+      replyLimit: call.replyLimit ?? 2_000,
+      variables: [],
+      hideable: false,
+    };
+    const outcome = await this.tasks.run({
+      kind,
+      sceneId,
+      prompt: buildSideCallPrompt(question, "You are a background assistant answering a task."),
+      fallbackProfileId: scene.connection_profile_id,
+    });
+    if (!outcome.ok) return null;
+    if (call.apply !== undefined) {
+      await call.apply(outcome.text, { db: this.db, sceneId, messageCount: path.length });
+    }
+    return outcome.text;
   }
 
   /**

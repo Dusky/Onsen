@@ -1080,6 +1080,26 @@ export function sceneGenerationRoutes(
     return c.json(summaryState(after ?? scene));
   });
 
+  /**
+   * Run an extension's on-demand action for this scene (§20 phase 148). Awaited:
+   * the operator pressed a button and is looking at the result.
+   */
+  app.post("/:sceneId/extensions/:key/run", async (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    const result = await service.runExtensionAction(scene.id, c.req.param("key"));
+    if (!result.ok) {
+      const status = result.error === "No such extension action." ? 404 : 500;
+      return c.json(
+        { error: { code: status === 404 ? "not_found" : "failed", message: result.error } },
+        status,
+      );
+    }
+    return c.json({ text: result.text });
+  });
+
   /** Write one again over the same range (§11). An edit is overwritten: they asked. */
   app.post("/:sceneId/summaries/:summaryId/rewrite", async (c) => {
     const scene = findScene(ctx.db, c.req.param("sceneId"));

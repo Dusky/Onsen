@@ -3,7 +3,7 @@ import { rmSync } from "node:fs";
 import type { AppContext, AppEnv } from "../context.ts";
 import { requireAuth } from "../middleware/session.ts";
 import { loadInstalledExtensions } from "../extensions/install.ts";
-import { unregisterExtensionModule } from "../extensions/registry.ts";
+import { unregisterExtensionModule, extensionActions } from "../extensions/registry.ts";
 import {
   deleteExtension,
   deleteExtensionTasks,
@@ -61,6 +61,17 @@ export function extensionRoutes(ctx: AppContext): Hono<AppEnv> {
   app.use("*", requireAuth());
 
   app.get("/", (c) => c.json(listExtensions(ctx.db).map(toExtensionDto)));
+
+  /** The on-demand actions enabled extensions offer near the input (§148). */
+  app.get("/actions", (c) =>
+    c.json(
+      extensionActions().map((entry) => ({
+        key: entry.action.key,
+        label: entry.action.label,
+        description: entry.action.description ?? null,
+      })),
+    ),
+  );
 
   app.patch("/:extensionId", async (c) => {
     const extension = findExtension(ctx.db, c.req.param("extensionId"));

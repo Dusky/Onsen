@@ -1085,6 +1085,13 @@ export interface ExtensionDto {
   settingsSchema: ExtensionSettingsField[];
 }
 
+/** An on-demand action an extension offers near the input (§148). */
+export interface ExtensionActionDto {
+  key: string;
+  label: string;
+  description: string | null;
+}
+
 /* ------------------------------------------------------------------ */
 /* Outbound webhooks (SPEC §15)                                        */
 /* ------------------------------------------------------------------ */

@@ -3,7 +3,7 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSyn
 import type { Database } from "bun:sqlite";
 import { loadExtensionModule } from "./loader.ts";
 import { loadBuiltin, BUILTINS } from "./builtins.ts";
-import { registerExtensionTask, registerExtensionInjection, clearExtensionTasks } from "./registry.ts";
+import { registerExtensionTask, registerExtensionInjection, registerExtensionAction, clearExtensionTasks } from "./registry.ts";
 import { applySuppression } from "./suppress.ts";
 import {
   deleteExtensionTasks,
@@ -163,6 +163,9 @@ export async function installExtensionCode(opts: {
   for (const injection of registration.injections) {
     registerExtensionInjection(injection, opts.name);
   }
+  for (const action of registration.actions) {
+    registerExtensionAction(action, opts.name);
+  }
   return { hasCode: true, tasks: registration.tasks.length };
 }
 
@@ -196,6 +199,9 @@ export async function loadInstalledExtensions(db: Database, extensionsDir: strin
     }
     for (const injection of registration.injections) {
       registerExtensionInjection(injection, row.name);
+    }
+    for (const action of registration.actions) {
+      registerExtensionAction(action, row.name);
     }
   }
   applySuppression(db, disabled);

@@ -1,9 +1,10 @@
-import type { ExtensionInjection, ExtensionTask } from "./api.ts";
+import type { ExtensionAction, ExtensionInjection, ExtensionTask } from "./api.ts";
 import type { Database } from "bun:sqlite";
 import type { BlockPlacement, PromptExtensionBlock } from "../prompt/types.ts";
 
 /**
- * The live registry of extension tasks and injections (§20 phases 110, 145).
+ * The live registry of extension tasks, injections and actions (§20 phases
+ * 110, 145, 148).
  *
  * The `apply` and `render` callbacks are code and cannot be stored; they live
  * here, rebuilt at startup by loading every installed extension's module. The
@@ -20,8 +21,14 @@ interface RegisteredInjection {
   moduleName: string;
 }
 
+interface RegisteredAction {
+  action: ExtensionAction;
+  moduleName: string;
+}
+
 const tasks = new Map<string, RegisteredTask>();
 const injections = new Map<string, RegisteredInjection>();
+const actions = new Map<string, RegisteredAction>();
 
 export function registerExtensionTask(task: ExtensionTask, moduleName: string): void {
   tasks.set(task.key, { task, moduleName });
@@ -31,9 +38,14 @@ export function registerExtensionInjection(injection: ExtensionInjection, module
   injections.set(`${moduleName}:${injection.key}`, { injection, moduleName });
 }
 
+export function registerExtensionAction(action: ExtensionAction, moduleName: string): void {
+  actions.set(action.key, { action, moduleName });
+}
+
 export function clearExtensionTasks(): void {
   tasks.clear();
   injections.clear();
+  actions.clear();
 }
 
 /**
@@ -59,6 +71,14 @@ export function postGenerationExtensionTasks(): RegisteredTask[] {
 
 export function extensionInjections(): RegisteredInjection[] {
   return [...injections.values()];
+}
+
+export function extensionActions(): RegisteredAction[] {
+  return [...actions.values()];
+}
+
+export function extensionActionOf(key: string): RegisteredAction | null {
+  return actions.get(key) ?? null;
 }
 
 /**
