@@ -604,6 +604,7 @@ export const strings = {
     addProfile: "Add a profile",
     preset: "Preset",
     presetDefault: "Use the default",
+    presetDefaultBadge: "Default",
     presetMakeDefault: "Make it the default",
     presetIsDefault: "Default",
     addPreset: "New preset",
@@ -649,11 +650,11 @@ export const strings = {
     xtcHint:
       "XTC drops the most-likely tokens while keeping one viable choice, which raises creativity. Threshold is how likely a token must be to qualify; probability is how often it fires.",
     /** Preset import (SPEC §18, phase 28). */
-    importPreset: "Import a SillyTavern preset",
+    importPreset: "Import a preset",
     /* §18: "Don't pretend round-tripping is clean when it isn't." */
     exportPresetLabel: "Save a copy",
     exportPresetOwn: "Save this preset",
-    exportPresetSt: "Save for SillyTavern",
+    exportPresetSt: "Export for other apps",
     importingPreset: "Importing…",
     presetImported: (name: string) => `Imported ${name}.`,
     presetReport: (report: {
@@ -1104,7 +1105,6 @@ export const strings = {
     guidesTitle: "Guides",
     noScene: "Open a roleplay to read it.",
     refresh: "Refresh",
-    fullEditor: "Full editor",
     /** The prompt panel's one summary line: used, budget, and free percent. */
     promptSummary: (used: number, available: number, freePct: number) =>
       `${used} / ${available} tok \u00b7 ${freePct}% free`,

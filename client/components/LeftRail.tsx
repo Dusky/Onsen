@@ -32,7 +32,7 @@ import {
   useUpdateScene,
 } from "../lib/queries.ts";
 import { useUiStore } from "../state/ui.ts";
-import { LABELS, Slider, PromptManager, download, PresetFields } from "./PresetEditor.tsx";
+import { GROUPS, LABELS, Slider, PromptManager, download } from "./PresetEditor.tsx";
 import { GuidesBody } from "./GuidesPanel.tsx";
 import { LorePane } from "./LorePane.tsx";
 import { useConfirm } from "./ConfirmSheet.tsx";
@@ -467,8 +467,6 @@ function BlockList({ debug }: { debug: PromptDebugInfo }) {
 /* ------------------------------------------------------------------ */
 
 /** The three the mockup leads with; the rest live in the full editor. */
-const PANEL_SAMPLERS: BoundedSampler[] = ["temperature", "min_p", "repetition_penalty"];
-
 function PresetPanel({ sceneId }: { sceneId: string | null }) {
   const presets = usePresets();
   const profiles = useConnectionProfiles();
@@ -479,7 +477,6 @@ function PresetPanel({ sceneId }: { sceneId: string | null }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [confirmNode, confirm] = useConfirm();
   const [presetId, setPresetId] = useState<string | null>(null);
-  const [fullEditor, setFullEditor] = useState(false);
   const rows = presets.data ?? [];
   const preset =
     rows.find((row) => row.id === presetId) ??
@@ -500,24 +497,38 @@ function PresetPanel({ sceneId }: { sceneId: string | null }) {
 
   return (
     <div className="mt-[12px]">
-      <label className="chrome mb-[6px] block text-[12.5px] text-ink-muted">
-        {strings.leftRail.presetTitle}
-      </label>
-      <select
-        className="field mb-[8px]"
-        value={preset.id}
-        onChange={(event) => setPresetId(event.target.value)}
-      >
-        {rows.map((row) => (
-          <option key={row.id} value={row.id}>
-            {row.name}
-          </option>
-        ))}
-      </select>
+      {/* The presets as rows, not a dropdown: browsing is the point, and the
+          default is stated rather than implied. */}
+      <p className="section-label mb-[6px]">{strings.leftRail.presetTitle}</p>
+      {rows.map((row) => {
+        const on = row.id === preset.id;
+        return (
+          <button
+            key={row.id}
+            type="button"
+            onClick={() => setPresetId(row.id)}
+            aria-current={on ? "true" : undefined}
+            className="flex w-full items-baseline gap-[8px] border-b border-rule py-[7px] text-left"
+          >
+            <span
+              className="min-w-0 flex-1 truncate text-[13.5px] font-medium"
+              style={{ color: on ? "var(--onsen-color-text)" : "var(--onsen-color-text-muted)" }}
+            >
+              {row.name}
+            </span>
+            {row.isDefault ? (
+              <span className="chrome flex-none text-[11px] text-ink-dim">
+                {strings.settings.presetDefaultBadge}
+              </span>
+            ) : null}
+          </button>
+        );
+      })}
 
-      {/* The lifecycle, all in one row: a preset is made, imported, saved,
-          promoted and removed here rather than behind Settings (§20 phase 105). */}
-      <div className="mb-[8px] flex flex-wrap gap-[6px]">
+      {/* Make and import, then the selected preset's own actions — a preset is
+          made, imported, saved, promoted and removed here rather than behind
+          Settings (§20 phase 105). */}
+      <div className="mt-[10px] flex gap-[6px]">
         <button
           type="button"
           className="btn flex-1 px-[8px]"
@@ -536,6 +547,8 @@ function PresetPanel({ sceneId }: { sceneId: string | null }) {
         >
           {importPreset.isPending ? strings.settings.importingPreset : strings.settings.importPreset}
         </button>
+      </div>
+      <div className="mt-[6px] flex gap-[6px]">
         <button
           type="button"
           className="btn flex-1 px-[8px]"
@@ -550,7 +563,9 @@ function PresetPanel({ sceneId }: { sceneId: string | null }) {
         >
           {strings.settings.exportPresetSt}
         </button>
-        {preset.isDefault ? null : (
+      </div>
+      {preset.isDefault ? null : (
+        <div className="mt-[6px] flex gap-[6px]">
           <button
             type="button"
             className="btn flex-1 px-[8px]"
@@ -558,8 +573,6 @@ function PresetPanel({ sceneId }: { sceneId: string | null }) {
           >
             {strings.settings.presetMakeDefault}
           </button>
-        )}
-        {preset.isDefault ? null : (
           <button
             type="button"
             className="btn flex-1 px-[8px]"
@@ -573,8 +586,8 @@ function PresetPanel({ sceneId }: { sceneId: string | null }) {
           >
             {strings.common.delete}
           </button>
-        )}
-      </div>
+        </div>
+      )}
       <input
         ref={fileInput}
         type="file"
@@ -611,34 +624,24 @@ function PresetPanel({ sceneId }: { sceneId: string | null }) {
         ))}
       </select>
 
+      {/* Every sampler, grouped with its hint — the rail is the editor, not a
+          teaser that hides the rest behind a button. */}
       <p className="section-label mb-[10px]">{strings.settings.samplers}</p>
-      {PANEL_SAMPLERS.map((key) => (
-        <Slider
-          key={key}
-          label={LABELS[key]}
-          bound={SAMPLER_BOUNDS[key]}
-          value={preset.samplerSettings[key]}
-          fallback={MODERN_SAMPLER_DEFAULTS[key]}
-          onCommit={(value) => setSampler(key, value)}
-        />
-      ))}
-
-      <button
-        type="button"
-        className="btn mt-[6px] w-full"
-        aria-expanded={fullEditor}
-        onClick={() => setFullEditor(!fullEditor)}
-      >
-        {fullEditor ? strings.chat.back : strings.leftRail.fullEditor}
-      </button>
-
-      {/* The whole preset editor, in the rail rather than a Settings trip
-          (§20 phase 106). */}
-      {fullEditor ? (
-        <div className="mt-[14px] border-t border-rule pt-[14px]">
-          <PresetFields preset={preset} onClose={() => setFullEditor(false)} />
+      {GROUPS.map((group, at) => (
+        <div key={at} className="mb-[14px]">
+          {group.keys.map((key) => (
+            <Slider
+              key={key}
+              label={LABELS[key]}
+              bound={SAMPLER_BOUNDS[key]}
+              value={preset.samplerSettings[key]}
+              fallback={MODERN_SAMPLER_DEFAULTS[key]}
+              onCommit={(value) => setSampler(key, value)}
+            />
+          ))}
+          {group.hint === undefined ? null : <p className="explain mt-[8px]">{group.hint}</p>}
         </div>
-      ) : null}
+      ))}
 
       {/* The ban list is per scene, so it sits here only while a roleplay is
           open (§13.6). */}

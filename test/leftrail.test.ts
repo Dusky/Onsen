@@ -71,8 +71,8 @@ describe("the prompt panel shows the window, not a link", () => {
 });
 
 describe("the other sections are real, not placeholders", () => {
-  test("preset carries the samplers and the scene's ban list", () => {
-    expect(RAIL).toContain("PANEL_SAMPLERS");
+  test("preset carries every sampler and the scene's ban list", () => {
+    expect(RAIL).toContain("GROUPS.map");
     expect(RAIL).toContain("<Slider");
     expect(RAIL).toContain("useBans");
     expect(RAIL).toContain("useAddBan");
