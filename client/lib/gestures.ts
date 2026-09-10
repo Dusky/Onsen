@@ -137,11 +137,13 @@ export function useSwipe(handlers: SwipeHandlers): SwipeBindings {
     },
 
     onContextMenu(event: ReactMouseEvent) {
-      // A long-press on touch also raises the platform context menu; the action
-      // sheet is the app's answer, so suppress the browser's.
-      if (state.current?.longPressFired === true || handlers.onLongPress !== undefined) {
-        event.preventDefault();
-      }
+      if (handlers.onLongPress === undefined) return;
+      // The app's answer to a right-click and to a touch long-press is the same
+      // action sheet. Suppress the browser's menu, and fire the sheet — unless
+      // the long-press already fired it a moment ago, which would double it.
+      event.preventDefault();
+      if (state.current?.longPressFired !== true) handlers.onLongPress();
+      end();
     },
   };
 }

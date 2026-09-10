@@ -29,6 +29,10 @@ const OPS_GRID = readFileSync(
   join(import.meta.dir, "..", "client", "components", "OpsGrid.tsx"),
   "utf8",
 );
+const GESTURES = readFileSync(
+  join(import.meta.dir, "..", "client", "lib", "gestures.ts"),
+  "utf8",
+);
 const STATS_SHEET = readFileSync(
   join(import.meta.dir, "..", "client", "screens", "chat", "StatsSheet.tsx"),
   "utf8",
@@ -142,5 +146,14 @@ describe("the composer", () => {
     expect(COMPOSER).toContain("onContinue");
     expect(COMPOSER).toContain('draft.trim() === "" ? onContinue : send');
     expect(COMPOSER).not.toContain("disabled || draft.trim() === \"\"");
+  });
+
+  test("right-click opens the action sheet, the same as long-press", () => {
+    // §149: a turn's right-click and its touch long-press answer with the same
+    // sheet. The browser menu is suppressed, and the sheet is fired only when
+    // the long-press has not already done so.
+    expect(GESTURES).toContain("event.preventDefault()");
+    expect(GESTURES).toContain("handlers.onLongPress()");
+    expect(GESTURES).toContain("longPressFired !== true");
   });
 });
