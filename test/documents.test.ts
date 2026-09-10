@@ -4,6 +4,7 @@ import { pngCard, V2_CARD } from "./card-fixtures.ts";
 import { chunkText } from "../server/documents/chunk.ts";
 import { cosine } from "../server/documents/similarity.ts";
 import { buildVocabulary, lexicalVector } from "../server/documents/lexical.ts";
+import { extractDocumentText, stripExtension } from "../server/documents/extract.ts";
 import type {
   CharacterDto,
   ConnectionProfileDto,
@@ -184,5 +185,58 @@ describe("documents in the prompt (SPEC §11)", () => {
     expect(inspection.debug.blocks.some((block) => block.id === "documents")).toBe(true);
     expect(inspection.debug.retrievedChunks.length).toBeGreaterThan(0);
     expect(inspection.debug.retrievedChunks[0]!.documentTitle).toBe("The lamp oil");
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* File ingestion (SPEC §11, §20 phase 156)                            */
+/* ------------------------------------------------------------------ */
+
+/** A minimal, valid single-page PDF with one line of text, hand-built so the
+ * test never depends on a binary fixture. */
+function minimalPdf(text: string): Uint8Array {
+  const stream = `BT /F1 12 Tf 72 720 Td (${text}) Tj ET`;
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+    `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+  ];
+  let pdf = "%PDF-1.4\n";
+  const offsets: number[] = [];
+  for (let i = 0; i < objects.length; i++) {
+    offsets.push(pdf.length);
+    pdf += `${i + 1} 0 obj\n${objects[i]}\nendobj\n`;
+  }
+  const xref = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (const offset of offsets) pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return new TextEncoder().encode(pdf);
+}
+
+describe("file ingestion", () => {
+  test("reads txt and markdown, refuses what it cannot parse, and titles by name", async () => {
+    expect(await extractDocumentText("note.txt", new TextEncoder().encode("hello world"))).toBe("hello world");
+    expect(await extractDocumentText("note.md", new TextEncoder().encode("# Hi\n\nBody"))).toBe("# Hi\n\nBody");
+    expect(await extractDocumentText("image.png", new TextEncoder().encode("x"))).toBeNull();
+    expect(stripExtension("The Book.pdf")).toBe("The Book");
+  });
+
+  test("extracts text from a PDF", async () => {
+    const text = await extractDocumentText("book.pdf", minimalPdf("Hello from the PDF"));
+    expect(text).toContain("Hello");
+  });
+
+  test("uploading a file ingests it, titled by its filename", async () => {
+    const t = await signedIn();
+    const form = new FormData();
+    form.append("file", new File(["The lamp oil is running low."], "inventory.txt", { type: "text/plain" }));
+    const response = await t.fetch("/api/documents/file", { method: "POST", body: form });
+    expect(response.status).toBe(201);
+    const doc = (await response.json()) as DocumentDto;
+    expect(doc.title).toBe("inventory");
+    expect(doc.chunkCount).toBeGreaterThan(0);
   });
 });

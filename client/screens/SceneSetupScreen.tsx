@@ -24,6 +24,7 @@ import {
   useGenerateSceneBackground,
   useDocuments,
   useIngestDocument,
+  useIngestDocumentFile,
   useDeleteDocument,
   useBans,
   useBindLorebook,
@@ -140,6 +141,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
   const generateBackground = useGenerateSceneBackground(sceneId);
   const documents = useDocuments(sceneId);
   const ingestDocument = useIngestDocument();
+  const ingestFile = useIngestDocumentFile();
   const removeDocument = useDeleteDocument();
   const [documentsOpen, setDocumentsOpen] = useState(false);
   const [confirmNode, confirm] = useConfirm();
@@ -1260,6 +1262,33 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               }
             >
               {strings.characters.addDocument}
+            </button>
+
+            {/* A file rather than pasted text (§156): txt, markdown or PDF.
+                The filename is the title; the scene scoping follows the same
+                switch as the text field above. */}
+            <input
+              id={`document-file-${sceneId ?? "global"}`}
+              type="file"
+              hidden
+              accept=".txt,.md,.markdown,.pdf,text/plain,text/markdown,application/pdf"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file === undefined) return;
+                const form = new FormData();
+                form.append("file", file);
+                if (!docGlobal) form.append("sceneId", sceneId ?? "");
+                ingestFile.mutate(form);
+              }}
+            />
+            <button
+              type="button"
+              className="btn mt-[6px] w-full"
+              disabled={ingestFile.isPending}
+              onClick={() => document.getElementById(`document-file-${sceneId ?? "global"}`)?.click()}
+            >
+              {ingestFile.isPending ? strings.common.working : strings.characters.documentUpload}
             </button>
           </div>
         </Sheet>

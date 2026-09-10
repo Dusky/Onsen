@@ -1249,6 +1249,7 @@ export const strings = {
     addDocument: "Add a document",
     documentTitle: "Title",
     documentText: "Text",
+    documentUpload: "Upload a file",
     noDocuments: "Nothing in the data bank yet.",
     documentGlobal: "Visible in every scene",
     /** Cost is always a share of the context window (design handoff). */

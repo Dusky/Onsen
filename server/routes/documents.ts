@@ -10,6 +10,7 @@ import {
   type DocumentRow,
 } from "../documents/store.ts";
 import { findScene } from "../db/queries/history.ts";
+import { extractDocumentText, stripExtension } from "../documents/extract.ts";
 import type { DocumentDto } from "../../shared/types.ts";
 
 /**
@@ -84,6 +85,41 @@ export function documentRoutes(ctx: AppContext): Hono<AppEnv> {
       text: body.text,
       sceneId,
     });
+    return c.json(documentDto(ctx.db, row), 201);
+  });
+
+  /**
+   * Ingest a file: txt, markdown or PDF (§20 phase 156). The bytes are read
+   * and the text extracted before the ordinary ingest path chunks and embeds
+   * it, so a file and a pasted document are one thing after the first step.
+   */
+  app.post("/file", async (c) => {
+    const form = await c.req.formData();
+    const file = form.get("file");
+    if (!(file instanceof File)) return c.json(badRequest("A file is required."), 400);
+
+    const titleField = form.get("title");
+    const title =
+      typeof titleField === "string" && titleField.trim() !== ""
+        ? titleField.trim()
+        : stripExtension(file.name);
+    if (title === "") return c.json(badRequest("That file has no name to title itself with."), 400);
+
+    let sceneId: number | null = null;
+    const sceneField = form.get("sceneId");
+    if (sceneField !== null && sceneField !== "") {
+      const scene = findScene(ctx.db, String(sceneField));
+      if (scene === null) return c.json(badRequest("No such scene."), 404);
+      sceneId = scene.id;
+    }
+
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const text = await extractDocumentText(file.name, bytes);
+    if (text === null || text.trim() === "") {
+      return c.json(badRequest("That file has no readable text."), 400);
+    }
+
+    const row = await ingestDocument(ctx.db, ctx.keyring, { title, text, sceneId });
     return c.json(documentDto(ctx.db, row), 201);
   });
 

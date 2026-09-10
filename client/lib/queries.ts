@@ -1891,6 +1891,14 @@ export function useIngestDocument() {
   });
 }
 
+export function useIngestDocumentFile() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (form: FormData) => api.upload<DocumentDto>("/documents/file", form),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["documents"] }),
+  });
+}
+
 export function useDeleteDocument() {
   const client = useQueryClient();
   return useMutation({
