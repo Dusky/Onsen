@@ -3,7 +3,7 @@ import { strings } from "../strings.ts";
 import { navigate } from "../lib/router.ts";
 import { useIsDesktop } from "../lib/breakpoint.ts";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
-import { Sheet } from "../components/Sheet.tsx";
+import { Sheet, SheetAction } from "../components/Sheet.tsx";
 import { TagEditor } from "../components/TagEditor.tsx";
 import {
   useBackgrounds,
@@ -42,6 +42,7 @@ export function BackgroundsScreen() {
   const [prompt, setPrompt] = useState("");
 
   const list = backgrounds.data?.backgrounds ?? [];
+  const [menuFor, setMenuFor] = useState<(typeof list)[number] | null>(null);
   const opacity = backgrounds.data?.opacity ?? 0.8;
 
   const allTags = useMemo(
@@ -157,6 +158,11 @@ export function BackgroundsScreen() {
                 key={background.id}
                 type="button"
                 onClick={() => setEditingId(background.id)}
+                onContextMenu={(event) => {
+                  // Right-click is the desktop's long-press: default or delete.
+                  event.preventDefault();
+                  setMenuFor(background);
+                }}
                 className="group overflow-hidden border border-rule text-left"
               >
                 <div className="relative h-[140px] overflow-hidden">
@@ -231,6 +237,30 @@ export function BackgroundsScreen() {
                 () => {
                   setEditingId(null);
                   remove.mutate(editing.id);
+                },
+              )
+            }
+          />
+        </Sheet>
+      )}
+      {menuFor === null ? null : (
+        <Sheet title={menuFor.name} onClose={() => setMenuFor(null)}>
+          <SheetAction
+            label={strings.settings.backgroundSetDefault}
+            onClick={() => {
+              setDefault.mutate(menuFor.id);
+              setMenuFor(null);
+            }}
+          />
+          <SheetAction
+            label={strings.common.delete}
+            destructive
+            onClick={() =>
+              confirm(
+                strings.settings.backgroundDelete,
+                () => {
+                  remove.mutate(menuFor.id);
+                  setMenuFor(null);
                 },
               )
             }

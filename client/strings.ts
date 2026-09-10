@@ -30,6 +30,7 @@ export const strings = {
     cancel: "Cancel",
     optional: "Optional",
     delete: "Delete",
+    edit: "Edit",
     /** What a row says when it has nothing to list. One word, everywhere. */
     none: "None",
     /** The confirm sheet's own title. The question itself is the body. */

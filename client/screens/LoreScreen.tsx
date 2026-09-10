@@ -14,6 +14,7 @@ import { INJECTION_ROLES, LORE_BINDING_SCOPES, LORE_POSITIONS } from "@shared/ty
 import { strings } from "../strings.ts";
 import { EmptyState } from "../components/EmptyState.tsx";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
+import { Sheet, SheetAction } from "../components/Sheet.tsx";
 import { Notice } from "../components/Notice.tsx";
 import { TagEditor } from "../components/TagEditor.tsx";
 import { useIsDesktop } from "../lib/breakpoint.ts";
@@ -183,10 +184,22 @@ function BookListRow({
   onSelect(): void;
 }) {
   const update = useUpdateLorebook(book.id);
+  const remove = useDeleteLorebook();
+  const [confirmNode, confirm] = useConfirm();
   return (
+    <>
     <div
       className="row flex w-full items-center gap-[10px]"
       style={active ? { background: "var(--onsen-color-bg-inset)" } : book.enabled ? undefined : { opacity: 0.55 }}
+      onContextMenu={(event) => {
+        // Right-click is the desktop's long-press: delete this book.
+        event.preventDefault();
+        confirm(
+          strings.lore.deleteBookConfirm(book.name),
+          () => remove.mutate(book.id),
+          { confirmLabel: strings.lore.deleteBook },
+        );
+      }}
     >
       <button type="button" onClick={onSelect} className="min-w-0 flex-1 text-left">
         <span className="block truncate text-[15px] font-medium">{book.name}</span>
@@ -209,6 +222,8 @@ function BookListRow({
       </button>
       <span className="meta flex-none">{strings.lore.entries(book.entryCount)}</span>
     </div>
+    {confirmNode}
+    </>
   );
 }
 
@@ -1086,10 +1101,20 @@ function EntryRow({
   book: LorebookDto;
   onOpen(): void;
 }) {
+  const duplicate = useDuplicateLoreEntry(book.id);
+  const remove = useDeleteLoreEntry(book.id);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmNode, confirm] = useConfirm();
   return (
+    <>
     <button
       type="button"
       onClick={onOpen}
+      onContextMenu={(event) => {
+        // Right-click is the desktop's long-press: duplicate or delete.
+        event.preventDefault();
+        setMenuOpen(true);
+      }}
       className="flex w-full items-baseline gap-[10px] border-b border-rule py-[12px] text-left"
       style={entry.enabled ? undefined : { opacity: 0.55 }}
     >
@@ -1118,6 +1143,36 @@ function EntryRow({
         {strings.lore.tokens(entry.tokenCount)}
       </span>
     </button>
+
+    {menuOpen ? (
+      <Sheet
+        title={entry.title === "" ? strings.lore.untitled : entry.title}
+        onClose={() => setMenuOpen(false)}
+      >
+        <SheetAction
+          label={strings.lore.duplicate}
+          onClick={() => {
+            duplicate.mutate(entry.id, { onSuccess: () => setMenuOpen(false) });
+          }}
+        />
+        <SheetAction
+          label={strings.lore.deleteEntry}
+          destructive
+          onClick={() =>
+            confirm(
+              strings.lore.deleteEntryConfirm,
+              () => {
+                remove.mutate(entry.id);
+                setMenuOpen(false);
+              },
+              { confirmLabel: strings.lore.deleteEntry },
+            )
+          }
+        />
+      </Sheet>
+    ) : null}
+    {confirmNode}
+    </>
   );
 }
 

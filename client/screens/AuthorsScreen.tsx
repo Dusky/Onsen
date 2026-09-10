@@ -4,6 +4,7 @@ import { strings } from "../strings.ts";
 import { AvatarField } from "../components/AvatarField.tsx";
 import { EmptyState } from "../components/EmptyState.tsx";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
+import { Sheet, SheetAction } from "../components/Sheet.tsx";
 import { navigate } from "../lib/router.ts";
 import { useAuthor, useAuthors, useCreateAuthor, useDeleteAuthor, useUpdateAuthor } from "../lib/queries.ts";
 import { AuthorNotes } from "../components/AuthorMemory.tsx";
@@ -86,6 +87,9 @@ function TextField({
 export function AuthorsScreen() {
   const authors = useAuthors();
   const create = useCreateAuthor();
+  const remove = useDeleteAuthor();
+  const [menuFor, setMenuFor] = useState<AuthorDto | null>(null);
+  const [confirmNode, confirm] = useConfirm();
 
   return (
     <div className="flex screen-height flex-col bg-bg">
@@ -121,6 +125,11 @@ export function AuthorsScreen() {
               key={author.id}
               type="button"
               onClick={() => navigate({ name: "author", authorId: author.id })}
+              onContextMenu={(event) => {
+                // Right-click is the desktop's long-press: edit or delete.
+                event.preventDefault();
+                setMenuFor(author);
+              }}
               className="row w-full text-left"
             >
               <div className="flex items-baseline justify-between gap-[12px]">
@@ -159,6 +168,30 @@ export function AuthorsScreen() {
         </button>
       </footer>
       )}
+
+      {menuFor === null ? null : (
+        <Sheet title={menuFor.name} onClose={() => setMenuFor(null)}>
+          <SheetAction
+            label={strings.common.edit}
+            onClick={() => {
+              navigate({ name: "author", authorId: menuFor.id });
+              setMenuFor(null);
+            }}
+          />
+          <SheetAction
+            label={strings.authors.deleteAuthor}
+            destructive
+            onClick={() =>
+              confirm(
+                strings.authors.deleteConfirm(menuFor.name),
+                () => remove.mutate(menuFor.id, { onSuccess: () => setMenuFor(null) }),
+                { confirmLabel: strings.authors.deleteAuthor },
+              )
+            }
+          />
+        </Sheet>
+      )}
+      {confirmNode}
     </div>
   );
 }

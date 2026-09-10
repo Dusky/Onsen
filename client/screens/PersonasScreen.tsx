@@ -3,6 +3,7 @@ import { PERSONA_DEPTH_BOUNDS, type PersonaDto } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { AvatarField } from "../components/AvatarField.tsx";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
+import { Sheet, SheetAction } from "../components/Sheet.tsx";
 import { EmptyState } from "../components/EmptyState.tsx";
 import {
   useCreatePersona,
@@ -124,9 +125,26 @@ function One({ persona, onClose }: { persona: PersonaDto; onClose(): void }) {
 }
 
 /** A closed persona: who they are, in one row (§16 §Density). */
-function Row({ persona, onOpen }: { persona: PersonaDto; onOpen(): void }) {
+function Row({
+  persona,
+  onOpen,
+  onMenu,
+}: {
+  persona: PersonaDto;
+  onOpen(): void;
+  onMenu(): void;
+}) {
   return (
-    <button type="button" onClick={onOpen} className="row flex w-full items-center gap-[10px] text-left">
+    <button
+      type="button"
+      onClick={onOpen}
+      onContextMenu={(event) => {
+        // Right-click is the desktop's long-press: edit or delete.
+        event.preventDefault();
+        onMenu();
+      }}
+      className="row flex w-full items-center gap-[10px] text-left"
+    >
       <span
         aria-hidden="true"
         className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full bg-bg-raised bg-cover bg-center text-[13px] text-ink-dim"
@@ -156,7 +174,10 @@ function Row({ persona, onOpen }: { persona: PersonaDto; onOpen(): void }) {
 export function PersonasScreen() {
   const personas = usePersonas();
   const create = useCreatePersona();
+  const remove = useDeletePersona();
   const [openId, setOpenId] = useState<string | null>(null);
+  const [menuFor, setMenuFor] = useState<PersonaDto | null>(null);
+  const [confirmNode, confirm] = useConfirm();
   const [query, setQuery] = useState("");
   const all = personas.data ?? [];
 
@@ -213,7 +234,12 @@ export function PersonasScreen() {
             persona.id === openId ? (
               <One key={persona.id} persona={persona} onClose={() => setOpenId(null)} />
             ) : (
-              <Row key={persona.id} persona={persona} onOpen={() => setOpenId(persona.id)} />
+              <Row
+                key={persona.id}
+                persona={persona}
+                onOpen={() => setOpenId(persona.id)}
+                onMenu={() => setMenuFor(persona)}
+              />
             ),
           )}
 
@@ -229,6 +255,33 @@ export function PersonasScreen() {
           )}
         </div>
       </main>
+
+      {menuFor === null ? null : (
+        <Sheet title={menuFor.name} onClose={() => setMenuFor(null)}>
+          <SheetAction
+            label={strings.common.edit}
+            onClick={() => {
+              setOpenId(menuFor.id);
+              setMenuFor(null);
+            }}
+          />
+          <SheetAction
+            label={strings.common.delete}
+            destructive
+            onClick={() =>
+              confirm(
+                strings.sceneSetup.personaDeleteConfirm,
+                () => {
+                  remove.mutate(menuFor.id);
+                  setMenuFor(null);
+                },
+                { confirmLabel: strings.common.delete },
+              )
+            }
+          />
+        </Sheet>
+      )}
+      {confirmNode}
     </div>
   );
 }
