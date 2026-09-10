@@ -99,4 +99,12 @@ describe("the other sections are real, not placeholders", () => {
     expect(RAIL).toContain("<PromptManager");
     expect(RAIL).toContain('sceneId === null');
   });
+
+  test("the guides' prompts are editable without a scene", () => {
+    // §149: the generated notes are per scene, but what each guide asks is
+    // not — so outside a roleplay the Guides tab edits the prompts.
+    expect(RAIL).toContain("<GuidePrompts");
+    expect(RAIL).toContain("useUpdateTask");
+    expect(RAIL).toContain('startsWith("guide_")');
+  });
 });

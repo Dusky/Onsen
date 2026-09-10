@@ -30,10 +30,12 @@ import {
   useUpdateBan,
   useUpdatePreset,
   useUpdateScene,
+  useUpdateTask,
 } from "../lib/queries.ts";
 import { useUiStore } from "../state/ui.ts";
 import { GROUPS, LABELS, Slider, PromptManager, download } from "./PresetEditor.tsx";
 import { GuidesBody } from "./GuidesPanel.tsx";
+import { TextField } from "./TextField.tsx";
 import { LorePane } from "./LorePane.tsx";
 import { useConfirm } from "./ConfirmSheet.tsx";
 
@@ -216,10 +218,6 @@ const TITLES: Record<LeftSection, string> = {
   lore: strings.leftRail.loreTitle,
   guides: strings.leftRail.guidesTitle,
 };
-
-function NoScene() {
-  return <p className="explain mt-[14px]">{strings.leftRail.noScene}</p>;
-}
 
 /* ------------------------------------------------------------------ */
 /* Prompt — the window being assembled                                 */
@@ -808,7 +806,10 @@ function GuidesPanel({ sceneId }: { sceneId: string | null }) {
   const editGuide = useEditGuide(sceneId ?? "");
   const updateScene = useUpdateScene(sceneId ?? "");
 
-  if (sceneId === null) return <NoScene />;
+  // Outside a roleplay the guides' *prompts* are still the guides: what each
+  // kind asks. The generated content is per scene, but the question is not
+  // (§20 phase 149).
+  if (sceneId === null) return <GuidePrompts />;
   const guides: GuideDto[] = scene.data?.guides ?? [];
   const order = scene.data?.scene.guideOrder ?? null;
   const customPrompt = scene.data?.scene.customGuidePrompt ?? null;
@@ -840,6 +841,37 @@ function GuidesPanel({ sceneId }: { sceneId: string | null }) {
         onEdit={(guideId, content) => editGuide.mutate({ guideId, content })}
         onFlush={(kind) => flushGuides.mutate(kind)}
       />
+    </div>
+  );
+}
+
+/**
+ * What each guide asks, editable without a roleplay (§20 phase 149).
+ *
+ * The generated content is per scene; the question is not. So outside a chat
+ * the Guides tab still works — it is the prompts, each kind's own words, with
+ * the built-in text as the starting value and an empty commit as a reset.
+ */
+function GuidePrompts() {
+  const tasks = useTasks();
+  const update = useUpdateTask();
+  const rows = (tasks.data ?? []).filter((task) => task.key.startsWith("guide_"));
+
+  return (
+    <div className="mt-[12px]">
+      <p className="explain mb-[10px]">{strings.leftRail.guidePromptsNote}</p>
+      {rows.map((task) => (
+        <div key={task.key} className="mb-[12px]">
+          <p className="section-label mb-[6px]">{task.label}</p>
+          <TextField
+            value={task.promptTemplate ?? task.defaultTemplate}
+            rows={3}
+            onCommit={(promptTemplate) =>
+              update.mutate({ key: task.key, promptTemplate: promptTemplate.trim() || null })
+            }
+          />
+        </div>
+      ))}
     </div>
   );
 }

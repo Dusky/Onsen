@@ -1103,7 +1103,7 @@ export const strings = {
     presetTitle: "Preset",
     loreTitle: "Lore",
     guidesTitle: "Guides",
-    noScene: "Open a roleplay to read it.",
+    guidePromptsNote: "What each guide asks. The built-in words are the starting point.",
     refresh: "Refresh",
     /** The prompt panel's one summary line: used, budget, and free percent. */
     promptSummary: (used: number, available: number, freePct: number) =>
