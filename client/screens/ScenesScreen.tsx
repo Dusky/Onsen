@@ -173,19 +173,36 @@ function SceneRow({
           {scene.cast.length === 0 ? (
             <p className="meta">{strings.scenes.noCast}</p>
           ) : (
-            <p className="text-[13px] leading-[1.6]">
-              {scene.cast
-                .map(
-                  (member) =>
-                    member.name +
-                    (!member.isActive
-                      ? ` (${strings.scenes.benched})`
-                      : member.isMuted
-                        ? ` (${strings.scenes.muted})`
-                        : ""),
-                )
-                .join(" · ")}
-            </p>
+            <div className="mt-[2px] flex flex-wrap gap-[10px]">
+              {scene.cast.map((member) => (
+                <div key={member.characterId} className="flex w-[60px] flex-col items-center">
+                  <span
+                    aria-hidden="true"
+                    className="h-[40px] w-[30px] border border-rule bg-cover bg-center"
+                    style={{
+                      ...(member.hasAvatar
+                        ? { backgroundImage: `url(/api/characters/${member.characterId}/avatar)` }
+                        : { background: "var(--onsen-stripe)" }),
+                      // Muted keeps them in the room but out of the rotation;
+                      // benched takes them out entirely (§20 phase 62).
+                      opacity: member.isActive ? (member.isMuted ? 0.6 : 1) : 0.4,
+                    }}
+                  />
+                  <span className="mt-[4px] w-full truncate text-center text-[11px] leading-none text-ink-muted">
+                    {member.name}
+                  </span>
+                  <span
+                    className="chrome mt-[2px] h-[11px] text-[9px] text-ink-dim"
+                  >
+                    {member.isActive
+                      ? member.isMuted
+                        ? strings.scenes.muted
+                        : ""
+                      : strings.scenes.benched}
+                  </span>
+                </div>
+              ))}
+            </div>
           )}
 
           {scene.authorName === null && scene.personaName === null ? null : (
