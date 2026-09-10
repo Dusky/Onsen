@@ -7111,3 +7111,15 @@ Scene Setup as a three-way "Allowed / Never" toggle.
 **Verified** by three director cases (mention respects the rule by default,
 allowing it lets a mentioned speaker repeat, round robin still alternates) and a
 scene round-trip, plus the full suite (1502 pass).
+
+## Phase 156 — Data bank file ingestion
+
+The data bank takes files, not just pasted text. A `.txt`, `.md` or `.pdf`
+upload is extracted — PDFs via `unpdf`, a pure-JS parser with no native module
+or WASM — then chunked and embedded through the ordinary ingest path, titled by
+its filename. The upload button sits in Scene Setup's data-bank sheet beside
+the text field, and the scene scoping follows the same switch.
+
+**Verified** by three cases — txt/markdown read and unknown types refused, a
+minimal PDF's text is extracted, and an upload ingests titled by filename —
+plus the full suite (1508 pass).

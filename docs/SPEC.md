@@ -3872,6 +3872,10 @@ Each phase ends in a working, usable application.
     character answer its own turn, which matters for the mention and classifier
     strategies; round robin keeps its alternation contract. Surfaced in Scene
     Setup. See §6, `server/generation/director.ts`.
+156. **Data bank file ingestion** — the data bank takes files, not just pasted
+    text: a `.txt`, `.md` or `.pdf` upload is extracted (PDFs via `unpdf`, pure
+    JS) and then chunks and embeds through the ordinary path, titled by its
+    filename. See §11, `server/documents/extract.ts`.
 
 Settled while building phase 15.
 
