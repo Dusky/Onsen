@@ -111,6 +111,11 @@ export function useOps(deps: OpsDeps) {
     };
   }
 
+  /** Let the scene run on: a reply with no reader turn in front of it. */
+  function continueScene() {
+    void generation.start(nextTurn()).then(() => setCued(null));
+  }
+
   async function sendAndReply(text: string) {
     await send.mutateAsync({ kind: "user", authorType: "user", content: text });
     await generation.start(nextTurn());
@@ -305,7 +310,7 @@ export function useOps(deps: OpsDeps) {
       disabled: isGenerating,
       onPress: () => {
         setOpsPanel(null);
-        void generation.start(nextTurn()).then(() => setCued(null));
+        continueScene();
       },
     },
     {
@@ -416,6 +421,7 @@ export function useOps(deps: OpsDeps) {
   return {
     sendAndReply,
     nextTurn,
+    continueScene,
     recast,
     reroll,
     nudge,

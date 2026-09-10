@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { ArrowUp, ImagePlus } from "lucide-react";
+import { ArrowUp, ImagePlus, Play } from "lucide-react";
 import { strings } from "../strings.ts";
 import { CHARS_PER_TOKEN } from "@shared/types.ts";
 
@@ -19,6 +19,8 @@ import { CHARS_PER_TOKEN } from "@shared/types.ts";
 
 interface ComposerProps {
   onSend(text: string): void;
+  /** An empty composer is "let the scene run on", not a disabled button. */
+  onContinue(): void;
   disabled: boolean;
   /**
    * Who will reply next, shown in the footer opposite the model — never
@@ -61,6 +63,7 @@ interface ComposerProps {
 
 export function Composer({
   onSend,
+  onContinue,
   disabled,
   speakerName,
   model,
@@ -202,19 +205,19 @@ export function Composer({
         </button>
         )}
 
-        {/* Send posts the message and asks for a reply. A fixed icon — the
-            speaker is named in the footer below, so the button never deforms
-            to carry a name (§149). */}
+        {/* Send posts the message and asks for a reply; an empty composer
+            instead lets the scene run on — the placeholder promises it, so the
+            button must honour it (§149). */}
         <button
           type="button"
-          onClick={send}
-          disabled={disabled || draft.trim() === ""}
-          aria-label={strings.chat.send}
-          title={strings.chat.send}
+          onClick={draft.trim() === "" ? onContinue : send}
+          disabled={disabled}
+          aria-label={draft.trim() === "" ? strings.chat.opRunOn : strings.chat.send}
+          title={draft.trim() === "" ? strings.chat.opRunOn : strings.chat.send}
           className={`flex flex-none items-center justify-center ${wide ? "h-[62px] w-[62px]" : "h-[46px] w-[46px]"}`}
           style={{ background: "var(--onsen-color-blue)", color: "#0b1219" }}
         >
-          <ArrowUp size={20} strokeWidth={2} />
+          {draft.trim() === "" ? <Play size={20} strokeWidth={2} /> : <ArrowUp size={20} strokeWidth={2} />}
         </button>
       </div>
 

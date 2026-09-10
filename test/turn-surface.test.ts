@@ -135,4 +135,12 @@ describe("the composer", () => {
     expect(COMPOSER).not.toContain("sendThen");
     expect(COMPOSER).toContain("strings.chat.willReply");
   });
+
+  test("an empty composer is continue, not a disabled button", () => {
+    // §149: the placeholder says "send nothing and let the scene run", so the
+    // button honours it — empty means continue (a play glyph), not dead.
+    expect(COMPOSER).toContain("onContinue");
+    expect(COMPOSER).toContain('draft.trim() === "" ? onContinue : send');
+    expect(COMPOSER).not.toContain("disabled || draft.trim() === \"\"");
+  });
 });

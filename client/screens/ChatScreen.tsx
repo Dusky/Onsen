@@ -352,6 +352,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const {
     sendAndReply,
     nextTurn,
+    continueScene,
     recast,
     reroll,
     revise,
@@ -690,6 +691,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
 
         <Composer
           onSend={(text) => void sendAndReply(text)}
+          onContinue={continueScene}
           disabled={isGenerating}
           speakerName={scope === "beat" ? null : speakerName}
           model={{
