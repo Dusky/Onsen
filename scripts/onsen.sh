@@ -5,7 +5,8 @@
 #   scripts/onsen.sh start     start the dev server in the background
 #   scripts/onsen.sh stop      stop it (the whole tree, not just the parent)
 #   scripts/onsen.sh restart   stop, then start
-#   scripts/onsen.sh status    is it up, and does the API answer
+#   scripts/onsen.sh status    is it up, and do the API and client answer
+#   scripts/onsen.sh logs      follow the dev log
 #
 # The dev server is `concurrently` running `bun --watch` (API) and `vite`
 # (client). They are started in their own session via `setsid`, so `stop`
@@ -18,9 +19,32 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PIDFILE="$ROOT/.onsen-dev.pid"
 LOG="$ROOT/.onsen-dev.log"
 
+API_PORT=8787
+CLIENT_PORT=5173
+
+# The primary LAN address, so `start` can say how to reach the app from a phone
+# on the same network rather than only from this machine.
+lan_ip() {
+  ip route get 1.1.1.1 2>/dev/null | awk '{print $7; exit}' \
+    || hostname -I 2>/dev/null | awk '{print $1}' \
+    || ipconfig getifaddr en0 2>/dev/null \
+    || echo "localhost"
+}
+
+urls() {
+  local ip
+  ip="$(lan_ip)"
+  echo "onsen: api    http://localhost:$API_PORT"
+  echo "onsen: client http://localhost:$CLIENT_PORT"
+  [ "$ip" = "localhost" ] || {
+    echo "onsen: from a phone: http://$ip:$CLIENT_PORT"
+  }
+}
+
 start() {
   if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
     echo "onsen: already running (pid $(cat "$PIDFILE"))"
+    urls
     return 0
   fi
   cd "$ROOT"
@@ -29,7 +53,7 @@ start() {
   setsid nohup bun run dev >"$LOG" 2>&1 &
   echo $! >"$PIDFILE"
   echo "onsen: started (pid $(cat "$PIDFILE")) — log at $LOG"
-  echo "onsen: api on http://localhost:8787, client on http://localhost:5173"
+  urls
 }
 
 stop() {
@@ -52,10 +76,15 @@ stop() {
 status() {
   if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
     echo "onsen: running (pid $(cat "$PIDFILE"))"
-    curl -s -o /dev/null -w "onsen: api health -> %{http_code}\n" http://localhost:8787/api/health || true
+    curl -s -o /dev/null -w "onsen: api    -> %{http_code}\n" "http://localhost:$API_PORT/api/health" || echo "onsen: api    -> down"
+    curl -s -o /dev/null -w "onsen: client -> %{http_code}\n" "http://localhost:$CLIENT_PORT" || echo "onsen: client -> down"
   else
     echo "onsen: not running"
   fi
+}
+
+logs() {
+  exec tail -f "$LOG"
 }
 
 case "${1:-}" in
@@ -63,5 +92,6 @@ case "${1:-}" in
   stop)    stop ;;
   restart) stop; sleep 1; start ;;
   status)  status ;;
-  *) echo "usage: $0 {start|stop|restart|status}" >&2; exit 1 ;;
+  logs)    logs ;;
+  *) echo "usage: $0 {start|stop|restart|status|logs}" >&2; exit 1 ;;
 esac
