@@ -1243,7 +1243,12 @@ export function useDescribeScene(sceneId: string) {
       api.post<{ title: string; scenario: string; opening: string }>(`/scenes/${sceneId}/describe`, {
         premise,
       }),
-    onSuccess: () => void client.invalidateQueries({ queryKey: ["scenes", sceneId] }),
+    onSuccess: () => {
+      // The scene itself (the opening lands in its message window) and the
+      // list (the title changed), exactly as every other scene mutation does.
+      void client.invalidateQueries({ queryKey: keys.scene(sceneId) });
+      void client.invalidateQueries({ queryKey: keys.scenes });
+    },
   });
 }
 
