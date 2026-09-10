@@ -55,7 +55,14 @@ function Tile({
   onFavourite(): void;
 }) {
   return (
-    <div className="relative text-left">
+    <div
+      className="relative text-left"
+      onContextMenu={(event) => {
+        // Right-click is the desktop's long-press: the same menu the ⋯ opens.
+        event.preventDefault();
+        onMenu();
+      }}
+    >
       <button
         type="button"
         onClick={() => (selecting ? onToggle() : navigate({ name: "character", characterId: character.id }))}
