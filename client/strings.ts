@@ -121,6 +121,17 @@ export const strings = {
     noFolder: "No folder",
     more: "Show more",
     organise: "Tags and folder",
+    /* The expanded row (§149): what a roleplay is, at a glance. */
+    castLabel: "Cast",
+    authorLabel: "Author",
+    readerLabel: "You",
+    steerLabel: "Steering",
+    summaryLabel: "Summary",
+    benched: "benched",
+    muted: "muted",
+    summariesCount: (n: number) => `${n} ${n === 1 ? "summary" : "summaries"}`,
+    expand: "Expand",
+    collapse: "Collapse",
   },
 
   chat: {

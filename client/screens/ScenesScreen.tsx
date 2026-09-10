@@ -15,6 +15,7 @@ import {
   useSceneList,
   useSceneTags,
   useStartLikeScene,
+  useSummaries,
 } from "../lib/queries.ts";
 import { api } from "../lib/api.ts";
 import { useEffect, useMemo, useState } from "react";
@@ -80,73 +81,165 @@ function SceneRow({
   onManage(): void;
   onFavourite(): void;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  // The condensed story, fetched only once the row is expanded (§149).
+  const summaries = useSummaries(scene.id, expanded);
   const empty = scene.messageCount === 0;
   const cast = castLine(scene);
+  const latestSummary = [...(summaries.data?.summaries ?? [])].at(-1) ?? null;
+
   return (
-    <div
-      className="group relative row"
-      // An empty roleplay is still a roleplay, just quieter.
-      style={{ opacity: empty ? 0.75 : 1 }}
-    >
-      <button
-        type="button"
-        onClick={() => navigate({ name: "chat", sceneId: scene.id })}
-        onContextMenu={(event) => {
-          // Long-press on a phone arrives as a context menu; the same gesture
-          // the message log uses for its action sheet.
-          event.preventDefault();
-          onManage();
-        }}
-        className="w-full text-left"
+    <div className="group relative">
+      <div
+        className="row"
+        // An empty roleplay is still a roleplay, just quieter.
+        style={{ opacity: empty ? 0.75 : 1 }}
       >
-        <div className="flex items-baseline justify-between gap-[12px]">
-          <span className="truncate text-[17px] font-medium">{scene.title}</span>
-          <span className="meta mr-[58px] flex-none">{relativeTime(scene.updatedAt)}</span>
-        </div>
-        {/* One line of the newest turn - what the row is actually for. Clamped
-            rather than truncated, so a wide window gets the whole line. */}
-        <p className="mt-[3px] line-clamp-1 text-[length:var(--onsen-text-prose-excerpt)] leading-[1.5] text-ink-prose-muted">
-          {scene.lastLine ?? strings.scenes.emptyScene}
-        </p>
-        <div className="meta mt-[3px] flex items-baseline justify-between gap-[12px]">
-          <span className="truncate">
-            {[scene.folder, ...scene.tags].filter((v) => v !== null && v !== "").join(" · ") ||
-              cast ||
-              strings.scenes.noCast}
-          </span>
-          <span className="flex-none">{strings.scenes.counts(scene.messageCount)}</span>
-        </div>
-      </button>
-
-      {/* The row's own controls, in one cluster at the top right.
-          Outside the row's button because a button cannot nest, absolute
-          because in flow they would reserve width on every row.
-
-          Always visible and 44px tall: the first version of the manage
-          affordance faded in on hover, which on a phone left a long-press
-          nobody is told about as the only way in (§20 phase 54). */}
-      <span className="absolute top-[4px] right-[-8px] flex items-center">
         <button
           type="button"
-          onClick={onFavourite}
-          aria-label={`${scene.isFavourite ? strings.scenes.unfavourite : strings.scenes.favourite}: ${scene.title}`}
-          aria-pressed={scene.isFavourite}
-          className="chrome flex h-[44px] w-[28px] items-center justify-center text-[13px]"
-          style={{
-            color: scene.isFavourite ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)",
+          onClick={() => navigate({ name: "chat", sceneId: scene.id })}
+          onContextMenu={(event) => {
+            // Long-press on a phone arrives as a context menu; the same gesture
+            // the message log uses for its action sheet.
+            event.preventDefault();
+            onManage();
           }}
+          className="w-full text-left"
         >
-          {scene.isFavourite ? "\u2605" : "\u2606"}
+          <div className="flex items-baseline justify-between gap-[12px]">
+            <span className="truncate text-[17px] font-medium">{scene.title}</span>
+            <span className="meta mr-[86px] flex-none">{relativeTime(scene.updatedAt)}</span>
+          </div>
+          {/* One line of the newest turn - what the row is actually for. Clamped
+              rather than truncated, so a wide window gets the whole line. */}
+          <p className="mt-[3px] line-clamp-1 text-[length:var(--onsen-text-prose-excerpt)] leading-[1.5] text-ink-prose-muted">
+            {scene.lastLine ?? strings.scenes.emptyScene}
+          </p>
+          <div className="meta mt-[3px] flex items-baseline justify-between gap-[12px]">
+            <span className="truncate">
+              {[scene.folder, ...scene.tags].filter((v) => v !== null && v !== "").join(" · ") ||
+                cast ||
+                strings.scenes.noCast}
+            </span>
+            <span className="flex-none">{strings.scenes.counts(scene.messageCount)}</span>
+          </div>
         </button>
-        <button
-          type="button"
-          onClick={onManage}
-          aria-label={`${strings.scenes.manage} ${scene.title}`}
-          className="chrome flex h-[44px] w-[30px] items-center justify-center text-[15px] text-ink-dim hover:text-ink-label"
-        >
-          &hellip;
-        </button>
-      </span>
+
+        {/* The row's own controls, in one cluster at the top right.
+            Outside the row's button because a button cannot nest, absolute
+            because in flow they would reserve width on every row.
+
+            Always visible and 44px tall: the first version of the manage
+            affordance faded in on hover, which on a phone left a long-press
+            nobody is told about as the only way in (§20 phase 54). */}
+        <span className="absolute top-[4px] right-[-8px] flex items-center">
+          <button
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+            aria-expanded={expanded}
+            aria-label={expanded ? strings.scenes.collapse : strings.scenes.expand}
+            className="chrome flex h-[44px] w-[28px] items-center justify-center text-[13px] text-ink-dim hover:text-ink-label"
+          >
+            {expanded ? "\u25be" : "\u25b8"}
+          </button>
+          <button
+            type="button"
+            onClick={onFavourite}
+            aria-label={`${scene.isFavourite ? strings.scenes.unfavourite : strings.scenes.favourite}: ${scene.title}`}
+            aria-pressed={scene.isFavourite}
+            className="chrome flex h-[44px] w-[28px] items-center justify-center text-[13px]"
+            style={{
+              color: scene.isFavourite ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)",
+            }}
+          >
+            {scene.isFavourite ? "\u2605" : "\u2606"}
+          </button>
+          <button
+            type="button"
+            onClick={onManage}
+            aria-label={`${strings.scenes.manage} ${scene.title}`}
+            className="chrome flex h-[44px] w-[30px] items-center justify-center text-[15px] text-ink-dim hover:text-ink-label"
+          >
+            &hellip;
+          </button>
+        </span>
+      </div>
+
+      {/* What this roleplay is, at a glance: the cast, the author, the scene's
+          framing and steer, and the condensed story (§149). */}
+      {expanded ? (
+        <div className="px-[2px] pb-[14px]">
+          <p className="section-label mb-[4px]">{strings.scenes.castLabel}</p>
+          {scene.cast.length === 0 ? (
+            <p className="meta">{strings.scenes.noCast}</p>
+          ) : (
+            <p className="text-[13px] leading-[1.6]">
+              {scene.cast
+                .map(
+                  (member) =>
+                    member.name +
+                    (!member.isActive
+                      ? ` (${strings.scenes.benched})`
+                      : member.isMuted
+                        ? ` (${strings.scenes.muted})`
+                        : ""),
+                )
+                .join(" · ")}
+            </p>
+          )}
+
+          {scene.authorName === null && scene.personaName === null ? null : (
+            <p className="meta mt-[6px]">
+              {[
+                scene.authorName === null
+                  ? null
+                  : `${strings.scenes.authorLabel}: ${scene.authorName}`,
+                scene.personaName === null
+                  ? null
+                  : `${strings.scenes.readerLabel}: ${scene.personaName}`,
+              ]
+                .filter((part) => part !== null)
+                .join(" · ")}
+            </p>
+          )}
+
+          {scene.scenarioOverride === null || scene.scenarioOverride === "" ? null : (
+            <p className="mt-[6px] text-[13px] leading-[1.6] text-ink-prose-muted">
+              {scene.scenarioOverride}
+            </p>
+          )}
+
+          {scene.directorNote === null || scene.directorNote === "" ? null : (
+            <p className="meta mt-[6px]">
+              <span style={{ color: "var(--onsen-color-red)" }}>
+                {strings.scenes.steerLabel}:{" "}
+              </span>
+              {scene.directorNote}
+            </p>
+          )}
+
+          {latestSummary === null ? null : (
+            <>
+              <p className="section-label mt-[10px] mb-[4px]">
+                {strings.scenes.summaryLabel}
+              </p>
+              <p className="line-clamp-4 text-[13px] leading-[1.6] text-ink-prose-muted">
+                {latestSummary.content}
+              </p>
+            </>
+          )}
+
+          <p className="meta mt-[8px]">
+            {[
+              strings.scenes.counts(scene.messageCount),
+              scene.summaryCount > 0 ? strings.scenes.summariesCount(scene.summaryCount) : null,
+              scene.connectionProfileName === null ? null : scene.connectionProfileName,
+            ]
+              .filter((part) => part !== null)
+              .join(" · ")}
+          </p>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -29,8 +29,10 @@ const PROSE_STEP = 0.05;
 /** The two flat builtin themes the Dark/Light toggle switches between. */
 const BASE_THEMES = { dark: "Midnight", light: "Bone" } as const;
 
-/** The libraries that are full editors of their own (§20 phase 139). */
-const LIBRARIES: { key: string; label: string; route: { name: "characters" | "authors" | "lorebooks" | "backgrounds" } }[] = [
+/** The libraries that are full editors of their own, led by the roleplays list
+ * (§20 phase 139). */
+const LIBRARIES: { key: string; label: string; route: { name: "scenes" | "characters" | "authors" | "lorebooks" | "backgrounds" } }[] = [
+  { key: "scenes", label: strings.nav.roleplays, route: { name: "scenes" } },
   { key: "characters", label: strings.nav.characters, route: { name: "characters" } },
   { key: "authors", label: strings.nav.authors, route: { name: "authors" } },
   { key: "lorebooks", label: strings.nav.lorebooks, route: { name: "lorebooks" } },
