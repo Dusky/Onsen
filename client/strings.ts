@@ -152,6 +152,9 @@ export const strings = {
     opOoc: "Off script",
     kicker: "Roleplay",
     composerPlaceholder: "Write your turn, or send nothing and let the scene run…",
+    describeScene: "Describe the scene",
+    describeScenePlaceholder: "What happens, and where?",
+    describeSceneButton: "Set it up",
     /** The draft's rough cost, shown as it is typed (§20 phase 99). */
     draftTokens: (n: number) => `~${n} tok`,
     send: "Send",

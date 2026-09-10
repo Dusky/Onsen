@@ -38,7 +38,6 @@ const CAN_BE_EMPTY = [
   "screens/AuthorsScreen.tsx",
   "screens/LoreScreen.tsx",
   "screens/SceneSetupScreen.tsx",
-  "screens/chat/MessageLog.tsx",
 ];
 
 describe("empty screens", () => {
@@ -47,6 +46,13 @@ describe("empty screens", () => {
       expect(read(screen)).toContain("<EmptyState");
     });
   }
+
+  test("the empty chat asks what the scene is, instead of a bare nothing", () => {
+    // §157: the unwritten scene's empty state is a question the reader answers
+    // — describe it — rather than a note that nothing has happened yet.
+    expect(read("screens/chat/MessageLog.tsx")).toContain("<SceneDescribePrompt");
+    expect(read("screens/chat/SceneDescribePrompt.tsx")).toContain("strings.chat.describeScene");
+  });
 
   test("names what is missing and offers the way out", () => {
     /*

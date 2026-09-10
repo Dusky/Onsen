@@ -1235,6 +1235,18 @@ export function useSceneSetup(sceneId: string) {
   );
 }
 
+/** Generate a title, scenario and opening from the reader's premise (§157). */
+export function useDescribeScene(sceneId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (premise: string) =>
+      api.post<{ title: string; scenario: string; opening: string }>(`/scenes/${sceneId}/describe`, {
+        premise,
+      }),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["scenes", sceneId] }),
+  });
+}
+
 export function useAddToCast(sceneId: string) {
   return useSceneMutation(sceneId, (characterId: string) =>
     api.put<SceneDto>(`/scenes/${sceneId}/cast/${characterId}`),

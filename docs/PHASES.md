@@ -7123,3 +7123,15 @@ the text field, and the scene scoping follows the same switch.
 **Verified** by three cases — txt/markdown read and unknown types refused, a
 minimal PDF's text is extracted, and an upload ingests titled by filename —
 plus the full suite (1508 pass).
+
+## Phase 157 — Describing an empty scene
+
+The unwritten scene's empty state is now a question, not a note. The reader
+describes the scene in a sentence or two, and the model sets it up in one
+place — a title, a framing scenario, and a narrator opening the scene lands on
+— so the three agree. The opening is written as a narrator turn, leaving the
+composer below untouched ("or just write your turn" is never taken away).
+
+**Verified** by two cases — the premise becomes the title, scenario and
+narrator opening, and a non-string premise is refused before anything runs —
+plus the full suite (1510 pass).

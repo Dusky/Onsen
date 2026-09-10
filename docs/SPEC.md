@@ -3876,6 +3876,10 @@ Each phase ends in a working, usable application.
     text: a `.txt`, `.md` or `.pdf` upload is extracted (PDFs via `unpdf`, pure
     JS) and then chunks and embeds through the ordinary path, titled by its
     filename. See §11, `server/documents/extract.ts`.
+157. **Describing an empty scene** — the unwritten scene's empty state is a
+    question, not a note: the reader describes the scene in a sentence or two,
+    and the model sets it up — a title, a framing scenario, and a narrator
+    opening the scene lands on. See §2, `server/generation/service.ts`.
 
 Settled while building phase 15.
 

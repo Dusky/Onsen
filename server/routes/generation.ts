@@ -1081,6 +1081,31 @@ export function sceneGenerationRoutes(
   });
 
   /**
+   * Set a scene up from the reader's premise (§20 phase 157): a title, a
+   * scenario and a narrator opening, generated and applied in one place.
+   */
+  app.post("/:sceneId/describe", async (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    let premise: unknown;
+    try {
+      premise = ((await c.req.json()) as { premise?: unknown }).premise;
+    } catch {
+      return c.json({ error: { code: "bad_request", message: "Expected a JSON body." } }, 400);
+    }
+    if (typeof premise !== "string" || premise.trim() === "") {
+      return c.json({ error: { code: "bad_request", message: "Describe the scene first." } }, 400);
+    }
+    const result = await service.describeScene(scene.id, premise.trim());
+    if (!result.ok) {
+      return c.json({ error: { code: "failed", message: result.error } }, 500);
+    }
+    return c.json(result);
+  });
+
+  /**
    * Run an extension's on-demand action for this scene (§20 phase 148). Awaited:
    * the operator pressed a button and is looking at the result.
    */

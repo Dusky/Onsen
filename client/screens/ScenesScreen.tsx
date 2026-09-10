@@ -192,7 +192,7 @@ function SceneRow({
                     {member.name}
                   </span>
                   <span
-                    className="chrome mt-[2px] h-[11px] text-[9px] text-ink-dim"
+                    className="chrome mt-[2px] h-[11px] text-[11px] text-ink-dim"
                   >
                     {member.isActive
                       ? member.isMuted

@@ -2,7 +2,7 @@ import type { RefObject } from "react";
 import type { AnnotationDto, AutopilotStateDto, LayoutDto, MessageDto } from "@shared/types.ts";
 import type { ActiveGeneration } from "../../state/generation.ts";
 import { strings } from "../../strings.ts";
-import { EmptyState } from "../../components/EmptyState.tsx";
+import { SceneDescribePrompt } from "./SceneDescribePrompt.tsx";
 import { MessageBlock, MessageEditor, OocBlock, Reasoning } from "../../components/MessageBlock.tsx";
 import { VirtualizedLog } from "../../components/VirtualizedLog.tsx";
 import { speakerFor } from "./attribution.ts";
@@ -264,10 +264,12 @@ export function MessageLog({
       ) : (
         <div className="mx-auto flex min-h-full w-full max-w-[var(--onsen-prose-measure)] flex-col justify-end gap-[26px]">
           {earlier}
-          {/* An unwritten scene is the one empty state with no button: the
-              thing that ends it is the composer, already on screen and
-              already the brightest thing on it. */}
-          {logMessages.length === 0 && !isGenerating ? <EmptyState title={strings.scenes.emptyScene} /> : null}
+          {/* An unwritten scene's first question (§157): describe it and the
+              model sets it up — or just write below, the composer is right
+              there. */}
+          {logMessages.length === 0 && !isGenerating ? (
+            <SceneDescribePrompt sceneId={sceneId} />
+          ) : null}
           {logMessages.map(renderMessage)}
           {tail}
         </div>
