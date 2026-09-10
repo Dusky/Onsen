@@ -288,18 +288,32 @@ export function ScenesScreen() {
         <p className="screen-kicker">{strings.scenes.kicker}</p>
         <div className="mt-[6px] flex items-baseline justify-between gap-[12px]">
           <h1 className="screen-title">{strings.scenes.title}</h1>
-          {/* How many of how many (§16 §Density rule 2). On the title row
-              rather than beside the sort buttons, where it was squeezed onto
-              the edge of "Longest" and read as part of it. */}
-          {nothing ? null : (
-            <span className="meta shrink-0 tabular-nums">
-              {/* Against the whole library when a filter narrows it: "1 of 60"
-                  answers "did my filter work", where a bare "1" does not. */}
-              {total < all
-                ? strings.showing(total, all)
-                : strings.showing(shown.length, total)}
-            </span>
-          )}
+          <div className="flex shrink-0 items-center gap-[12px]">
+            {/* How many of how many (§16 §Density rule 2). On the title row
+                rather than beside the sort buttons, where it was squeezed onto
+                the edge of "Longest" and read as part of it. */}
+            {nothing ? null : (
+              <span className="meta tabular-nums">
+                {/* Against the whole library when a filter narrows it: "1 of 60"
+                    answers "did my filter work", where a bare "1" does not. */}
+                {total < all
+                  ? strings.showing(total, all)
+                  : strings.showing(shown.length, total)}
+              </span>
+            )}
+            {/* On a phone the footer carries the create button; with room there
+                is no footer, so it belongs here in the header (§149). */}
+            {isDesktop ? (
+              <button
+                type="button"
+                className="btn"
+                disabled={create.isPending}
+                onClick={startScene}
+              >
+                {strings.scenes.create}
+              </button>
+            ) : null}
+          </div>
         </div>
       </header>
 
