@@ -28,6 +28,13 @@ describe("the global right rail", () => {
     expect(APP).toContain("<RightRail />");
   });
 
+  test("collapsed is an icon rail, not a dead sliver", () => {
+    // §149: three linework icons, one tap to expand onto the tab.
+    expect(RAIL).toContain("TAB_ICONS");
+    expect(RAIL).toContain("w-[44px]");
+    expect(RAIL).toContain('from "lucide-react"');
+  });
+
   test("has the mockup's three tabs, not the workbench's five", () => {
     expect(RAIL).toContain("strings.rightRail.inThisScene");
     expect(RAIL).toContain("strings.rightRail.characters");

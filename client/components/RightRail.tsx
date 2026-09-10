@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Contact, Feather, Users } from "lucide-react";
 import { strings } from "../strings.ts";
 import { EditorField } from "./EditorField.tsx";
 import { TextField } from "./TextField.tsx";
@@ -30,6 +31,12 @@ import type { AuthorDto } from "@shared/types.ts";
 
 type RailTab = "scene" | "characters" | "authors";
 
+const TAB_ICONS: Record<RailTab, typeof Users> = {
+  scene: Users,
+  characters: Contact,
+  authors: Feather,
+};
+
 export function RightRail() {
   const route = useRoute();
   const { rightRailOpen, rightTab, setRightTab, toggleRightRail, sceneInspector } = useUiStore();
@@ -37,26 +44,43 @@ export function RightRail() {
 
   const active: RailTab = rightTab === "scene" && sceneInspector === null ? "characters" : rightTab;
 
-  if (!rightRailOpen) {
-    return (
-      <aside className="flex w-[34px] flex-none flex-col items-center border-l border-rule bg-bg-sunken py-[10px]">
-        <button
-          type="button"
-          aria-label={strings.settings.railOpen}
-          onClick={toggleRightRail}
-          className="chrome flex h-[34px] w-[30px] items-center justify-center text-[13px] text-ink-muted"
-        >
-          {"\u2039"}
-        </button>
-      </aside>
-    );
-  }
-
   const tabs: [RailTab, string][] = [
     ["scene", strings.rightRail.inThisScene],
     ["characters", strings.rightRail.characters],
     ["authors", strings.rightRail.authors],
   ];
+
+  if (!rightRailOpen) {
+    // Collapsed is an icon rail, not a dead sliver (§149).
+    return (
+      <aside className="flex w-[44px] flex-none flex-col items-stretch border-l border-rule bg-bg-sunken py-[8px]">
+        {tabs.map(([id, label]) => {
+          const Icon = TAB_ICONS[id];
+          const on = active === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              title={label}
+              aria-label={label}
+              aria-current={on ? "true" : undefined}
+              onClick={() => {
+                setRightTab(id);
+                toggleRightRail();
+              }}
+              className="flex min-h-[40px] items-center justify-center"
+            >
+              <Icon
+                size={17}
+                strokeWidth={1.75}
+                style={{ color: on ? "var(--onsen-color-blue-text)" : "var(--onsen-color-text-dim)" }}
+              />
+            </button>
+          );
+        })}
+      </aside>
+    );
+  }
 
   return (
     <aside className="flex w-[352px] flex-none flex-col border-l border-rule bg-bg-sunken">

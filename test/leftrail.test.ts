@@ -35,6 +35,13 @@ describe("the left side is an icon rail, not a sidebar", () => {
     expect(RAIL).toContain("useUiStore");
     expect(RAIL).toContain("leftRailOpen");
   });
+
+  test("collapsed is a glyph rail, not a dead sliver", () => {
+    // §149: the collapsed rail shows the sections, one tap away, instead of a
+    // bare chevron that reveals nothing.
+    expect(RAIL).toContain("w-[44px]");
+    expect(RAIL).toContain("toggleLeftRail();");
+  });
 });
 
 describe("the prompt panel shows the window, not a link", () => {

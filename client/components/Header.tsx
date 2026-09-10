@@ -92,38 +92,32 @@ export function Header() {
       className="flex flex-none items-stretch border-b border-rule bg-bg-sunken"
       style={{ minHeight: "38px" }}
     >
-      {/* The wordmark, now the mono the mockup sets it in rather than the serif. */}
+      {/* The wordmark and the open scene in one: the brand always, the scene
+          title and turn count when there is one. Both go to the scene list. */}
       <button
         type="button"
         onClick={() => navigate({ name: "scenes" })}
+        aria-label={strings.header.sceneMenu}
         className="chrome flex flex-none items-center gap-[7px] px-[12px] text-[12px] font-medium"
         style={{ color: "var(--onsen-color-text)" }}
       >
         <Logo className="h-[18px] w-auto" />
         <span>onsen</span>
-      </button>
-
-      {/* The open scene, with its turn count. Outside a roleplay this is absent —
-          the bar is the shell's, and the scene is the one thing it cannot always
-          name. */}
-      {scene === null ? null : (
-        <button
-          type="button"
-          onClick={() => navigate({ name: "scenes" })}
-          aria-label={strings.header.sceneMenu}
-          className="chrome flex items-center gap-[8px] border-l border-rule px-[12px] text-[12.5px]"
-          style={{ color: sceneWriting ? "var(--onsen-color-amber)" : "var(--onsen-color-text)" }}
-        >
-          <span className="font-medium">{scene.title === "" ? strings.scenes.untitled : scene.title}</span>
-          <span
-            className="text-[11px]"
-            style={{ color: "var(--onsen-color-text-dim)" }}
-          >
-            {strings.header.turns(scene.messageCount)}
+        {scene === null ? null : (
+          <span className="flex items-center gap-[7px]" style={{ color: "var(--onsen-color-text-dim)" }}>
+            <span aria-hidden="true">{"\u00b7"}</span>
+            <span
+              className="font-medium"
+              style={{ color: sceneWriting ? "var(--onsen-color-amber)" : "var(--onsen-color-text)" }}
+            >
+              {scene.title === "" ? strings.scenes.untitled : scene.title}
+            </span>
+            <span className="text-[11px]" style={{ color: "var(--onsen-color-text-dim)" }}>
+              {strings.header.turns(scene.messageCount)}
+            </span>
           </span>
-          <span aria-hidden="true" style={{ color: "var(--onsen-color-text-dim)" }}>{"\u25be"}</span>
-        </button>
-      )}
+        )}
+      </button>
 
       {/* The libraries: each is a full editor of its own, reachable straight
           from the bar rather than through a rail (§20 phase 139). */}

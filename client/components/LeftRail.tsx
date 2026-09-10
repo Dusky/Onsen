@@ -86,15 +86,47 @@ export function LeftRail() {
   const sceneId = route.name === "chat" ? route.sceneId : null;
 
   if (!leftRailOpen) {
+    // Collapsed is a glyph rail, not a dead sliver: each section is one tap
+    // away, and tapping expands onto it (§149).
     return (
-      <nav className="flex w-[34px] flex-none flex-col items-center border-r border-rule bg-bg-sunken py-[10px]">
+      <nav className="flex w-[44px] flex-none flex-col items-stretch border-r border-rule bg-bg-sunken py-[8px]">
+        {ICONS.map((icon) => {
+          const active = leftSection === icon.id;
+          return (
+            <button
+              key={icon.id}
+              type="button"
+              title={icon.label}
+              aria-label={icon.label}
+              aria-current={active ? "true" : undefined}
+              onClick={() => {
+                setLeftSection(icon.id);
+                toggleLeftRail();
+              }}
+              className="flex min-h-[40px] items-center justify-center"
+              style={{
+                background: active ? "var(--onsen-color-bg-inset)" : "transparent",
+                boxShadow: active ? "inset 2px 0 0 var(--onsen-color-blue)" : "none",
+              }}
+            >
+              <span
+                className="chrome text-[18px] leading-none"
+                style={{ color: active ? "var(--onsen-color-blue-text)" : "var(--onsen-color-text-dim)" }}
+              >
+                {icon.glyph}
+              </span>
+            </button>
+          );
+        })}
+        <div className="flex-1" />
         <button
           type="button"
-          aria-label={strings.settings.railOpen}
-          onClick={toggleLeftRail}
-          className="chrome flex h-[34px] w-[30px] items-center justify-center text-[13px] text-ink-muted"
+          title={strings.leftRail.settings}
+          aria-label={strings.leftRail.settings}
+          onClick={() => navigate({ name: "settings" })}
+          className="flex min-h-[40px] items-center justify-center"
         >
-          {"\u203a"}
+          <span className="chrome text-[18px] leading-none text-ink-dim">{"\u22ef"}</span>
         </button>
       </nav>
     );
