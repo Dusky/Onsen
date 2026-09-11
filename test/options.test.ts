@@ -151,6 +151,37 @@ describe("what ships", () => {
     expect(state.configured).toBe(false);
   });
 
+  /**
+   * The group added when emphasis started rendering (§20 phase 164).
+   *
+   * Its default has to say nothing. The renderer landed first and on its own,
+   * so every scene in every install already reads with emphasis; a group that
+   * arrived switched *on* would change how every one of them is written, which
+   * is not a formatting preference's business.
+   */
+  test("prose formatting defaults to saying nothing at all", async () => {
+    const t = await signedIn();
+    const { sceneId } = await scene(t);
+    const state = await json<SceneOptionsDto>(t, "GET", `/api/scenes/${sceneId}/options`);
+
+    const group = state.groups.find((entry) => entry.key === "prose_formatting");
+    expect(group).toBeDefined();
+    const chosen = group!.options.filter((option) => option.selected);
+    // Exactly one, per §22 — and the one that contributes no words.
+    expect(chosen.map((option) => option.key)).toEqual(["as_written"]);
+    expect(chosen[0]!.tokenCount).toBe(0);
+  });
+
+  test("the flowing option no longer forbids the marks it asks for", () => {
+    // "No formatting scaffolding" was written before anything rendered
+    // formatting; once it does, that clause reads as "no italics" and
+    // contradicts the group above. Narrowed to what it always meant.
+    const flowing = BUILTIN_GROUPS.find((group) => group.key === "prose_structure")!
+      .options.find((option) => option.key === "flowing")!;
+    expect(flowing.fragment).not.toContain("formatting scaffolding");
+    expect(flowing.fragment).toContain("No headings");
+  });
+
   test("every option carries a token cost", async () => {
     const t = await signedIn();
     const { sceneId } = await scene(t);
@@ -174,6 +205,23 @@ describe("what ships", () => {
     expect(after.groups.flatMap((g) => g.options).length).toBe(
       before.groups.flatMap((g) => g.options).length,
     );
+  });
+
+  test("a group narrowed in a release stops holding two answers", async () => {
+    // Insert-and-skip kept the *words* of a shipped option, which is the
+    // contract below — and kept its structure too, which is a bug. A group
+    // that used to be `any_of` went on behaving like one in every install that
+    // had already seeded it, so a `one_of` group could hold two selections.
+    // Found by shipping exactly that (§164).
+    const t = await signedIn();
+    const { sceneId } = await scene(t);
+    t.ctx.db
+      .query("UPDATE option_groups SET cardinality = 'any_of' WHERE key = 'pov'")
+      .run();
+    seedBuiltins(t.ctx.db);
+
+    const state = await json<SceneOptionsDto>(t, "GET", `/api/scenes/${sceneId}/options`);
+    expect(state.groups.find((group) => group.key === "pov")!.cardinality).toBe("one_of");
   });
 
   test("an edited built-in survives re-seeding", async () => {

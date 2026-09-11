@@ -68,6 +68,31 @@ export interface BanPhraseRow {
  * an option they have rewritten should not be reverted. So a missing row is
  * inserted and a present one is left exactly as it is.
  */
+/**
+ * The shipped groups and options: inserted once, and never rewritten — with
+ * one exception, added in §20 phase 164.
+ *
+ * Insert-and-skip is deliberate for the *words*. "An edited built-in survives
+ * re-seeding" is a contract this file's tests state outright: a new shipped
+ * option has to reach an existing install without reverting a sentence
+ * somebody rewrote. That rule stands.
+ *
+ * `cardinality` is not words. It says whether a group takes one answer or
+ * several, nothing in the app can change it — a pack brings its own groups
+ * with `is_builtin = 0`, and no route edits a shipped one — and leaving it
+ * stale is a correctness bug rather than a preference kept: a group narrowed
+ * from `any_of` to `one_of` in a release would keep the old value in every
+ * existing install and go on holding two selections in a group the code calls
+ * single-choice. So that one column is reconciled.
+ *
+ * Found by shipping exactly that: the prose-formatting group below was drafted
+ * `any_of`, became `one_of`, and the seeder kept the draft.
+ *
+ * The other half of insert-and-skip is left alone and worth naming: an option
+ * the code stops shipping stays in the database, selectable, forever. Deleting
+ * it would take a reader's edited words with it, which is the contract above,
+ * so it wants a decision rather than a patch.
+ */
 export function seedBuiltins(db: Database): void {
   const now = Date.now();
 
@@ -93,14 +118,18 @@ export function seedBuiltins(db: Database): void {
           sort: groupOrder,
           now,
         }) as OptionGroupRow;
+    } else if (row.cardinality !== group.cardinality) {
+      // Structure, not words — see the note above `seedBuiltins`.
+      db.query(
+        "UPDATE option_groups SET cardinality = $cardinality, updated_at = $now WHERE id = $id AND is_builtin = 1",
+      ).run({ id: row.id, cardinality: group.cardinality, now });
+      row = { ...row, cardinality: group.cardinality };
     }
 
     for (const [optionOrder, option] of group.options.entries()) {
-      const existing =
-        db.query("SELECT id FROM options WHERE group_id = $group AND key = $key").get({
-          group: row.id,
-          key: option.key,
-        }) ?? null;
+      const existing = (db
+        .query("SELECT id FROM options WHERE group_id = $group AND key = $key")
+        .get({ group: row.id, key: option.key }) ?? null) as { id: number } | null;
       if (existing !== null) continue;
       db.query(
         `INSERT INTO options

@@ -72,8 +72,13 @@ export const BUILTIN_GROUPS: readonly BuiltinGroup[] = [
       {
         key: "flowing",
         name: "Flowing prose",
+        // "No formatting scaffolding" was written before anything rendered
+        // formatting, and once emphasis renders (§161) it reads as "no
+        // italics" — which contradicts the group below. Narrowed to what it
+        // always meant: the furniture of a script or a document, not the two
+        // marks prose is written with.
         fragment:
-          "Write continuous prose: paragraphs of narration with dialogue set inside them. No headings, no stage directions, no formatting scaffolding.",
+          "Write continuous prose: paragraphs of narration with dialogue set inside them. No headings, no scene slugs, no stage directions.",
         isDefault: true,
       },
       {
@@ -259,6 +264,52 @@ export const BUILTIN_GROUPS: readonly BuiltinGroup[] = [
         key: "no_graphic_violence",
         name: "No graphic violence",
         fragment: "Violence can happen, but do not dwell on injury in physical detail.",
+      },
+    ],
+  },
+  {
+    /*
+     * Emphasis, now that emphasis renders (§20 phase 164).
+     *
+     * The renderer went in first and on its own (§161), which is the right
+     * order: every model already writes `*like this*` unprompted, so the
+     * reading surface had to stop showing asterisks before there was any
+     * point asking for more of them. This group is the other half — for a
+     * model that has been told not to, or one that needs reminding.
+     *
+     * `one_of` with a default that says nothing, rather than the `any_of`
+     * pair this was drafted as. §22's rule is that a group arriving entirely
+     * switched off is an anti-pattern — `test/options.test.ts` enforces it —
+     * and the idiom for a group whose default is silence is already here
+     * twice: `reasoning_depth`'s "None" and `content`'s "As the story goes",
+     * both named options with an empty fragment. That keeps every scene that
+     * has never been configured reading exactly as it did, which is the
+     * property that mattered, without a group that looks broken on a first
+     * run. The three choices are a ladder rather than a set: wanting bold
+     * without italics is not a thing anyone has asked for.
+     */
+    key: "prose_formatting",
+    name: "Prose formatting",
+    description: "Whether the author marks emphasis, and how.",
+    cardinality: "one_of",
+    options: [
+      {
+        key: "as_written",
+        name: "As the author writes",
+        fragment: "",
+        isDefault: true,
+      },
+      {
+        key: "italic_actions",
+        name: "Actions in italics",
+        fragment:
+          "Set physical action and gesture in italics, with a single asterisk each side: *she set the cup down*. Speech and narration stay unmarked.",
+      },
+      {
+        key: "italic_and_bold",
+        name: "Italics, and bold for weight",
+        fragment:
+          "Set physical action and gesture in italics with a single asterisk each side: *she set the cup down*. Mark a word that carries real weight in bold, with two asterisks: **that** one. Bold sparingly — a page of it is a page of nothing.",
       },
     ],
   },

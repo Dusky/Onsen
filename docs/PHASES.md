@@ -7327,3 +7327,113 @@ asserted from a row with somewhere to go now.
 is `MOVE_DIRECTIONS` now, with the phase-65 names kept as aliases — the same
 consolidation the `text()` helpers needed one phase earlier, caught before it
 became a third copy rather than after.
+
+## Phase 161 — Emphasis in the reading surface
+
+Roleplay prose is written in asterisks — every model emits them, every card is
+full of them — and `Prose` set the model's output as one text node, so a
+paragraph of `*she looked up*` was a paragraph of punctuation.
+
+`client/lib/emphasis.ts` is two marks and nothing else: not markdown, no links,
+no headings, no HTML. A markdown library would have meant auditing what it
+renders and keeping `dangerouslySetInnerHTML` out of the app anyway — it
+appears zero times across `client/`, and a test now holds it there over the
+whole tree rather than over the two files that render prose.
+
+Three properties, each a test. **Nothing is lost**: an unmatched `*` is
+punctuation again, and the round-trip case rebuilds the input from its spans so
+that has a yes-or-no answer. **Nothing is rewritten**: spans over the same
+string, because segment offsets address canonical text including its markup and
+a recast splice stays correct only while that holds. **Arithmetic is not
+italics**: CommonMark's whitespace rule, which is the difference between
+`2 * 3 * 4` and `2 <em>3</em> 4`.
+
+The streaming tail runs it too — that is the half that would have drifted,
+since formatting appearing only on completion would reflow the paragraph under
+the reader's eye.
+
+**Verified** by twelve cases and a Chromium drive on a real stored turn. Full
+suite 1574 pass.
+
+## Phase 162 — A colour per character
+
+Who is speaking was carried by their name and the turn's spine, both in the
+same ink every other turn uses, so five characters in a scene were five
+identical grey columns. The colour is on the card rather than the scene — the
+same person should look the same in every roleplay they are in — and null,
+which is every existing card, changes nothing.
+
+It marks the name, the spine, and a beat's part labels, which are a beat's
+attribution. Never the prose: body text sits at an ink colour phase 158 holds
+to 4.5:1 and a picked colour has no such guarantee. Identity loses to anything
+meaning *this instant* — a live spine stays amber, a selected one blue.
+
+Refused rather than coerced at both ends, and validated on the way *in* as
+strictly as on the way out, because the value arrives in a downloaded card and
+lands in a `style` attribute. It survives export and re-import under
+`extensions.onsen.colour`; the mention-keyword pair that already did that
+became one `withOnsenFields` rather than a second copy.
+
+The editor measures contrast as the colour is picked, against the ground the
+app is painted on right now — read off live computed styles, so a custom theme
+is measured too. It warns rather than refuses: the floor is the app's promise
+about its own ink, and this is somebody's character.
+
+**Verified** in Chromium: `#d98f6a` on the name and spine, `#1b1f25` raising
+"1.16:1 against the page". Full suite 1578 pass.
+
+## Phase 163 — The state a turn was written under
+
+`NEXT.md` has carried "Blocks (tracker cards under a reply)" since the
+phase-108 queue. It closes natively: a tracker row has been anchored to the
+message that produced it since phase 31, so the card renders structured state
+**the app itself wrote** — nothing parsed out of a reply, nothing to sanitise,
+no model markup reaching the DOM.
+
+The panel above the composer answers "what is the scene holding now";
+`GET /scenes/:id/trackers/history` answers "what was true then" from the same
+rows. Collapsed by default, because a long scene with one open under every turn
+is a wall of state with prose between it. One renderer shared with the panel,
+so the two cannot disagree about a field while the reader is looking at both.
+
+**Verified** in Chromium against seeded rows. Full suite 1579 pass.
+
+## Phase 164 — Asking for the emphasis that now renders
+
+The renderer went first and alone, which was the right order: every model
+already writes `*like this*` unprompted, so the reading surface had to stop
+showing asterisks before there was any point asking for more of them. This is
+the other half — a `prose_formatting` group for a model that has been told not
+to, or one that needs reminding.
+
+Its default says nothing at all. The renderer already changed how every
+existing scene reads; a group arriving switched *on* would change how every one
+of them is written, which is not a formatting preference's business.
+
+`prose_structure`'s `flowing` option ended "no formatting scaffolding", written
+before anything rendered formatting. Once it does, that clause reads as "no
+italics" and contradicts the group above it. Narrowed to what it always meant:
+no headings, no scene slugs, no stage directions.
+
+**Verified** in Chromium through the scene-setup sheet: three options, the
+default costing nothing, choosing italics replacing it rather than adding to it.
+Full suite 1580 pass.
+
+### Surprises
+
+**The plan's `any_of` pair failed the app's own §22 test**, which asserts that
+no shipped group arrives entirely switched off. The idiom for a group whose
+default is silence was already here twice — `reasoning_depth`'s "None" and
+`content`'s "As the story goes", both named options with an empty fragment — so
+the group became a `one_of` ladder with a silent default. Same behaviour for an
+unconfigured scene, and it does not look broken on a first run.
+
+**Shipping that draft exposed an insert-only seeder.** The group went in as
+`any_of`, became `one_of`, and every install that had already seeded it kept
+the old cardinality — a single-choice group that went on holding two answers.
+Insert-and-skip is deliberate for the *words*, and `test/options.test.ts` states
+that contract outright ("an edited built-in survives re-seeding"), so only
+`cardinality` is reconciled: nothing in the app can change it, and leaving it
+stale is a correctness bug rather than a preference kept. The other half is
+named and left: an option the code stops shipping stays in the database,
+selectable, forever, and removing it would take a reader's edited words with it.
