@@ -2,8 +2,16 @@
 
 A short, honest list. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 154. 1498 tests across 112 files, typecheck clean. Feature
-complete against `SPEC.md` §20 apart from the deferred phase 42.
+**State:** phase 157, plus an unnumbered UI colour/layout review (three colour
+roles, rail auto-collapse, Settings moved to the header — see the PR that
+merged it). 1515 tests across 113 files, typecheck clean. Feature complete
+against `SPEC.md` §20 apart from the deferred phase 42.
+
+This file had gone stale: it still listed ChatScreen extraction (done phase
+149) and self-responses (done phase 155) as open. Caught when the user asked
+"what's left" and pushed back on the ChatScreen item — a reminder that this
+queue is only as good as the last time someone reconciled it against
+`PHASES.md`, per the evidence rule below.
 
 ## The queue
 
@@ -13,49 +21,38 @@ that gate the rest. Each line is a todo; check one off by closing its phase in
 
 ### Ready to build
 
-1. **ChatScreen extraction.** `client/screens/ChatScreen.tsx` is a 69KB
-   monolith with ~40 `useState` hooks — the highest-traffic file in the app,
-   and the one every future "server has it / screen can't reach it" defect will
-   be born in. Extract in small, behaviour-preserving steps (turn commands →
-   a hook, the sheet collection → a component, the log → a component, the
-   composer wiring → a hook), each committed separately, suite green after
-   each. Do it in its own session, not the tail of another.
-
-2. **Smooth streaming throttle.** Add a render throttle in
+1. **Smooth streaming throttle.** Add a render throttle in
    `client/lib/generation.ts` — **only if** streaming judders on a phone.
    Reproduce the judder first; this is a conditional, not a default.
 
 ### Gated on a decision
 
-3. **Web search.** Needs a provider/backend decision. Build as an **extension**
+2. **Web search.** Needs a provider/backend decision. Build as an **extension**
    (not core), per the earlier product note. **Deferred by the user: not wanted
    until we run out of better things.**
 
-4. **Self-responses.** A product conversation under the author model — how the
-   author may answer itself without a second inference path. Decide first;
-   nothing to build until it is decided.
-
-5. **Tabletop module** (§20 phase 40). SPEC's own note splits it: rolls and
+3. **Tabletop module** (§20 phase 40). SPEC's own note splits it: rolls and
    checks as recorded events first (server-side, deterministic — `{{roll}}`
    already does), stats only if the checks actually get used.
 
-6. **Chub import / community browsing** (§20 phase 42, deferred). Gated on the
+4. **Chub import / community browsing** (§20 phase 42, deferred). Gated on the
    app's stance toward third-party services.
 
 ### Not wanted (deferred until better things run out)
 
 - **Translate extension** (port ST's). Deferred by the user — the app already
   surfaces enough, and this is a capability, not a missing piece.
-- **Web search** (item 3 above) — same note.
+- **Web search** (item 2 above) — same note.
 
 ### Carried forward from the phase-108 queue
 
-7. **Megumin Suite — Story Config + Blocks.** Story Config dropdowns (genre,
+5. **Megumin Suite — Story Config + Blocks.** Story Config dropdowns (genre,
    POV, friction, pace → scene prompt options) and the Blocks (tracker cards
-   under a reply).
+   under a reply). Still not built as of phase 157 — no hits in `PHASES.md`.
 
-8. **Multihog** — the RPG engine. State Tracker first, then the RNG, then
-   World Progression and Map Evolution.
+6. **Multihog** — the RPG engine. State Tracker first, then the RNG, then
+   World Progression and Map Evolution. Still not built as of phase 157 — no
+   hits in `PHASES.md`.
 
 ## How to pick up
 
