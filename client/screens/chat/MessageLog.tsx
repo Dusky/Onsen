@@ -66,9 +66,6 @@ export function MessageLog({
   apState,
   onStopAutopilot,
   onCancel,
-  autopilotNote,
-  mediaNote,
-  onDismissMediaNote,
 }: {
   logRef: RefObject<HTMLDivElement | null>;
   /** The scene, so a generation's error only shows for the scene it belongs to. */
@@ -109,9 +106,6 @@ export function MessageLog({
   apState: AutopilotStateDto | null;
   onStopAutopilot(): void;
   onCancel(): void;
-  autopilotNote: string | null;
-  mediaNote: string | null;
-  onDismissMediaNote(): void;
 }) {
   // One message, in every shape it can be: an aside, an edit, or a turn.
   const renderMessage = (message: MessageDto, index: number) =>
@@ -293,20 +287,11 @@ export function MessageLog({
         </div>
       ) : null}
 
-      {autopilotNote !== null && !autopilotActive ? (
-        <p className="meta leading-[1.5]">{autopilotNote}</p>
-      ) : null}
-
-      {mediaNote !== null ? (
-        <button
-          type="button"
-          onClick={onDismissMediaNote}
-          className="chrome block text-left text-[12.5px] leading-[1.5]"
-          style={{ color: "var(--onsen-color-red)" }}
-        >
-          {mediaNote}
-        </button>
-      ) : null}
+      {/* The autopilot's stop reason and a failed caption used to sit here, as
+          two props threaded down from `ChatScreen`'s state. They are the app
+          reporting that a background task finished or failed, so they go to
+          the notice region instead (§20 phase 167) — where they are announced,
+          and where the next turn arriving cannot scroll them away. */}
     </>
   );
 

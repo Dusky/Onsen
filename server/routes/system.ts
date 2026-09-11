@@ -119,6 +119,7 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
       drafts: flag("reader_drafts", READER_DEFAULTS.drafts),
       clickToEdit: flag("reader_click_to_edit", READER_DEFAULTS.clickToEdit),
       media: getSetting(ctx.db, "reader_media") ?? READER_DEFAULTS.media,
+      notices: getSetting(ctx.db, "reader_notices") ?? READER_DEFAULTS.notices,
     });
   }
 
@@ -207,6 +208,7 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
       setSetting(ctx.db, "reader_drafts", next.drafts ? "1" : "0");
       setSetting(ctx.db, "reader_click_to_edit", next.clickToEdit ? "1" : "0");
       setSetting(ctx.db, "reader_media", next.media);
+      setSetting(ctx.db, "reader_notices", next.notices);
     }
 
     const wanted = body["reading"];

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { MessageDto } from "@shared/types.ts";
 import { strings } from "../strings.ts";
+import { notify } from "../state/notices.ts";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { navigate } from "../lib/router.ts";
 import { useSceneChannel } from "../lib/scene-channel.ts";
@@ -340,14 +341,12 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   // furniture. Tracked locally so it clears the next time the reader acts,
   // rather than living on the row forever.
   const sawAutopilot = useRef(false);
-  const [autopilotNote, setAutopilotNote] = useState<string | null>(null);
   /**
    * What a picture or voice service said when it refused (§20 phase 41).
    *
    * Shown where the autopilot's reason is shown: a service being unreachable is
    * news for a moment and then it is furniture, and it clears on the next act.
    */
-  const [mediaNote, setMediaNote] = useState<string | null>(null);
   /** The message being marked, while the name is being typed (§2). */
   const [marking, setMarking] = useState<MessageDto | null>(null);
   const signOut = useSignOut();
@@ -457,9 +456,9 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       "check": () => turn && runPasses.mutate(turn.id),
       "illustrate": () =>
         turn &&
-        illustrate.mutate({ messageId: turn.id }, { onError: (e) => setMediaNote(e.message) }),
+        illustrate.mutate({ messageId: turn.id }, { onError: (e) => notify("failed", e.message) }),
       "speak": () =>
-        turn && speak.mutate(turn.id, { onError: (e) => setMediaNote(e.message) }),
+        turn && speak.mutate(turn.id, { onError: (e) => notify("failed", e.message) }),
       "expand": () => void (turn && revise(turn, "expand")),
       "correct": () => turn && setCorrecting(turn),
       "recast": () => turn && setRecasting(turn),
@@ -518,12 +517,16 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     if (apState === null) return;
     if (apState.active) {
       sawAutopilot.current = true;
-      setAutopilotNote(null);
       return;
     }
     if (sawAutopilot.current && apState.stopReason !== null) {
       sawAutopilot.current = false;
-      setAutopilotNote(strings.chat.autopilotStopped(
+      // Posted rather than held in state and rendered at the bottom of the log
+      // (§20 phase 167). It is the app reporting that a background task
+      // finished, which is the notice region's whole job — and down there it
+      // was never announced, and scrolled away the moment the next turn
+      // arrived.
+      notify("done", strings.chat.autopilotStopped(
         strings.chat.autopilotReasons[apState.stopReason] ?? apState.stopReason,
       ));
     }
@@ -657,9 +660,6 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           apState={apState}
           onStopAutopilot={() => stopAutopilot.mutate()}
           onCancel={() => void generation.cancel()}
-          autopilotNote={autopilotNote}
-          mediaNote={mediaNote}
-          onDismissMediaNote={() => setMediaNote(null)}
         />
 
         {/* The tracker panel (§8, phase 31): collapsible, above the composer. */}
@@ -806,8 +806,10 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             attach.mutate(file, {
               // A caption that failed is worth saying once — the picture is
               // still here, and the reader may have wanted it that way.
-              onSuccess: (result) => setMediaNote(result.captionError),
-              onError: (error) => setMediaNote(error.message),
+              onSuccess: (result) => {
+                if (result.captionError !== null) notify("failed", result.captionError);
+              },
+              onError: (error) => notify("failed", error.message),
             })
           }
           attaching={attach.isPending}

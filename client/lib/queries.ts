@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api.ts";
+import { notify } from "../state/notices.ts";
+import { strings } from "../strings.ts";
 import type { UpdateStatusDto } from "@shared/types.ts";
 import type {
   LayoutDto,
@@ -2353,11 +2355,18 @@ export function useExportPack() {
       const blob = await api.download("/packs/export", body);
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
+      const name = `${String(body["name"] ?? "pack")}.onsenpack`;
       anchor.href = url;
-      anchor.download = `${String(body["name"] ?? "pack")}.onsenpack`;
+      anchor.download = name;
       anchor.click();
       URL.revokeObjectURL(url);
+      return name;
     },
+    // This said nothing at all (§20 phase 167). A browser download leaves no
+    // mark on the page, so a pack that built correctly and one whose click was
+    // swallowed looked identical — and there is no field for it to sit under,
+    // which is why it stayed silent through every inline-error pass.
+    onSuccess: (name) => notify("done", strings.notices.exported(name)),
   });
 }
 
@@ -2509,6 +2518,17 @@ export function useSetPreferences() {
     mutationFn: (body: PreferencesPatch) =>
       api.patch<PreferencesDto>("/system/preferences", body),
     onSuccess: () => void client.invalidateQueries({ queryKey: ["preferences"] }),
+    /*
+     * A failed preference used to say nothing (§20 phase 167).
+     *
+     * Every switch in Settings goes through here, and the render reads the
+     * cached value — so a PATCH that failed left the button showing the old
+     * answer with no explanation, which is indistinguishable from a button
+     * that does not work. There is no field for this to sit under: it is one
+     * mutation behind forty controls.
+     */
+    onError: (error: Error) =>
+      notify("failed", strings.notices.settingNotSaved(error.message)),
   });
 }
 

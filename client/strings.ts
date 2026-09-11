@@ -930,6 +930,10 @@ export const strings = {
     readerMedia: "Pictures under a turn",
     readerMediaList: "Stacked",
     readerMediaGrid: "In a grid",
+    readerNotices: "Where notices appear",
+    readerNoticesTop: "Top",
+    readerNoticesTopRight: "Top right",
+    readerNoticesBottomRight: "Bottom right",
     readerMotion: "Motion",
     readerMotionSystem: "As this machine asks",
     readerMotionReduced: "Reduced",
@@ -2002,6 +2006,12 @@ export const strings = {
   },
 
   /** Relative time, one implementation for every list that shows it. */
+  /* What the app says when something finished or failed (§20 phase 167). */
+  notices: {
+    dismiss: "dismiss",
+    exported: (name: string) => `Saved ${name}.`,
+    settingNotSaved: (why: string) => `That setting did not save — ${why}`,
+  },
   time: {
     justNow: "just now",
     minutesAgo: (n: number) => `${n}m ago`,

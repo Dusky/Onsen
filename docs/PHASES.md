@@ -7589,3 +7589,72 @@ cropped to a square cell is the "64px thumbnail blown up to the prose measure"
 mistake in the other direction. `auto-fill` rather than `auto-fit`, too: cells
 stay the same size whether a turn drew two or seven, where `auto-fit` would
 stretch two of them across the whole column.
+
+## Phase 167 — The app had no way to say anything
+
+Measured, not guessed: there was **not one** `aria-live` region or
+`role="status"` anywhere in `client/`. Every async outcome surfaced as inline
+text in whichever component happened to own the request.
+
+That works for a rejected field and fails completely for everything else. A
+background task that finished, an export that was written, a preference that
+did not save — none of those have a field to sit under, so several of them said
+nothing at all, and not one of them was ever announced to a screen reader. It
+is a feature gap and an accessibility gap at the same time, and the incumbent's
+"Notifications: Top Center" is the visible half of the thing Onsen needed the
+whole of.
+
+One primitive, not a per-caller variant — the lesson `Scroller` and
+`useModalFocus` both came out of. A store beside `client/state/ui.ts`, one
+region mounted at the shell, and a position preference. Anything transient
+posts there; a genuinely inline error — this field is wrong, this pattern will
+not compile — stays next to the thing it is about.
+
+Three callers to start, chosen because two were in the wrong place and one said
+nothing:
+
+- The autopilot's stop reason and a failed caption were two props threaded from
+  `ChatScreen`'s state down into `MessageLog`, rendered at the bottom of the
+  log where nothing announced them and the next turn scrolled them away. Both
+  are the app reporting that a background task ended. Gone, with their props.
+- A pack export ran `anchor.click()` and said nothing. A browser download
+  leaves no mark on the page, so a pack that built and a click that was
+  swallowed looked identical.
+- A failed preference PATCH said nothing either, and that one is worse: one
+  mutation sits behind forty controls, and the render reads the cached value —
+  so a failure left the button showing the old answer, which is
+  indistinguishable from a button that does not work.
+
+**Verified** in Chromium at 1600×950 and 390×844 by failing the preferences
+PATCH at the network layer and clicking a switch: the failure announced in the
+assertive region, still there after the success window elapsed, dismissed by
+one click, and the same again from each of the three positions. Both regions
+present and empty before anything is posted; an empty region passes clicks
+through; focus stays on the control the reader clicked. Guard:
+`test/notices.test.ts`, 19 tests, including the sweep that proves this is still
+the only live region in the client. Full suite 1643 pass.
+
+### Surprises
+
+**One region cannot serve both tones.** A live region's politeness is read when
+the region is *created*, not when its contents change, so a single region
+flipping `aria-live` between polite and assertive announces at whichever
+politeness it happened to mount with. Two regions, each fixed, both always
+mounted — because a region that appears at the moment it has something to say
+is a region assistive technology has not been watching, and the first notice is
+silently lost.
+
+**A fixed container is an invisible sheet over the app.** The region spans the
+top of the window, so without `pointer-events-none` on the stack and back on
+for each strip, every click in that band would have landed on nothing. Checked
+with `elementFromPoint` rather than by reasoning about it.
+
+**12px put the notice on the wordmark.** A failure has no deadline — an error
+that removed itself before it was read is an error that never happened — so a
+persistent one sat on the header's text-size controls until it was dismissed.
+52px clears the desktop header and the phone's top bar both.
+
+**The de-duplication is not a nicety.** Two identical notices are a retry, a
+double-click, or two components reporting one failure; they are never two
+facts. Reading the same sentence twice is the best-known failure mode of an
+unfiltered live region, so a repeat refreshes the deadline instead of stacking.

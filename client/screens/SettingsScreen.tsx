@@ -1214,6 +1214,17 @@ function ReaderControls() {
       />
 
       <Segmented
+        label={strings.settings.readerNotices}
+        value={reader.notices}
+        options={[
+          { value: "top", label: strings.settings.readerNoticesTop },
+          { value: "topRight", label: strings.settings.readerNoticesTopRight },
+          { value: "bottomRight", label: strings.settings.readerNoticesBottomRight },
+        ]}
+        onPick={(notices) => set({ notices })}
+      />
+
+      <Segmented
         label={strings.settings.readerMotion}
         value={reader.motion}
         options={[

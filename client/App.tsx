@@ -24,6 +24,7 @@ import { RightRail } from "./components/RightRail.tsx";
 import { setChimeWanted, unlockAudio } from "./lib/chime.ts";
 import { usePreferences, useReader, useReading } from "./lib/queries.ts";
 import { useMotionPreference, useReadingVariables, useViewportHeight } from "./lib/viewport.ts";
+import { NoticeRegion } from "./components/NoticeRegion.tsx";
 import type { BootstrapDto } from "@shared/types.ts";
 
 /**
@@ -132,8 +133,9 @@ function Shell() {
   const preferences = usePreferences();
   // Here rather than in `App`, which renders the QueryClientProvider itself and
   // so is above the cache a preference hook needs.
+  const reader = useReader();
   useReadingVariables(useReading());
-  useMotionPreference(useReader().motion);
+  useMotionPreference(reader.motion);
 
   // §5's chime, and the autoplay policy that shapes it. A browser will not let
   // a page make a sound before the person has interacted with it, so the audio
@@ -167,6 +169,9 @@ function Shell() {
             <Routed />
           </div>
         </div>
+        {/* Above every screen on both layouts, mounted once: the live regions
+            have to be watched before the first notice arrives (§167). */}
+        <NoticeRegion position={reader.notices} />
       </div>
     );
   }
@@ -183,6 +188,7 @@ function Shell() {
         </div>
         <RightRail />
       </div>
+      <NoticeRegion position={reader.notices} />
     </div>
   );
 }

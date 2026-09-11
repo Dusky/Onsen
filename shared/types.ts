@@ -1823,6 +1823,17 @@ export type MotionPreference = "system" | "reduced";
 export type MediaLayout = "list" | "grid";
 
 /**
+ * Where the app says what it has to say (§20 phase 167).
+ *
+ * Four corners and the two centres the incumbent offers, minus the ones that
+ * would sit on top of something: this app docks the composer to the bottom of
+ * the chat and the rails to the sides, so a notice at bottom-centre would
+ * cover the field you are typing in. Three positions, all of them clear of
+ * the composer and of the reading column's centre.
+ */
+export type NoticePosition = "top" | "topRight" | "bottomRight";
+
+/**
  * The controls that belong to the person reading and writing, not to the
  * layout (§20 phase 166).
  *
@@ -1863,6 +1874,15 @@ export interface ReaderDto {
   /** Double-click a turn to edit it in place. */
   clickToEdit: boolean;
   media: MediaLayout;
+  /**
+   * Where a notice appears (§20 phase 167).
+   *
+   * Here rather than in a group of its own, and the reason is the same one
+   * that put the reading column here: it is a decision about not covering
+   * what you are reading. A reader with the rails open and a reader on a
+   * phone want it in different places.
+   */
+  notices: NoticePosition;
 }
 
 export const READER_DEFAULTS: ReaderDto = {
@@ -1874,12 +1894,14 @@ export const READER_DEFAULTS: ReaderDto = {
   drafts: true,
   clickToEdit: false,
   media: "list",
+  notices: "top",
 };
 
 /** The value sets, so a reader and a writer cannot disagree about them. */
 export const SEND_KEYS: readonly SendKey[] = ["enter", "modEnter", "button"];
 export const MOTION_PREFERENCES: readonly MotionPreference[] = ["system", "reduced"];
 export const MEDIA_LAYOUTS: readonly MediaLayout[] = ["list", "grid"];
+export const NOTICE_POSITIONS: readonly NoticePosition[] = ["top", "topRight", "bottomRight"];
 
 /**
  * Fall back per field rather than rejecting the lot — `clampReading`'s rule,
@@ -1899,6 +1921,9 @@ export function readReader(input: Partial<Record<keyof ReaderDto, unknown>>): Re
     out.motion = input.motion as MotionPreference;
   }
   if (MEDIA_LAYOUTS.includes(input.media as MediaLayout)) out.media = input.media as MediaLayout;
+  if (NOTICE_POSITIONS.includes(input.notices as NoticePosition)) {
+    out.notices = input.notices as NoticePosition;
+  }
   return out;
 }
 
