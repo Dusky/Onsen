@@ -62,11 +62,14 @@ import {
   useInspector,
   usePreviewPrompt,
   useTranslateMessage,
+  useTrackers,
+  useTrackerHistory,
 } from "../lib/queries.ts";
 import type {
   GuideKind,
   NextSpeakerDto,
   SceneMemberDto,
+  TrackerDto,
   TurnScope,
 } from "@shared/types.ts";
 
@@ -236,6 +239,27 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
    * speaker — and handed down rather than looked up in the log, which is
    * virtualised and renders the same speaker many times.
    */
+  /**
+   * The state each reply was written under (§20 phase 163), grouped by turn.
+   *
+   * Only asked for when the scene has trackers at all — a scene with them
+   * switched off should not be making the request — and grouped here rather
+   * than in the log, which is virtualised and would regroup on every scroll.
+   */
+  // Shares `TrackerPanel`'s query by key, so asking here costs no request.
+  const trackers = useTrackers(sceneId);
+  const trackerHistory = useTrackerHistory(sceneId, (trackers.data?.length ?? 0) > 0);
+  const trackerState = useMemo(() => {
+    const byMessage = new Map<string, TrackerDto[]>();
+    for (const tracker of trackerHistory.data ?? []) {
+      if (tracker.messageId === null) continue;
+      const found = byMessage.get(tracker.messageId);
+      if (found === undefined) byMessage.set(tracker.messageId, [tracker]);
+      else found.push(tracker);
+    }
+    return byMessage;
+  }, [trackerHistory.data]);
+
   const colours = useMemo(
     () =>
       new Map(
@@ -558,6 +582,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           authorName={authorName}
           layout={layout}
           colours={colours}
+          trackerState={trackerState}
           personaId={scene.data?.scene.personaId ?? null}
           onReroll={(message) => void reroll(message)}
           onOpenVersions={(message) => setVersionsFor(message)}

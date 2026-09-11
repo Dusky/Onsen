@@ -26,7 +26,14 @@ import type { TaskRunner } from "../tasks/runner.ts";
 import type { PassPipeline } from "../passes/pipeline.ts";
 import type { GuideRunner } from "../guides/runner.ts";
 import type { TrackerRunner } from "../trackers/runner.ts";
-import { activeTrackers, editTracker, findTracker, flushTrackers, toTrackerDto } from "../db/queries/trackers.ts";
+import {
+  activeTrackers,
+  editTracker,
+  findTracker,
+  flushTrackers,
+  toTrackerDto,
+  trackerHistory,
+} from "../db/queries/trackers.ts";
 import type { SummaryRunner } from "../summaries/runner.ts";
 import type { BanAnalyser } from "../options/runner.ts";
 import { activateForScene, transcriptQueryVector } from "../lore/scene.ts";
@@ -548,7 +555,21 @@ export function sceneGenerationRoutes(
     if (scene === null) {
       return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
     }
-    return c.json(activeTrackers(ctx.db, scene.id).map(toTrackerDto));
+    return c.json(activeTrackers(ctx.db, scene.id).map((row) => toTrackerDto(ctx.db, row)));
+  });
+
+  /**
+   * The same rows, per turn rather than per kind (§20 phase 163).
+   *
+   * The panel above the composer asks what is true *now*; a card under a reply
+   * asks what was true *then*, and the row anchored to a turn is that answer.
+   */
+  app.get("/:sceneId/trackers/history", (c) => {
+    const scene = findScene(ctx.db, c.req.param("sceneId"));
+    if (scene === null) {
+      return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
+    }
+    return c.json(trackerHistory(ctx.db, scene.id).map((row) => toTrackerDto(ctx.db, row)));
   });
 
   /** Refresh every tracker that is switched on — a rebuild the reader asked for. */
@@ -558,7 +579,7 @@ export function sceneGenerationRoutes(
       return c.json({ error: { code: "not_found", message: "No such scene." } }, 404);
     }
     await trackers.refresh(scene, { automatic: false });
-    return c.json(activeTrackers(ctx.db, scene.id).map(toTrackerDto));
+    return c.json(activeTrackers(ctx.db, scene.id).map((row) => toTrackerDto(ctx.db, row)));
   });
 
   /** Hand-edit a tracker, which pins it against the next refresh (SPEC §8). */
@@ -586,7 +607,7 @@ export function sceneGenerationRoutes(
         400,
       );
     }
-    return c.json(toTrackerDto(editTracker(ctx.db, tracker.id, content.trim())));
+    return c.json(toTrackerDto(ctx.db, editTracker(ctx.db, tracker.id, content.trim())));
   });
 
   app.delete("/:sceneId/trackers/:kind", (c) => {
@@ -599,7 +620,7 @@ export function sceneGenerationRoutes(
       return c.json({ error: { code: "not_found", message: "No such tracker." } }, 404);
     }
     flushTrackers(ctx.db, scene.id, raw === "all" ? null : raw);
-    return c.json(activeTrackers(ctx.db, scene.id).map(toTrackerDto));
+    return c.json(activeTrackers(ctx.db, scene.id).map((row) => toTrackerDto(ctx.db, row)));
   });
 
   /**

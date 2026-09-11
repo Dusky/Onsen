@@ -2774,6 +2774,12 @@ export interface TrackerDto {
   content: string;
   tokenCount: number;
   isPinned: boolean;
+  /**
+   * The turn this version was written at, so the log can show the state as of
+   * a particular reply (§20 phase 163). Null for a hand-written one that was
+   * not anchored to a turn.
+   */
+  messageId: string | null;
   updatedAt: number;
 }
 

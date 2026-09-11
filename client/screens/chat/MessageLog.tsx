@@ -1,5 +1,11 @@
 import type { RefObject } from "react";
-import type { AnnotationDto, AutopilotStateDto, LayoutDto, MessageDto } from "@shared/types.ts";
+import type {
+  AnnotationDto,
+  AutopilotStateDto,
+  LayoutDto,
+  MessageDto,
+  TrackerDto,
+} from "@shared/types.ts";
 import type { ActiveGeneration } from "../../state/generation.ts";
 import { strings } from "../../strings.ts";
 import { SceneDescribePrompt } from "./SceneDescribePrompt.tsx";
@@ -11,6 +17,7 @@ import {
   Reasoning,
 } from "../../components/MessageBlock.tsx";
 import { VirtualizedLog } from "../../components/VirtualizedLog.tsx";
+import { TrackerCard } from "../../components/TrackerPanel.tsx";
 import { speakerFor } from "./attribution.ts";
 
 /** Below this many messages the plain render runs; above it, the virtualized
@@ -38,6 +45,7 @@ export function MessageLog({
   authorName,
   layout,
   colours,
+  trackerState,
   personaId,
   onReroll,
   onOpenVersions,
@@ -76,6 +84,8 @@ export function MessageLog({
   authorName: string | null;
   /** Character id → `#rrggbb`, for the ones that have picked one (§162). */
   colours: Map<string, string>;
+  /** Message id → the state written at that turn (§163). */
+  trackerState: Map<string, TrackerDto[]>;
   layout: LayoutDto;
   personaId: string | null;
   onReroll(message: MessageDto): void;
@@ -160,6 +170,26 @@ export function MessageLog({
           : {})}
       />
     );
+
+  /**
+   * A turn, and the scene state it was written under (§20 phase 163).
+   *
+   * The card is outside `MessageBlock` rather than inside it: the block is the
+   * gesture target and the selection target, and a collapsible inside it would
+   * put a second thing to press inside the thing a long-press acts on.
+   */
+  const renderRow = (message: MessageDto, index: number) => {
+    const state = trackerState.get(message.id);
+    if (state === undefined || message.kind === "ooc" || editing === message.id) {
+      return renderMessage(message, index);
+    }
+    return (
+      <div key={message.id}>
+        {renderMessage(message, index)}
+        <TrackerCard trackers={state} />
+      </div>
+    );
+  };
 
   /**
    * The turns above the window (§20 phase 62).
@@ -273,7 +303,7 @@ export function MessageLog({
         <VirtualizedLog
           scrollRef={logRef}
           count={logMessages.length}
-          renderRow={(index) => renderMessage(logMessages[index]!, index)}
+          renderRow={(index) => renderRow(logMessages[index]!, index)}
           head={earlier}
           tail={tail}
         />
@@ -286,7 +316,7 @@ export function MessageLog({
           {logMessages.length === 0 && !isGenerating ? (
             <SceneDescribePrompt sceneId={sceneId} />
           ) : null}
-          {logMessages.map(renderMessage)}
+          {logMessages.map(renderRow)}
           {tail}
         </div>
       )}

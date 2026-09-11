@@ -106,6 +106,47 @@ describe("trackers through a generation (SPEC §8)", () => {
     expect(JSON.parse(stillThere!.content).location).toBe("the ridge");
   });
 
+  /**
+   * The state each reply was written under (§20 phase 163).
+   *
+   * `activeTrackers` answers "what is true now", which is the panel above the
+   * composer. A card under a reply asks "what was true then", and the row is
+   * already anchored to the turn that produced it — so this is a rendering of
+   * data the app has had since phase 31, not anything new stored.
+   */
+  test("a tracker knows which turn it was written at", async () => {
+    const t = await signedIn();
+    const sceneId = await scene(t);
+    trackersAnswer('{"location":"the ridge","time_of_day":"night","present":["Bell"]}');
+
+    adapter.push("The lamps gutter.");
+    adapter.end();
+    const first = await json<{ id: string }>(t, "POST", `/api/scenes/${sceneId}/generate`, {});
+    await until(async () => {
+      const snapshot = await json<{ status: string }>(t, "GET", `/api/generations/${first.id}`);
+      return snapshot.status === "complete";
+    });
+    await until(
+      async () => (await json<TrackerDto[]>(t, "GET", `/api/scenes/${sceneId}/trackers`)).length >= 2,
+    );
+
+    const history = await json<TrackerDto[]>(t, "GET", `/api/scenes/${sceneId}/trackers/history`);
+    expect(history.length).toBeGreaterThanOrEqual(2);
+    // Every row names a turn, and it is a turn in this scene.
+    const messages = await json<{ messages: { id: string }[] }>(
+      t,
+      "GET",
+      `/api/scenes/${sceneId}`,
+    );
+    const ids = new Set(messages.messages.map((message) => message.id));
+    for (const tracker of history) {
+      expect({ kind: tracker.kind, anchored: tracker.messageId !== null }).toMatchObject({
+        anchored: true,
+      });
+      expect(ids.has(tracker.messageId!)).toBe(true);
+    }
+  });
+
   test("trackers reach the prompt's trackers block and the inspector", async () => {
     const t = await signedIn();
     const sceneId = await scene(t);

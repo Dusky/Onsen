@@ -413,6 +413,8 @@ export const strings = {
 
     /** Structured trackers (SPEC §8, phase 31). */
     trackers: "Trackers",
+    /* The state a turn was written under, folded under the turn itself. */
+    stateAtTurn: "State",
     trackerScene: "Scene",
     trackerCharacters: "Characters",
     flush: "Flush",

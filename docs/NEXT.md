@@ -46,9 +46,20 @@ that gate the rest. Each line is a todo; check one off by closing its phase in
 
 ### Carried forward from the phase-108 queue
 
-5. **Megumin Suite — Story Config + Blocks.** Story Config dropdowns (genre,
-   POV, friction, pace → scene prompt options) and the Blocks (tracker cards
-   under a reply). Still not built as of phase 157 — no hits in `PHASES.md`.
+5. **Story Config + tracker cards under a reply.** ~~The Blocks (tracker cards
+   under a reply)~~ — **done, phase 163**, and natively: a tracker row is
+   already anchored to the turn that produced it, so the card renders the
+   app's own structured state rather than parsing markup out of a reply.
+   Story Config dropdowns (genre, POV, friction, pace → scene prompt options)
+   are still not built.
+
+   Worth restating what this entry was: it named a *preset* somebody uses, and
+   the interesting thing about reading that preset was that its formatting and
+   colour are not prompt-driven at all — they are regex post-processing into
+   HTML that its client renders. Onsen already had the regex half (§14, with
+   ordering); what it lacked was a renderer, which is what phases 161–163
+   built. Generic capability, not a port: nothing preset-specific is in the
+   codebase, and a preset that brings its own scripts simply works.
 
 6. **Multihog** — the RPG engine. State Tracker first, then the RNG, then
    World Progression and Map Evolution. Still not built as of phase 157 — no

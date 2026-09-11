@@ -81,32 +81,102 @@ function TrackerBlock({ tracker, sceneId }: { tracker: TrackerDto; sceneId: stri
             setEditing(false);
           }}
         />
-      ) : parsed === null ? (
-        <p className="chrome mt-[4px] text-[13.5px] text-ink-dim">{tracker.content}</p>
       ) : (
-        <div className="mt-[4px] space-y-[2px]">
-          {Object.entries(parsed).map(([key, value]) =>
-            key === "characters" && Array.isArray(value) ? (
-              <div key={key} className="space-y-[1px]">
-                {(value as Record<string, unknown>[]).map((member, index) => (
-                  <div key={index} className="pl-[8px]">
-                    <span className="chrome text-[13.5px] text-ink-label">
-                      {String(member["name"] ?? `#${index + 1}`)}
-                    </span>
-                    <span className="chrome text-[13.5px] text-ink-dim">
-                      {` · ${[member["mood"], member["position"], member["notable_state"]]
-                        .filter((part) => typeof part === "string" && part !== "")
-                        .join(" · ")}`}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <FieldRow key={key} name={key.replaceAll("_", " ")} value={value} />
-            ),
-          )}
-        </div>
+        <TrackerFields content={tracker.content} />
       )}
+    </div>
+  );
+}
+
+/**
+ * One tracker's state, read-only.
+ *
+ * Pulled out of the panel so the card under a reply (§20 phase 163) renders
+ * the same thing the strip above the composer does. Two renderers for one
+ * shape would disagree about a field within a phase or two, and the reader
+ * would be looking at both at once.
+ *
+ * It reads structured data the app wrote, not markup a model emitted. That is
+ * the whole design of this card: no parsing, no sanitising, nothing to escape.
+ */
+export function TrackerFields({ content }: { content: string }) {
+  const parsed = parseContent(content);
+  if (parsed === null) {
+    // §8's rule, one layer up: a malformed tracker is shown as what it is
+    // rather than hidden, because a state nobody can see is a state nobody
+    // can fix.
+    return <p className="chrome mt-[4px] text-[13.5px] text-ink-dim">{content}</p>;
+  }
+  return (
+    <div className="mt-[4px] space-y-[2px]">
+      {Object.entries(parsed).map(([key, value]) =>
+        key === "characters" && Array.isArray(value) ? (
+          <div key={key} className="space-y-[1px]">
+            {(value as Record<string, unknown>[]).map((member, index) => (
+              <div key={index} className="pl-[8px]">
+                <span className="chrome text-[13.5px] text-ink-label">
+                  {String(member["name"] ?? `#${index + 1}`)}
+                </span>
+                <span className="chrome text-[13.5px] text-ink-dim">
+                  {` · ${[member["mood"], member["position"], member["notable_state"]]
+                    .filter((part) => typeof part === "string" && part !== "")
+                    .join(" · ")}`}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <FieldRow key={key} name={key.replaceAll("_", " ")} value={value} />
+        ),
+      )}
+    </div>
+  );
+}
+
+/**
+ * The scene's state as of one reply, folded under it (§20 phase 163).
+ *
+ * The panel above the composer says what is true *now*, which is the right
+ * answer to "what is the scene holding" and the wrong one to "what did it know
+ * when it wrote that". A tracker row is already anchored to the turn that
+ * produced it, so this is a rendering of data the app has had since phase 31
+ * rather than anything new.
+ *
+ * Two things it deliberately is not. It is not parsed out of the reply: the
+ * card reads structured state the app wrote, so there is nothing to sanitise
+ * and no markup from a model reaches the DOM. And it is not open by default —
+ * a long scene with one of these expanded under every turn is a wall of state
+ * with prose between it, which is the opposite of a reading surface.
+ */
+export function TrackerCard({ trackers }: { trackers: TrackerDto[] }) {
+  const [open, setOpen] = useState(false);
+  if (trackers.length === 0) return null;
+
+  return (
+    <div className="mt-[10px]">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        className="chrome tap flex items-center gap-[7px] text-[12px] text-ink-dim hover:text-ink-label"
+      >
+        <span aria-hidden="true">{open ? "▾" : "▸"}</span>
+        {strings.chat.stateAtTurn}
+      </button>
+      {open ? (
+        <div className="mt-[4px] border-l border-rule pl-[11px]">
+          {trackers.map((tracker) => (
+            <div key={tracker.id} className="mb-[6px] last:mb-0">
+              <p className="chrome text-[12px] text-ink-muted">
+                {tracker.kind === "scene"
+                  ? strings.chat.trackerScene
+                  : strings.chat.trackerCharacters}
+              </p>
+              <TrackerFields content={tracker.content} />
+            </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

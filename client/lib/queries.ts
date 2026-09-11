@@ -1949,6 +1949,22 @@ export function useTrackers(sceneId: string) {
   });
 }
 
+/**
+ * The same rows, one per turn (§20 phase 163).
+ *
+ * A separate query rather than a field on the scene: the panel above the
+ * composer refetches on every generation and this does not need to, and the
+ * log is the only thing that reads it. `enabled` because a scene with trackers
+ * switched off should not be asking.
+ */
+export function useTrackerHistory(sceneId: string, enabled = true) {
+  return useQuery({
+    queryKey: ["scenes", sceneId, "trackers", "history"] as const,
+    queryFn: () => api.get<TrackerDto[]>(`/scenes/${sceneId}/trackers/history`),
+    enabled,
+  });
+}
+
 export function useEditTracker(sceneId: string) {
   const client = useQueryClient();
   return useMutation({

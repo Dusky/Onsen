@@ -97,13 +97,44 @@ export function flushTrackers(db: Database, sceneId: number, kind: TrackerKind |
   else db.query("DELETE FROM trackers WHERE scene_id = $scene AND kind = $kind").run({ scene: sceneId, kind });
 }
 
-export function toTrackerDto(row: TrackerRow): TrackerDto {
+export function toTrackerDto(db: Database, row: TrackerRow): TrackerDto {
   return {
     id: row.ulid,
     kind: row.kind,
     content: row.content,
     tokenCount: row.token_count,
     isPinned: row.is_pinned === 1,
+    messageId: messageUlidOf(db, row.message_id),
     updatedAt: row.updated_at,
   };
+}
+
+function messageUlidOf(db: Database, id: number | null): string | null {
+  if (id === null) return null;
+  const row = db.query("SELECT ulid FROM messages WHERE id = $id").get({ id }) as
+    | { ulid: string }
+    | null;
+  return row?.ulid ?? null;
+}
+
+/**
+ * Every tracker version on the active path that was written at a turn, newest
+ * first (§20 phase 163).
+ *
+ * `activeTrackers` answers "what is true now", which is what the panel above
+ * the composer asks. This answers "what was true at each reply", which is what
+ * a card under one asks — the same rows, ungrouped, because the state a turn
+ * was written under is exactly the row anchored to it.
+ *
+ * Bounded by the path rather than by the window the log has loaded: a scene
+ * holds one row per kind per generation, and the alternative is a request that
+ * changes every time the reader scrolls.
+ */
+export function trackerHistory(db: Database, sceneId: number): TrackerRow[] {
+  const onPath = new Set(activePath(db, sceneId).map((row: { id: number }) => row.id));
+  return (
+    db.query("SELECT * FROM trackers WHERE scene_id = $scene ORDER BY id DESC").all({
+      scene: sceneId,
+    }) as TrackerRow[]
+  ).filter((row) => row.message_id !== null && onPath.has(row.message_id));
 }
