@@ -15,6 +15,7 @@ import {
   MessageEditor,
   OocBlock,
   Reasoning,
+  RunIn,
 } from "../../components/MessageBlock.tsx";
 import { VirtualizedLog } from "../../components/VirtualizedLog.tsx";
 import { TrackerCard } from "../../components/TrackerPanel.tsx";
@@ -219,22 +220,35 @@ export function MessageLog({
     <>
       {isGenerating && recastInFlight === null && !oocInFlight && active?.speaker != null ? (
         <article>
-          <header className="mb-[10px]">
-            <div className="flex items-center gap-[10px]">
-              <span className="chrome shrink-0 text-[13.5px] font-semibold text-ink-label">
-                {active.speaker}
-              </span>
-              <span className="h-px flex-1 bg-rule" />
-            </div>
-            {active.director !== null && active.director.reason !== "" ? (
-              <p className="meta mt-[5px] leading-[1.5]">{active.director.reason}</p>
-            ) : null}
-          </header>
+          {/* Document mode runs the name into the paragraph here too (§20 phase
+              165). The director's reason stays either way: it is only on screen
+              while the turn is being written, and "why this speaker" is the one
+              question §13.6 says the reader is owed. */}
+          {layout.attribution === "runin" ? (
+            active.director !== null && active.director.reason !== "" ? (
+              <p className="meta mb-[5px] leading-[1.5]">{active.director.reason}</p>
+            ) : null
+          ) : (
+            <header className="mb-[10px]">
+              <div className="flex items-center gap-[10px]">
+                <span className="chrome shrink-0 text-[13.5px] font-semibold text-ink-label">
+                  {active.speaker}
+                </span>
+                <span className="h-px flex-1 bg-rule" />
+              </div>
+              {active.director !== null && active.director.reason !== "" ? (
+                <p className="meta mt-[5px] leading-[1.5]">{active.director.reason}</p>
+              ) : null}
+            </header>
+          )}
           <Reasoning text={active.reasoning} />
           {/* The same emphasis a finished turn gets. Without it the prose
               renders flat while it streams and reflows the instant the turn
               completes, which reads as the app changing its mind. */}
           <p className="text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)] whitespace-pre-wrap">
+            {layout.attribution === "runin" ? (
+              <RunIn name={active.speaker} colour={null} isUser={false} />
+            ) : null}
             <Emphasis text={active.text} />
           </p>
         </article>

@@ -1681,10 +1681,17 @@ export interface UpdateTaskRequest {
  *
  * The guardrail is in §16 and matters more than the feature: a matrix of
  * toggles in place of a default is the incumbent's answer, and it is the thing
- * this app is reacting against. Four switches, three named starting points,
+ * this app is reacting against. Four switches, four named starting points,
  * and Instrument is what the app is when nobody has touched anything.
+ *
+ * `document` is the fourth, added later (§20 phase 165): the one direction
+ * the other three do not reach, because all three keep the turn as a visible
+ * object — a name row, a spine, a row of glyphs. Document drops the boundary
+ * and lets a scene read as continuous prose. It is still a preset over the
+ * same switches rather than a fourth screen; what it adds is one attribution
+ * style, and every consequence follows from that one value.
  */
-export type LayoutPreset = "instrument" | "quiet" | "broadsheet";
+export type LayoutPreset = "instrument" | "quiet" | "broadsheet" | "document";
 
 /** The cast control above the composer. */
 export type CastDisplay =
@@ -1693,12 +1700,27 @@ export type CastDisplay =
   /** Quiet and Broadsheet: a line of prose naming who answers, and a way to change it. */
   | "line";
 
-/** Where a turn's attribution sits. */
+/**
+ * Where a turn's attribution sits.
+ *
+ * `runin` is the printer's run-in head, and it is the whole of Document mode
+ * (§20 phase 165). Everything else that reads as a turn boundary is derived
+ * from it rather than switched separately — no name row, no spine, and the
+ * chrome that acts on a turn revealed rather than standing. One value, because
+ * §16's guardrail is against a matrix of toggles, and "the name is inside the
+ * paragraph" already implies all three.
+ *
+ * It differs from `inline` in more than the separator: `inline` sets the whole
+ * message as one paragraph beside the director's reason, where `runin` keeps
+ * real paragraphs and emphasis and only opens the first one with the name.
+ */
 export type AttributionStyle =
   /** The name on its own row above the prose. */
   | "stacked"
   /** Broadsheet: the name and the director's reason on one line with the text. */
-  | "inline";
+  | "inline"
+  /** Document: the name opens the first paragraph and nothing else marks the turn. */
+  | "runin";
 
 /**
  * The reading surface, which the reader owns rather than the designer
@@ -1822,6 +1844,19 @@ export const LAYOUT_PRESETS: Record<LayoutPreset, Omit<LayoutDto, "preset">> = {
     dek: true,
     attribution: "inline",
     avatarShape: "square",
+    reader: { bubble: false, avatar: false },
+    author: { bubble: false, avatar: false },
+  },
+  // Document reads as one manuscript, so nothing here draws a turn: no
+  // readouts, no dek, no bubble on either side, and a run-in name. It is
+  // Quiet's switches with the attribution moved into the paragraph — which is
+  // exactly how little it takes, and why this is a preset and not a screen.
+  document: {
+    readouts: false,
+    cast: "line",
+    dek: false,
+    attribution: "runin",
+    avatarShape: "circle",
     reader: { bubble: false, avatar: false },
     author: { bubble: false, avatar: false },
   },

@@ -7437,3 +7437,73 @@ that contract outright ("an edited built-in survives re-seeding"), so only
 stale is a correctness bug rather than a preference kept. The other half is
 named and left: an option the code stops shipping stays in the database,
 selectable, forever, and removing it would take a reader's edited words with it.
+
+## Phase 165 — A scene that reads as one manuscript
+
+The fourth named layout, and the first that removes the turn as an object.
+Instrument, Quiet and Broadsheet differ in what chrome a turn carries;
+all three still draw one — a name row, a spine, a row of glyphs. Document
+drops the boundary, so a scene reads the way the thing it is a record of would
+be printed.
+
+It is still a preset over the same switches rather than a fourth chat screen.
+The whole of it is one new attribution style: `runin`, the printer's run-in
+head, where the speaker's name opens their own paragraph. Everything that
+follows — no name row, no spine, no card, the controls out of flow — is derived
+from that one value rather than switched separately, because §16's guardrail is
+against a matrix of toggles and "the name is inside the paragraph" already
+implies all four.
+
+`runin` goes through `Prose`, which is what distinguishes it from Broadsheet's
+`inline`. `inline` sets a whole message as one unformatted paragraph beside the
+director's reason; run-in keeps the paragraph split and the emphasis tokenizer,
+and only opens the first paragraph with the name. An em space rather than
+Broadsheet's middle dot: the dot separates two pieces of chrome, and this is a
+name running into prose.
+
+**Verified** in Chromium at 1600×950 and 390×844, in both themes through the
+app's own picker, on a four-turn scene with two coloured speakers: continuous
+prose with real paragraphs and rendered emphasis, each name in its own colour,
+no rails, no horizontal scroll, and Instrument and Broadsheet unchanged beside
+it. Guard: `test/document-mode.test.ts`, 16 tests.
+
+### Surprises
+
+**Broadsheet has shipped its turn actions unreachable since phase 52.** Its
+`<header>` carries the name, the glyphs and the stats, and `inline` hid the
+whole element — so the six per-turn controls and the token counts were gone,
+reachable only by a long-press. That is the exact defect phase 57 removed from
+the stacked row, re-introduced five phases later by a layout nobody drove with
+a keyboard. Document needed the same row in the same place, so one mechanism
+fixes both: the chrome leaves flow rather than being hidden, positioned over
+the turn and revealed by hover, by keyboard focus, or by the turn being
+selected — which is what a tap already does.
+
+**The theme draws the turn boundary too.** `.turn` takes `--onsen-card-bg` and
+`--onsen-shadow-card`, so in the light theme Document was four white cards down
+a mode whose premise is that there are no cards. A card *is* a turn boundary; it
+just happens to be the theme's rather than the preset's, and the preset is what
+was asked for. Suppressed for `runin` only — Broadsheet is a bounded turn with a
+rail and the card belongs to that reading — which is why the `data-flow`
+attribute carries *which* out-of-flow style it is rather than a bare flag.
+
+**Two positions were wrong before one was right, and only a browser said so.**
+Anchored top-right the cluster sat squarely over the first line and hid four
+words of it; at 390px it is the full column width — six glyphs at the 44px floor
+plus the stats — so on the turn you had just tapped it hid a line and a half.
+Bottom-right fixed the pointer case, because a last line is ragged. The thumb
+case needed the turn to make room: the cluster stays positioned and stays in the
+accessibility tree, and `padding-bottom` on the selected turn grows it by the
+cluster's height. The shift is caused by the reader's own tap, on the turn they
+tapped, and nothing above it moves.
+
+**A latent bug in the preference, found by adding a third value.**
+`layout_attribution` was read back with a two-way ternary — anything but
+`inline` came back as `stacked` — so a third value would have been accepted by
+the PATCH, written to the settings row, and read back as something else. Read
+and write now share one list.
+
+**Document's selection had to be quieter.** The stacked selection draws a blue
+edge with a −20px margin and +18px padding, which is a fine thing to happen to a
+block and a bad thing to happen to a paragraph you are reading: the text shifts
+sideways by 20px. Document selects with a ground and nothing else.

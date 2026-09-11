@@ -4,7 +4,16 @@ import { requireAuth } from "../middleware/session.ts";
 import { applyUpdate, checkForUpdates, readUpdateStatus } from "../updates.ts";
 import { getSetting, setSetting } from "../db/queries/settings.ts";
 import { LAYOUT_PRESETS, READING_DEFAULTS, clampReading, presetOf } from "@shared/types.ts";
-import type { LayoutDto, LayoutPreset, ReadingDto, TurnStyle } from "@shared/types.ts";
+import type {
+  AttributionStyle,
+  LayoutDto,
+  LayoutPreset,
+  ReadingDto,
+  TurnStyle,
+} from "@shared/types.ts";
+
+/** The stored `layout_attribution` values, so read and write agree on the set. */
+const ATTRIBUTIONS: readonly AttributionStyle[] = ["stacked", "inline", "runin"];
 
 /**
  * System endpoints (SPEC §17). The updater's logic lives in `server/updates.ts`;
@@ -59,10 +68,12 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
       readouts: getSetting(ctx.db, "layout_readouts") !== "0",
       cast: getSetting(ctx.db, "layout_cast") === "line" ? ("line" as const) : ("segments" as const),
       dek: getSetting(ctx.db, "layout_dek") === "1",
-      attribution:
-        getSetting(ctx.db, "layout_attribution") === "inline"
-          ? ("inline" as const)
-          : ("stacked" as const),
+      // Read through the union rather than a two-way ternary: a third value
+      // added later (`runin`, phase 165) would otherwise be stored correctly
+      // and read back as `stacked`, which is the quietest kind of bug.
+      attribution: ATTRIBUTIONS.includes(getSetting(ctx.db, "layout_attribution") as AttributionStyle)
+        ? (getSetting(ctx.db, "layout_attribution") as AttributionStyle)
+        : ("stacked" as const),
       avatarShape:
         getSetting(ctx.db, "layout_avatar_shape") === "square"
           ? ("square" as const)
@@ -123,8 +134,8 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
       if (typeof patch["dek"] === "boolean") {
         setSetting(ctx.db, "layout_dek", patch["dek"] ? "1" : "0");
       }
-      if (patch["attribution"] === "stacked" || patch["attribution"] === "inline") {
-        setSetting(ctx.db, "layout_attribution", patch["attribution"]);
+      if (ATTRIBUTIONS.includes(patch["attribution"] as AttributionStyle)) {
+        setSetting(ctx.db, "layout_attribution", patch["attribution"] as AttributionStyle);
       }
       if (patch["avatarShape"] === "circle" || patch["avatarShape"] === "square") {
         setSetting(ctx.db, "layout_avatar_shape", patch["avatarShape"]);

@@ -939,14 +939,19 @@ function LayoutSection() {
     <>
       <p className="section-label mb-[6px]">{strings.settings.layout}</p>
 
-      <div className="mb-[8px] flex gap-[6px]">
-        {(["instrument", "quiet", "broadsheet"] as const).map((preset) => (
+      {/* Four now, so it wraps: a fourth button squeezed onto one phone row
+          would be under the tap floor, and the floor is not negotiable. */}
+      <div className="mb-[8px] flex flex-wrap gap-[6px]">
+        {(["instrument", "quiet", "broadsheet", "document"] as const).map((preset) => (
           <button
             key={preset}
             type="button"
             aria-pressed={layout.preset === preset}
             onClick={() => set({ preset })}
-            className={`btn flex-1 ${layout.preset === preset ? "btn-primary" : ""}`}
+            // A basis rather than bare `flex-1`: four items that may all shrink
+            // never wrap, they just get narrow, and narrow is the one thing a
+            // button is not allowed to get.
+            className={`btn flex-1 basis-[120px] ${layout.preset === preset ? "btn-primary" : ""}`}
           >
             {strings.settings.layoutPresets[preset]}
           </button>
@@ -993,6 +998,7 @@ function LayoutSection() {
         options={[
           { value: "stacked", label: strings.settings.layoutAttributionStacked },
           { value: "inline", label: strings.settings.layoutAttributionInline },
+          { value: "runin", label: strings.settings.layoutAttributionRunin },
         ]}
         onPick={(next) => set({ attribution: next })}
       />

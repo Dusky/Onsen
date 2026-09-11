@@ -1,6 +1,7 @@
-import { Fragment, useState } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import type {
   AnnotationDto,
+  AttributionStyle,
   AvatarShape,
   MessageDto,
   MessageSegmentDto,
@@ -41,9 +42,14 @@ interface MessageBlockProps {
    * Where the name sits (§20 phase 52). `stacked` puts it on its own row above
    * the prose; Broadsheet's `inline` sets it as the opening of the paragraph,
    * with the director's reason beside it, so the log reads as a printed page
-   * rather than as a transcript.
+   * rather than as a transcript; Document's `runin` opens the first paragraph
+   * with the name and lets the rest of the turn keep its real paragraphs
+   * (§20 phase 165).
+   *
+   * Anything but `stacked` moves the turn's chrome out of flow, which is what
+   * makes a scene read as one document rather than a stack of blocks.
    */
-  attribution?: "stacked" | "inline";
+  attribution?: AttributionStyle;
   /**
    * How this side's turns are shaped (§20 phase 57). Passed in rather than read
    * from preferences so the component stays a function of its props — the same
@@ -213,8 +219,18 @@ export function Emphasis({ text }: { text: string }) {
  * including its markup, and a recast splice stays correct only while that is
  * true.
  */
-function Prose({ text }: { text: string }) {
+function Prose({ text, lead }: { text: string; lead?: ReactNode }) {
   const paragraphs = text.split(/\n{2,}/).filter((paragraph) => paragraph.trim() !== "");
+  // A run-in head with nothing after it yet — the first frame of a streamed
+  // turn, or a part of a beat that has only been announced. The name still
+  // belongs on screen: without this the speaker appears a character late.
+  if (paragraphs.length === 0) {
+    return lead === undefined ? null : (
+      <p className="mt-0 text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)]">
+        {lead}
+      </p>
+    );
+  }
   return (
     <>
       {paragraphs.map((paragraph, index) => (
@@ -222,9 +238,51 @@ function Prose({ text }: { text: string }) {
           key={index}
           className="mt-[9px] first:mt-0 text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)] whitespace-pre-wrap"
         >
+          {index === 0 ? lead : null}
           <Emphasis text={paragraph} />
         </p>
       ))}
+    </>
+  );
+}
+
+/**
+ * The printer's run-in head: the speaker's name opening their own paragraph
+ * (§20 phase 165).
+ *
+ * An em space rather than Broadsheet's middle dot. The dot is a separator
+ * between two pieces of chrome — the name and the director's reason — where
+ * this is a name running into prose, and a document sets that with space.
+ * The name keeps the weight and the colour it has in the stacked row, so who
+ * is speaking is found the same way in either mode.
+ *
+ * Exported for the same reason `Emphasis` is: the streaming tail sets the turn
+ * being written without going through `MessageBlock`, and a name that arrived
+ * above the prose and then jumped into it on completion would read as the app
+ * changing its mind.
+ */
+export function RunIn({
+  name,
+  colour,
+  isUser,
+}: {
+  name: string;
+  colour: string | null;
+  isUser: boolean;
+}) {
+  return (
+    <>
+      <span
+        className="chrome text-[13.5px] font-semibold"
+        style={{
+          color:
+            colour ??
+            (isUser ? "var(--onsen-color-text-muted)" : "var(--onsen-color-text-label)"),
+        }}
+      >
+        {name}
+      </span>
+      {"\u2003"}
     </>
   );
 }
@@ -247,12 +305,15 @@ function Segment({
   segment,
   replacement,
   colours,
+  runin,
 }: {
   segment: MessageSegmentDto;
   /** Live text for this part while it is being rewritten. */
   replacement?: string;
   /** Character id → colour, so a beat's parts are told apart too (§162). */
   colours?: Map<string, string>;
+  /** Document: the part's name opens its first paragraph (§165). */
+  runin?: boolean;
 }) {
   // A beat's parts are its attribution — the message header says only that the
   // author wrote it — so this is the same field a spotlight turn colours.
@@ -268,7 +329,9 @@ function Segment({
           : { borderLeft: "2px solid var(--onsen-color-amber)", paddingLeft: "10px" }
       }
     >
-      {segment.speakerName === null ? null : (
+      {/* A beat is already one continuous document, so Document mode changes
+          only where the part's name sits — the same move the message makes. */}
+      {segment.speakerName === null || runin === true ? null : (
         <p
           className="chrome mb-[5px] text-[12.5px] text-ink-label"
           style={colour === undefined ? undefined : { color: colour }}
@@ -276,7 +339,20 @@ function Segment({
           {segment.speakerName}
         </p>
       )}
-      <Prose text={replacement ?? segment.content} />
+      <Prose
+        text={replacement ?? segment.content}
+        {...(runin === true && segment.speakerName !== null
+          ? {
+              lead: (
+                <RunIn
+                  name={segment.speakerName}
+                  colour={colour ?? null}
+                  isUser={false}
+                />
+              ),
+            }
+          : {})}
+      />
     </div>
   );
 }
@@ -646,6 +722,30 @@ export function MessageBlock({
     speakerColour === null || isUser || streamingText !== undefined
       ? undefined
       : speakerColour;
+  /*
+   * Whether this turn is a block or a paragraph (§20 phase 165).
+   *
+   * `stacked` draws the turn: a name row, the glyphs, the stats. Anything else
+   * has put the name inside the prose, so the row above it would be saying the
+   * same thing twice — the chrome goes out of flow and is revealed on hover,
+   * focus or selection instead.
+   *
+   * It also fixes Broadsheet, which has hidden its `<header>` outright since
+   * phase 52 and so shipped with the turn's actions and its stats unreachable
+   * except by a long-press — the exact defect phase 57 removed from the
+   * stacked row. One mechanism serves both.
+   */
+  const flow = attribution !== "stacked";
+  /*
+   * Document has no spine at all: a rail down the left of every turn is the
+   * boundary this mode exists to remove. Broadsheet keeps its, which is why
+   * this asks for `runin` rather than for `flow`.
+   *
+   * That leaves the log without its amber "who is writing now" rail while a
+   * turn streams. The block cursor at the end of the prose carries it instead,
+   * and it is already amber for exactly this reason.
+   */
+  const railed = attribution !== "runin";
 
   return (
     <article
@@ -656,8 +756,13 @@ export function MessageBlock({
       // Instrument's spine (§20 phase 50): a rail belonging to the turn rather
       // than a rule between two of them. The user's is quieter than a
       // character's — their line is the prompt, not the performance.
-      data-rail={isUser ? "user" : "character"}
+      data-rail={railed ? (isUser ? "user" : "character") : undefined}
       data-live={streamingText === undefined ? undefined : "true"}
+      // The hook the revealed chrome is positioned and unhidden by. It carries
+      // *which* out-of-flow style this is rather than a bare flag, because
+      // Broadsheet and Document want different things of the theme: a card per
+      // turn is a boundary Broadsheet is happy to keep and Document is not.
+      data-flow={flow ? attribution : undefined}
       // The whole block is the gesture target, so the affordance matches the
       // thing being acted on rather than a handle beside it.
       aria-label={`${speakerName}: ${text.slice(0, 80)}`}
@@ -674,12 +779,18 @@ export function MessageBlock({
       onClick={onSelect}
       style={
         selected === true
-          ? {
-              borderLeft: "2px solid var(--onsen-color-blue)",
-              marginLeft: "-20px",
-              paddingLeft: "18px",
-              background: "var(--onsen-color-bg-raised)",
-            }
+          ? railed
+            ? {
+                borderLeft: "2px solid var(--onsen-color-blue)",
+                marginLeft: "-20px",
+                paddingLeft: "18px",
+                background: "var(--onsen-color-bg-raised)",
+              }
+            // Document selects with a ground and nothing else. The edge and the
+            // negative margin shift the text sideways by 20px, which is a fine
+            // thing to happen to a block and a bad thing to happen to a
+            // paragraph you are reading.
+            : { background: "var(--onsen-color-bg-raised)" }
           : spine === undefined
             ? undefined
             : { borderLeftColor: spine }
@@ -688,9 +799,32 @@ export function MessageBlock({
       {/* Wraps: on a phone the name, six actions and the stats do not fit on
           one line, and without this the stats were clipped at the edge. With
           room it stays one row; without, the actions take a second. */}
+      {/* Out of flow, revealed on hover, keyboard focus or selection. A phone
+          reaches it by tapping the turn, which is already how a turn is
+          selected — so every command stays in the row (§16 §Density rule 3)
+          without a standing row of chrome between every two paragraphs. The
+          stats go with it rather than being dropped: the number is still in
+          the document for a screen reader, and still the doorway to the
+          prompt behind the turn. */}
+      {flow ? (
+        <div className="turn-chrome flex items-center gap-x-[10px]">
+          <TurnRow message={message} actions={actions} onReroll={onReroll} />
+          <Stats message={message} ordinal={ordinal} onOpen={onInspect} />
+          {message.siblingCount > 1 ? (
+            <button
+              type="button"
+              onClick={onOpenVersions}
+              className="chrome shrink-0 text-[12.5px] text-ink-dim"
+            >
+              {strings.chat.versionCounter(message.siblingIndex + 1, message.siblingCount)}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
       <header
         className="mb-[10px] flex flex-wrap items-center gap-x-[10px] gap-y-[4px]"
-        hidden={attribution === "inline"}
+        hidden={flow}
       >
         {turnStyle.avatar ? (
           <Avatar
@@ -771,7 +905,19 @@ export function MessageBlock({
           </p>
         ) : segments === null ? (
           <>
-            <Prose text={text} />
+            {/* Document opens the paragraph with the name (§20 phase 165).
+                Not on a beat: its parts name their own speakers, and the
+                message header says only that the author wrote it. */}
+            <Prose
+              text={text}
+              {...(attribution === "runin"
+                ? {
+                    lead: (
+                      <RunIn name={speakerName} colour={speakerColour} isUser={isUser} />
+                    ),
+                  }
+                : {})}
+            />
             {streamingText === undefined ? null : (
               <span aria-hidden="true" style={{ color: "var(--onsen-color-amber)" }}>{"\u258c"}</span>
             )}
@@ -784,6 +930,7 @@ export function MessageBlock({
             <div key={segment.ordinal} className="mt-[16px] first:mt-0">
               <Segment
                 segment={segment}
+                {...(attribution === "runin" ? { runin: true } : {})}
                 {...(segmentColours === undefined ? {} : { colours: segmentColours })}
                 {...(recasting?.ordinal === segment.ordinal
                   ? { replacement: recasting.text }

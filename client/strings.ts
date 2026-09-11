@@ -870,6 +870,7 @@ export const strings = {
       instrument: "Instrument",
       quiet: "Quiet",
       broadsheet: "Broadsheet",
+      document: "Document",
       custom: "Yours",
     } as Record<string, string>,
     layoutPresetHint: {
@@ -877,6 +878,8 @@ export const strings = {
       quiet: "Everything but the story gets out of the way. One line above the composer.",
       broadsheet:
         "The log as a printed page — a standing line under the title, names set into the prose.",
+      document:
+        "One continuous manuscript. No turn boundaries; each name opens its own paragraph, and a turn’s controls appear when you point at it or select it.",
       custom: "Your own mix of the switches below.",
     } as Record<string, string>,
     layoutReadouts: "Readout row",
@@ -897,6 +900,7 @@ export const strings = {
     layoutAvatarSquare: "Square",
     layoutAttributionStacked: "Above the text",
     layoutAttributionInline: "In the text",
+    layoutAttributionRunin: "Opening the paragraph",
     /* The reading surface, which the reader sets (§20 phase 55). */
     prose: "Text size",
     proseMeasure: "Column width",

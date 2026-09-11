@@ -468,6 +468,106 @@
   }
 
   /*
+   * A turn's chrome, out of flow (§20 phase 165, Document).
+   *
+   * Document mode puts the speaker's name inside the paragraph, so the row
+   * that used to carry the name, the glyphs and the stats has nothing left to
+   * announce — but everything left to *do*. Keeping it in flow would put a
+   * standing band of chrome between every two paragraphs, which is the turn
+   * boundary this mode exists to remove; hiding it would take the turn's
+   * fifteen commands back behind a long-press, which is the defect phase 57
+   * fixed. So it is positioned over the turn's first line and revealed.
+   *
+   * `visibility` rather than `display`, and it stays in the accessibility
+   * tree: a screen reader reads the turn's number, its timing and its token
+   * count in document order exactly as it does in the stacked row. Only
+   * sighted reveal is conditional.
+   *
+   * Revealed by hover, by keyboard focus landing inside it, and by the turn
+   * being selected — which is what a tap already does, so a phone reaches it
+   * without a gesture nobody is told about.
+   */
+  .turn[data-flow] {
+    position: relative;
+  }
+
+  /*
+   * Document turns off the theme's card as well as the layout's spine.
+   *
+   * Found in a browser, in the light theme: `.turn` takes `--onsen-card-bg`
+   * and `--onsen-shadow-card`, so a theme that draws a card per turn drew four
+   * white blocks down a mode whose entire premise is that there are no blocks.
+   * The card is a turn boundary; it just happens to be drawn by the theme
+   * rather than by the preset, and the preset is the thing being asked for.
+   *
+   * Broadsheet keeps its — it is a bounded turn with a rail, and the card
+   * belongs to that reading — which is why this asks for `runin` rather than
+   * for any out-of-flow style. The theme's card tokens are untouched
+   * everywhere else: panels, sheets and surfaces still take them.
+   */
+  .turn[data-flow="runin"] {
+    background: none;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  /*
+   * The turn's end, not its start. Driven in a browser rather than reasoned
+   * about: anchored top-right it sat squarely over the first line and hid
+   * four words of it, and the selected state keeps it revealed, so on a phone
+   * a tapped turn stayed unreadable. A last line is ragged, so bottom-right is
+   * usually over nothing — and it is where a reader who has finished the turn
+   * is already looking.
+   */
+  .turn[data-flow] .turn-chrome {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    z-index: 1;
+    /* A ground, because it sits over the prose it acts on. */
+    background: var(--onsen-color-bg-raised);
+    border: var(--onsen-border-width) solid var(--onsen-color-rule);
+    border-radius: var(--onsen-radius);
+    padding: 2px 8px;
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+
+  .turn[data-flow]:hover .turn-chrome,
+  .turn[data-flow]:focus-within .turn-chrome,
+  .turn[data-flow][data-selected="true"] .turn-chrome {
+    opacity: 1;
+  }
+
+  /* The reveal is a nicety; the controls are not. A reader who has asked for
+     less motion gets them appearing without the fade rather than not at all. */
+  @media (prefers-reduced-motion: reduce) {
+    .turn[data-flow] .turn-chrome {
+      transition: none;
+    }
+  }
+
+  /*
+   * On a thumb, the selected turn makes room for its own controls.
+   *
+   * Measured at 390px: six glyphs at the 44px floor plus the stats is a
+   * 345px cluster — the full column — so revealed over the prose it hid the
+   * last line and a half of the turn you had just tapped. A pointer's version
+   * is 24px a glyph, transient, and sits past the end of a ragged last line,
+   * which is why only this half needs the room.
+   *
+   * Reserved rather than reflowed: the cluster stays absolutely positioned and
+   * stays in the accessibility tree, and the turn simply grows by its height.
+   * The shift is caused by the reader's own tap, on the turn they tapped, and
+   * nothing above it moves.
+   */
+  @media (hover: none) {
+    .turn[data-flow][data-selected="true"] {
+      padding-bottom: 52px;
+    }
+  }
+
+  /*
    * A bubble is a ground behind a turn, not a card (§20 phase 57).
    *
    * Radius and border width come from the theme, as `.surface` takes them, so a
