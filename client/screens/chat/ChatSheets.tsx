@@ -377,8 +377,10 @@ export function ChatSheets({
               key={sibling.id}
               className="flex items-start gap-[8px]"
               style={{
+                // The currently-showing version is a selection, not a live
+                // state — interactive blue (design review fix 1).
                 borderTop:
-                  sibling.id === versionsFor.id ? "2px solid var(--onsen-color-red)" : undefined,
+                  sibling.id === versionsFor.id ? "2px solid var(--onsen-color-blue)" : undefined,
               }}
             >
               <button

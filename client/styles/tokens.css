@@ -85,8 +85,9 @@
    * what each subsystem is holding, and four figures in one colour read as one
    * figure. So: guides keep the blue pencil they already had, memory takes the
    * green that until now only lit a connection dot in Settings, and media
-   * takes a brass. Red is not among them, which is the point — red stays the
-   * colour of *now*.
+   * takes a brass. Red is not among them — under the three-role system (design
+   * review fix 1) *amber* is the colour of "now" (cued, streaming, autopilot),
+   * and red is destructive/error only.
    */
   --onsen-color-green: #7fa65b;
   --onsen-color-green-text: #b6c6a4;
@@ -94,6 +95,17 @@
   --onsen-color-amber: #a6864f;
   --onsen-color-amber-text: #cbb894;
   --onsen-color-amber-text-muted: #8c7d5b;
+  /*
+   * A background/border wash for the cued-speaker and autopilot states that
+   * need more than a border-left (a cast card, a deck segment) — the same
+   * job `--onsen-color-red-bg`/`-red-border` did before those states moved to
+   * amber. Derived with `color-mix` from the single amber value above, the
+   * way `:root[data-background="1"]` below already derives its translucent
+   * surfaces, rather than hand-picking a fourth per-theme hex family: one
+   * definition here holds for every theme block, dark or light.
+   */
+  --onsen-color-amber-bg: color-mix(in srgb, var(--onsen-color-amber) 14%, var(--onsen-color-bg-raised));
+  --onsen-color-amber-border: color-mix(in srgb, var(--onsen-color-amber) 55%, var(--onsen-color-bg-raised));
 
   /* Placeholder fill standing in for user-supplied imagery. */
   /*
@@ -109,8 +121,8 @@
   );
   --onsen-stripe-cued: repeating-linear-gradient(
     45deg,
-    var(--onsen-color-red-border) 0 6px,
-    var(--onsen-color-red-bg) 6px 12px
+    var(--onsen-color-amber-border) 0 6px,
+    var(--onsen-color-amber-bg) 6px 12px
   );
 
   /* Typefaces */

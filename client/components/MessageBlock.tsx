@@ -205,12 +205,12 @@ function Segment({
 }) {
   return (
     <div
-      // Red is the live pencil: the part being rewritten is the only thing on
-      // the screen that is happening now.
+      // Amber is the live pencil: the part being rewritten is the only thing
+      // on the screen that is happening now.
       style={
         replacement === undefined
           ? undefined
-          : { borderLeft: "2px solid var(--onsen-color-red)", paddingLeft: "10px" }
+          : { borderLeft: "2px solid var(--onsen-color-amber)", paddingLeft: "10px" }
       }
     >
       {segment.speakerName === null ? null : (
@@ -590,7 +590,9 @@ export function MessageBlock({
       aria-label={`${speakerName}: ${text.slice(0, 80)}`}
       // §20 phase 43: the selected turn is what ⌘K and the single-key
       // accelerators act on, so it has to be visible without being loud —
-      // a red edge in the gutter, not a highlight over the prose.
+      // a blue edge in the gutter, not a highlight over the prose. Blue
+      // because a selection is interactive/chosen, not live (design review
+      // fix 1) — the same role the focus ring now draws.
       aria-current={selected === true ? "true" : undefined}
       data-selected={selected === true ? "true" : undefined}
       // The anchor j/k scrolls to. On the element rather than in a ref map,
@@ -600,7 +602,7 @@ export function MessageBlock({
       style={
         selected === true
           ? {
-              borderLeft: "2px solid var(--onsen-color-red)",
+              borderLeft: "2px solid var(--onsen-color-blue)",
               marginLeft: "-20px",
               paddingLeft: "18px",
               background: "var(--onsen-color-bg-raised)",
