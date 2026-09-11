@@ -3,7 +3,13 @@ import type { AnnotationDto, AutopilotStateDto, LayoutDto, MessageDto } from "@s
 import type { ActiveGeneration } from "../../state/generation.ts";
 import { strings } from "../../strings.ts";
 import { SceneDescribePrompt } from "./SceneDescribePrompt.tsx";
-import { MessageBlock, MessageEditor, OocBlock, Reasoning } from "../../components/MessageBlock.tsx";
+import {
+  Emphasis,
+  MessageBlock,
+  MessageEditor,
+  OocBlock,
+  Reasoning,
+} from "../../components/MessageBlock.tsx";
 import { VirtualizedLog } from "../../components/VirtualizedLog.tsx";
 import { speakerFor } from "./attribution.ts";
 
@@ -188,8 +194,11 @@ export function MessageLog({
             ) : null}
           </header>
           <Reasoning text={active.reasoning} />
+          {/* The same emphasis a finished turn gets. Without it the prose
+              renders flat while it streams and reflows the instant the turn
+              completes, which reads as the app changing its mind. */}
           <p className="text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)] whitespace-pre-wrap">
-            {active.text}
+            <Emphasis text={active.text} />
           </p>
         </article>
       ) : null}

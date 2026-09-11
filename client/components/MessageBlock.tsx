@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import type {
   AnnotationDto,
   AvatarShape,
@@ -6,6 +6,7 @@ import type {
   MessageSegmentDto,
   TurnStyle,
 } from "@shared/types.ts";
+import { emphasis, isPlain } from "../lib/emphasis.ts";
 import { useSwipe } from "../lib/gestures.ts";
 import { strings } from "../strings.ts";
 import { MessageMedia } from "./MessageMedia.tsx";
@@ -162,8 +163,44 @@ export function Direction({ text }: { text: string }) {
 }
 
 /**
+ * One paragraph's emphasis, as elements.
+ *
+ * Built out of React nodes rather than an HTML string, which is the whole
+ * reason the tokenizer hands back spans: `dangerouslySetInnerHTML` appears
+ * zero times in this app and adding the first one to render a pair of
+ * asterisks would be a poor trade. Exported because the streaming tail sets
+ * the same prose while it is still arriving, and text that reflowed the
+ * instant a turn finished would be worse than text that never formatted.
+ */
+export function Emphasis({ text }: { text: string }) {
+  if (isPlain(text)) return <>{text}</>;
+  return (
+    <>
+      {emphasis(text).map((span, index) =>
+        span.kind === "strong" ? (
+          <strong key={index} className="font-semibold">
+            {span.text}
+          </strong>
+        ) : span.kind === "em" ? (
+          <em key={index}>{span.text}</em>
+        ) : (
+          <Fragment key={index}>{span.text}</Fragment>
+        ),
+      )}
+    </>
+  );
+}
+
+/**
  * Paragraphs are split on blank lines, which is how a model emits them, and set
  * with `text-wrap: pretty` for the sake of the person reading for hours.
+ *
+ * `whitespace-pre-wrap` stays: the split is on blank lines, so a single
+ * newline inside a paragraph is the model's own line break and is the reader's
+ * to see. The emphasis runs *inside* each paragraph and changes nothing about
+ * the text it is given — segment offsets address the canonical string
+ * including its markup, and a recast splice stays correct only while that is
+ * true.
  */
 function Prose({ text }: { text: string }) {
   const paragraphs = text.split(/\n{2,}/).filter((paragraph) => paragraph.trim() !== "");
@@ -174,7 +211,7 @@ function Prose({ text }: { text: string }) {
           key={index}
           className="mt-[9px] first:mt-0 text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)] whitespace-pre-wrap"
         >
-          {paragraph}
+          <Emphasis text={paragraph} />
         </p>
       ))}
     </>
