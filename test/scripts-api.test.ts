@@ -82,6 +82,91 @@ function add(t: TestHarness, over: Partial<RegexScriptDto> & { name: string; pat
   });
 }
 
+/**
+ * Reordering, which until now meant deleting and recreating (§20 phase 160).
+ *
+ * `run_order` has decided which of two scripts on the same stage runs first
+ * since this was built, `apply.ts` sorts by it, the DTO carries it — and
+ * nothing could change it. The order is the reader's decision: a script that
+ * strips markdown and one that adds it are both reasonable, and which wins is
+ * the whole point of the field.
+ */
+describe("reordering", () => {
+  test("a move swaps with the neighbour and returns the new list", async () => {
+    const t = await signedIn();
+    await add(t, { name: "one", pattern: "a" });
+    const second = await add(t, { name: "two", pattern: "b" });
+    await add(t, { name: "three", pattern: "c" });
+
+    const after = await json<RegexScriptDto[]>(t, "POST", `/api/scripts/${second.id}/move`, {
+      direction: "up",
+    });
+    expect(after.map((script) => script.name)).toEqual(["two", "one", "three"]);
+    // And it is the stored order, not just what the response said.
+    const reread = await json<RegexScriptDto[]>(t, "GET", "/api/scripts");
+    expect(reread.map((script) => script.name)).toEqual(["two", "one", "three"]);
+  });
+
+  test("and down as well as up", async () => {
+    // The browser drive found this: an earlier swap reversed the pair's
+    // numbers only when moving up, so "down" was a silent no-op. Both
+    // directions are asserted now, and from a row that has somewhere to go in
+    // each of them.
+    const t = await signedIn();
+    await add(t, { name: "one", pattern: "a" });
+    const second = await add(t, { name: "two", pattern: "b" });
+    await add(t, { name: "three", pattern: "c" });
+
+    const down = await json<RegexScriptDto[]>(t, "POST", `/api/scripts/${second.id}/move`, {
+      direction: "down",
+    });
+    expect(down.map((script) => script.name)).toEqual(["one", "three", "two"]);
+    const back = await json<RegexScriptDto[]>(t, "POST", `/api/scripts/${second.id}/move`, {
+      direction: "up",
+    });
+    expect(back.map((script) => script.name)).toEqual(["one", "two", "three"]);
+  });
+
+  test("a move at the end of its stage does nothing, rather than failing", async () => {
+    const t = await signedIn();
+    const first = await add(t, { name: "one", pattern: "a" });
+    await add(t, { name: "two", pattern: "b" });
+    const after = await json<RegexScriptDto[]>(t, "POST", `/api/scripts/${first.id}/move`, {
+      direction: "up",
+    });
+    expect(after.map((script) => script.name)).toEqual(["one", "two"]);
+  });
+
+  test("and never swaps across stages", async () => {
+    // `run_order` is only ever compared within a stage — that is what
+    // `nextOrder` means. A script last on `ai_output` trading places with the
+    // first on `user_input` would reorder two lists at once and look like a
+    // bug in both.
+    const t = await signedIn();
+    const output = await add(t, { name: "output", pattern: "a", applyTo: "ai_output" });
+    await add(t, { name: "input", pattern: "b", applyTo: "user_input" });
+
+    const after = await json<RegexScriptDto[]>(t, "POST", `/api/scripts/${output.id}/move`, {
+      direction: "down",
+    });
+    const stages = new Map(after.map((script) => [script.name, script.applyTo]));
+    expect(stages.get("output")).toBe("ai_output");
+    expect(stages.get("input")).toBe("user_input");
+    // Nothing moved: each is alone on its own stage.
+    expect(after.find((script) => script.name === "output")!.runOrder).toBe(0);
+    expect(after.find((script) => script.name === "input")!.runOrder).toBe(0);
+  });
+
+  test("a direction that is not one is refused", async () => {
+    const t = await signedIn();
+    const only = await add(t, { name: "one", pattern: "a" });
+    expect(await statusOf(t, "POST", `/api/scripts/${only.id}/move`, { direction: "sideways" })).toBe(
+      400,
+    );
+    expect(await statusOf(t, "POST", "/api/scripts/01NOPE/move", { direction: "up" })).toBe(404);
+  });
+});
+
 describe("the surface", () => {
   test("a script round-trips, and a new one lands at the end of its stage", async () => {
     const t = await signedIn();

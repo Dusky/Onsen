@@ -7280,3 +7280,50 @@ checked only when they run. That is why the backtracking guard had to go in
 saved: an imported pack never passes through that point. Existing risky scripts
 are refused per script in the run trace rather than crashing the turn, so an
 install that carries one loses that script and nothing else.
+
+## Phase 160 — Two half-wired features
+
+Both are the shape `docs/GAPS.md` names in its own "how to read this": the
+storage, the query and the DTO all present, and nothing in the UI reaching
+them. Neither needed a schema change.
+
+**A custom theme could change every accent except the live one.**
+`ThemeSection` exposed twelve of the stylesheet's thirty-seven colour tokens,
+and seven of the missing twenty-five followed nothing — `color-amber` among
+them, which has been the app's live/now accent since the colour roles were
+settled. Seven new rows close all thirty-seven, because `FOLLOWS` derives
+nineteen tokens from another when a theme does not name one. The groups are now
+`tokens.css`'s groups, and the hues are labelled by the role each holds rather
+than by where it happens to appear: red and blue still said "live · now" and
+"the author", which is what they meant before the roles were settled.
+
+**Reordering a script or a trigger meant deleting and recreating it in the
+order you wanted.** Both have persisted a `run_order` since they were built,
+both read it to break ties when several fire on the same stage or event, and
+nothing could write it after the insert. Up and down arrows on the Automation
+rows, and a `POST /:id/move` behind each — server-side because two rows change
+and a half-applied reorder is silent, which is the answer phase 65 already
+reached for quick replies. The swap is per partition: within the stage for a
+script, within the event for a trigger, because that is the only set
+`run_order` is ever compared against.
+
+**Verified** by a coverage guard that walks the `FOLLOWS` chains rather than
+counting rows, reorder cases in both directions and across partitions, and a
+Chromium drive at 1600×950 — all seven theme groups rendering with their
+swatches, and three scripts moved up and down by their arrows. Full suite 1562
+pass.
+
+### Surprises
+
+**The browser found a bug the tests had agreed with.** The first swap reversed
+the pair's numbers only when moving up, so "down" wrote each row its own
+existing value and moved nothing — silently, with a 200 and a correct-looking
+list in the response. The tests missed it because the "up" case was tested
+against a middle row and the "down" case against two rows that were alone on
+their own stages, where nothing is supposed to move. Both directions are
+asserted from a row with somewhere to go now.
+
+**`QUICK_REPLY_DIRECTIONS` was the third list to want the same two words.** It
+is `MOVE_DIRECTIONS` now, with the phase-65 names kept as aliases — the same
+consolidation the `text()` helpers needed one phase earlier, caught before it
+became a third copy rather than after.

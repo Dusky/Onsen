@@ -818,12 +818,28 @@ export interface TriggerOutcomeDto {
 /* Quick replies (SPEC §7, §20 phase 65)                               */
 /* ------------------------------------------------------------------ */
 
-export const QUICK_REPLY_DIRECTIONS = ["up", "down"] as const;
-export type QuickReplyDirection = (typeof QUICK_REPLY_DIRECTIONS)[number];
+/**
+ * One place up or down a hand-ordered list.
+ *
+ * Named generally because three lists use it now — quick replies, regex
+ * scripts and event triggers — and the quick-reply names below are kept as
+ * aliases so the phase-65 call sites read as they did.
+ */
+export const MOVE_DIRECTIONS = ["up", "down"] as const;
+export type MoveDirection = (typeof MOVE_DIRECTIONS)[number];
 
-export function isQuickReplyDirection(value: unknown): value is QuickReplyDirection {
-  return typeof value === "string" && (QUICK_REPLY_DIRECTIONS as readonly string[]).includes(value);
+export function isMoveDirection(value: unknown): value is MoveDirection {
+  return typeof value === "string" && (MOVE_DIRECTIONS as readonly string[]).includes(value);
 }
+
+/** One place, for any of the hand-ordered lists. */
+export interface MoveRequest {
+  direction: MoveDirection;
+}
+
+export const QUICK_REPLY_DIRECTIONS = MOVE_DIRECTIONS;
+export type QuickReplyDirection = MoveDirection;
+export const isQuickReplyDirection = isMoveDirection;
 
 /** A labelled prompt the reader fires from the composer with one tap. */
 export interface QuickReplyDto {

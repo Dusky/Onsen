@@ -13,7 +13,8 @@ import {
 import { listScripts } from "../db/queries/scripts.ts";
 import { TRIGGER_ACTIONS, TRIGGER_EVENTS } from "../triggers/select.ts";
 import type { TriggerRunner } from "../triggers/runner.ts";
-import { GUIDE_KINDS, isGuideKind } from "../../shared/types.ts";
+import { GUIDE_KINDS, isGuideKind, isMoveDirection } from "../../shared/types.ts";
+import { moveInRunOrder } from "../db/queries/reorder.ts";
 import { TRACKER_KINDS, guideOpKey, taskKind, trackerOpKey } from "../tasks/registry.ts";
 import { badRequest, body, notFound, optionalText } from "../lib/routes.ts";
 
@@ -140,6 +141,26 @@ export function triggerRoutes(ctx: AppContext, runner: TriggerRunner): Hono<AppE
 
     updateTrigger(ctx.db, row.id, patch);
     return c.json(one(row.ulid));
+  });
+
+  /**
+   * One place up or down, within the event.
+   *
+   * `triggers/select.ts` sorts by `run_order` when several triggers fire on
+   * the same event, and nothing could change it — the field was written at
+   * insert and never again. Within the event, because that is the only set it
+   * is ever compared against: a trigger last on `after_generation` swapping
+   * with the first on `before_generation` would reorder two lists at once.
+   */
+  app.post("/:triggerId/move", async (c) => {
+    const row = findTrigger(ctx.db, c.req.param("triggerId"));
+    if (row === null) return c.json(notFound("trigger"), 404);
+    const input = await body(c);
+    if (!isMoveDirection(input["direction"])) {
+      return c.json(badRequest("That is not a direction."), 400);
+    }
+    moveInRunOrder(ctx.db, "event_triggers", "event", row.ulid, input["direction"]);
+    return c.json(listTriggerRows(ctx.db));
   });
 
   app.delete("/:triggerId", (c) => {

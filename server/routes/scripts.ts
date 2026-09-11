@@ -15,10 +15,12 @@ import { applyScripts, patternProblem } from "../scripts/apply.ts";
 import { runStage, scriptContext, speakerOf } from "../scripts/runtime.ts";
 import {
   isApplyStage,
+  isMoveDirection,
   isScriptScope,
   type RegexScriptDto,
   type ScriptTestDto,
 } from "../../shared/types.ts";
+import { moveInRunOrder } from "../db/queries/reorder.ts";
 import { badRequest, body, notFound, optionalText } from "../lib/routes.ts";
 
 /**
@@ -110,6 +112,26 @@ export function scriptRoutes(ctx: AppContext): Hono<AppEnv> {
 
     updateScript(ctx.db, row.id, patch);
     return c.json(one(row.ulid));
+  });
+
+  /**
+   * One place up or down, within the stage.
+   *
+   * `run_order` has broken ties between scripts on the same stage since this
+   * was built (`scripts/apply.ts` sorts by it) and nothing could change it:
+   * reordering meant deleting and recreating in the order you wanted. Order is
+   * the whole point of the field — a script that strips markdown and one that
+   * adds it are both reasonable, and which wins is the reader's decision.
+   */
+  app.post("/:scriptId/move", async (c) => {
+    const row = findScript(ctx.db, c.req.param("scriptId"));
+    if (row === null) return c.json(notFound("script"), 404);
+    const input = await body(c);
+    if (!isMoveDirection(input["direction"])) {
+      return c.json(badRequest("That is not a direction."), 400);
+    }
+    moveInRunOrder(ctx.db, "regex_scripts", "apply_to", row.ulid, input["direction"]);
+    return c.json(listScriptRows(ctx.db) satisfies RegexScriptDto[]);
   });
 
   app.delete("/:scriptId", (c) => {

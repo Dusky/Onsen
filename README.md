@@ -15,10 +15,10 @@
   <img src="https://img.shields.io/badge/Hono-4.x-360d0a?logo=hono" alt="Hono 4.x">
   <img src="https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=20272f" alt="React 19">
   <img src="https://img.shields.io/badge/SQLite-WAL-003b57?logo=sqlite&logoColor=white" alt="SQLite WAL">
-  <img src="https://img.shields.io/badge/phase-159-989286" alt="Phase 159">
+  <img src="https://img.shields.io/badge/phase-160-989286" alt="Phase 160">
 </p>
 
-> **Status: phase 159 — feature complete, less the deferred phase 42.**
+> **Status: phase 160 — feature complete, less the deferred phase 42.**
 > Set it up, **point it at your SillyTavern folder and move in** — cards, chats, group chats, personas, world info, instruct templates and regex scripts all come across, with your swipes intact as branches.
 
 ---

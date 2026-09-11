@@ -12,7 +12,7 @@ import type {
   TaskDto,
   UpdateStatusDto,
 } from "@shared/types.ts";
-import { PROVIDER_KINDS, INJECTION_ROLES, MIN_PASSWORD_LENGTH, type ProviderKind } from "@shared/types.ts";
+import { PROVIDER_KINDS, INJECTION_ROLES, MIN_PASSWORD_LENGTH, type MoveDirection, type ProviderKind } from "@shared/types.ts";
 import { LAYOUT_PRESETS, READING_BOUNDS, READING_DEFAULTS } from "@shared/types.ts";
 import type { ReadingDto } from "@shared/types.ts";
 import type { LayoutDto, LayoutPreset } from "@shared/types.ts";
@@ -54,6 +54,8 @@ import {
   useApiKeys,
   useSignOut,
   useChangePassword,
+  useMoveScript,
+  useMoveTrigger,
 } from "../lib/queries.ts";
 import { useIsDesktop } from "../lib/breakpoint.ts";
 import { Sheet } from "../components/Sheet.tsx";
@@ -1449,10 +1451,55 @@ function PacksSection() {
  * fired by a trigger is switched off on the automatic paths. Splitting them
  * would put the two halves of one setup in different parts of the screen.
  */
+/**
+ * Up and down, for a list whose order is the point.
+ *
+ * Arrows rather than drag, for the reason `PresetEditor`'s prompt manager
+ * gives: there is no drag-reorder anywhere in this client to match, HTML5 drag
+ * is poor under a thumb, and a library is a dependency for something an arrow
+ * does. The label carries the row's name because six of these in a column are
+ * otherwise six identical "Move up" buttons to a screen reader.
+ *
+ * No disabled state at the ends. Which row is first depends on the *stage* or
+ * *event* it belongs to rather than its position in this list, so a row that
+ * looks like the last one here may have somewhere to go — the server answers
+ * that question and does nothing when there is nowhere.
+ */
+function Arrows({
+  name,
+  onMove,
+}: {
+  name: string;
+  onMove(direction: MoveDirection): void;
+}) {
+  return (
+    <span className="flex flex-none items-center self-center">
+      <button
+        type="button"
+        aria-label={`${strings.settings.blockUp} ${name}`}
+        onClick={() => onMove("up")}
+        className="chrome tap flex items-center justify-center px-[6px] text-[12px] text-ink-dim hover:text-ink-label"
+      >
+        ↑
+      </button>
+      <button
+        type="button"
+        aria-label={`${strings.settings.blockDown} ${name}`}
+        onClick={() => onMove("down")}
+        className="chrome tap flex items-center justify-center px-[6px] text-[12px] text-ink-dim hover:text-ink-label"
+      >
+        ↓
+      </button>
+    </span>
+  );
+}
+
 function AutomationSection() {
   const scripts = useScripts();
   const triggers = useTriggers();
   const actions = useTriggerActions();
+  const moveScript = useMoveScript();
+  const moveTrigger = useMoveTrigger();
   const [editingScript, setEditingScript] = useState<RegexScriptDto | null | undefined>(undefined);
   const [editingTrigger, setEditingTrigger] = useState<EventTriggerDto | null | undefined>(
     undefined,
@@ -1481,6 +1528,7 @@ function AutomationSection() {
       <p className="group-heading mb-[12px]">{strings.settings.scripts}</p>
       {scriptList.map((script) => (
         <Row key={script.id}>
+         <div className="flex items-center gap-[4px]">
           <button
             type="button"
             onClick={() => setEditingScript(script)}
@@ -1505,6 +1553,11 @@ function AutomationSection() {
             </span>
             <span className="chrome flex-none self-center text-[12px] text-ink-dim">›</span>
           </button>
+          <Arrows
+            name={script.name}
+            onMove={(direction) => moveScript.mutate({ id: script.id, direction })}
+          />
+         </div>
         </Row>
       ))}
       <button
@@ -1518,6 +1571,7 @@ function AutomationSection() {
       <p className="group-heading mb-[12px]">{strings.settings.triggers}</p>
       {(triggers.data ?? []).map((trigger) => (
         <Row key={trigger.id}>
+         <div className="flex items-center gap-[4px]">
           <button
             type="button"
             onClick={() => setEditingTrigger(trigger)}
@@ -1538,6 +1592,11 @@ function AutomationSection() {
             </span>
             <span className="chrome flex-none self-center text-[12px] text-ink-dim">›</span>
           </button>
+          <Arrows
+            name={trigger.name}
+            onMove={(direction) => moveTrigger.mutate({ id: trigger.id, direction })}
+          />
+         </div>
         </Row>
       ))}
       <button

@@ -98,6 +98,7 @@ import type {
   CreateQuickReplyRequest,
   UpdateQuickReplyRequest,
   MoveQuickReplyRequest,
+  MoveRequest,
 } from "@shared/types.ts";
 
 /**
@@ -2058,6 +2059,20 @@ export function useDeleteScript() {
   return useScriptMutation((id: string) => api.delete<void>(`/scripts/${id}`));
 }
 
+/**
+ * One place up or down, and the server does the swap.
+ *
+ * Two rows change, so this is a move endpoint rather than two PATCHes from
+ * here — the same answer quick replies arrived at in phase 65, and for the
+ * same reason: a half-applied reorder is silent. It returns the whole list in
+ * its new order, so nothing has to guess what the swap did.
+ */
+export function useMoveScript() {
+  return useScriptMutation(({ id, ...body }: MoveRequest & { id: string }) =>
+    api.post<RegexScriptDto[]>(`/scripts/${id}/move`, body),
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Quick replies (SPEC §7, §20 phase 65)                               */
 /* ------------------------------------------------------------------ */
@@ -2152,6 +2167,13 @@ export function useCreateTrigger() {
 export function useUpdateTrigger() {
   return useTriggerMutation(({ id, ...body }: Record<string, unknown> & { id: string }) =>
     api.patch<EventTriggerDto>(`/triggers/${id}`, body),
+  );
+}
+
+/** As `useMoveScript`, within the event rather than the stage. */
+export function useMoveTrigger() {
+  return useTriggerMutation(({ id, ...body }: MoveRequest & { id: string }) =>
+    api.post<EventTriggerDto[]>(`/triggers/${id}/move`, body),
   );
 }
 

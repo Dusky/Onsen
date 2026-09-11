@@ -231,6 +231,61 @@ describe("the surface refuses a trigger that could never work", () => {
     await t.fetch(`/api/scenes/${sceneId}`, { method: "DELETE" });
     expect(await json<TriggerDto[]>(t, "GET", "/api/triggers")).toEqual([]);
   });
+
+  /**
+   * Reordering, which until now meant deleting and recreating (§20 phase 160).
+   * `select.ts` breaks ties by `run_order` when several triggers fire on one
+   * event, and the field was written at insert and never again.
+   */
+  test("a move swaps with the neighbour on the same event", async () => {
+    const t = await signedIn();
+    await json<TriggerDto>(t, "POST", "/api/triggers", {
+      name: "one",
+      event: "user_message",
+      action: "guide",
+      actionRef: "clothes",
+    });
+    const second = await json<TriggerDto>(t, "POST", "/api/triggers", {
+      name: "two",
+      event: "user_message",
+      action: "tracker",
+      actionRef: "scene",
+    });
+
+    const after = await json<TriggerDto[]>(t, "POST", `/api/triggers/${second.id}/move`, {
+      direction: "up",
+    });
+    expect(after.map((trigger) => trigger.name)).toEqual(["two", "one"]);
+    expect((await json<TriggerDto[]>(t, "GET", "/api/triggers")).map((x) => x.name)).toEqual([
+      "two",
+      "one",
+    ]);
+  });
+
+  test("and never across events", async () => {
+    // Within the event, because that is the only set `run_order` is compared
+    // against. A trigger last on `user_message` swapping with the first on
+    // `after_generation` would reorder two lists at once.
+    const t = await signedIn();
+    const onMessage = await json<TriggerDto>(t, "POST", "/api/triggers", {
+      name: "on message",
+      event: "user_message",
+      action: "guide",
+      actionRef: "clothes",
+    });
+    await json<TriggerDto>(t, "POST", "/api/triggers", {
+      name: "after",
+      event: "after_generation",
+      action: "tracker",
+      actionRef: "scene",
+    });
+
+    const after = await json<TriggerDto[]>(t, "POST", `/api/triggers/${onMessage.id}/move`, {
+      direction: "down",
+    });
+    // Each is alone on its own event, so nothing moved.
+    expect(after.every((trigger) => trigger.runOrder === 0)).toBe(true);
+  });
 });
 
 describe("firing", () => {
