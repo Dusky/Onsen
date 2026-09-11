@@ -239,4 +239,18 @@ describe("file ingestion", () => {
     expect(doc.title).toBe("inventory");
     expect(doc.chunkCount).toBeGreaterThan(0);
   });
+
+  test("a file past the cap is refused before it is read into memory", async () => {
+    // This was the one upload path in the app with no size check, while the
+    // bytes are read whole and then handed to a PDF parser. 413 rather than
+    // 400, which is now what every upload path here answers.
+    const t = await signedIn();
+    const form = new FormData();
+    form.append(
+      "file",
+      new File(["x".repeat(33 * 1024 * 1024)], "huge.txt", { type: "text/plain" }),
+    );
+    const response = await t.fetch("/api/documents/file", { method: "POST", body: form });
+    expect(response.status).toBe(413);
+  });
 });

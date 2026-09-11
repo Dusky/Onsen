@@ -92,11 +92,77 @@ export function flagsProblem(flags: string): string | null {
 }
 
 /**
- * Whether a pattern compiles, and what is wrong with it if not.
+ * A group that repeats, containing something that already repeats.
+ *
+ * `(a+)+`, `([a-z]+\.)+`, `(\w*\s*)*` — the shape behind almost every
+ * catastrophic backtrack. The engine has exponentially many ways to divide the
+ * input between the inner quantifier and the outer one, and on a string that
+ * *nearly* matches it tries all of them: `(a+)+$` against forty `a`s and a `b`
+ * takes longer than the heat death of the useful part of an afternoon.
+ *
+ * It matters here because scripts arrive in installed packs, and §14 runs them
+ * synchronously on the generation path over the reader's own text. Nothing can
+ * interrupt a `String.replace` once it starts — not a timer, not an abort
+ * signal — so a pattern like this does not slow the app down, it ends it.
+ *
+ * A heuristic, and stated as one. It does not catch alternation that overlaps
+ * itself (`(a|a)*`), which needs real analysis; it can flag a pattern that
+ * would in practice have been fine. That trade is deliberate: a false positive
+ * is an error message and a rewrite, and a false negative is a process that
+ * has to be killed.
+ */
+function backtrackingRisk(pattern: string): string | null {
+  // Walk the pattern tracking group bodies, so escaped parens and character
+  // classes do not read as structure. `(?:` and `(?<name>` count — they repeat
+  // the same way a capturing group does.
+  const opens: number[] = [];
+  let inClass = false;
+  for (let i = 0; i < pattern.length; i++) {
+    const ch = pattern[i]!;
+    if (ch === "\\") {
+      i += 1;
+      continue;
+    }
+    if (inClass) {
+      if (ch === "]") inClass = false;
+      continue;
+    }
+    if (ch === "[") {
+      inClass = true;
+      continue;
+    }
+    if (ch === "(") {
+      opens.push(i);
+      continue;
+    }
+    if (ch !== ")") continue;
+    const start = opens.pop();
+    if (start === undefined) continue;
+
+    // Unbounded repetition of the group itself: `*`, `+`, or `{n,}`.
+    const after = pattern.slice(i + 1);
+    const repeats = /^(?:[*+]|\{\d*,\})/.test(after);
+    if (!repeats) continue;
+
+    // …around a body that also repeats without a bound. A lookaround is not a
+    // repetition of input, so its own contents do not count.
+    const body = pattern.slice(start + 1, i);
+    if (/^\?[=!<]/.test(body)) continue;
+    if (/(?:[*+]|\{\d*,\})/.test(body.replace(/\\./g, ""))) {
+      return "That pattern repeats a group that already repeats, which can take exponential time on text that nearly matches. Rewrite it so only one of the two repeats.";
+    }
+  }
+  return null;
+}
+
+/**
+ * Whether a pattern compiles, whether it is safe to run, and what is wrong
+ * with it if not.
  *
  * Called at save time as well as at run time. Catching it at save time is what
  * keeps a typo from becoming a script that silently does nothing on every turn
- * for a week.
+ * for a week — and now what keeps an imported pack from carrying a pattern
+ * that hangs the process on the turn it first matches badly.
  */
 export function patternProblem(pattern: string, flags: string): string | null {
   const flagProblem = flagsProblem(flags);
@@ -104,10 +170,10 @@ export function patternProblem(pattern: string, flags: string): string | null {
   if (pattern === "") return "A pattern is required.";
   try {
     new RegExp(pattern, flags);
-    return null;
   } catch (error) {
     return error instanceof Error ? error.message : "That is not a valid pattern.";
   }
+  return backtrackingRisk(pattern);
 }
 
 const MACRO_PATTERN = /\{\{\s*([a-zA-Z_][\w]*)\s*\}\}/g;
@@ -191,15 +257,68 @@ export function scriptsFor(
  * script that adds it are both reasonable, and which one wins is the user's
  * decision rather than an accident of insertion order.
  */
+/**
+ * Text past this length is not run through scripts at all.
+ *
+ * Backtracking cost grows with the input, so the length of the string is the
+ * one lever that exists once a pattern is already compiled. Generous on
+ * purpose — a long scene's whole assembled prompt is well under it, and the
+ * refusal is reported per script rather than silent, so a reader who hits it
+ * is told rather than left wondering why their script stopped firing.
+ */
+export const MAX_SCRIPT_INPUT = 512 * 1024;
+
+/**
+ * How long the whole chain may take before the rest is abandoned.
+ *
+ * Checked *between* scripts, because that is the only place it can be: a
+ * `String.replace` cannot be interrupted once it starts. So this does not save
+ * a single catastrophic pattern — `patternProblem` is what stands between the
+ * app and one of those — it bounds a chain of merely slow ones, which is the
+ * other way a pack of forty scripts becomes a stalled generation.
+ */
+export const SCRIPT_BUDGET_MS = 2_000;
+
 export function applyScripts(
   text: string,
   scripts: readonly RegexScript[],
   env: ScriptEnvironment,
+  options: { budgetMs?: number; maxInput?: number; now?: () => number } = {},
 ): ApplyResult {
   const runs: ScriptRun[] = [];
   let current = text;
+  const budgetMs = options.budgetMs ?? SCRIPT_BUDGET_MS;
+  const maxInput = options.maxInput ?? MAX_SCRIPT_INPUT;
+  // The one impure thing in this module, and it has to be: a budget is about
+  // elapsed real time. Injectable so a test can exhaust it without waiting.
+  const clock = options.now ?? Date.now;
+  const startedAt = clock();
+
+  if (text.length > maxInput) {
+    for (const script of scripts) {
+      runs.push({
+        scriptId: script.id,
+        name: script.name,
+        replacements: 0,
+        error: `Not run: this text is ${text.length} characters, over the ${maxInput} a script is allowed to scan.`,
+        unknownMacros: [],
+      });
+    }
+    return { text, runs };
+  }
 
   for (const script of scripts) {
+    if (clock() - startedAt > budgetMs) {
+      runs.push({
+        scriptId: script.id,
+        name: script.name,
+        replacements: 0,
+        error: `Not run: the scripts before this one used the whole ${budgetMs}ms budget.`,
+        unknownMacros: [],
+      });
+      continue;
+    }
+
     const problem = patternProblem(script.pattern, script.flags);
     if (problem !== null) {
       runs.push({

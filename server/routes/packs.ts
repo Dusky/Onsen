@@ -30,6 +30,13 @@ import { badRequest, notFound } from "../lib/routes.ts";
 const MAX_PACK_BYTES = 200 * 1024 * 1024;
 
 /**
+ * Told apart from the other refusals so it can answer 413 rather than riding
+ * the shared 400. Every upload path in the app answers 413 for a file that is
+ * too big; they used to disagree, 400 or 413 by which was written first.
+ */
+const TOO_LARGE = "That pack is larger than this app will read.";
+
+/**
  * `git clone` treats its source argument as more than a location — the
  * `ext::` transport runs an arbitrary shell command as part of "cloning",
  * and `file://` reaches the local disk. Both are reachable through a plain
@@ -63,7 +70,7 @@ async function archiveOf(c: {
   }
   const file = form.get("file");
   if (!(file instanceof File)) return "Send the pack as a file.";
-  if (file.size > MAX_PACK_BYTES) return "That pack is larger than this app will read.";
+  if (file.size > MAX_PACK_BYTES) return TOO_LARGE;
   return new Uint8Array(await file.arrayBuffer());
 }
 
@@ -151,7 +158,9 @@ export function packRoutes(ctx: AppContext): Hono<AppEnv> {
   /** What installing this archive would do. Writes nothing. */
   app.post("/preview", async (c) => {
     const bytes = await archiveOf(c);
-    if (typeof bytes === "string") return c.json(badRequest(bytes), 400);
+    if (typeof bytes === "string") {
+      return c.json(badRequest(bytes), bytes === TOO_LARGE ? 413 : 400);
+    }
     try {
       return c.json(planInstall(ctx.db, readPack(bytes)));
     } catch (caught) {
@@ -162,7 +171,9 @@ export function packRoutes(ctx: AppContext): Hono<AppEnv> {
 
   app.post("/install", async (c) => {
     const bytes = await archiveOf(c);
-    if (typeof bytes === "string") return c.json(badRequest(bytes), 400);
+    if (typeof bytes === "string") {
+      return c.json(badRequest(bytes), bytes === TOO_LARGE ? 413 : 400);
+    }
     try {
       const result = await installPack(
         { db: ctx.db, avatarsDir: ctx.config.avatarsDir },

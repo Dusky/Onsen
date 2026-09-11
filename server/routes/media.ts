@@ -351,7 +351,7 @@ export function mediaRoutes(ctx: AppContext, media: MediaRunner): Hono<AppEnv> {
     const file = form.get("file");
     if (!(file instanceof File)) return c.json(badRequest("Expected an uploaded file."), 400);
     if (file.size > MAX_UPLOAD_BYTES) {
-      return c.json(badRequest("That picture is larger than 12 MB."), 400);
+      return c.json(badRequest("That picture is larger than 12 MB."), 413);
     }
     const mime = file.type;
     if (!mime.startsWith("image/") || !isSupportedMedia(mime)) {

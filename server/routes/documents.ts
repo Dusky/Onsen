@@ -15,6 +15,18 @@ import type { DocumentDto } from "../../shared/types.ts";
 import { badRequest } from "../lib/routes.ts";
 
 /**
+ * The cap the data bank's file ingest was missing.
+ *
+ * 32 MB, matching a character card, because the shape of the risk is the same:
+ * the bytes are read whole into memory before anything looks at them, and a
+ * PDF is then handed to a parser. Every other upload path in the app already
+ * had one — `media.ts` at 12 MB, `characters.ts` at 32, `packs.ts` at 200 —
+ * and they answered 400 or 413 depending on which was written first. They all
+ * answer 413 now.
+ */
+const MAX_DOCUMENT_BYTES = 32 * 1024 * 1024;
+
+/**
  * The data bank (SPEC §11, §20 phase 30): documents, chunked and embedded,
  * recalled into the prompt by similarity. Retrieval is offered as an explicit
  * test tool too, the same way §16's lore test shows what would fire — the
@@ -94,6 +106,11 @@ export function documentRoutes(ctx: AppContext): Hono<AppEnv> {
     const form = await c.req.formData();
     const file = form.get("file");
     if (!(file instanceof File)) return c.json(badRequest("A file is required."), 400);
+    // The one upload path that had no size check at all: the bytes are read
+    // whole into memory and then a PDF parser is pointed at them.
+    if (file.size > MAX_DOCUMENT_BYTES) {
+      return c.json(badRequest("That document is larger than this app will read."), 413);
+    }
 
     const titleField = form.get("title");
     const title =

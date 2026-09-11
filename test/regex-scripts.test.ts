@@ -4,6 +4,7 @@ import {
   flagsProblem,
   patternProblem,
   scriptsFor,
+  MAX_SCRIPT_INPUT,
   type RegexScript,
   type ScriptEnvironment,
 } from "../server/scripts/apply.ts";
@@ -46,6 +47,95 @@ describe("validation", () => {
     expect(flagsProblem("gim")).toBeNull();
     expect(flagsProblem("gd")).toContain("d");
     expect(flagsProblem("gg")).toContain("twice");
+  });
+});
+
+/**
+ * A script cannot be allowed to end the process (the server-hardening pass).
+ *
+ * Scripts arrive in installed packs and §14 runs them synchronously on the
+ * generation path. A `String.replace` cannot be interrupted once it has
+ * started — not by a timer, not by an abort signal — so `(a+)+$` against forty
+ * `a`s and a `b` is not a slow turn, it is a process that has to be killed.
+ *
+ * Three guards, and only the first one addresses that case; the other two
+ * bound the ways a chain of merely slow scripts adds up.
+ */
+describe("a script cannot hang the app", () => {
+  test("a group that repeats around a group that repeats is refused", () => {
+    for (const pattern of ["(a+)+", "([a-z]+\\.)+", "(\\w*\\s*)*", "(\\d+)*", "(?:x+)+", "(a{1,}b)+"]) {
+      expect({ pattern, refused: patternProblem(pattern, "g") !== null }).toMatchObject({
+        refused: true,
+      });
+    }
+  });
+
+  test("and the patterns people actually write are not", () => {
+    // The heuristic's whole cost is here. It has to survive escaped
+    // parentheses, parentheses inside a character class, lookarounds,
+    // backreferences and alternation without crying wolf on any of them —
+    // a false positive is somebody's working script breaking on upgrade.
+    for (const pattern of [
+      "\\d+",
+      "(cat|dog)s?",
+      "\\*\\*(.+?)\\*\\*",
+      "^\\s+|\\s+$",
+      "(foo)+",
+      "\\[([^\\]]+)\\]",
+      "(a|b)*",
+      "\\((\\d)\\)+",
+      "(?=\\w+)x",
+      "[(+*)]+",
+      "<(\\w+)>[^<]*</\\1>",
+      "(\\r\\n|\\n)+",
+      "^(#{1,6}) ",
+    ]) {
+      expect({ pattern, refused: patternProblem(pattern, "g") !== null }).toMatchObject({
+        refused: false,
+      });
+    }
+  });
+
+  test("the refusal is reported per script, not thrown", () => {
+    // The run path reports it the same way an unparseable pattern is reported,
+    // so a pack carrying one loses that script and nothing else.
+    const result = applyScripts(
+      "aaaa",
+      [script({ id: "bad", pattern: "(a+)+" }), script({ id: "good", pattern: "a", replacement: "b" })],
+      env,
+    );
+    expect(result.runs[0]!.error).toContain("repeats a group that already repeats");
+    expect(result.runs[1]!.error).toBeNull();
+    expect(result.text).toBe("bbbb");
+  });
+
+  test("text past the cap is left alone, and says so", () => {
+    const long = "a".repeat(MAX_SCRIPT_INPUT + 1);
+    const result = applyScripts(long, [script({ pattern: "a", replacement: "b" })], env);
+    expect(result.text).toBe(long);
+    expect(result.runs[0]!.error).toContain("over the");
+  });
+
+  test("a chain that runs out of budget abandons the rest rather than the turn", () => {
+    // The clock is injected so this proves the behaviour without spending the
+    // budget in real time.
+    // Reads: start at 0, the first script is still inside the budget, the
+    // second finds a second has gone by.
+    const readings = [0, 0, 1_000];
+    let at = 0;
+    const result = applyScripts(
+      "aaa",
+      [
+        script({ id: "one", pattern: "a", replacement: "b" }),
+        script({ id: "two", pattern: "b", replacement: "c" }),
+      ],
+      env,
+      { budgetMs: 10, now: () => readings[at++] ?? 1_000 },
+    );
+    // The first ran; the second found the budget gone.
+    expect(result.runs[0]!.error).toBeNull();
+    expect(result.runs[1]!.error).toContain("budget");
+    expect(result.text).toBe("bbb");
   });
 });
 

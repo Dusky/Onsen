@@ -7206,3 +7206,77 @@ misbehaves in development only. And the restore has to wait a frame, because
 the cleanup runs mid-commit while the modal's DOM is still mounted: asking "has
 anyone else taken focus" there has no answer, and answering it eagerly took
 focus straight back off the rename field that Manage → Rename had just opened.
+
+## Phase 159 — The server-hardening pass
+
+The other half of the same audit. Five findings, and the thread through them is
+that the app already knew how to do each one correctly somewhere else.
+
+**Two helpers named `text()` meant two different things.** Twenty route files
+wrote their own `badRequest`, sixteen their own `notFound`, eight an identical
+JSON-body reader — all harmless duplication. The `text()` copies were not: two
+of them trimmed and rejected `""`, five sliced and accepted it, so a webhook
+named `"   "` was valid where a connection profile of the same name was not,
+and nothing at a call site said which was in scope. Both behaviours are wanted
+— a name must not be blank, a regex script's `replacement` is emptied on
+purpose — so they are `requiredText` and `optionalText` in
+`server/lib/routes.ts` now. Net −200 lines. `IMPROVEMENTS.md` item 5 closed in
+passing: re-measuring its "21 of 310 dead exports" found 3 of 323, now 0 of
+320, held by `test/dead-exports.test.ts`.
+
+**Four writes could land halfway.** Three "clear the old default, set the new"
+pairs against tables with a `WHERE is_default = 1` partial unique index — a
+throw between the statements left *zero* rows default — and `persistCard`,
+which inserted a character, its sprites, its embedded lorebook and the binding
+with no transaction, on the shared path for single import, folder import and
+the whole SillyTavern migration. Both fixes were already in the repo:
+`setDefaultPreset`'s one-statement `CASE`, and `packs/install.ts`'s deferred
+file writer for the `await` that a synchronous `bun:sqlite` transaction cannot
+contain.
+
+**Session revocation existed, worked, and had no caller.**
+`bumpSessionGeneration` was referenced nowhere while the token verifier had
+always rejected a mismatched generation, so the only way to invalidate a leaked
+30-day cookie was complete, wired up and unreachable. `POST /auth/password` is
+the caller, and pairs the change with the revocation: the moment you want to
+change the password is the moment you want everything else signed out. The
+caller is re-issued at the new generation, because a password change that signs
+you out would be correct and useless.
+
+**A regex script could end the process.** Scripts arrive in installed packs and
+run synchronously on the generation path, and nothing interrupts a
+`String.replace` — no timer, no abort signal. `patternProblem` now refuses a
+group that repeats around a group that already repeats, the shape behind
+almost every catastrophic backtrack, plus an input cap and a wall-clock budget
+between scripts for the chains that are merely slow.
+
+**And the data bank's file ingest had no size cap at all**, while reading the
+bytes whole and handing them to a PDF parser. It has one, and the four upload
+paths that answered 400 or 413 by which was written first now agree on 413.
+
+**Verified** by `test/atomicity.test.ts` (checked both ways: with the fixes
+reverted, three of its six fail), the password-change cases in
+`test/auth.test.ts` proving the *old* cookie stops working while the caller's
+keeps working, the ReDoS cases in `test/regex-scripts.test.ts`, and a Chromium
+drive of the password sheet at 1600×950. Full suite 1553 pass.
+
+### Surprises
+
+**The dead-export count had fixed itself and nobody noticed.** Eighteen of the
+nineteen functions phase 60 flagged had been reached by a later phase; the item
+sat in a plan for a hundred phases describing a problem that had mostly gone
+away. The three that remained were both shapes of it — one never called at all,
+two used internally with only their `export` wrong.
+
+**No malformed card can make the lorebook import throw.** `entryFrom` coerces
+every field a card can carry, which is good, and means a rollback test built on
+a malformed card would prove nothing at all. The atomicity tests install a
+SQLite trigger that refuses the write instead, so the failure is certain and
+the boundary under test is the transaction rather than any particular input.
+
+**Pack install does not validate script patterns** — they are stored and
+checked only when they run. That is why the backtracking guard had to go in
+`patternProblem`, which both paths call, rather than at the point a script is
+saved: an imported pack never passes through that point. Existing risky scripts
+are refused per script in the run trace rather than crashing the turn, so an
+install that carries one loses that script and nothing else.
