@@ -5,9 +5,17 @@
  * `client/styles/tokens.css`, which is what keeps a theme small and keeps a
  * theme written today working after a token is added tomorrow.
  *
- * Seven of them. The first is the original design handoff's palette, kept so
- * that nothing is lost by moving the default off it; the other six are grounds
- * that are deliberately not it.
+ * Eight of them. The first is the redesign's ground (phase 88); the second is
+ * the original design handoff's palette, kept so that nothing is lost by
+ * moving the default off it; the other six are grounds that are deliberately
+ * not either.
+ *
+ * Each one spells out its own ink ramp, and every tier of it clears WCAG AA
+ * against that theme's own surfaces — `test/surfaces.test.ts` measures all
+ * eight, with `FOLLOWS` applied, because a failure that arrives by
+ * inheritance is still a failure. None of them names
+ * `color-text-placeholder`: it follows `color-text-dim`, which is the floor,
+ * and a placeholder set a step quieter than the floor is under it.
  */
 
 export interface BuiltinTheme {
@@ -78,9 +86,8 @@ export const BUILTIN_THEMES: readonly BuiltinTheme[] = [
       "color-text-bright": "#f2f4f6",
       "color-text-label": "#c9ccd0",
       "color-text-muted": "#a2aab3",
-      "color-text-dim": "#6f7883",
+      "color-text-dim": "#808891",
       "color-text-prose-muted": "#8f98a2",
-      "color-text-placeholder": "#5c646d",
       "color-red": "#d05540",
       "color-red-bg": "#1f1514",
       "color-red-border": "#3a231f",
@@ -127,10 +134,9 @@ export const BUILTIN_THEMES: readonly BuiltinTheme[] = [
       "color-text": "#e8e2d6",
       "color-text-bright": "#f0e9dc",
       "color-text-label": "#c9c1b1",
-      "color-text-muted": "#8b8477",
-      "color-text-dim": "#6f6a5f",
+      "color-text-muted": "#989286",
+      "color-text-dim": "#8d8980",
       "color-text-prose-muted": "#9a9284",
-      "color-text-placeholder": "#6f6a5f",
       "color-red": "#c0503c",
       "color-red-bg": "#1e1712",
       "color-red-border": "#4a3129",
@@ -168,10 +174,9 @@ export const BUILTIN_THEMES: readonly BuiltinTheme[] = [
       "color-text": "#e6e4d8",
       "color-text-bright": "#f2f0e4",
       "color-text-label": "#c4c3b4",
-      "color-text-muted": "#8d9287",
-      "color-text-dim": "#697066",
+      "color-text-muted": "#91968b",
+      "color-text-dim": "#878d85",
       "color-text-prose-muted": "#9ba193",
-      "color-text-placeholder": "#697066",
       "color-red": "#c8a049",
       "color-red-bg": "#1a1a10",
       "color-red-border": "#463b1e",
@@ -200,9 +205,8 @@ export const BUILTIN_THEMES: readonly BuiltinTheme[] = [
       "color-text-bright": "#eef1f8",
       "color-text-label": "#bcc3d6",
       "color-text-muted": "#8b93ad",
-      "color-text-dim": "#5f6780",
+      "color-text-dim": "#83899d",
       "color-text-prose-muted": "#9aa2ba",
-      "color-text-placeholder": "#5f6780",
       "color-red": "#e5484d",
       "color-red-bg": "#20131a",
       "color-red-border": "#4d2732",
@@ -230,10 +234,9 @@ export const BUILTIN_THEMES: readonly BuiltinTheme[] = [
       "color-text": "#e3e5e8",
       "color-text-bright": "#f2f4f6",
       "color-text-label": "#c0c4ca",
-      "color-text-muted": "#8b9099",
-      "color-text-dim": "#666c75",
+      "color-text-muted": "#91969e",
+      "color-text-dim": "#888d94",
       "color-text-prose-muted": "#9aa0a8",
-      "color-text-placeholder": "#666c75",
       "color-red": "#a8e02a",
       "color-red-bg": "#1a1e12",
       "color-red-border": "#3a4520",
@@ -262,9 +265,8 @@ export const BUILTIN_THEMES: readonly BuiltinTheme[] = [
       "color-text-bright": "#f7efef",
       "color-text-label": "#c9b8ba",
       "color-text-muted": "#9c8a8c",
-      "color-text-dim": "#756668",
+      "color-text-dim": "#8c8082",
       "color-text-prose-muted": "#ab999b",
-      "color-text-placeholder": "#756668",
       "color-red": "#7fb2d9",
       "color-red-bg": "#101a22",
       "color-red-border": "#24384a",
@@ -288,9 +290,8 @@ export const BUILTIN_THEMES: readonly BuiltinTheme[] = [
       "color-rule-strong": "#cfcfcf",
       "color-text": "#121212",
       "color-text-label": "#3d3d3d",
-      "color-text-muted": "#6b6b6b",
-      "color-text-dim": "#949494",
-      "color-text-placeholder": "#a3a3a3",
+      "color-text-muted": "#656565",
+      "color-text-dim": "#6d6d6d",
       "color-red": "#1f3fe0",
       "color-red-bg": "#e8ecfd",
       "color-red-border": "#b9c5f5",
@@ -312,9 +313,8 @@ export const BUILTIN_THEMES: readonly BuiltinTheme[] = [
       "color-rule-strong": "#bcc6ce",
       "color-text": "#16191d",
       "color-text-label": "#3a4149",
-      "color-text-muted": "#5c646d",
-      "color-text-dim": "#878f98",
-      "color-text-placeholder": "#9aa2aa",
+      "color-text-muted": "#59616a",
+      "color-text-dim": "#636970",
       "color-red": "#0f766e",
       "color-red-bg": "#e0efed",
       "color-red-border": "#b2d5d0",

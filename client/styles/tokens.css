@@ -48,14 +48,34 @@
   --onsen-color-rule-strong: #3b352c;
   --onsen-color-border-quiet: #332d25;
 
-  /* Ink */
+  /*
+   * Ink.
+   *
+   * Every tier here clears WCAG AA's 4.5:1 against every surface above, and
+   * `test/surfaces.test.ts` measures it — for all three blocks in this file
+   * and all eight builtin themes, each of which spells out its own ramp.
+   *
+   * The handoff's ramp did not. `text-dim` measured 3.47:1 on the ground and
+   * 2.97:1 inside an inset panel, and it is not decoration: `.meta`,
+   * `.token-count` and `.screen-kicker` wear it, so token counts, timestamps
+   * and every screen's kicker were under the floor at 11–12.5px on nearly
+   * every screen. The three quiet tiers moved up; `label`, `text` and
+   * `bright` were already clear and are untouched.
+   *
+   * `text-placeholder` now equals `text-dim` rather than sitting a step below
+   * it. A placeholder in this app carries the instruction for the field, so
+   * it is text like any other and gets the same floor — nothing is lost,
+   * because what distinguishes an empty field from a filled one is that a
+   * filled one renders at `text`. A theme may still separate the two by
+   * lifting `dim`; one that names neither gets this pair.
+   */
   --onsen-color-text: #e8e2d6;
   --onsen-color-text-bright: #f0e9dc;
   --onsen-color-text-label: #c9c1b1;
-  --onsen-color-text-muted: #8b8477;
-  --onsen-color-text-dim: #6f6a5f;
+  --onsen-color-text-muted: #989286;
+  --onsen-color-text-dim: #8d8980;
   --onsen-color-text-prose-muted: #9a9284;
-  --onsen-color-text-placeholder: #6f6a5f;
+  --onsen-color-text-placeholder: #8d8980;
 
   /* Red pencil — live, active, destructive, now */
   --onsen-color-red: #c0503c;
@@ -241,11 +261,11 @@
 
     --onsen-color-text: #1e1a15;
     --onsen-color-text-label: #4a4237;
-    --onsen-color-text-muted: #7a7263;
-    --onsen-color-text-dim: #8b8271;
-    --onsen-color-text-placeholder: #9a9180;
+    --onsen-color-text-muted: #5a5348;
+    --onsen-color-text-dim: #615b4f;
+    --onsen-color-text-placeholder: #615b4f;
     --onsen-color-text-bright: #14110d; /* derived */
-    --onsen-color-text-prose-muted: #6d6557; /* derived */
+    --onsen-color-text-prose-muted: #635b4f; /* derived */
 
     --onsen-color-red: #b0402c;
     --onsen-color-red-bg: #f8e9e3;
@@ -291,11 +311,11 @@
 
   --onsen-color-text: #1e1a15;
   --onsen-color-text-label: #4a4237;
-  --onsen-color-text-muted: #7a7263;
-  --onsen-color-text-dim: #8b8271;
-  --onsen-color-text-placeholder: #9a9180;
+  --onsen-color-text-muted: #5a5348;
+  --onsen-color-text-dim: #615b4f;
+  --onsen-color-text-placeholder: #615b4f;
   --onsen-color-text-bright: #14110d;
-  --onsen-color-text-prose-muted: #6d6557;
+  --onsen-color-text-prose-muted: #635b4f;
 
   --onsen-color-red: #b0402c;
   --onsen-color-red-bg: #f8e9e3;
