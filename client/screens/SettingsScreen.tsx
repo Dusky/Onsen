@@ -1871,7 +1871,7 @@ export function SettingsScreen() {
                   {profile.isDefault ? (
                     <span
                       className="chrome flex-none text-[12px]"
-                      style={{ color: "var(--onsen-color-red)" }}
+                      style={{ color: "var(--onsen-color-amber)" }}
                     >
                       {strings.settings.profileDefault}
                     </span>
