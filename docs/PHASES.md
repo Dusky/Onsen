@@ -7658,3 +7658,62 @@ persistent one sat on the header's text-size controls until it was dismissed.
 double-click, or two components reporting one failure; they are never two
 facts. Reading the same sentence twice is the best-known failure mode of an
 unfiltered live region, so a repeat refreshes the deadline instead of stacking.
+
+## Phase 168 — Your whole setup as one file
+
+Packs carry content — characters, lorebooks, presets, authors, options, regex,
+triggers, the banlist. Themes export on their own. What travelled nowhere was
+the shape of the app: the layout, the reading surface, the reader's controls,
+which theme is on. There was no "my whole setup as one file", which is exactly
+what is wanted when moving machines.
+
+It sits beside those two exporters rather than inside either. A pack is
+content; a theme is a palette. This is neither — it is every decision the
+reader has made about how the app behaves and none about what is in it.
+
+`GET /system/settings/export` and `POST /system/settings/import`, versioned
+behind an `onsen-settings` marker. The theme travels **by name**, not by value:
+a theme is already portable on its own, and inlining one here would mean an
+import of *settings* silently adding a palette to your list. A name the
+importing install does not have is reported as skipped rather than guessed at.
+
+The refactor is the interesting part. The PATCH handler's per-group logic came
+out into `applyLayout` / `applyReading` / `applyReader` / `applyChime`, and the
+import path calls those rather than growing validation of its own. Not tidying:
+a second copy of "how a layout patch is applied" is a second answer to what
+`preset: quiet` plus `readouts: true` means, and a file arriving from another
+machine is exactly where the two would drift unnoticed. A hostile file now gets
+precisely the validation a hostile request body does — `clampReading` pins a
+slider, `readReader` falls back per field, the layout's switches are checked
+against their own unions — and nothing can be written that the settings screen
+could not have produced.
+
+The report says what was applied and what was skipped rather than answering
+200-and-silence: an import that quietly did four of five things is the
+silent-partial failure §18 is written against.
+
+**Verified** in Chromium: a distinctive setup exported as
+`onsen-settings.json`, wiped, re-imported, and everything back including the
+layout preset and the active theme. Then a truncated file, a theme file and a
+version-99 file, each refused with its own reason and nothing applied. The
+outcomes come through phase 167's notice region, which is what it is for.
+Guard: `test/settings-transfer.test.ts`, 15 tests. Full suite 1658 pass.
+
+### Surprises
+
+**A theme file is also a JSON object with a name**, which is why the marker
+exists. Without it, importing the wrong file would have applied nothing and
+reported success — the quietest possible failure, and one a reader would have
+no way to notice.
+
+**A file from a newer build is refused, not partly applied.** The instinct is
+to take what you recognise and ignore the rest, but a newer file's extra
+groups are not merely unknown fields: one of them may be a whole group this
+build would silently drop, and the reader would have no way to know what did
+not arrive.
+
+**Four groups and a theme, and every one of them can be absent.** A file
+carrying only `reading` is a legitimate file, so "applied" and "skipped" are
+both lists rather than a boolean — and a theme this install does not have lands
+in `skipped` beside a group that simply was not in the file, because from the
+reader's side those are the same fact: it did not come back.

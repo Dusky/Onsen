@@ -49,6 +49,8 @@ import {
   useWebhooks,
   useScenes,
   usePreferences,
+  useExportSettings,
+  useImportSettings,
   useReader,
   useReading,
   useSetPreferences,
@@ -1237,6 +1239,61 @@ function ReaderControls() {
   );
 }
 
+/**
+ * The whole setup as one file (§20 phase 168).
+ *
+ * At the end of the Reading group rather than in a category of its own,
+ * because what it carries is everything above it: the theme, the sliders, the
+ * layout, the reader's controls. A section that travels with the thing it is
+ * about needs no explaining.
+ *
+ * The outcome goes to the notice region rather than to inline text here. It is
+ * a background task that finished — and the useful case is a reader who
+ * exported, then went on reading, and wants to know the file was written.
+ */
+function SetupSection() {
+  const file = useRef<HTMLInputElement>(null);
+  const save = useExportSettings();
+  const load = useImportSettings();
+
+  return (
+    <>
+      <p className="section-label mb-[6px]">{strings.settings.setup}</p>
+      <div className="mb-[14px] flex flex-wrap gap-[6px]">
+        <button
+          type="button"
+          className="btn flex-1 basis-[140px]"
+          disabled={save.isPending}
+          onClick={() => save.mutate()}
+        >
+          {strings.settings.setupExport}
+        </button>
+        <button
+          type="button"
+          className="btn flex-1 basis-[140px]"
+          disabled={load.isPending}
+          onClick={() => file.current?.click()}
+        >
+          {strings.settings.setupImport}
+        </button>
+        <input
+          ref={file}
+          type="file"
+          hidden
+          accept=".json,application/json"
+          onChange={(event) => {
+            const chosen = event.target.files?.[0];
+            // Cleared so choosing the same file twice fires again, which a
+            // file input otherwise refuses to do.
+            event.target.value = "";
+            if (chosen !== undefined) load.mutate(chosen);
+          }}
+        />
+      </div>
+    </>
+  );
+}
+
 function ReadingSection() {
   const preferences = usePreferences();
   const save = useSetPreferences();
@@ -1253,6 +1310,8 @@ function ReadingSection() {
       <LayoutSection />
 
       <ReaderControls />
+
+      <SetupSection />
 
       <p className="section-label mb-[6px]">{strings.settings.chime}</p>
       <div className="flex gap-[6px]">

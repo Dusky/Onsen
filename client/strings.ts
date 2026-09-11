@@ -930,6 +930,10 @@ export const strings = {
     readerMedia: "Pictures under a turn",
     readerMediaList: "Stacked",
     readerMediaGrid: "In a grid",
+    /* The whole setup as one file (§20 phase 168). */
+    setup: "Your setup",
+    setupExport: "Save to a file",
+    setupImport: "Load from a file",
     readerNotices: "Where notices appear",
     readerNoticesTop: "Top",
     readerNoticesTopRight: "Top right",
@@ -2011,6 +2015,10 @@ export const strings = {
     dismiss: "dismiss",
     exported: (name: string) => `Saved ${name}.`,
     settingNotSaved: (why: string) => `That setting did not save — ${why}`,
+    settingsImported: (n: number) =>
+      `Your setup is back — ${n} ${n === 1 ? "group" : "groups"} applied.`,
+    settingsImportedPartly: (n: number, skipped: string[]) =>
+      `${n} ${n === 1 ? "group" : "groups"} applied. Not in that file, or not on this install: ${skipped.join(", ")}.`,
   },
   time: {
     justNow: "just now",

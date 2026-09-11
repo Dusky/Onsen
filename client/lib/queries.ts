@@ -2512,6 +2512,69 @@ export interface PreferencesPatch {
   completionChime?: boolean;
 }
 
+/**
+ * The whole setup as one file (§20 phase 168).
+ *
+ * Built as a blob in the browser rather than served as a download, for the
+ * reason the pack exporter gives: the endpoint is a plain GET, but naming the
+ * file is the client's job — a reader wants `onsen-settings.json`, not the
+ * path it came from.
+ */
+export function useExportSettings() {
+  return useMutation({
+    mutationFn: async () => {
+      const document = await api.get<Record<string, unknown>>("/system/settings/export");
+      const name = "onsen-settings.json";
+      const url = URL.createObjectURL(
+        new Blob([JSON.stringify(document, null, 2)], { type: "application/json" }),
+      );
+      const anchor = window.document.createElement("a");
+      anchor.href = url;
+      anchor.download = name;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      return name;
+    },
+    onSuccess: (name) => notify("done", strings.notices.exported(name)),
+    onError: (error: Error) => notify("failed", error.message),
+  });
+}
+
+/**
+ * The other direction, which reports what came back.
+ *
+ * The report is the point: an import that quietly did four of five things is
+ * the silent-partial failure §18 is written against, and a theme named in the
+ * file that this install does not have is the ordinary case rather than an
+ * error. Invalidates everything, because a settings file can change the
+ * layout, the reading surface and the active theme in one go.
+ */
+export interface SettingsImportReport {
+  applied: string[];
+  skipped: string[];
+}
+
+export function useImportSettings() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      return api.upload<SettingsImportReport>("/system/settings/import", form);
+    },
+    onSuccess: (report) => {
+      void client.invalidateQueries();
+      notify(
+        "done",
+        report.skipped.length === 0
+          ? strings.notices.settingsImported(report.applied.length)
+          : strings.notices.settingsImportedPartly(report.applied.length, report.skipped),
+      );
+    },
+    onError: (error: Error) => notify("failed", error.message),
+  });
+}
+
 export function useSetPreferences() {
   const client = useQueryClient();
   return useMutation({
