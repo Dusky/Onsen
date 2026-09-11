@@ -14,13 +14,10 @@ import { requireAuth } from "../middleware/session.ts";
 import { listCharacters } from "../db/queries/characters.ts";
 import { importSillyTavern, type IncomingFile } from "../sillytavern/index.ts";
 import type { MigrationReportDto } from "../../shared/types.ts";
+import { badRequest } from "../lib/routes.ts";
 
 /** Matches the card importer: the largest thing here is a CharX bundle. */
 const MAX_FILE_BYTES = 32 * 1024 * 1024;
-
-function badRequest(message: string) {
-  return { error: { code: "bad_request", message } };
-}
 
 export function migrateRoutes(ctx: AppContext): Hono<AppEnv> {
   const app = new Hono<AppEnv>();

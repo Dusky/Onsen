@@ -17,6 +17,7 @@ import {
 } from "../db/queries/webhooks.ts";
 import { WEBHOOK_EVENTS, isWebhookEvent, type WebhookEvent } from "../webhooks/events.ts";
 import { urlProblem, type WebhookSender } from "../webhooks/sender.ts";
+import { badRequest, body, notFound, optionalText } from "../lib/routes.ts";
 
 /**
  * Outbound webhooks (SPEC §15, §20 phase 35).
@@ -27,27 +28,6 @@ import { urlProblem, type WebhookSender } from "../webhooks/sender.ts";
  * same rule provider credentials follow (§17). A key the UI could re-read is
  * one that leaks through every screenshot of this screen.
  */
-
-function badRequest(message: string) {
-  return { error: { code: "bad_request", message } };
-}
-
-function notFound(what: string) {
-  return { error: { code: "not_found", message: `No such ${what}.` } };
-}
-
-async function body(c: { req: { json(): Promise<unknown> } }): Promise<Record<string, unknown>> {
-  try {
-    const parsed: unknown = await c.req.json();
-    return typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>) : {};
-  } catch {
-    return {};
-  }
-}
-
-function text(value: unknown, max = 500): string | undefined {
-  return typeof value === "string" ? value.slice(0, max) : undefined;
-}
 
 /** The events a request asked for, keeping only those this app can send. */
 function eventsOf(value: unknown): WebhookEvent[] | null {
@@ -93,10 +73,10 @@ export function webhookRoutes(ctx: AppContext, sender: WebhookSender): Hono<AppE
   app.post("/", async (c) => {
     const input = await body(c);
 
-    const name = text(input["name"], 120)?.trim() ?? "";
+    const name = optionalText(input["name"], 120)?.trim() ?? "";
     if (name === "") return c.json(badRequest("A subscription needs a name."), 400);
 
-    const url = text(input["url"], 2_000)?.trim() ?? "";
+    const url = optionalText(input["url"], 2_000)?.trim() ?? "";
     const problem = urlProblem(url);
     if (problem !== null) return c.json(badRequest(problem), 400);
 
@@ -133,10 +113,10 @@ export function webhookRoutes(ctx: AppContext, sender: WebhookSender): Hono<AppE
     const input = await body(c);
 
     const patch: WebhookPatch = {};
-    const name = text(input["name"], 120)?.trim();
+    const name = optionalText(input["name"], 120)?.trim();
     if (name !== undefined && name !== "") patch.name = name;
 
-    const url = text(input["url"], 2_000)?.trim();
+    const url = optionalText(input["url"], 2_000)?.trim();
     if (url !== undefined) {
       const problem = urlProblem(url);
       if (problem !== null) return c.json(badRequest(problem), 400);

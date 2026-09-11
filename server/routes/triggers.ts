@@ -15,6 +15,7 @@ import { TRIGGER_ACTIONS, TRIGGER_EVENTS } from "../triggers/select.ts";
 import type { TriggerRunner } from "../triggers/runner.ts";
 import { GUIDE_KINDS, isGuideKind } from "../../shared/types.ts";
 import { TRACKER_KINDS, guideOpKey, taskKind, trackerOpKey } from "../tasks/registry.ts";
+import { badRequest, body, notFound, optionalText } from "../lib/routes.ts";
 
 /**
  * The HTTP surface for §14's event triggers.
@@ -26,27 +27,6 @@ import { TRACKER_KINDS, guideOpKey, taskKind, trackerOpKey } from "../tasks/regi
  * before the row is written, which is the same argument as validating a regex
  * at save time rather than on the turn that needed it.
  */
-
-function badRequest(message: string) {
-  return { error: { code: "bad_request", message } };
-}
-
-function notFound(what: string) {
-  return { error: { code: "not_found", message: `No such ${what}.` } };
-}
-
-async function body(c: { req: { json(): Promise<unknown> } }): Promise<Record<string, unknown>> {
-  try {
-    const parsed: unknown = await c.req.json();
-    return typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>) : {};
-  } catch {
-    return {};
-  }
-}
-
-function text(value: unknown, max = 200): string | undefined {
-  return typeof value === "string" ? value.slice(0, max) : undefined;
-}
 
 export function triggerRoutes(ctx: AppContext, runner: TriggerRunner): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
@@ -81,31 +61,31 @@ export function triggerRoutes(ctx: AppContext, runner: TriggerRunner): Hono<AppE
   app.post("/", async (c) => {
     const input = await body(c);
 
-    const name = text(input["name"], 120)?.trim() ?? "";
+    const name = optionalText(input["name"], 120)?.trim() ?? "";
     if (name === "") return c.json(badRequest("A trigger needs a name."), 400);
 
-    const event = text(input["event"]);
+    const event = optionalText(input["event"], 200);
     if (event === undefined || !(TRIGGER_EVENTS as readonly string[]).includes(event)) {
       return c.json(badRequest("That is not an event."), 400);
     }
-    const action = text(input["action"]);
+    const action = optionalText(input["action"], 200);
     if (action === undefined || !(TRIGGER_ACTIONS as readonly string[]).includes(action)) {
       return c.json(badRequest("That is not an action."), 400);
     }
 
-    const actionRef = text(input["actionRef"], 64) ?? "";
+    const actionRef = optionalText(input["actionRef"], 64) ?? "";
     const refProblem = problemWithRef(action, actionRef);
     if (refProblem !== null) return c.json(badRequest(refProblem), 400);
 
     // §10's other end. Without an id a lore trigger would fire on every
     // activation, which is not what "a named action" means.
     const isLore = event === "lore_activation";
-    const automationId = text(input["automationId"], 64)?.trim() ?? "";
+    const automationId = optionalText(input["automationId"], 64)?.trim() ?? "";
     if (isLore && automationId === "") {
       return c.json(badRequest("A lore trigger needs the automation id it answers to."), 400);
     }
 
-    const scope = text(input["scope"]) ?? "global";
+    const scope = optionalText(input["scope"], 200) ?? "global";
     if (scope !== "global" && scope !== "scene") {
       return c.json(badRequest("That is not a scope."), 400);
     }
@@ -136,12 +116,12 @@ export function triggerRoutes(ctx: AppContext, runner: TriggerRunner): Hono<AppE
     const input = await body(c);
 
     const patch: TriggerPatch = {};
-    const name = text(input["name"], 120)?.trim();
+    const name = optionalText(input["name"], 120)?.trim();
     if (name !== undefined && name !== "") patch.name = name;
     if (typeof input["enabled"] === "boolean") patch.enabled = input["enabled"];
     if (typeof input["runOrder"] === "number") patch.runOrder = Math.trunc(input["runOrder"]);
 
-    const actionRef = text(input["actionRef"], 64);
+    const actionRef = optionalText(input["actionRef"], 64);
     if (actionRef !== undefined) {
       const problem = problemWithRef(row.action, actionRef);
       if (problem !== null) return c.json(badRequest(problem), 400);
@@ -150,7 +130,7 @@ export function triggerRoutes(ctx: AppContext, runner: TriggerRunner): Hono<AppE
 
     // The event decides whether an automation id may be set at all, and the
     // event is not editable, so this needs no second check.
-    const automationId = text(input["automationId"], 64);
+    const automationId = optionalText(input["automationId"], 64);
     if (automationId !== undefined && row.event === "lore_activation") {
       if (automationId.trim() === "") {
         return c.json(badRequest("A lore trigger needs the automation id it answers to."), 400);

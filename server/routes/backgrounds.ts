@@ -13,6 +13,7 @@ import {
 } from "../db/queries/backgrounds.ts";
 import { ulid } from "../lib/ulid.ts";
 import type { MediaRunner } from "../media/runner.ts";
+import { badRequest, notFound } from "../lib/routes.ts";
 
 /**
  * The background library (SPEC §12, §20 phase 108).
@@ -171,10 +172,3 @@ export function backgroundRoutes(ctx: AppContext, media: MediaRunner | null): Ho
   return app;
 }
 
-function notFound(thing: string) {
-  return { error: { code: "not_found", message: `No such ${thing}.` } };
-}
-
-function badRequest(message: string) {
-  return { error: { code: "bad_request", message } };
-}

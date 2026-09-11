@@ -185,7 +185,7 @@ export function sceneHasChosen(db: Database, sceneId: number): boolean {
 }
 
 /** The shipped configuration, which is what an unconfigured scene runs on. */
-export function defaultOptions(db: Database): OptionRow[] {
+function defaultOptions(db: Database): OptionRow[] {
   const wanted = new Set<string>();
   for (const group of BUILTIN_GROUPS) {
     for (const option of group.options) {

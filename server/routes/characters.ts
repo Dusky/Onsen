@@ -61,6 +61,7 @@ import type {
   PromptRoleName,
   UpdateCharacterRequest,
 } from "../../shared/types.ts";
+import { badRequest, notFound } from "../lib/routes.ts";
 
 /**
  * The character library (SPEC §9, §20 phase 6).
@@ -97,14 +98,6 @@ function portraitPrompt(row: CharacterRow): string {
     parts.push(row.personality.trim());
   }
   return parts.join(" ");
-}
-
-function badRequest(message: string) {
-  return { error: { code: "bad_request", message } } as const;
-}
-
-function notFound() {
-  return { error: { code: "not_found", message: "No such character." } } as const;
 }
 
 export function characterRoutes(ctx: AppContext, tasks: TaskRunner, media: MediaRunner | null = null): Hono<AppEnv> {
@@ -336,12 +329,12 @@ export function characterRoutes(ctx: AppContext, tasks: TaskRunner, media: Media
 
   app.get("/:characterId", (c) => {
     const row = findCharacter(ctx.db, c.req.param("characterId"));
-    return row === null ? c.json(notFound(), 404) : c.json(toCharacterDto(ctx.db, row));
+    return row === null ? c.json(notFound("character"), 404) : c.json(toCharacterDto(ctx.db, row));
   });
 
   app.patch("/:characterId", async (c) => {
     const row = findCharacter(ctx.db, c.req.param("characterId"));
-    if (row === null) return c.json(notFound(), 404);
+    if (row === null) return c.json(notFound("character"), 404);
 
     let patch: UpdateCharacterRequest;
     try {
@@ -404,7 +397,7 @@ export function characterRoutes(ctx: AppContext, tasks: TaskRunner, media: Media
 
   app.delete("/:characterId", (c) => {
     const row = findCharacter(ctx.db, c.req.param("characterId"));
-    if (row === null) return c.json(notFound(), 404);
+    if (row === null) return c.json(notFound("character"), 404);
 
     const avatar = avatarFile(row);
     deleteCharacter(ctx.db, row.id);
@@ -421,14 +414,14 @@ export function characterRoutes(ctx: AppContext, tasks: TaskRunner, media: Media
   /** The version history, newest first (SPEC §9). */
   app.get("/:characterId/versions", (c) => {
     const row = findCharacter(ctx.db, c.req.param("characterId"));
-    if (row === null) return c.json(notFound(), 404);
+    if (row === null) return c.json(notFound("character"), 404);
     return c.json(characterVersions(ctx.db, row.id));
   });
 
   /** One snapshot, for the diff the editor draws against the current state. */
   app.get("/:characterId/versions/:versionUlid", (c) => {
     const row = findCharacter(ctx.db, c.req.param("characterId"));
-    if (row === null) return c.json(notFound(), 404);
+    if (row === null) return c.json(notFound("character"), 404);
     const version = findVersion(ctx.db, row.id, c.req.param("versionUlid"));
     if (version === null) {
       return c.json({ error: { code: "not_found", message: "No such version." } }, 404);
@@ -439,7 +432,7 @@ export function characterRoutes(ctx: AppContext, tasks: TaskRunner, media: Media
   /** Restore a snapshot — the state before it becomes a new version itself. */
   app.post("/:characterId/versions/:versionUlid/restore", (c) => {
     const row = findCharacter(ctx.db, c.req.param("characterId"));
-    if (row === null) return c.json(notFound(), 404);
+    if (row === null) return c.json(notFound("character"), 404);
     const restored = restoreVersion(ctx.db, row.id, c.req.param("versionUlid"));
     if (restored === null) {
       return c.json({ error: { code: "not_found", message: "No such version." } }, 404);
@@ -454,7 +447,7 @@ export function characterRoutes(ctx: AppContext, tasks: TaskRunner, media: Media
    */
   app.post("/:characterId/derive", async (c) => {
     const row = findCharacter(ctx.db, c.req.param("characterId"));
-    if (row === null) return c.json(notFound(), 404);
+    if (row === null) return c.json(notFound("character"), 404);
 
     let name = `${row.name} (variant)`;
     try {
@@ -487,7 +480,7 @@ export function characterRoutes(ctx: AppContext, tasks: TaskRunner, media: Media
    */
   app.post("/:characterId/suggest-tags", async (c) => {
     const row = findCharacter(ctx.db, c.req.param("characterId"));
-    if (row === null) return c.json(notFound(), 404);
+    if (row === null) return c.json(notFound("character"), 404);
 
     // No scene here, so the task's own profile and the default profile are
     // the two rungs it can climb — a character-level op has nowhere else to
@@ -531,7 +524,7 @@ export function characterRoutes(ctx: AppContext, tasks: TaskRunner, media: Media
   /** Export in any supported format, re-emitting from the preserved original. */
   app.get("/:characterId/export", async (c) => {
     const row = findCharacter(ctx.db, c.req.param("characterId"));
-    if (row === null) return c.json(notFound(), 404);
+    if (row === null) return c.json(notFound("character"), 404);
 
     const requested = c.req.query("format") ?? "png";
     if (requested !== "png" && requested !== "charx" && requested !== "json") {
@@ -576,10 +569,10 @@ export function characterRoutes(ctx: AppContext, tasks: TaskRunner, media: Media
   app.get("/:characterId/avatar", async (c) => {
     const row = findCharacter(ctx.db, c.req.param("characterId"));
     const path = row === null ? null : avatarFile(row);
-    if (path === null) return c.json(notFound(), 404);
+    if (path === null) return c.json(notFound("character"), 404);
 
     const file = Bun.file(path);
-    if (!(await file.exists())) return c.json(notFound(), 404);
+    if (!(await file.exists())) return c.json(notFound("character"), 404);
     // Content-addressed by hash, so it can be cached indefinitely.
     c.header("Cache-Control", "public, max-age=31536000, immutable");
     return c.body(file.stream(), 200, { "Content-Type": file.type });
@@ -588,7 +581,7 @@ export function characterRoutes(ctx: AppContext, tasks: TaskRunner, media: Media
   /** Change a character's picture, the reader's own upload (§20 phase 112). */
   app.put("/:characterId/avatar", async (c) => {
     const row = findCharacter(ctx.db, c.req.param("characterId"));
-    if (row === null) return c.json(notFound(), 404);
+    if (row === null) return c.json(notFound("character"), 404);
     let file: File | null = null;
     try {
       const candidate = (await c.req.formData()).get("file");
@@ -606,7 +599,7 @@ export function characterRoutes(ctx: AppContext, tasks: TaskRunner, media: Media
 
   app.delete("/:characterId/avatar", (c) => {
     const row = findCharacter(ctx.db, c.req.param("characterId"));
-    if (row === null) return c.json(notFound(), 404);
+    if (row === null) return c.json(notFound("character"), 404);
     const path = avatarFile(row);
     if (path !== null) {
       try {
@@ -629,7 +622,7 @@ export function characterRoutes(ctx: AppContext, tasks: TaskRunner, media: Media
    */
   app.post("/:characterId/portrait/generate", async (c) => {
     const row = findCharacter(ctx.db, c.req.param("characterId"));
-    if (row === null) return c.json(notFound(), 404);
+    if (row === null) return c.json(notFound("character"), 404);
     if (media === null) return c.json(badRequest("Picture services are not available."), 400);
 
     const prompt = portraitPrompt(row);
@@ -666,7 +659,7 @@ export function characterRoutes(ctx: AppContext, tasks: TaskRunner, media: Media
   /** The character's expression pack — the tag-to-sprite binding (§12). */
   app.get("/:characterId/expressions", (c) => {
     const row = findCharacter(ctx.db, c.req.param("characterId"));
-    if (row === null) return c.json(notFound(), 404);
+    if (row === null) return c.json(notFound("character"), 404);
     const pack = findPackByCharacter(ctx.db, row.id);
     if (pack === null) {
       return c.json({ id: null, characterId: row.ulid, expressions: [] });
@@ -677,7 +670,7 @@ export function characterRoutes(ctx: AppContext, tasks: TaskRunner, media: Media
   /** Upload one sprite under a label, creating the pack on first use (§12). */
   app.post("/:characterId/expressions", async (c) => {
     const row = findCharacter(ctx.db, c.req.param("characterId"));
-    if (row === null) return c.json(notFound(), 404);
+    if (row === null) return c.json(notFound("character"), 404);
 
     let file: File | null = null;
     let label = "";

@@ -12,6 +12,7 @@ import {
 import { findScene } from "../db/queries/history.ts";
 import { extractDocumentText, stripExtension } from "../documents/extract.ts";
 import type { DocumentDto } from "../../shared/types.ts";
+import { badRequest } from "../lib/routes.ts";
 
 /**
  * The data bank (SPEC §11, §20 phase 30): documents, chunked and embedded,
@@ -20,10 +21,6 @@ import type { DocumentDto } from "../../shared/types.ts";
  * difference between "the model never saw it" and "the model ignored it" is
  * the inspector's whole reason to exist.
  */
-
-function badRequest(message: string) {
-  return { error: { code: "bad_request", message } } as const;
-}
 
 function documentDto(db: import("bun:sqlite").Database, row: DocumentRow): DocumentDto {
   const count = db

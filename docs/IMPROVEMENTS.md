@@ -62,16 +62,24 @@ light only through the colours it happens to name.
 - **Guard:** a test in `test/themes.test.ts` that a `base: "dark"` theme emits
   the dark base marker, and the client applies it.
 
-## 5. Dead query exports, measured
+## 5. Dead query exports, measured — **done** (the server-hardening pass)
 
 Phase 60 found 21 of 310 exported functions in `server/db/queries/` referenced
 nowhere outside their own file. Two were real bugs; 19 were never looked at,
 and `findDefaultPreset` is flagged as behaviourally significant.
 
-- **Done looks like:** a `test/dead-exports.test.ts` guard with a `DELIBERATE`
-  map, in the shape `dead-columns` uses, plus an audit of the 19 — each one
-  deleted or given a reason.
-- **Guard:** the new test, plus the existing full suite proving nothing
+Re-measured while doing the audit follow-through: **3 of 323**, so eighteen of
+the nineteen had been reached by a later phase without anybody closing this
+item. The remaining three were the two shapes the defect takes —
+`findProviderById` was never called at all and is deleted with its dead import;
+`snapshotCharacter` and `defaultOptions` are used inside their own files and
+only their `export` was wrong, plus one more dead import of the first.
+
+- **Done looks like:** ~~a `test/dead-exports.test.ts` guard with a
+  `DELIBERATE` map, in the shape `dead-columns` uses, plus an audit of the 19 —
+  each one deleted or given a reason.~~ Both: the guard exists, the map is
+  empty, and the count is now 0 of 320.
+- **Guard:** `test/dead-exports.test.ts`, plus the full suite proving nothing
   depended on what was deleted.
 
 ## 6. Auto background (GAPS §7)

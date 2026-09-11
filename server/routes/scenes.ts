@@ -82,17 +82,10 @@ import {
   type SceneFilterQuery,
   type SceneListDto,
 } from "../../shared/types.ts";
+import { badRequest, notFound } from "../lib/routes.ts";
 
 const MAX_TITLE = 200;
 const MAX_CHECKPOINT_NAME = 120;
-
-function badRequest(message: string) {
-  return { error: { code: "bad_request", message } } as const;
-}
-
-function notFound(what: string) {
-  return { error: { code: "not_found", message: `No such ${what}.` } } as const;
-}
 
 /** A file's extension, or a safe default for images whose name has none. */
 function extensionOfName(name: string): string {

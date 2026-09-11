@@ -12,6 +12,7 @@ import { HOST_API_VERSION, PackError, type PackManifest } from "../packs/manifes
 import { installPack, planInstall, uninstallPack, uninstallPreview } from "../packs/install.ts";
 import { buildPack, emptySelection, type PackSelection } from "../packs/build.ts";
 import { safeName } from "../packs/archive.ts";
+import { badRequest, notFound } from "../lib/routes.ts";
 
 /**
  * Packs (SPEC §15 tier 2, §20 phase 34).
@@ -25,14 +26,6 @@ import { safeName } from "../packs/archive.ts";
  * holding half-trusted archives and a rule for when they expire. Sending the
  * file twice is cheaper than owning that.
  */
-
-function badRequest(message: string) {
-  return { error: { code: "bad_request", message } };
-}
-
-function notFound(what: string) {
-  return { error: { code: "not_found", message: `No such ${what}.` } };
-}
 
 const MAX_PACK_BYTES = 200 * 1024 * 1024;
 

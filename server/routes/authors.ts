@@ -23,6 +23,7 @@ import {
 import { ulid } from "../lib/ulid.ts";
 import { ensureMemoryBook } from "../memory/author.ts";
 import type { UpdateAuthorRequest, UpdatePersonaRequest } from "../../shared/types.ts";
+import { badRequest, notFound } from "../lib/routes.ts";
 
 /**
  * Authors and personas (SPEC §2, §20 phase 7).
@@ -31,14 +32,6 @@ import type { UpdateAuthorRequest, UpdatePersonaRequest } from "../../shared/typ
  * two halves of one relationship: the author writes everyone except the
  * persona, and that rule is the most important line in the system prompt.
  */
-
-function badRequest(message: string) {
-  return { error: { code: "bad_request", message } } as const;
-}
-
-function notFound(what: string) {
-  return { error: { code: "not_found", message: `No such ${what}.` } } as const;
-}
 
 function extensionOf(name: string): string {
   const dot = name.lastIndexOf(".");

@@ -6,7 +6,7 @@ import type {
   CharacterVersionDto,
   SavedFilterDto,
 } from "../../../shared/types.ts";
-import { updateCharacter, snapshotCharacter, type CharacterRow } from "./characters.ts";
+import { updateCharacter, type CharacterRow } from "./characters.ts";
 
 /**
  * The character library at scale (SPEC §9, §20 phase 26): search, tags,

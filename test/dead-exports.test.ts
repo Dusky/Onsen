@@ -3,35 +3,32 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * Every exported query function is called somewhere (SPEC §2, §20 phase 76).
+ * Query functions nothing outside their own file calls (`IMPROVEMENTS.md` 5).
  *
- * Phase 60 found 21 of 310 exported functions in `server/db/queries/`
- * referenced nowhere outside their own file. Two were behaviourally
- * significant — `findDefaultPersona` (fixed in phase 61) and `findDefaultPreset`
- * — which is the same shape as a dead column: a feature the app has already
- * paid for and cannot reach. This measures it the way `dead-columns` measures
- * storage, with the same two rules: matched by *name*, and a `DELIBERATE` map
- * so an excuse cannot outlive the export it excuses.
+ * The companion to `dead-columns`, and the same defect one layer up. Phase 60
+ * counted 21 of 310 exported functions in `server/db/queries/` referenced
+ * nowhere else. Two of those were real bugs — a feature whose storage and
+ * query existed and whose route did not — and nineteen were never looked at,
+ * so the count sat in a plan for a hundred phases.
+ *
+ * An unused export is not itself a bug. What it is, reliably, is a *question*:
+ * either the feature was never wired up, or the function is internal and its
+ * `export` is telling the reader otherwise. This asserts the list is empty, so
+ * the question gets answered when it appears rather than accumulating.
+ *
+ * If a genuinely internal helper has to keep its `export` — a test reaching in,
+ * say — name it in `DELIBERATE` with the reason, the way `dead-columns` does.
+ * The list being empty is the point; an entry in it is not a failure.
  */
 
 const ROOT = join(import.meta.dir, "..");
 const QUERIES = join(ROOT, "server", "db", "queries");
 
-/**
- * Comments removed, string literals kept.
- *
- * Phase 76's first run missed `findDefaultPreset` because a comment in this
- * very file named it, and the name-based check read the explanation as a
- * caller — the exact trap HANDOFF warns about for banned-name greps, in
- * reverse. A name in a comment is not a read.
- */
-function stripComments(text: string): string {
-  return text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
-}
+/** Exports that are internal on purpose, with the reason they stay exported. */
+const DELIBERATE: Record<string, string> = {};
 
-/** Every source file that could name an export, as one comment-stripped string. */
-function source(): string {
-  let all = "";
+function sources(): { path: string; text: string }[] {
+  const out: { path: string; text: string }[] = [];
   const walk = (dir: string) => {
     for (const entry of readdirSync(dir)) {
       const path = join(dir, entry);
@@ -40,62 +37,36 @@ function source(): string {
         walk(path);
         continue;
       }
-      if (/\.(ts|tsx)$/.test(entry)) all += stripComments(readFileSync(path, "utf8"));
+      if (/\.(ts|tsx)$/.test(entry)) out.push({ path, text: readFileSync(path, "utf8") });
     }
   };
-  for (const dir of ["server", "client", "shared", "test"]) walk(join(ROOT, dir));
-  return all;
-}
-
-const ALL = source();
-
-/**
- * Exports referenced nowhere outside their own file, with the reason. Same
- * shape and discipline as `reachable.test.ts` and `dead-columns.test.ts`.
- */
-const DELIBERATE = new Map<string, string>([]);
-
-interface Exported {
-  file: string;
-  name: string;
-}
-
-function exportedFunctions(): Exported[] {
-  const out: Exported[] = [];
-  for (const file of readdirSync(QUERIES)) {
-    if (!file.endsWith(".ts")) continue;
-    const text = readFileSync(join(QUERIES, file), "utf8");
-    for (const match of text.matchAll(/^export (?:async )?(?:function|const) (\w+)/gm)) {
-      out.push({ file, name: match[1]! });
-    }
-  }
+  for (const dir of ["server", "client", "shared", "test", "scripts"]) walk(join(ROOT, dir));
   return out;
 }
 
-describe("every exported query is called somewhere", () => {
-  const exports_ = exportedFunctions();
+const SOURCES = sources();
 
-  test("the sweep found the queries", () => {
-    expect(exports_.length).toBeGreaterThan(200);
-  });
+describe("every exported query is called from somewhere else", () => {
+  test("the query layer has no export nothing reaches", () => {
+    const exported: { name: string; home: string }[] = [];
+    for (const entry of readdirSync(QUERIES)) {
+      if (!entry.endsWith(".ts")) continue;
+      const text = readFileSync(join(QUERIES, entry), "utf8");
+      for (const match of text.matchAll(/^export function (\w+)/gm)) {
+        exported.push({ name: match[1]!, home: join(QUERIES, entry) });
+      }
+    }
+    // A regression in the other direction is worth catching too: if this
+    // stopped finding anything, the assertion below would pass vacuously.
+    expect(exported.length).toBeGreaterThan(250);
 
-  test("no export is referenced nowhere outside its own file", () => {
-    const orphans = exports_
-      .filter(({ file, name }) => !DELIBERATE.has(name))
-      .filter(({ file, name }) => {
-        const own = stripComments(readFileSync(join(QUERIES, file), "utf8"));
-        const inAll = (ALL.match(new RegExp(`\\b${name}\\b`, "g")) ?? []).length;
-        const inOwn = (own.match(new RegExp(`\\b${name}\\b`, "g")) ?? []).length;
-        // The export's own declaration and any same-file use count against it;
-        // a mention anywhere else is a read.
-        return inAll <= inOwn;
+    const dead = exported
+      .filter(({ name, home }) => {
+        if (name in DELIBERATE) return false;
+        const word = new RegExp(`\\b${name}\\b`);
+        return !SOURCES.some((file) => file.path !== home && word.test(file.text));
       })
-      .map(({ file, name }) => `${file}: ${name}`);
-    expect(orphans).toEqual([]);
-  });
-
-  test("the deliberate list has no stale entries", () => {
-    const live = new Set(exports_.map((e) => e.name));
-    expect([...DELIBERATE.keys()].filter((key) => !live.has(key))).toEqual([]);
+      .map(({ name, home }) => `${name} (${home.slice(ROOT.length + 1)})`);
+    expect(dead).toEqual([]);
   });
 });

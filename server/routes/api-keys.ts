@@ -12,6 +12,7 @@ import {
   type JoinedApiKey,
 } from "../db/queries/api-keys.ts";
 import { slugify } from "../openai/model-id.ts";
+import { badRequest, body, notFound } from "../lib/routes.ts";
 
 /**
  * Managing §19's bearer keys, and switching the API on for a roleplay.
@@ -21,23 +22,6 @@ import { slugify } from "../openai/model-id.ts";
  * scene, so neither one alone opens anything — which is also why the two live
  * on the same screen.
  */
-
-function badRequest(message: string) {
-  return { error: { code: "bad_request", message } };
-}
-
-function notFound(what: string) {
-  return { error: { code: "not_found", message: `No such ${what}.` } };
-}
-
-async function body(c: { req: { json(): Promise<unknown> } }): Promise<Record<string, unknown>> {
-  try {
-    const parsed: unknown = await c.req.json();
-    return typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>) : {};
-  } catch {
-    return {};
-  }
-}
 
 function toDto(ctx: AppContext, row: JoinedApiKey) {
   return {

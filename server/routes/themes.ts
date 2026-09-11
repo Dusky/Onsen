@@ -21,16 +21,10 @@ import {
 } from "../db/queries/themes.ts";
 import { cssConcerns, safeTokens, themeCss } from "../themes/index.ts";
 import type { ThemeDto, ThemeImportDto } from "../../shared/types.ts";
+import { badRequest, notFound } from "../lib/routes.ts";
 
 const MAX_CSS = 64 * 1024;
 const MAX_NAME = 60;
-
-function badRequest(message: string) {
-  return { error: { code: "bad_request", message } };
-}
-function notFound() {
-  return { error: { code: "not_found", message: "No such theme." } };
-}
 
 function asTokens(value: unknown): Record<string, string> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return {};
@@ -90,7 +84,7 @@ export function themeRoutes(ctx: AppContext): Hono<AppEnv> {
 
   app.patch("/:themeId", async (c) => {
     const row = findTheme(ctx.db, c.req.param("themeId"));
-    if (row === null) return c.json(notFound(), 404);
+    if (row === null) return c.json(notFound("theme"), 404);
     if (row.is_builtin === 1) {
       return c.json(badRequest("A shipped theme cannot be changed. Duplicate it first."), 409);
     }
@@ -120,7 +114,7 @@ export function themeRoutes(ctx: AppContext): Hono<AppEnv> {
 
   app.delete("/:themeId", (c) => {
     const row = findTheme(ctx.db, c.req.param("themeId"));
-    if (row === null) return c.json(notFound(), 404);
+    if (row === null) return c.json(notFound("theme"), 404);
     if (row.is_builtin === 1) return c.json(badRequest("A shipped theme cannot be deleted."), 409);
     deleteTheme(ctx.db, row.id);
     // Deleting the one in force falls back to the default rather than to
@@ -130,14 +124,14 @@ export function themeRoutes(ctx: AppContext): Hono<AppEnv> {
 
   app.post("/:themeId/activate", (c) => {
     const row = findTheme(ctx.db, c.req.param("themeId"));
-    if (row === null) return c.json(notFound(), 404);
+    if (row === null) return c.json(notFound("theme"), 404);
     setActiveTheme(ctx.db, row.ulid);
     return c.json(toThemeDto(row));
   });
 
   app.get("/:themeId/export", (c) => {
     const row = findTheme(ctx.db, c.req.param("themeId"));
-    if (row === null) return c.json(notFound(), 404);
+    if (row === null) return c.json(notFound("theme"), 404);
     const dto = toThemeDto(row);
     const filename = dto.name.replace(/[^\w -]/g, "");
     c.header("Content-Disposition", `attachment; filename="${filename}.json"`);

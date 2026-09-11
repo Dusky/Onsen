@@ -17,6 +17,7 @@ import type { AuthorMemory } from "../memory/author.ts";
 import { findAuthor } from "../db/queries/authors.ts";
 import { listEntries, memoryBookOf } from "../db/queries/lore.ts";
 import type { Database } from "bun:sqlite";
+import { badRequest, body, notFound } from "../lib/routes.ts";
 
 /**
  * Narrative memory's HTTP surface (SPEC §11 layer 3).
@@ -27,23 +28,6 @@ import type { Database } from "bun:sqlite";
  * has just been switched on has nothing in it, and waiting a turn to find out
  * whether the feature works is a poor first impression.
  */
-
-function badRequest(message: string) {
-  return { error: { code: "bad_request", message } };
-}
-
-function notFound(what: string) {
-  return { error: { code: "not_found", message: `No such ${what}.` } };
-}
-
-async function body(c: { req: { json(): Promise<unknown> } }): Promise<Record<string, unknown>> {
-  try {
-    const parsed: unknown = await c.req.json();
-    return typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>) : {};
-  } catch {
-    return {};
-  }
-}
 
 export function memoryRoutes(
   ctx: AppContext,

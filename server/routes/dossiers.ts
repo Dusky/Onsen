@@ -16,6 +16,7 @@ import {
 import { insertCharacter, toCharacterDto } from "../db/queries/characters.ts";
 import { findEntryById, toEntryDto } from "../db/queries/lore.ts";
 import { buildCardDocument } from "../cards/index.ts";
+import { badRequest, notFound, optionalText } from "../lib/routes.ts";
 
 /**
  * Character dossiers (SPEC §11, §20 phase 32).
@@ -25,18 +26,6 @@ import { buildCardDocument } from "../cards/index.ts";
  * rather than touching the entry — otherwise the two halves drift and the
  * reader edits one while the model reads the other.
  */
-
-function badRequest(message: string) {
-  return { error: { code: "bad_request", message } };
-}
-
-function notFound(what: string) {
-  return { error: { code: "not_found", message: `No such ${what}.` } };
-}
-
-function text(value: unknown, max = 4_000): string | undefined {
-  return typeof value === "string" ? value.slice(0, max) : undefined;
-}
 
 export function toDossierDto(ctx: AppContext, row: DossierRow) {
   const entry = row.lore_entry_id === null ? null : findEntryById(ctx.db, row.lore_entry_id);
@@ -83,7 +72,7 @@ export function dossierRoutes(ctx: AppContext): Hono<AppEnv> {
     const scene = findScene(ctx.db, c.req.param("sceneId"));
     if (scene === null) return c.json(notFound("scene"), 404);
     const input = await body(c);
-    const name = text(input["name"], 120)?.trim() ?? "";
+    const name = optionalText(input["name"], 120)?.trim() ?? "";
     if (name === "") return c.json(badRequest("A dossier needs a name."), 400);
     // One per name per scene: two rows for the same innkeeper would both render
     // entries, and the reader would edit one and be confused by the other.
@@ -94,14 +83,14 @@ export function dossierRoutes(ctx: AppContext): Hono<AppEnv> {
     const knowledge = (input["knowledge"] ?? {}) as Record<string, unknown>;
     const row = insertDossier(ctx.db, scene.id, {
       name,
-      ...(text(input["role"]) === undefined ? {} : { role: text(input["role"])! }),
-      ...(text(input["voice"]) === undefined ? {} : { voice: text(input["voice"])! }),
-      ...(text(input["canonLock"]) === undefined ? {} : { canonLock: text(input["canonLock"])! }),
-      ...(text(input["standing"]) === undefined ? {} : { standing: text(input["standing"])! }),
+      ...(optionalText(input["role"], 4_000) === undefined ? {} : { role: optionalText(input["role"], 4_000)! }),
+      ...(optionalText(input["voice"], 4_000) === undefined ? {} : { voice: optionalText(input["voice"], 4_000)! }),
+      ...(optionalText(input["canonLock"], 4_000) === undefined ? {} : { canonLock: optionalText(input["canonLock"], 4_000)! }),
+      ...(optionalText(input["standing"], 4_000) === undefined ? {} : { standing: optionalText(input["standing"], 4_000)! }),
       knowledge: {
-        public: text(knowledge["public"]) ?? "",
-        private: text(knowledge["private"]) ?? "",
-        buried: text(knowledge["buried"]) ?? "",
+        public: optionalText(knowledge["public"], 4_000) ?? "",
+        private: optionalText(knowledge["private"], 4_000) ?? "",
+        buried: optionalText(knowledge["buried"], 4_000) ?? "",
       },
       ...(typeof input["mentions"] === "number" ? { mentions: input["mentions"] } : {}),
     });
@@ -115,24 +104,24 @@ export function dossierRoutes(ctx: AppContext): Hono<AppEnv> {
     const knowledge = (input["knowledge"] ?? undefined) as Record<string, unknown> | undefined;
 
     const updated = updateDossier(ctx.db, row.id, {
-      ...(text(input["name"], 120) === undefined ? {} : { name: text(input["name"], 120)!.trim() }),
-      ...(text(input["role"]) === undefined ? {} : { role: text(input["role"])! }),
-      ...(text(input["voice"]) === undefined ? {} : { voice: text(input["voice"])! }),
-      ...(text(input["canonLock"]) === undefined ? {} : { canonLock: text(input["canonLock"])! }),
-      ...(text(input["standing"]) === undefined ? {} : { standing: text(input["standing"])! }),
+      ...(optionalText(input["name"], 120) === undefined ? {} : { name: optionalText(input["name"], 120)!.trim() }),
+      ...(optionalText(input["role"], 4_000) === undefined ? {} : { role: optionalText(input["role"], 4_000)! }),
+      ...(optionalText(input["voice"], 4_000) === undefined ? {} : { voice: optionalText(input["voice"], 4_000)! }),
+      ...(optionalText(input["canonLock"], 4_000) === undefined ? {} : { canonLock: optionalText(input["canonLock"], 4_000)! }),
+      ...(optionalText(input["standing"], 4_000) === undefined ? {} : { standing: optionalText(input["standing"], 4_000)! }),
       ...(knowledge === undefined
         ? {}
         : {
             knowledge: {
-              ...(text(knowledge["public"]) === undefined
+              ...(optionalText(knowledge["public"], 4_000) === undefined
                 ? {}
-                : { public: text(knowledge["public"])! }),
-              ...(text(knowledge["private"]) === undefined
+                : { public: optionalText(knowledge["public"], 4_000)! }),
+              ...(optionalText(knowledge["private"], 4_000) === undefined
                 ? {}
-                : { private: text(knowledge["private"])! }),
-              ...(text(knowledge["buried"]) === undefined
+                : { private: optionalText(knowledge["private"], 4_000)! }),
+              ...(optionalText(knowledge["buried"], 4_000) === undefined
                 ? {}
-                : { buried: text(knowledge["buried"])! }),
+                : { buried: optionalText(knowledge["buried"], 4_000)! }),
             },
           }),
     });

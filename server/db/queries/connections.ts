@@ -495,12 +495,6 @@ export function updateProvider(db: Database, id: number, patch: ProviderPatch): 
     }) as ProviderRow;
 }
 
-export function findProviderById(db: Database, id: number): ProviderRow | null {
-  return (db.query("SELECT * FROM providers WHERE id = $id").get({ id }) ?? null) as
-    | ProviderRow
-    | null;
-}
-
 /**
  * Deleting a provider takes its profiles with it — a profile with no provider
  * has nowhere to send a request. Scenes pointing at those profiles survive with

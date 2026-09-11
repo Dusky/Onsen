@@ -473,7 +473,7 @@ function snapshotOfCharacter(row: CharacterRow): Record<string, unknown> {
 }
 
 /** Record a snapshot of the row's current state — the state *before* an edit. */
-export function snapshotCharacter(db: Database, row: CharacterRow): void {
+function snapshotCharacter(db: Database, row: CharacterRow): void {
   db.query(
     `INSERT INTO character_versions (ulid, character_id, snapshot, created_at)
      VALUES ($ulid, $character, $snapshot, $now)`,

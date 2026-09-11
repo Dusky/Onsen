@@ -13,7 +13,6 @@ import {
   deleteProvider,
   findConnectionProfileByUlid,
   findPresetByUlid,
-  findProviderById,
   findProviderByUlid,
   insertConnectionProfile,
   insertProvider,
@@ -64,6 +63,7 @@ import {
   type ProviderKind,
   type SamplerSettings,
 } from "../../shared/types.ts";
+import { badRequest, notFound, requiredText } from "../lib/routes.ts";
 
 /**
  * Providers and connection profiles (SPEC §20 phase 13).
@@ -103,9 +103,9 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
   app.put("/embeddings", async (c) => {
     const body = await readJson(c);
     if (body === null) return c.json(badRequest("Expected a JSON body."), 400);
-    const baseUrl = text(body["baseUrl"], 500);
-    const model = text(body["model"], 200);
-    const apiKey = text(body["apiKey"], 400);
+    const baseUrl = requiredText(body["baseUrl"], 500);
+    const model = requiredText(body["model"], 200);
+    const apiKey = requiredText(body["apiKey"], 400);
     const source =
       body["source"] === "endpoint" || body["source"] === "lexical" ? body["source"] : "local";
     const existing = ctx.db.query("SELECT api_key_encrypted FROM embeddings_config WHERE id = 1").get() as
@@ -142,7 +142,7 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
    */
   app.post("/presets", async (c) => {
     const body = (await readJson(c)) ?? {};
-    const name = text((body as Record<string, unknown>)["name"], 120) ?? "New preset";
+    const name = requiredText((body as Record<string, unknown>)["name"], 120) ?? "New preset";
     return c.json(toPresetDto(ctx.db, createPreset(ctx.db, name)), 201);
   });
 
@@ -281,7 +281,7 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
     if (body === null) return c.json(badRequest("Expected a JSON body."), 400);
 
     const patch: PresetPatch = {};
-    const name = text(body["name"], 120);
+    const name = requiredText(body["name"], 120);
     if (name !== null) patch.name = name;
 
     // The model this preset answers with, when the scene names none (§20
@@ -337,7 +337,7 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
       else patch.maxResponseTokens = value;
     }
 
-    if ("prefill" in body) patch.prefill = text(body["prefill"], 2_000);
+    if ("prefill" in body) patch.prefill = requiredText(body["prefill"], 2_000);
 
     if ("reasoning" in body) {
       const value = body["reasoning"];
@@ -446,9 +446,9 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
     const body = (await readJson(c)) ?? {};
     const role = body["role"];
     const id = createPresetBlock(ctx.db, row.id, {
-      label: text(body["label"], 120) ?? "New block",
+      label: requiredText(body["label"], 120) ?? "New block",
       role: isInjectionRole(role) ? role : "system",
-      content: text(body["content"], 20_000) ?? "",
+      content: requiredText(body["content"], 20_000) ?? "",
     });
     // New blocks join the order at the end of the prefix rather than nowhere:
     // a block that exists and is in no order is invisible, which is the defect
@@ -468,7 +468,7 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
     if (row === null) return c.json(notFound("preset"), 404);
     const body = (await readJson(c)) ?? {};
     const patch: Parameters<typeof updatePresetBlock>[3] = {};
-    const label = text(body["label"], 120);
+    const label = requiredText(body["label"], 120);
     if (label !== null) patch.label = label;
     if (isInjectionRole(body["role"])) patch.role = body["role"];
     if (typeof body["content"] === "string") patch.content = body["content"].slice(0, 20_000);
@@ -521,21 +521,21 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
     const body = await readJson(c);
     if (body === null) return c.json(badRequest("Expected a JSON body."), 400);
 
-    const name = text(body["name"], 120);
+    const name = requiredText(body["name"], 120);
     if (name === null) return c.json(badRequest("A provider needs a name."), 400);
     const kind = body["kind"];
     if (!(PROVIDER_KINDS as readonly unknown[]).includes(kind)) {
       return c.json(badRequest("Unknown provider kind."), 400);
     }
 
-    const apiKey = text(body["apiKey"], 400);
+    const apiKey = requiredText(body["apiKey"], 400);
     const row = insertProvider(ctx.db, {
       name,
       kind: kind as ProviderKind,
-      baseUrl: text(body["baseUrl"], 500),
+      baseUrl: requiredText(body["baseUrl"], 500),
       // Encrypted here and never read back: the client only ever sees a mask.
       apiKeyEncrypted: apiKey === null ? null : encryptSecret(ctx.keyring, apiKey),
-      model: text(body["model"], 200),
+      model: requiredText(body["model"], 200),
     });
     return c.json(toProviderDto(row, ctx.keyring), 201);
   });
@@ -548,10 +548,10 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
     if (body === null) return c.json(badRequest("Expected a JSON body."), 400);
 
     const patch: Parameters<typeof updateProvider>[2] = {};
-    const name = text(body["name"], 120);
+    const name = requiredText(body["name"], 120);
     if (name !== null) patch.name = name;
-    if ("baseUrl" in body) patch.baseUrl = text(body["baseUrl"], 500);
-    if ("model" in body) patch.model = text(body["model"], 200);
+    if ("baseUrl" in body) patch.baseUrl = requiredText(body["baseUrl"], 500);
+    if ("model" in body) patch.model = requiredText(body["model"], 200);
     if ("enabled" in body) {
       if (typeof body["enabled"] !== "boolean") {
         return c.json(badRequest("enabled must be a boolean."), 400);
@@ -590,7 +590,7 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
     // Absent leaves the key alone; null clears it; a string replaces it. A form
     // that came back empty must not delete a credential nobody touched.
     if ("apiKey" in body) {
-      const key = text(body["apiKey"], 400);
+      const key = requiredText(body["apiKey"], 400);
       patch.apiKeyEncrypted = key === null ? null : encryptSecret(ctx.keyring, key);
     }
 
@@ -606,11 +606,11 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
   app.post("/providers/models", async (c) => {
     const body = await readJson(c);
     if (body === null) return c.json(badRequest("Expected a JSON body."), 400);
-    const baseUrl = text(body["baseUrl"], 500);
+    const baseUrl = requiredText(body["baseUrl"], 500);
     if (baseUrl === null) return c.json(badRequest("A provider address is required."), 400);
 
     // The form's key wins; a stored one stands in for an existing provider.
-    let apiKey = text(body["apiKey"], 400);
+    let apiKey = requiredText(body["apiKey"], 400);
     if ((apiKey === null || apiKey === "") && typeof body["providerId"] === "string") {
       const row = findProviderByUlid(ctx.db, body["providerId"]);
       apiKey =
@@ -619,7 +619,7 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
 
     // The kind was accepted and dropped on the floor until phase 49, which is
     // why an Anthropic provider could never list its models.
-    const kind = text(body["kind"], 40);
+    const kind = requiredText(body["kind"], 40);
     const models = await fetchProviderModels({
       baseUrl,
       apiKey,
@@ -729,9 +729,9 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
     const body = await readJson(c);
     if (body === null) return c.json(badRequest("Expected a JSON body."), 400);
 
-    const name = text(body["name"], 120);
+    const name = requiredText(body["name"], 120);
     if (name === null) return c.json(badRequest("A profile needs a name."), 400);
-    const providerUlid = text(body["providerId"], 40);
+    const providerUlid = requiredText(body["providerId"], 40);
     const provider = providerUlid === null ? null : findProviderByUlid(ctx.db, providerUlid);
     if (provider === null) return c.json(badRequest("No such provider."), 400);
 
@@ -741,7 +741,7 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
     const row = insertConnectionProfile(ctx.db, {
       name,
       providerId: provider.id,
-      model: text(body["model"], 200),
+      model: requiredText(body["model"], 200),
       presetId: preset,
       isDefault: body["isDefault"] === true,
     });
@@ -756,9 +756,9 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
     if (body === null) return c.json(badRequest("Expected a JSON body."), 400);
 
     const patch: Parameters<typeof updateConnectionProfile>[2] = {};
-    const name = text(body["name"], 120);
+    const name = requiredText(body["name"], 120);
     if (name !== null) patch.name = name;
-    if ("model" in body) patch.model = text(body["model"], 200);
+    if ("model" in body) patch.model = requiredText(body["model"], 200);
     if ("isDefault" in body) {
       if (typeof body["isDefault"] !== "boolean") {
         return c.json(badRequest("isDefault must be a boolean."), 400);
@@ -766,7 +766,7 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
       patch.isDefault = body["isDefault"];
     }
     if ("providerId" in body) {
-      const providerUlid = text(body["providerId"], 40);
+      const providerUlid = requiredText(body["providerId"], 40);
       const provider = providerUlid === null ? null : findProviderByUlid(ctx.db, providerUlid);
       if (provider === null) return c.json(badRequest("No such provider."), 400);
       patch.providerId = provider.id;
@@ -842,13 +842,13 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
   app.post("/instruct-templates", async (c) => {
     const body = await readJson(c);
     if (body === null) return c.json(badRequest("Expected a JSON body."), 400);
-    const name = text(body["name"], 80);
+    const name = requiredText(body["name"], 80);
     if (name === null) return c.json(badRequest("A template needs a name."), 400);
 
     // Starting from a copy is the common case: a new format is almost always
     // an existing one with different markers, and an empty eight-field form is
     // a worse starting point than ChatML.
-    const source = text(body["copyFrom"], 60);
+    const source = requiredText(body["copyFrom"], 60);
     const base: InstructTemplate | null =
       source === null
         ? null
@@ -877,7 +877,7 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
 
     const body = await readJson(c);
     if (body === null) return c.json(badRequest("Expected a JSON body."), 400);
-    const name = text(body["name"], 80) ?? row.name;
+    const name = requiredText(body["name"], 80) ?? row.name;
     const template = parseInstructTemplate(
       { ...(JSON.parse(row.body) as Record<string, unknown>), ...body, name },
       row.template_id,
@@ -901,14 +901,6 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
   return app;
 }
 
-function badRequest(message: string) {
-  return { error: { code: "bad_request", message } } as const;
-}
-
-function notFound(what: string) {
-  return { error: { code: "not_found", message: `No such ${what}.` } } as const;
-}
-
 async function readJson(c: { req: { json: () => Promise<unknown> } }): Promise<
   Record<string, unknown> | null
 > {
@@ -928,9 +920,3 @@ function toTemplateDto(templateId: string, name: string, body: string) {
   return { ...(parsed ?? { id: templateId, name }), name, builtIn: false };
 }
 
-/** A trimmed string, or null for absent, empty, or the wrong type. */
-function text(value: unknown, max: number): string | null {
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  return trimmed === "" ? null : trimmed.slice(0, max);
-}

@@ -13,6 +13,7 @@ import {
   isQuickReplyDirection,
   type QuickReplyDto,
 } from "../../shared/types.ts";
+import { badRequest, body, notFound, optionalText } from "../lib/routes.ts";
 
 /**
  * The HTTP surface for §7's quick replies (SPEC §20 phase 65).
@@ -22,27 +23,6 @@ import {
  * prompt through the nudge path it already has, and this module only keeps the
  * rows and their order.
  */
-
-function badRequest(message: string) {
-  return { error: { code: "bad_request", message } };
-}
-
-function notFound(what: string) {
-  return { error: { code: "not_found", message: `No such ${what}.` } };
-}
-
-async function body(c: { req: { json(): Promise<unknown> } }): Promise<Record<string, unknown>> {
-  try {
-    const parsed: unknown = await c.req.json();
-    return typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>) : {};
-  } catch {
-    return {};
-  }
-}
-
-function text(value: unknown, max = 2_000): string | undefined {
-  return typeof value === "string" ? value.slice(0, max) : undefined;
-}
 
 function toDto(row: {
   id: number;
@@ -72,9 +52,9 @@ export function quickReplyRoutes(ctx: AppContext): Hono<AppEnv> {
   app.post("/", async (c) => {
     const input = await body(c);
 
-    const label = text(input["label"], 120)?.trim() ?? "";
+    const label = optionalText(input["label"], 120)?.trim() ?? "";
     if (label === "") return c.json(badRequest("A quick reply needs a label."), 400);
-    const prompt = text(input["prompt"], 2_000)?.trim() ?? "";
+    const prompt = optionalText(input["prompt"], 2_000)?.trim() ?? "";
     if (prompt === "") return c.json(badRequest("A quick reply needs a prompt."), 400);
 
     const row = insertQuickReply(ctx.db, { label, prompt });
@@ -87,9 +67,9 @@ export function quickReplyRoutes(ctx: AppContext): Hono<AppEnv> {
     const input = await body(c);
 
     const patch: { label?: string; prompt?: string } = {};
-    const label = text(input["label"], 120)?.trim();
+    const label = optionalText(input["label"], 120)?.trim();
     if (label !== undefined && label !== "") patch.label = label;
-    const prompt = text(input["prompt"], 2_000)?.trim();
+    const prompt = optionalText(input["prompt"], 2_000)?.trim();
     if (prompt !== undefined && prompt !== "") patch.prompt = prompt;
 
     updateQuickReply(ctx.db, row.id, patch);

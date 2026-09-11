@@ -43,6 +43,7 @@ import {
 import { recurringNames } from "../generation/recurring.ts";
 import { createEstimatingTokenizer } from "../prompt/index.ts";
 import type { BuiltPrompt } from "../prompt/index.ts";
+import { badRequest } from "../lib/routes.ts";
 
 /**
  * AI-assisted authoring (SPEC §9, §20 phase 27).
@@ -53,10 +54,6 @@ import type { BuiltPrompt } from "../prompt/index.ts";
  * whatever the JSON happened to contain. The routes are thin because the
  * prompts and parsers are pure and live in `/generation/authoring`.
  */
-
-function badRequest(message: string) {
-  return { error: { code: "bad_request", message } } as const;
-}
 
 function unreadable(problem: string) {
   return { error: { code: "unreadable", message: problem } } as const;

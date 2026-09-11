@@ -22,6 +22,7 @@ import { MEDIA_KINDS } from "../media/index.ts";
 import { MediaRunner, VisionUnsupported, proseToPrompt } from "../media/runner.ts";
 import { isSupportedMedia, mimeForPath, store } from "../media/store.ts";
 import { AdapterError } from "../adapters/types.ts";
+import { badRequest, notFound, requiredText } from "../lib/routes.ts";
 
 /**
  * Pictures and voices (SPEC §20 phase 41).
@@ -37,20 +38,6 @@ import { AdapterError } from "../adapters/types.ts";
  */
 
 const MAX_UPLOAD_BYTES = 12 * 1024 * 1024;
-
-function badRequest(message: string) {
-  return { error: { code: "bad_request", message } };
-}
-
-function notFound(what: string) {
-  return { error: { code: "not_found", message: `No such ${what}.` } };
-}
-
-function text(value: unknown, max: number): string | null {
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  return trimmed === "" ? null : trimmed.slice(0, max);
-}
 
 async function readJson(c: { req: { json(): Promise<unknown> } }): Promise<Record<string, unknown>> {
   try {
@@ -82,7 +69,6 @@ function toServiceDto(row: MediaServiceRow, keyring: Parameters<typeof decryptSe
     isDefault: row.is_default === 1,
   };
 }
-
 
 function safeOptions(raw: string): Record<string, unknown> {
   try {
@@ -147,14 +133,14 @@ export function mediaRoutes(ctx: AppContext, media: MediaRunner): Hono<AppEnv> {
       return c.json(badRequest("No service of that kind."), 400);
     }
     const known = MEDIA_KINDS.find((k) => k.purpose === purpose && k.kind === kind)!;
-    const apiKey = text(body["apiKey"], 400);
+    const apiKey = requiredText(body["apiKey"], 400);
     const row = insertService(ctx.db, {
-      name: text(body["name"], 200) ?? known.label,
+      name: requiredText(body["name"], 200) ?? known.label,
       purpose,
       kind,
-      baseUrl: text(body["baseUrl"], 500) ?? known.defaultBaseUrl,
+      baseUrl: requiredText(body["baseUrl"], 500) ?? known.defaultBaseUrl,
       apiKeyEncrypted: apiKey === null ? null : encryptSecret(ctx.keyring, apiKey),
-      model: text(body["model"], 200),
+      model: requiredText(body["model"], 200),
       options: JSON.stringify(
         typeof body["options"] === "object" && body["options"] !== null ? body["options"] : {},
       ),
@@ -168,10 +154,10 @@ export function mediaRoutes(ctx: AppContext, media: MediaRunner): Hono<AppEnv> {
     const body = await readJson(c);
 
     const patch: Parameters<typeof updateService>[2] = {};
-    const name = text(body["name"], 200);
+    const name = requiredText(body["name"], 200);
     if (name !== null) patch.name = name;
-    if ("baseUrl" in body) patch.base_url = text(body["baseUrl"], 500);
-    if ("model" in body) patch.model = text(body["model"], 200);
+    if ("baseUrl" in body) patch.base_url = requiredText(body["baseUrl"], 500);
+    if ("model" in body) patch.model = requiredText(body["model"], 200);
     if (typeof body["enabled"] === "boolean") patch.enabled = body["enabled"] ? 1 : 0;
     if (typeof body["options"] === "object" && body["options"] !== null) {
       patch.options = JSON.stringify(body["options"]);
@@ -179,7 +165,7 @@ export function mediaRoutes(ctx: AppContext, media: MediaRunner): Hono<AppEnv> {
     // An empty key means "leave it alone", not "clear it" — a form that
     // round-trips a mask would otherwise erase the key on every save.
     if ("apiKey" in body) {
-      const key = text(body["apiKey"], 400);
+      const key = requiredText(body["apiKey"], 400);
       if (key !== null) patch.api_key_encrypted = encryptSecret(ctx.keyring, key);
     }
     if (body["clearApiKey"] === true) patch.api_key_encrypted = null;
@@ -289,7 +275,7 @@ export function mediaRoutes(ctx: AppContext, media: MediaRunner): Hono<AppEnv> {
     }
     // The reader's own words win. Theirs is a prompt; a paragraph of prose is
     // a paragraph of prose, and the difference matters to every image model.
-    const prompt = text(body["prompt"], 2_000) ?? proseToPrompt(message.content);
+    const prompt = requiredText(body["prompt"], 2_000) ?? proseToPrompt(message.content);
     if (prompt === "") return c.json(badRequest("There is nothing here to draw."), 400);
 
     try {
@@ -325,7 +311,7 @@ export function mediaRoutes(ctx: AppContext, media: MediaRunner): Hono<AppEnv> {
       const asset = await media.speak({
         service,
         text: spoken,
-        voice: text(body["voice"], 100),
+        voice: requiredText(body["voice"], 100),
         messageId: message.id,
         sceneId: message.scene_id,
       });

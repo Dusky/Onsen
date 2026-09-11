@@ -24,13 +24,7 @@ import {
 import { runAgentTurn, type AgentAdapterFactory } from "../agent/loop.ts";
 import { toolSpecs } from "../agent/tools.ts";
 import { snapshots } from "../agent/snapshot.ts";
-
-function badRequest(message: string) {
-  return { error: { code: "bad_request", message } };
-}
-function notFound() {
-  return { error: { code: "not_found", message: "No such thread." } };
-}
+import { badRequest, notFound } from "../lib/routes.ts";
 
 const MAX_ASK = 8000;
 
@@ -71,7 +65,7 @@ export function agentRoutes(
 
   app.get("/threads/:threadId", (c) => {
     const thread = findThread(ctx.db, c.req.param("threadId"));
-    if (thread === null) return c.json(notFound(), 404);
+    if (thread === null) return c.json(notFound("thread"), 404);
     return c.json({
       thread: toThreadDto(thread),
       // Tool results are not shown as their own turns — they belong to the call
@@ -82,7 +76,7 @@ export function agentRoutes(
 
   app.patch("/threads/:threadId", async (c) => {
     const thread = findThread(ctx.db, c.req.param("threadId"));
-    if (thread === null) return c.json(notFound(), 404);
+    if (thread === null) return c.json(notFound("thread"), 404);
     const body = (await c.req.json().catch(() => ({}))) as { title?: unknown };
     if (typeof body.title !== "string" || body.title.trim() === "") {
       return c.json(badRequest("A title is required."), 400);
@@ -93,7 +87,7 @@ export function agentRoutes(
 
   app.delete("/threads/:threadId", (c) => {
     const thread = findThread(ctx.db, c.req.param("threadId"));
-    if (thread === null) return c.json(notFound(), 404);
+    if (thread === null) return c.json(notFound("thread"), 404);
     deleteThread(ctx.db, thread.id);
     return c.body(null, 204);
   });
@@ -106,7 +100,7 @@ export function agentRoutes(
    */
   app.post("/threads/:threadId/messages", async (c) => {
     const thread = findThread(ctx.db, c.req.param("threadId"));
-    if (thread === null) return c.json(notFound(), 404);
+    if (thread === null) return c.json(notFound("thread"), 404);
 
     const body = (await c.req.json().catch(() => ({}))) as { content?: unknown };
     const content = typeof body.content === "string" ? body.content.trim() : "";

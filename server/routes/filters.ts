@@ -3,6 +3,7 @@ import type { AppContext, AppEnv } from "../context.ts";
 import { requireAuth } from "../middleware/session.ts";
 import { deleteSavedFilter, insertSavedFilter, listSavedFilters } from "../db/queries/library.ts";
 import type { CharacterFilterQuery } from "../../shared/types.ts";
+import { badRequest } from "../lib/routes.ts";
 
 /**
  * Saved filters (SPEC §9, §20 phase 26): a name over a query the reader wants
@@ -10,10 +11,6 @@ import type { CharacterFilterQuery } from "../../shared/types.ts";
  * way to keep "my sci-fi cast" reachable, and that is a table with three
  * columns.
  */
-
-function badRequest(message: string) {
-  return { error: { code: "bad_request", message } } as const;
-}
 
 export function filterRoutes(ctx: AppContext): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
