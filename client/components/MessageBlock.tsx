@@ -3,6 +3,7 @@ import type {
   AnnotationDto,
   AttributionStyle,
   AvatarShape,
+  MediaLayout,
   MessageDto,
   MessageSegmentDto,
   TurnStyle,
@@ -74,6 +75,17 @@ interface MessageBlockProps {
   /** The turn ⌘K and the accelerators act on (§20 phase 43). */
   selected?: boolean;
   onSelect?(): void;
+  /** The reader's clock, off by design (§20 phase 166). */
+  timestamp?: boolean;
+  /** Stacked or in a grid (§20 phase 166). */
+  mediaLayout?: MediaLayout;
+  /**
+   * Double-click opens the inline editor (§20 phase 166), off by default.
+   *
+   * Double, not single: a single click already selects the turn, which is what
+   * ⌘K and the accelerators act on, and one gesture cannot mean both.
+   */
+  onOpenEditor?(): void;
   /** Streaming text replaces the content while this message is being written. */
   streamingText?: string;
   /**
@@ -494,15 +506,22 @@ function Stats({
   message,
   ordinal,
   onOpen,
+  timestamp,
 }: {
   message: MessageDto;
   ordinal: number | undefined;
   /** Set when the row should open the prompt behind the turn (§20 phase 69). */
   onOpen?: (() => void) | undefined;
+  /** The reader has asked for the clock (§20 phase 166). Off by design. */
+  timestamp?: boolean;
 }) {
   const meta = message.generation;
   const parts: string[] = [];
   if (ordinal !== undefined) parts.push(`turn ${ordinal}`);
+  // With the other numbers rather than on a line of its own: it is the same
+  // kind of fact about the turn, it is the same chrome, and a second row under
+  // every message to hold four characters is how a log gets tall.
+  if (timestamp === true) parts.push(strings.time.clock(message.createdAt));
   if (meta !== null) {
     // Milliseconds under a second: a fast local model reading `0.0s` says
     // nothing, and "how long before it started" is the number people compare
@@ -689,6 +708,9 @@ export function MessageBlock({
   onInspect,
   selected,
   onSelect,
+  timestamp,
+  mediaLayout,
+  onOpenEditor,
   streamingText,
   recasting,
   onRevert,
@@ -777,6 +799,9 @@ export function MessageBlock({
       // because the log is virtualised and refs to unmounted rows go stale.
       data-message-id={message.id}
       onClick={onSelect}
+      // Only when the reader asked for it, and only on a double: the single
+      // click above still selects, so the two do not fight.
+      {...(onOpenEditor === undefined ? {} : { onDoubleClick: onOpenEditor })}
       style={
         selected === true
           ? railed
@@ -809,7 +834,12 @@ export function MessageBlock({
       {flow ? (
         <div className="turn-chrome flex items-center gap-x-[10px]">
           <TurnRow message={message} actions={actions} onReroll={onReroll} />
-          <Stats message={message} ordinal={ordinal} onOpen={onInspect} />
+          <Stats
+            message={message}
+            ordinal={ordinal}
+            onOpen={onInspect}
+            {...(timestamp === true ? { timestamp: true } : {})}
+          />
           {message.siblingCount > 1 ? (
             <button
               type="button"
@@ -857,7 +887,12 @@ export function MessageBlock({
           actions={actions}
           onReroll={onReroll}
         />
-        <Stats message={message} ordinal={ordinal} onOpen={onInspect} />
+        <Stats
+          message={message}
+          ordinal={ordinal}
+          onOpen={onInspect}
+          {...(timestamp === true ? { timestamp: true } : {})}
+        />
         {message.siblingCount > 1 ? (
           <button
             type="button"
@@ -975,7 +1010,11 @@ export function MessageBlock({
             attached to it. Below the prose, because it illustrates the words
             rather than replacing them. */}
         {message.media.length > 0 ? (
-          <MessageMedia sceneId={message.sceneId} assets={message.media} />
+          <MessageMedia
+            sceneId={message.sceneId}
+            assets={message.media}
+            {...(mediaLayout === undefined ? {} : { layout: mediaLayout })}
+          />
         ) : null}
         {message.editedAt !== null ? (
           <p className="chrome mt-[8px] text-[12px] text-ink-dim">

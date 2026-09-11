@@ -8,6 +8,8 @@ import {
   useDeleteMessage,
   useEditMessage,
   useScene,
+  saveDraft,
+  useReader,
   useReading,
   useSendMessage,
   useSetLeaf,
@@ -200,6 +202,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
 
   /** The chosen layout (§20 phase 52). Instrument until preferences arrive. */
   const layout = useLayout();
+  const reader = useReader();
 
   const log = useRef<HTMLDivElement>(null);
   // The cast becomes a rail and the ops flatten (design `4a`). Everything
@@ -535,13 +538,66 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     void generation.adopt({ generationId: adoptable, sceneId, sceneTitle: title });
   }, [adoptable, active, sceneId, title, generation]);
 
-  // Keep the newest content in view as it arrives. Bottom-anchored layout does
-  // most of the work; this covers the case where the log has overflowed.
+  /*
+   * The unsent turn, kept and restored (§20 phase 166).
+   *
+   * Two effects rather than one, because they are two different events.
+   *
+   * The first restores: it fires when the scene's draft arrives, and only into
+   * an empty composer. Guarded by the scene id so switching roleplays restores
+   * the new one's draft rather than the old one's, and guarded on emptiness so
+   * a late refetch cannot overwrite a sentence being typed right now — the
+   * request that carries the draft is the same one that carries the log, and it
+   * runs whenever the window regains focus.
+   *
+   * The second saves, debounced: a keystroke is not a save. `draftSaved` holds
+   * what was last sent, so a scene whose draft already matches the server's —
+   * the common case on open — issues no write at all.
+   */
+  const restoredFor = useRef<string | null>(null);
+  const draftSaved = useRef<string | null>(null);
+  const storedDraft = scene.data?.scene.draft ?? null;
+  useEffect(() => {
+    if (!reader.drafts || storedDraft === null) return;
+    if (restoredFor.current === sceneId) return;
+    restoredFor.current = sceneId;
+    draftSaved.current = storedDraft;
+    if (storedDraft !== "" && draft === "") setDraft(storedDraft);
+  }, [reader.drafts, storedDraft, sceneId, draft, setDraft]);
+
+  useEffect(() => {
+    if (!reader.drafts) return;
+    if (restoredFor.current !== sceneId) return;
+    if (draftSaved.current === draft) return;
+    const timer = setTimeout(() => {
+      draftSaved.current = draft;
+      saveDraft(sceneId, draft);
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [draft, reader.drafts, sceneId]);
+
+  /*
+   * Keep the newest content in view as it arrives. Bottom-anchored layout does
+   * most of the work; this covers the case where the log has overflowed.
+   *
+   * The reader can turn it off (§20 phase 166), which is the difference between
+   * reading back through a scene while a turn streams and being yanked to the
+   * bottom every few hundred milliseconds. A *new* turn still scrolls either
+   * way: arriving text is the thing being followed, and a log that silently
+   * stopped moving when a message landed would read as a broken log rather
+   * than as a setting.
+   */
   useLayoutEffect(() => {
     const element = log.current;
     if (element === null) return;
     element.scrollTop = element.scrollHeight;
-  }, [logMessages.length, active?.text]);
+  }, [logMessages.length]);
+
+  useLayoutEffect(() => {
+    const element = log.current;
+    if (element === null || !reader.autoScroll) return;
+    element.scrollTop = element.scrollHeight;
+  }, [active?.text, reader.autoScroll]);
 
   // Once a generation lands, its text belongs to the tree rather than the
   // store, so the streaming block is dropped and the refetched message shows.
@@ -581,6 +637,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           onSaveEdit={(messageId, content) => edit.mutate({ messageId, content })}
           authorName={authorName}
           layout={layout}
+          reader={reader}
           colours={colours}
           trackerState={trackerState}
           personaId={scene.data?.scene.personaId ?? null}
@@ -769,6 +826,8 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             />
           }
           wide={isDesktop}
+          sendKey={reader.send}
+          marks={reader.marks}
         />
 
         {/* §20 phase 43: what is true right now, in one line. On a phone its

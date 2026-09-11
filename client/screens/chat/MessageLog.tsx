@@ -3,6 +3,7 @@ import type {
   AnnotationDto,
   AutopilotStateDto,
   LayoutDto,
+  ReaderDto,
   MessageDto,
   TrackerDto,
 } from "@shared/types.ts";
@@ -45,6 +46,7 @@ export function MessageLog({
   onSaveEdit,
   authorName,
   layout,
+  reader,
   colours,
   trackerState,
   personaId,
@@ -88,6 +90,8 @@ export function MessageLog({
   /** Message id → the state written at that turn (§163). */
   trackerState: Map<string, TrackerDto[]>;
   layout: LayoutDto;
+  /** The reader's own controls (§20 phase 166). */
+  reader: ReaderDto;
   personaId: string | null;
   onReroll(message: MessageDto): void;
   onOpenVersions(message: MessageDto): void;
@@ -151,6 +155,9 @@ export function MessageLog({
         onInspect={() => onInspect(message)}
         selected={selectedId === message.id}
         onSelect={() => onSelect(message.id)}
+        {...(reader.timestamps ? { timestamp: true } : {})}
+        mediaLayout={reader.media}
+        {...(reader.clickToEdit ? { onOpenEditor: () => runCommand("edit", message) } : {})}
         onRevert={onRevert}
         // Every one goes through `runCommand`, the same path the palette takes,
         // so the row and the sheet can never disagree about what an action does

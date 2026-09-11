@@ -1302,6 +1302,14 @@ export interface SceneDto {
    * when it gets asked.
    */
   importSource: string | null;
+  /**
+   * An unsent turn, kept with the roleplay (§20 phase 166).
+   *
+   * Empty string for none — one state, not two. Written and read only while
+   * the reader has `drafts` on: keeping keystrokes for a feature somebody
+   * turned off would be storing prose nobody asked to have stored.
+   */
+  draft: string;
   /** Organisation (§20 phase 59), shaped like the character library's. */
   tags: string[];
   folder: string | null;
@@ -1780,6 +1788,117 @@ export function clampReading(input: Partial<Record<keyof ReadingDto, unknown>>):
     // other three are genuinely continuous.
     out[key] = key === "window" ? Math.round(clamped) : clamped;
   }
+  return out;
+}
+
+/* ------------------------------------------------------------------ */
+/* Reader controls (SPEC §16 §Density, §20 phase 166)                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * What happens when the composer sees Return.
+ *
+ * Three, not two, because the two the app had were a keyboard's. A reader
+ * writing long turns wants Return to be Return; a reader steering a scene
+ * wants it to send. The third is the one the incumbent ships and the reason
+ * this is a setting at all.
+ *
+ * None of them change the phone: a software keyboard does not report a shift
+ * state, so its return key stays a newline in all three and the send button is
+ * the send button. `Composer.tsx` has said so in a comment since phase 45;
+ * this is the first time the comment has had a choice to be right about.
+ */
+export type SendKey =
+  /** Return sends, Shift+Return is a newline. The default, and today's. */
+  | "enter"
+  /** ⌘/Ctrl+Return sends, Return is always a newline. */
+  | "modEnter"
+  /** Only the button sends. */
+  | "button";
+
+/** Whether a reader has overridden the machine's motion setting. */
+export type MotionPreference = "system" | "reduced";
+
+/** How a turn's pictures are laid out under it (§20 phase 41 shipped one). */
+export type MediaLayout = "list" | "grid";
+
+/**
+ * The controls that belong to the person reading and writing, not to the
+ * layout (§20 phase 166).
+ *
+ * Separate from `ReadingDto` deliberately. That is the type system — four
+ * numbers with bounds, every one of them continuous, all four published as
+ * custom properties. These are discrete behaviours, and lumping them in would
+ * have made `clampReading` mean two different things.
+ *
+ * Server-side like every other preference, for the reason `client/App.tsx`
+ * states outright: there is no browser storage in this app. A draft restored
+ * from one browser and missing in another is worse than no draft restore.
+ */
+export interface ReaderDto {
+  send: SendKey;
+  /**
+   * ⌘/Ctrl+B and +I wrap the composer's selection in the tokenizer's own two
+   * marks. Worth having only since phase 161 made those marks render.
+   */
+  marks: boolean;
+  /**
+   * A time under each turn, off by default.
+   *
+   * `docs/design/DESIGN.md` says "no avatar, no timestamp, no shadow" for a
+   * turn, so this is an opt-in rather than a correction: the default stays
+   * what the design chose, and a reader who wants the clock can have it.
+   */
+  timestamps: boolean;
+  /**
+   * The manual override for `prefers-reduced-motion`, which the stylesheet has
+   * honoured since phase 45. For a machine that does not set it, or a reader
+   * who wants it here and not everywhere.
+   */
+  motion: MotionPreference;
+  /** Follow a streaming turn to the bottom. Off is for reading back. */
+  autoScroll: boolean;
+  /** Keep an unsent turn when the scene is closed. Server-side; see above. */
+  drafts: boolean;
+  /** Double-click a turn to edit it in place. */
+  clickToEdit: boolean;
+  media: MediaLayout;
+}
+
+export const READER_DEFAULTS: ReaderDto = {
+  send: "enter",
+  marks: true,
+  timestamps: false,
+  motion: "system",
+  autoScroll: true,
+  drafts: true,
+  clickToEdit: false,
+  media: "list",
+};
+
+/** The value sets, so a reader and a writer cannot disagree about them. */
+export const SEND_KEYS: readonly SendKey[] = ["enter", "modEnter", "button"];
+export const MOTION_PREFERENCES: readonly MotionPreference[] = ["system", "reduced"];
+export const MEDIA_LAYOUTS: readonly MediaLayout[] = ["list", "grid"];
+
+/**
+ * Fall back per field rather than rejecting the lot — `clampReading`'s rule,
+ * and for the same reason: one unrecognised value should not cost a reader the
+ * other seven, and a settings screen is the worst place to be strict.
+ *
+ * Used on the way out of the database as well as in, because a value written
+ * by an older build or by hand must not be able to render the app unusable.
+ */
+export function readReader(input: Partial<Record<keyof ReaderDto, unknown>>): ReaderDto {
+  const out = { ...READER_DEFAULTS };
+  for (const key of ["marks", "timestamps", "autoScroll", "drafts", "clickToEdit"] as const) {
+    if (typeof input[key] === "boolean") out[key] = input[key] as boolean;
+  }
+  if (SEND_KEYS.includes(input.send as SendKey)) out.send = input.send as SendKey;
+  if (MOTION_PREFERENCES.includes(input.motion as MotionPreference)) {
+    out.motion = input.motion as MotionPreference;
+  }
+  if (MEDIA_LAYOUTS.includes(input.media as MediaLayout)) out.media = input.media as MediaLayout;
   return out;
 }
 

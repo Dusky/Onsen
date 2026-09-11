@@ -22,8 +22,8 @@ import { Header } from "./components/Header.tsx";
 import { Background } from "./components/Background.tsx";
 import { RightRail } from "./components/RightRail.tsx";
 import { setChimeWanted, unlockAudio } from "./lib/chime.ts";
-import { usePreferences, useReading } from "./lib/queries.ts";
-import { useReadingVariables, useViewportHeight } from "./lib/viewport.ts";
+import { usePreferences, useReader, useReading } from "./lib/queries.ts";
+import { useMotionPreference, useReadingVariables, useViewportHeight } from "./lib/viewport.ts";
 import type { BootstrapDto } from "@shared/types.ts";
 
 /**
@@ -133,6 +133,7 @@ function Shell() {
   // Here rather than in `App`, which renders the QueryClientProvider itself and
   // so is above the cache a preference hook needs.
   useReadingVariables(useReading());
+  useMotionPreference(useReader().motion);
 
   // §5's chime, and the autoplay policy that shapes it. A browser will not let
   // a page make a sound before the person has interacted with it, so the audio

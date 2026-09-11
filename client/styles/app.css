@@ -103,7 +103,15 @@
     outline-offset: 2px;
   }
 
-  /* Suppress motion, never the state change itself. */
+  /*
+   * Suppress motion, never the state change itself.
+   *
+   * Two ways in, one set of rules (§20 phase 166): the machine asking, and the
+   * reader asking here for this app only. The machine's answer is never
+   * overridden — `data-motion` can only add reduction, never remove it — so a
+   * reader who has asked their OS for less motion gets it regardless of what
+   * this app is set to.
+   */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -112,6 +120,14 @@
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }
+  }
+
+  :root[data-motion="reduced"] *,
+  :root[data-motion="reduced"] *::before,
+  :root[data-motion="reduced"] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 
   input,

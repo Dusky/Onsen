@@ -7507,3 +7507,85 @@ and write now share one list.
 edge with a −20px margin and +18px padding, which is a fine thing to happen to a
 block and a bad thing to happen to a paragraph you are reading: the text shifts
 sideways by 20px. Document selects with a ground and nothing else.
+
+## Phase 166 — Eight things the app decided for you
+
+The reading surface has been the reader's since phase 55 — four numbers with
+bounds, published as custom properties. What was still the app's were the
+discrete behaviours around it: what Return does, whether a streaming turn drags
+the log to the bottom, whether an unsent sentence survives closing the
+roleplay. Each was a reasonable default with no way past it.
+
+Eight of them now have one, and **every default is what the app already did**,
+so a fresh install behaves exactly as it did before. A settings group that
+changes behaviour by existing is a settings group nobody asked for.
+
+`ReaderDto` is its own type rather than four more fields on `ReadingDto`. That
+one is the type system: continuous values with bounds, all four clamped by
+`clampReading`. These are discrete, and sharing the type would have made
+`clampReading` mean two different things. Both follow the same rule on the way
+in — fall back per field rather than reject the lot, because a settings screen
+is the worst place to be strict and one typo should not cost a reader the other
+seven values.
+
+**What Return does** is three choices, not two, and none of them can reach a
+phone. `Composer.tsx` has carried a comment since phase 45 explaining that a
+software keyboard cannot report a held shift, so its return key has to stay a
+newline; this is the first time that comment has had a choice to be right
+about. `modEnter` takes either modifier rather than sniffing the platform.
+
+**⌘/Ctrl+B and +I** are worth having only because phase 161 made those marks
+render. `client/lib/marks.ts` is its own module because the interesting part is
+string arithmetic with no DOM in it, which means it can be tested — and the
+round trip is the property that matters: everything it writes,
+`client/lib/emphasis.ts` has to read back as the emphasis that was asked for.
+
+**The unsent turn** is a column on `scenes`, not a key in the settings table: a
+key per scene would outlive every scene it named, with nothing to notice.
+`saveDraft` is its own statement rather than a field on `updateScene`, and
+deliberately does not touch `updated_at` — a keystroke in the composer is not
+activity in the roleplay, and the newest-first list should follow the story
+rather than the cursor.
+
+**Verified** in Chromium at 1600×950 and 390×844: ⌘+B wrapping the selection
+and unwrapping on a second press, ⌘+I after it; Return inserting a newline in
+both non-default modes and sending in the default one; the clock appearing with
+the turn's other numbers; three differently-shaped plates lining up as one row
+of cells in grid mode and stacking at their own sizes in list mode; a draft
+typed, the scene left, and the draft back in the composer on return. At 390px:
+all eight controls reachable, nothing under the tap floor, no horizontal
+scroll. Guards: `test/marks.test.ts`, `test/reader.test.ts`.
+
+### Surprises
+
+**A boolean read the obvious way can never be turned off.** Comparing a stored
+setting to `"1"` makes an absent row and an explicit `false` the same thing —
+which is harmless for a default-off switch and fatal for a default-on one:
+following a streaming turn is on by default, so `=== "1"` would have made
+turning it off a no-op that re-read as on. Every flag asks `=== null` first.
+
+**Auto-scroll had to be split into two effects, not gated in one.** The single
+effect fired on both a new message and each streaming chunk. Gating the whole
+thing meant a log that stopped moving when a message *landed*, which reads as a
+broken log rather than as a setting. A new turn scrolls either way; only the
+streaming tail is the reader's to refuse.
+
+**`Segmented` was declared inside its parent component.** `LayoutSection` had
+it as a nested function, so every render produced a new component type and
+React unmounted and remounted the whole row rather than updating it. Harmless
+while it had one caller; lifted to module scope rather than copied when the
+reader controls became the second.
+
+**The motion override can only add reduction.** Two ways in — the machine
+asking through `prefers-reduced-motion`, and the reader asking here for this
+app only — reaching one set of suppression rules. There is no `data-motion`
+value that *removes* reduction, so a reader who has asked their OS for less
+motion gets it whatever this app is set to. The alternative, a three-way that
+could override the system downward, would be an app deciding it knows better
+than an accessibility setting.
+
+**The grid does not become a grid for one picture.** A single attachment
+cropped to a square cell is the "64px thumbnail blown up to the prose measure"
+mistake in the other direction. `auto-fill` rather than `auto-fit`, too: cells
+stay the same size whether a turn drew two or seven, where `auto-fit` would
+stretch two of them across the whole column.

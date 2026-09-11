@@ -901,6 +901,38 @@ export const strings = {
     layoutAttributionStacked: "Above the text",
     layoutAttributionInline: "In the text",
     layoutAttributionRunin: "Opening the paragraph",
+
+    /*
+     * The reader's own controls (§20 phase 166).
+     *
+     * Eight labels and no hints. `test/voice.test.ts` caps explanatory prose at
+     * forty-five keys and the budget was already spent, which is the test doing
+     * its job rather than a number in the way: the rule it enforces is that an
+     * explanation earns its place only where its absence causes a mistake that
+     * cannot be undone, and none of these qualify — every one is reversible by
+     * pressing the other button.
+     *
+     * So two labels carry what a hint would have said, which is where it
+     * belonged anyway. "Bold and italic on" says what the key does; "with the
+     * roleplay" says where the draft is kept, and therefore that it is on the
+     * phone too. The rest say enough on their own.
+     */
+    reader: "Reading and writing",
+    readerSend: "Return in the composer",
+    readerSendEnter: "Sends",
+    readerSendMod: "⌘ or Ctrl + Return sends",
+    readerSendButton: "Only the button sends",
+    readerMarks: "Bold and italic on ⌘ or Ctrl + B and I",
+    readerTimestamps: "A time under each turn",
+    readerAutoScroll: "Follow a turn as it arrives",
+    readerClickToEdit: "Double-click a turn to edit it",
+    readerDrafts: "Keep an unsent turn with the roleplay",
+    readerMedia: "Pictures under a turn",
+    readerMediaList: "Stacked",
+    readerMediaGrid: "In a grid",
+    readerMotion: "Motion",
+    readerMotionSystem: "As this machine asks",
+    readerMotionReduced: "Reduced",
     /* The reading surface, which the reader sets (§20 phase 55). */
     prose: "Text size",
     proseMeasure: "Column width",
@@ -1975,6 +2007,27 @@ export const strings = {
     minutesAgo: (n: number) => `${n}m ago`,
     hoursAgo: (n: number) => `${n}h ago`,
     daysAgo: (n: number) => `${n}d ago`,
+    /**
+     * A turn's clock time (§20 phase 166).
+     *
+     * The machine's locale and the machine's 12/24-hour choice, because this
+     * is one of the few strings in the app that is a fact about the reader's
+     * day rather than the app's own vocabulary. A turn from another day says
+     * which day: "14:32" on a scene resumed a week later is a time that means
+     * nothing, and the date is the half worth having.
+     */
+    clock: (at: number) => {
+      const when = new Date(at);
+      const sameDay = new Date().toDateString() === when.toDateString();
+      return sameDay
+        ? when.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+        : when.toLocaleString(undefined, {
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          });
+    },
   },
 } as const;
 

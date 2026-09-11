@@ -3,11 +3,19 @@ import type { AppContext, AppEnv } from "../context.ts";
 import { requireAuth } from "../middleware/session.ts";
 import { applyUpdate, checkForUpdates, readUpdateStatus } from "../updates.ts";
 import { getSetting, setSetting } from "../db/queries/settings.ts";
-import { LAYOUT_PRESETS, READING_DEFAULTS, clampReading, presetOf } from "@shared/types.ts";
+import {
+  LAYOUT_PRESETS,
+  READER_DEFAULTS,
+  READING_DEFAULTS,
+  clampReading,
+  presetOf,
+  readReader,
+} from "@shared/types.ts";
 import type {
   AttributionStyle,
   LayoutDto,
   LayoutPreset,
+  ReaderDto,
   ReadingDto,
   TurnStyle,
 } from "@shared/types.ts";
@@ -84,11 +92,42 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
     return { preset: presetOf(values), ...values };
   }
 
+  /**
+   * The reader's own controls (§20 phase 166).
+   *
+   * Stored per field, like the layout and for the same reason: a field added
+   * later defaults on its own rather than needing every stored blob rewritten.
+   * A boolean absent from the settings table is the shipped default, not
+   * `false` — which is why each one asks `=== null` before reading rather than
+   * comparing to `"1"` and getting the default wrong half the time.
+   *
+   * Validated through `readReader` on the way out as well as in: a row written
+   * by hand or by an older build cannot put the app into a state its own
+   * settings screen does not offer.
+   */
+  function reader(): ReaderDto {
+    const flag = (key: string, fallback: boolean): boolean => {
+      const stored = getSetting(ctx.db, key);
+      return stored === null ? fallback : stored === "1";
+    };
+    return readReader({
+      send: getSetting(ctx.db, "reader_send") ?? READER_DEFAULTS.send,
+      marks: flag("reader_marks", READER_DEFAULTS.marks),
+      timestamps: flag("reader_timestamps", READER_DEFAULTS.timestamps),
+      motion: getSetting(ctx.db, "reader_motion") ?? READER_DEFAULTS.motion,
+      autoScroll: flag("reader_auto_scroll", READER_DEFAULTS.autoScroll),
+      drafts: flag("reader_drafts", READER_DEFAULTS.drafts),
+      clickToEdit: flag("reader_click_to_edit", READER_DEFAULTS.clickToEdit),
+      media: getSetting(ctx.db, "reader_media") ?? READER_DEFAULTS.media,
+    });
+  }
+
   function preferences() {
     return {
       completionChime: getSetting(ctx.db, "completion_chime") === "1",
       layout: layout(),
       reading: reading(),
+      reader: reader(),
     };
   }
 
@@ -152,6 +191,22 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
           }
         }
       }
+    }
+
+    const asReader = body["reader"];
+    if (typeof asReader === "object" && asReader !== null) {
+      // Merged onto what is stored rather than onto the defaults, so a request
+      // carrying one switch does not reset the other seven — the same rule the
+      // layout's per-side merge and `reading`'s clamp both follow.
+      const next = readReader({ ...reader(), ...(asReader as Record<string, unknown>) });
+      setSetting(ctx.db, "reader_send", next.send);
+      setSetting(ctx.db, "reader_marks", next.marks ? "1" : "0");
+      setSetting(ctx.db, "reader_timestamps", next.timestamps ? "1" : "0");
+      setSetting(ctx.db, "reader_motion", next.motion);
+      setSetting(ctx.db, "reader_auto_scroll", next.autoScroll ? "1" : "0");
+      setSetting(ctx.db, "reader_drafts", next.drafts ? "1" : "0");
+      setSetting(ctx.db, "reader_click_to_edit", next.clickToEdit ? "1" : "0");
+      setSetting(ctx.db, "reader_media", next.media);
     }
 
     const wanted = body["reading"];

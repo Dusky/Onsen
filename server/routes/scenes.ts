@@ -34,6 +34,7 @@ import {
   updateMessage,
   updateScene,
   excerptOfMessage,
+  saveDraft,
   type MessageRow,
   type SceneRow,
 } from "../db/queries/history.ts";
@@ -86,6 +87,15 @@ import { badRequest, notFound } from "../lib/routes.ts";
 
 const MAX_TITLE = 200;
 const MAX_CHECKPOINT_NAME = 120;
+/**
+ * How long an unsent turn may be (§20 phase 166).
+ *
+ * Generous — this is prose somebody is writing, and a composer that silently
+ * stops remembering at two thousand characters is worse than one that never
+ * remembered. Capped all the same: it arrives on every keystroke's debounce
+ * and there is no reason for the column to hold a megabyte.
+ */
+const MAX_DRAFT = 100_000;
 
 /** A file's extension, or a safe default for images whose name has none. */
 function extensionOfName(name: string): string {
@@ -1093,6 +1103,35 @@ export function sceneRoutes(
       ),
     );
     return c.json(dtos);
+  });
+
+  /**
+   * The unsent turn (§20 phase 166).
+   *
+   * Its own route rather than a field on `PATCH /:sceneId`, because it arrives
+   * on a debounce while somebody types and the patch route returns the whole
+   * history — the client would refetch the log every second or two to learn
+   * nothing it did not already know. This returns no body at all.
+   *
+   * Truncated rather than refused. A draft is the reader's own words arriving
+   * by accident of length; rejecting the request would mean the composer
+   * quietly stopped saving with nothing to say so, and the first they would
+   * hear of it is an empty composer.
+   */
+  app.put("/:sceneId/draft", async (c) => {
+    const sceneRow = scene(c.req.param("sceneId"));
+    if (sceneRow === null) return c.json(notFound("scene"), 404);
+
+    const body = await readJson(c);
+    if (body === BAD_JSON) return c.json(badRequest("Expected a JSON body."), 400);
+    const input = asObject(body);
+    if (input === null) return c.json(badRequest("Expected a JSON object."), 400);
+
+    const text = (input as { text?: unknown }).text;
+    if (typeof text !== "string") return c.json(badRequest("text is required."), 400);
+
+    saveDraft(ctx.db, sceneRow.id, text.slice(0, MAX_DRAFT));
+    return c.body(null, 204);
   });
 
   /**

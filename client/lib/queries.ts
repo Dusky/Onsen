@@ -1,8 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api.ts";
 import type { UpdateStatusDto } from "@shared/types.ts";
-import type { LayoutDto, ReadingDto, SceneFilterQuery, SceneListDto } from "@shared/types.ts";
-import { LAYOUT_PRESETS, READING_DEFAULTS } from "@shared/types.ts";
+import type {
+  LayoutDto,
+  ReaderDto,
+  ReadingDto,
+  SceneFilterQuery,
+  SceneListDto,
+} from "@shared/types.ts";
+import { LAYOUT_PRESETS, READER_DEFAULTS, READING_DEFAULTS } from "@shared/types.ts";
 import type {
   AppendMessageRequest,
   AuthorDto,
@@ -2418,6 +2424,8 @@ export interface PreferencesDto {
   layout: LayoutDto;
   /** The reading surface, which the reader sets (§20 phase 55). */
   reading: ReadingDto;
+  /** The reader's own controls — discrete behaviours (§20 phase 166). */
+  reader: ReaderDto;
   completionChime: boolean;
 }
 
@@ -2453,10 +2461,52 @@ export function useReading(): ReadingDto {
   return usePreferences().data?.reading ?? READING_DEFAULTS;
 }
 
+/**
+ * Keeping an unsent turn (§20 phase 166).
+ *
+ * Deliberately **not** a `useMutation`, and deliberately invalidating nothing.
+ * It fires on a debounce while somebody is typing; a mutation would put every
+ * keystroke's state through the component tree, and an invalidation would
+ * refetch the log to learn a fact the composer already holds. The draft comes
+ * back with the scene on the next open, which is the only time it is read.
+ *
+ * Failures are swallowed on purpose. A draft that did not reach the server is
+ * a draft that will be saved by the next keystroke; an error banner for it
+ * would be the app interrupting the writing to report on the writing.
+ */
+export function saveDraft(sceneId: string, text: string): void {
+  void api.put(`/scenes/${sceneId}/draft`, { text }).catch(() => undefined);
+}
+
+/**
+ * The reader's controls, with the shipped defaults standing in until
+ * preferences arrive — the same reasoning `useLayout` and `useReading` give.
+ * Every consumer of this reads it on the first frame.
+ */
+export function useReader(): ReaderDto {
+  return usePreferences().data?.reader ?? READER_DEFAULTS;
+}
+
+/**
+ * What a preferences PATCH may carry.
+ *
+ * Partial one level deeper than `Partial<PreferencesDto>`, because the server
+ * merges each group onto what is stored — "start from Quiet but keep the
+ * readouts" is one request, and so is "just change what Return does". The
+ * layout's callers used to reach this with `as never`; naming the shape is the
+ * same thing said once instead of at each site.
+ */
+export interface PreferencesPatch {
+  layout?: Partial<Omit<LayoutDto, "preset">> & { preset?: LayoutDto["preset"] };
+  reading?: Partial<ReadingDto>;
+  reader?: Partial<ReaderDto>;
+  completionChime?: boolean;
+}
+
 export function useSetPreferences() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (body: Partial<PreferencesDto>) =>
+    mutationFn: (body: PreferencesPatch) =>
       api.patch<PreferencesDto>("/system/preferences", body),
     onSuccess: () => void client.invalidateQueries({ queryKey: ["preferences"] }),
   });

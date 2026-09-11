@@ -14,7 +14,7 @@ import type {
 } from "@shared/types.ts";
 import { PROVIDER_KINDS, INJECTION_ROLES, MIN_PASSWORD_LENGTH, type MoveDirection, type ProviderKind } from "@shared/types.ts";
 import { LAYOUT_PRESETS, READING_BOUNDS, READING_DEFAULTS } from "@shared/types.ts";
-import type { ReadingDto } from "@shared/types.ts";
+import type { ReaderDto, ReadingDto } from "@shared/types.ts";
 import type { LayoutDto, LayoutPreset } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { navigate } from "../lib/router.ts";
@@ -49,6 +49,7 @@ import {
   useWebhooks,
   useScenes,
   usePreferences,
+  useReader,
   useReading,
   useSetPreferences,
   useApiKeys,
@@ -878,6 +879,54 @@ function UpdateGroup() {
  * group with one thing in it rather than the group drawn with nothing behind it.
  */
 /**
+ * A labelled row of mutually exclusive choices.
+ *
+ * Lifted out of `LayoutSection`, which declared it inline, when the reader
+ * controls became its second caller (§20 phase 166): a component redeclared on
+ * every render of its parent is a new type every render, so React unmounts and
+ * remounts the whole row rather than updating it — and two copies of it would
+ * be two things to keep looking the same.
+ */
+function Segmented<T extends string>({
+  label,
+  value,
+  options,
+  onPick,
+  hint,
+}: {
+  label: string;
+  value: T;
+  options: { value: T; label: string }[];
+  onPick(next: T): void;
+  hint?: string;
+}) {
+  return (
+    <div className="mb-[14px]">
+      {/* An empty label is a deliberate second row under one heading (the
+          per-side avatar switch), not a missing string — and an empty
+          heading with a margin is just a gap. */}
+      {label === "" ? null : <p className="section-label mb-[6px]">{label}</p>}
+      {/* Wraps, because three and four-way rows exist now and a squeezed
+          button is a button under the tap floor. */}
+      <div className="flex flex-wrap gap-[6px]">
+        {options.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            aria-pressed={option.value === value}
+            onClick={() => onPick(option.value)}
+            className={`btn flex-1 basis-[110px] ${option.value === value ? "btn-primary" : ""}`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      {hint === undefined ? null : <p className="explain mt-[6px]">{hint}</p>}
+    </div>
+  );
+}
+
+/**
  * The chat layout (SPEC §16, §20 phase 52).
  *
  * Three named starting points and the four switches under them, in that order:
@@ -895,44 +944,7 @@ function LayoutSection() {
   const layout = preferences.data?.layout ?? { preset: "instrument", ...LAYOUT_PRESETS.instrument };
 
   function set(patch: Partial<Omit<LayoutDto, "preset">> | { preset: LayoutPreset }) {
-    save.mutate({ layout: patch } as never);
-  }
-
-  function Segmented<T extends string>({
-    label,
-    value,
-    options,
-    onPick,
-    hint,
-  }: {
-    label: string;
-    value: T;
-    options: { value: T; label: string }[];
-    onPick(next: T): void;
-    hint?: string;
-  }) {
-    return (
-      <div className="mb-[14px]">
-        {/* An empty label is a deliberate second row under one heading (the
-            per-side avatar switch), not a missing string — and an empty
-            heading with a margin is just a gap. */}
-        {label === "" ? null : <p className="section-label mb-[6px]">{label}</p>}
-        <div className="flex gap-[6px]">
-          {options.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              aria-pressed={option.value === value}
-              onClick={() => onPick(option.value)}
-              className={`btn flex-1 ${option.value === value ? "btn-primary" : ""}`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-        {hint === undefined ? null : <p className="explain mt-[6px]">{hint}</p>}
-      </div>
-    );
+    save.mutate({ layout: patch });
   }
 
   return (
@@ -1119,6 +1131,101 @@ function ReadingControls() {
   );
 }
 
+/**
+ * The controls that belong to the person reading and writing (§20 phase 166).
+ *
+ * Beside the reading surface rather than inside it: that is four numbers with
+ * bounds, published as custom properties; these are discrete behaviours, and
+ * the two would have had to mean the same thing to share a type.
+ *
+ * Every one of them is something the app decided for the reader until now, and
+ * every default is what it already did — so nothing here changes behaviour
+ * until it is touched. `docs/design/DESIGN.md` says a turn has "no avatar, no
+ * timestamp, no shadow", which is why timestamps are an opt-in rather than a
+ * correction.
+ */
+function ReaderControls() {
+  const reader = useReader();
+  const save = useSetPreferences();
+  const set = (patch: Partial<ReaderDto>) => save.mutate({ reader: patch });
+  const onOff = [
+    { value: "off" as const, label: strings.lore.off },
+    { value: "on" as const, label: strings.lore.on },
+  ];
+
+  return (
+    <>
+      <p className="section-label mb-[6px]">{strings.settings.reader}</p>
+
+      <Segmented
+        label={strings.settings.readerSend}
+        value={reader.send}
+        options={[
+          { value: "enter", label: strings.settings.readerSendEnter },
+          { value: "modEnter", label: strings.settings.readerSendMod },
+          { value: "button", label: strings.settings.readerSendButton },
+        ]}
+        onPick={(send) => set({ send })}
+      />
+
+      <Segmented
+        label={strings.settings.readerMarks}
+        value={reader.marks ? "on" : "off"}
+        options={onOff}
+        onPick={(next) => set({ marks: next === "on" })}
+      />
+
+      <Segmented
+        label={strings.settings.readerTimestamps}
+        value={reader.timestamps ? "on" : "off"}
+        options={onOff}
+        onPick={(next) => set({ timestamps: next === "on" })}
+      />
+
+      <Segmented
+        label={strings.settings.readerAutoScroll}
+        value={reader.autoScroll ? "on" : "off"}
+        options={onOff}
+        onPick={(next) => set({ autoScroll: next === "on" })}
+      />
+
+      <Segmented
+        label={strings.settings.readerClickToEdit}
+        value={reader.clickToEdit ? "on" : "off"}
+        options={onOff}
+        onPick={(next) => set({ clickToEdit: next === "on" })}
+      />
+
+      <Segmented
+        label={strings.settings.readerDrafts}
+        value={reader.drafts ? "on" : "off"}
+        options={onOff}
+        onPick={(next) => set({ drafts: next === "on" })}
+      />
+
+      <Segmented
+        label={strings.settings.readerMedia}
+        value={reader.media}
+        options={[
+          { value: "list", label: strings.settings.readerMediaList },
+          { value: "grid", label: strings.settings.readerMediaGrid },
+        ]}
+        onPick={(media) => set({ media })}
+      />
+
+      <Segmented
+        label={strings.settings.readerMotion}
+        value={reader.motion}
+        options={[
+          { value: "system", label: strings.settings.readerMotionSystem },
+          { value: "reduced", label: strings.settings.readerMotionReduced },
+        ]}
+        onPick={(motion) => set({ motion })}
+      />
+    </>
+  );
+}
+
 function ReadingSection() {
   const preferences = usePreferences();
   const save = useSetPreferences();
@@ -1133,6 +1240,8 @@ function ReadingSection() {
       <ReadingControls />
 
       <LayoutSection />
+
+      <ReaderControls />
 
       <p className="section-label mb-[6px]">{strings.settings.chime}</p>
       <div className="flex gap-[6px]">

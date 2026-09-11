@@ -1,0 +1,21 @@
+-- An unsent turn, kept with the roleplay it was written for (§20 phase 166).
+--
+-- On the scene rather than in the settings table, for two reasons. It is
+-- per-roleplay state, not a preference, and a key-per-scene in a key/value
+-- table would outlive every scene it named — deleting a roleplay would leave
+-- its draft behind forever with nothing to notice. A column gets the cascade
+-- for free.
+--
+-- The reason it is on the server at all: `client/App.tsx` states outright that
+-- there is no browser storage in this app, and a draft that existed in one
+-- browser and not the other would be worse than no draft restore — the phone
+-- and the desktop are two views of one install (SPEC §5).
+--
+-- Not null with an empty default, so "no draft" and "an empty draft" are the
+-- same state and no reader has to check for both.
+--
+-- Written only while the reader has the setting on. Keeping every composer
+-- keystroke for a feature somebody turned off would be storing prose nobody
+-- asked to have stored, which is the wrong side of a default to be generous
+-- on.
+ALTER TABLE scenes ADD COLUMN draft TEXT NOT NULL DEFAULT '';

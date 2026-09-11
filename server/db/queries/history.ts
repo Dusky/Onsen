@@ -99,6 +99,8 @@ export interface SceneRow {
   auto_background_prompt: string | null;
   /** This scene's own framing, in place of the card's (SPEC §2). */
   scenario_override: string | null;
+  /** An unsent turn, kept with the roleplay (§20 phase 166). '' is none. */
+  draft: string;
   /** Rolling summarisation, all of §11's knobs, per scene. */
   summarise: number;
   summarise_every_messages: number;
@@ -327,6 +329,7 @@ function toSceneDto(
     autoBackgroundMinMessages: row.auto_background_min_messages,
     autoBackgroundPrompt: row.auto_background_prompt,
     scenarioOverride: row.scenario_override,
+    draft: row.draft,
     summarise: row.summarise === 1,
     summariseEveryMessages: row.summarise_every_messages,
     summariseEveryWords: row.summarise_every_words,
@@ -559,6 +562,19 @@ export function sceneTags(db: Database): string[] {
     .query("SELECT DISTINCT json_each.value AS tag FROM scenes, json_each(scenes.tags) ORDER BY tag")
     .all() as { tag: string }[];
   return rows.map((row) => row.tag);
+}
+
+/**
+ * The unsent turn (§20 phase 166).
+ *
+ * Its own statement rather than a field on `updateScene`, for one reason worth
+ * stating: it deliberately does **not** touch `updated_at`. A keystroke in the
+ * composer is not activity in the roleplay, and routing this through the
+ * general patch would have every half-typed sentence reorder the roleplay list
+ * — the newest-first list would follow the cursor instead of the story.
+ */
+export function saveDraft(db: Database, id: number, text: string): void {
+  db.query("UPDATE scenes SET draft = $draft WHERE id = $id").run({ id, draft: text });
 }
 
 export function updateScene(
