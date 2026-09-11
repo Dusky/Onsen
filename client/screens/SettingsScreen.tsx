@@ -56,6 +56,7 @@ import {
 } from "../lib/queries.ts";
 import { useIsDesktop } from "../lib/breakpoint.ts";
 import { Sheet } from "../components/Sheet.tsx";
+import { Scroller } from "../components/Scroller.tsx";
 import { PresetEditor, PresetFields } from "../components/PresetEditor.tsx";
 import { ScriptEditor } from "../components/ScriptEditor.tsx";
 import { TriggerEditor } from "../components/TriggerEditor.tsx";
@@ -1761,7 +1762,12 @@ export function SettingsScreen() {
           aria-label={strings.settings.filterSettings}
           className="field"
         />
-        <div className="-mx-[4px] flex gap-[3px] overflow-x-auto">
+        {/* Ten categories in 390px: four fit and six sat off the right edge
+            with nothing saying so, which on a phone made Automation and
+            Connections out unreachable for a reader who did not guess to
+            swipe. `Scroller` fades whichever edge still has something past
+            it. */}
+        <Scroller className="-mx-[4px] flex gap-[3px]" watch={matching.length}>
           {matching.map((entry) => (
             <button
               key={entry.id}
@@ -1782,7 +1788,7 @@ export function SettingsScreen() {
               {strings.settings.categories[entry.id] ?? entry.id}
             </button>
           ))}
-        </div>
+        </Scroller>
       </div>
 
       <div className="flex min-h-0 flex-1">

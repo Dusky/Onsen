@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { strings } from "../strings.ts";
 import { GROUP_ORDER, matchCommands, type Command, type CommandGroup } from "../lib/commands.ts";
+import { useModalFocus } from "../lib/modal.ts";
 
 /**
  * Every command, two keystrokes away (SPEC §20 phase 43).
@@ -31,6 +32,13 @@ export function CommandPalette({
   const [query, setQuery] = useState(initialQuery);
   const [at, setAt] = useState(0);
   const listRef = useRef<HTMLDivElement | null>(null);
+  const dialog = useRef<HTMLDivElement | null>(null);
+
+  // The same modal keyboard contract `Sheet` gets. Before this the palette's
+  // Escape was on the search input, and Tab walked out of the palette into the
+  // log behind it — every command row is a real button, so there was a long
+  // way to walk.
+  useModalFocus(dialog, onClose);
 
   const matches = useMemo(
     () => matchCommands(query, { hasScene, hasTurn: selectedSpeaker !== null }),
@@ -65,11 +73,35 @@ export function CommandPalette({
       onClick={onClose}
     >
       <div
+        ref={dialog}
         role="dialog"
+        aria-modal="true"
         aria-label={strings.chat.paletteOpen}
+        // Focusable only by script, so the palette can hold focus itself —
+        // and so the arrow keys below work wherever focus is inside it.
+        tabIndex={-1}
         className="flex max-h-[70vh] w-full max-w-[620px] flex-col border"
         style={{ background: "var(--onsen-color-bg-raised)", borderColor: "var(--onsen-color-rule-strong)" }}
         onClick={(event) => event.stopPropagation()}
+        // On the dialog rather than the search box (which is where all of this
+        // used to be): Tab moves focus to a command row, and the arrows have
+        // to keep working when it does.
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            setAt((n) => Math.min(matches.length - 1, n + 1));
+          } else if (event.key === "ArrowUp") {
+            event.preventDefault();
+            setAt((n) => Math.max(0, n - 1));
+          } else if (event.key === "Enter") {
+            // A focused command row runs itself on Enter; anywhere else in the
+            // palette, Enter runs whatever the cursor is on.
+            if (event.target instanceof HTMLButtonElement) return;
+            event.preventDefault();
+            const command = matches[at];
+            if (command !== undefined) run(command);
+          }
+        }}
       >
         <div className="hairline flex flex-none items-center gap-[11px] px-[16px] py-[13px]">
           <span className="chrome text-[13px] text-ink-dim">&rsaquo;</span>
@@ -79,23 +111,11 @@ export function CommandPalette({
             onChange={(event) => setQuery(event.target.value)}
             placeholder={strings.chat.palettePlaceholder}
             aria-label={strings.chat.palettePlaceholder}
-            className="chrome min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-ink-dim"
-            onKeyDown={(event) => {
-              if (event.key === "ArrowDown") {
-                event.preventDefault();
-                setAt((n) => Math.min(matches.length - 1, n + 1));
-              } else if (event.key === "ArrowUp") {
-                event.preventDefault();
-                setAt((n) => Math.max(0, n - 1));
-              } else if (event.key === "Enter") {
-                event.preventDefault();
-                const command = matches[at];
-                if (command !== undefined) run(command);
-              } else if (event.key === "Escape") {
-                event.preventDefault();
-                onClose();
-              }
-            }}
+            // The suppressed outline is gone: this box was the app's only
+            // override of the global `:focus-visible` ring, and it replaced it
+            // with nothing. The field now says where typing goes the same way
+            // every other field in the app does.
+            className="chrome min-w-0 flex-1 bg-transparent text-[14px] text-ink placeholder:text-ink-dim"
           />
           {/* What the turn commands will act on. Without this the palette is
               ambiguous the moment more than one turn is on screen. Blue,
