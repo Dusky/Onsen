@@ -1074,7 +1074,7 @@ function ulidOf(db: Database, table: "presets" | "connection_profiles" | "messag
 function castOf(db: Database, sceneId: number): SceneMemberDto[] {
   const rows = db
     .query(
-      `SELECT c.ulid, c.name, c.avatar_path, m.display_order, m.is_active, m.is_muted
+      `SELECT c.ulid, c.name, c.avatar_path, c.colour, m.display_order, m.is_active, m.is_muted
          FROM scene_members m JOIN characters c ON c.id = m.character_id
         WHERE m.scene_id = $scene_id
         ORDER BY m.display_order, m.id`,
@@ -1083,6 +1083,7 @@ function castOf(db: Database, sceneId: number): SceneMemberDto[] {
     ulid: string;
     name: string;
     avatar_path: string | null;
+    colour: string | null;
     display_order: number;
     is_active: number;
     is_muted: number;
@@ -1091,6 +1092,7 @@ function castOf(db: Database, sceneId: number): SceneMemberDto[] {
     characterId: row.ulid,
     name: row.name,
     hasAvatar: row.avatar_path !== null,
+    colour: row.colour,
     displayOrder: row.display_order,
     isActive: row.is_active === 1,
     isMuted: row.is_muted === 1,

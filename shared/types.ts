@@ -825,6 +825,19 @@ export interface TriggerOutcomeDto {
  * scripts and event triggers — and the quick-reply names below are kept as
  * aliases so the phase-65 call sites read as they did.
  */
+/**
+ * A colour a person picked, as this app is willing to store one.
+ *
+ * Six hex digits and nothing else — the same shape `isSafeToken` allows a
+ * theme value, and for the same reason: it is interpolated into a `style`
+ * attribute and written into an exported card's `extensions`. React escaping
+ * is a reason the *page* is safe, not a reason to let anything into the
+ * database. Shared so the editor refuses what the column would refuse.
+ */
+export function isCardColour(value: unknown): value is string {
+  return typeof value === "string" && /^#[0-9a-f]{6}$/.test(value);
+}
+
 export const MOVE_DIRECTIONS = ["up", "down"] as const;
 export type MoveDirection = (typeof MOVE_DIRECTIONS)[number];
 
@@ -2559,6 +2572,16 @@ export interface CharacterDto {
   format: CardFormat;
   /** A loose grouping label, not a tree (SPEC §9). Null means unsorted. */
   folder: string | null;
+  /**
+   * A colour for this character's name and the spine of their turns (§162).
+   *
+   * `#rrggbb` or null, and null is what every card has until somebody picks
+   * one. It belongs to the card rather than to a scene, because the same
+   * person should look the same in every roleplay they are in. It never
+   * colours prose: body text is held to a contrast floor the palette
+   * guarantees and a picked colour does not.
+   */
+  colour: string | null;
   /** The character's primary bound lorebook, if one is attached (§139). */
   lorebook: { id: string; name: string } | null;
   /** The card this one was derived from, where it is a variant. */
@@ -2597,6 +2620,8 @@ export interface UpdateCharacterRequest {
   creator?: string | null;
   characterVersion?: string | null;
   folder?: string | null;
+  /** `#rrggbb`, or null to go back to the ink colour (§162). */
+  colour?: string | null;
   /** §20 phase 61. Null clears the lock; the roleplay follows the default again. */
   personaId?: string | null;
   /** The preset this character answers with (§20 phase 140). Null = default. */
@@ -2856,6 +2881,12 @@ export interface SceneMemberDto {
   characterId: string;
   name: string;
   hasAvatar: boolean;
+  /**
+   * The card's colour, carried here so the log can tell five grey columns
+   * apart without a request per speaker (§162). Null is every card until
+   * somebody picks one.
+   */
+  colour: string | null;
   displayOrder: number;
   /**
    * Benched: out of the prompt entirely (§20 phase 62).

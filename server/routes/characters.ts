@@ -61,6 +61,7 @@ import type {
   PromptRoleName,
   UpdateCharacterRequest,
 } from "../../shared/types.ts";
+import { isCardColour } from "../../shared/types.ts";
 import { badRequest, notFound } from "../lib/routes.ts";
 
 /**
@@ -350,6 +351,12 @@ export function characterRoutes(ctx: AppContext, tasks: TaskRunner, media: Media
     }
     if ("depthPromptRole" in patch && !ROLES.includes(patch.depthPromptRole as PromptRoleName)) {
       return c.json(badRequest("Unknown depth prompt role."), 400);
+    }
+    // Refused rather than coerced (§162). The column has a `CHECK` that would
+    // catch it too, but a constraint violation is a 500 and a stack trace
+    // where a person typed something into a field.
+    if ("colour" in patch && patch.colour !== null && !isCardColour(patch.colour)) {
+      return c.json(badRequest("A colour is six hex digits, like #8fb2d6."), 400);
     }
     if (
       "depthPromptDepth" in patch &&

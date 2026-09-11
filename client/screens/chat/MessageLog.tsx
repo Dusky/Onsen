@@ -37,6 +37,7 @@ export function MessageLog({
   onSaveEdit,
   authorName,
   layout,
+  colours,
   personaId,
   onReroll,
   onOpenVersions,
@@ -73,6 +74,8 @@ export function MessageLog({
   onCancelEdit(): void;
   onSaveEdit(messageId: string, content: string): void;
   authorName: string | null;
+  /** Character id → `#rrggbb`, for the ones that have picked one (§162). */
+  colours: Map<string, string>;
   layout: LayoutDto;
   personaId: string | null;
   onReroll(message: MessageDto): void;
@@ -123,6 +126,10 @@ export function MessageLog({
         // nothing — and the gutter's whole job is to be the number you quote.
         ordinal={historyTotal - logMessages.length + index + 1}
         speakerName={speakerFor(message, authorName)}
+        speakerColour={
+          message.characterId === null ? null : (colours.get(message.characterId) ?? null)
+        }
+        segmentColours={colours}
         attribution={layout.attribution}
         style={message.authorType === "user" ? layout.reader : layout.author}
         avatarShape={layout.avatarShape}

@@ -27,6 +27,17 @@ interface MessageBlockProps {
   ordinal?: number;
   speakerName: string;
   /**
+   * The speaker's own colour, or null (§20 phase 162).
+   *
+   * It marks the name and the turn's spine — *not* the prose. Body text sits
+   * at an ink colour the palette holds to a contrast floor, and a colour
+   * somebody picked has no such guarantee; the editor warns them about the
+   * name, and the reading surface is not the place to find out.
+   */
+  speakerColour?: string | null;
+  /** The whole cast's colours, for a beat, whose parts name themselves. */
+  segmentColours?: Map<string, string>;
+  /**
    * Where the name sits (§20 phase 52). `stacked` puts it on its own row above
    * the prose; Broadsheet's `inline` sets it as the opening of the paragraph,
    * with the director's reason beside it, so the log reads as a printed page
@@ -235,11 +246,18 @@ function Prose({ text }: { text: string }) {
 function Segment({
   segment,
   replacement,
+  colours,
 }: {
   segment: MessageSegmentDto;
   /** Live text for this part while it is being rewritten. */
   replacement?: string;
+  /** Character id → colour, so a beat's parts are told apart too (§162). */
+  colours?: Map<string, string>;
 }) {
+  // A beat's parts are its attribution — the message header says only that the
+  // author wrote it — so this is the same field a spotlight turn colours.
+  const colour =
+    segment.characterId === null ? undefined : colours?.get(segment.characterId);
   return (
     <div
       // Amber is the live pencil: the part being rewritten is the only thing
@@ -251,7 +269,10 @@ function Segment({
       }
     >
       {segment.speakerName === null ? null : (
-        <p className="chrome mb-[5px] text-[12.5px] text-ink-label">
+        <p
+          className="chrome mb-[5px] text-[12.5px] text-ink-label"
+          style={colour === undefined ? undefined : { color: colour }}
+        >
           {segment.speakerName}
         </p>
       )}
@@ -580,6 +601,8 @@ export function MessageBlock({
   actions,
   ordinal,
   speakerName,
+  speakerColour = null,
+  segmentColours,
   attribution = "stacked",
   style: turnStyle = { bubble: false, avatar: false },
   avatarShape = "circle",
@@ -610,6 +633,19 @@ export function MessageBlock({
   // rule is three message kinds in one document, so the prose itself is not
   // recoloured by who wrote it.
   const isUser = message.authorType === "user";
+  /*
+   * The spine takes the speaker's colour, unless something louder is true of
+   * the turn right now.
+   *
+   * `data-live` (amber) and the selected state (blue) both mean *this
+   * instant*; identity is a standing fact and loses to both. Setting it as an
+   * inline `borderLeftColor` would win over either stylesheet rule on
+   * specificity alone, so the decision is made here rather than in CSS.
+   */
+  const spine =
+    speakerColour === null || isUser || streamingText !== undefined
+      ? undefined
+      : speakerColour;
 
   return (
     <article
@@ -644,7 +680,9 @@ export function MessageBlock({
               paddingLeft: "18px",
               background: "var(--onsen-color-bg-raised)",
             }
-          : undefined
+          : spine === undefined
+            ? undefined
+            : { borderLeftColor: spine }
       }
     >
       {/* Wraps: on a phone the name, six actions and the stats do not fit on
@@ -664,7 +702,11 @@ export function MessageBlock({
         ) : null}
         <span
           className="chrome shrink-0 text-[13.5px] font-semibold"
-          style={{ color: isUser ? "var(--onsen-color-text-muted)" : "var(--onsen-color-text-label)" }}
+          style={{
+            color:
+              speakerColour ??
+              (isUser ? "var(--onsen-color-text-muted)" : "var(--onsen-color-text-label)"),
+          }}
         >
           {speakerName}
         </span>
@@ -742,6 +784,7 @@ export function MessageBlock({
             <div key={segment.ordinal} className="mt-[16px] first:mt-0">
               <Segment
                 segment={segment}
+                {...(segmentColours === undefined ? {} : { colours: segmentColours })}
                 {...(recasting?.ordinal === segment.ordinal
                   ? { replacement: recasting.text }
                   : {})}

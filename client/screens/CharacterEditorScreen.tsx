@@ -1,6 +1,7 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { CharacterDto, RegexScriptDto, UpdateCharacterRequest } from "@shared/types.ts";
 import { strings } from "../strings.ts";
+import { AA_CONTRAST, contrastRatio, isHex6, ratioLabel } from "@shared/contrast.ts";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { navigate } from "../lib/router.ts";
 import {
@@ -133,6 +134,71 @@ function GreetingList({
       <button type="button" className="btn w-full" onClick={() => onChange([...items, ""])}>
         {strings.characters.addGreeting}
       </button>
+    </>
+  );
+}
+
+/**
+ * The character's colour, with the contrast measured as it is picked.
+ *
+ * The warning is the reason this is a component rather than an `<input
+ * type="color">` on its own. A colour picked against a dark theme can be
+ * unreadable on a light one and the reader has no way to know until they
+ * switch, so the ratio is measured against the ground the app is actually
+ * painted on right now — read off the live computed styles rather than a
+ * token table, so a custom theme is measured too.
+ *
+ * It warns rather than refuses. The floor is the app's promise about its own
+ * ink (`test/surfaces.test.ts`); this is somebody's character, and "hard to
+ * read" is their decision to make with the number in front of them.
+ */
+function ColourField({
+  value,
+  onCommit,
+}: {
+  value: string | null;
+  onCommit(colour: string | null): void;
+}) {
+  const ground = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    const painted = getComputedStyle(document.documentElement)
+      .getPropertyValue("--onsen-color-bg")
+      .trim();
+    return isHex6(painted) ? painted : null;
+  }, [value]);
+
+  const ratio = value !== null && ground !== null ? contrastRatio(value, ground) : null;
+
+  return (
+    <>
+      <p className="section-label mb-[8px]">{strings.characters.colour}</p>
+      <div className="mb-[16px] flex items-center gap-[10px]">
+        <input
+          type="color"
+          aria-label={strings.characters.colour}
+          className="tap h-[44px] w-[64px] flex-none border border-rule bg-bg-input"
+          value={value ?? "#8fb2d6"}
+          onChange={(event) => onCommit(event.target.value.toLowerCase())}
+        />
+        <button
+          type="button"
+          className="btn"
+          disabled={value === null}
+          onClick={() => onCommit(null)}
+        >
+          {strings.characters.colourNone}
+        </button>
+        {value === null ? null : (
+          <span className="chrome text-[12.5px]" style={{ color: value }}>
+            {value}
+          </span>
+        )}
+      </div>
+      {ratio !== null && ratio < AA_CONTRAST ? (
+        <p className="explain explain-alert mb-[16px]">
+          {strings.characters.colourDim(ratioLabel(ratio))}
+        </p>
+      ) : null}
     </>
   );
 }
@@ -277,6 +343,15 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                   </EditorField>
                 </div>
               </div>
+
+              {/* A colour for this character's name and the spine of their
+                  turns (§162). It belongs to the card rather than to a scene:
+                  the same person should look the same in every roleplay they
+                  are in. */}
+              <ColourField
+                value={character.colour}
+                onCommit={(colour) => save({ colour })}
+              />
 
               {/* The persona lock (§2, §20 phase 61): starting a roleplay with
                   this character opens it as this persona instead of the

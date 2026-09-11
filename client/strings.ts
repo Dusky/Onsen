@@ -1223,6 +1223,10 @@ export const strings = {
     greetingFirst: "The first",
     greetingCycle: "Next in turn",
     greetingRandom: "A random one",
+    colour: "Colour",
+    colourNone: "No colour",
+    colourDim: (ratio: string) =>
+      `Hard to read on this theme — ${ratio} against the page, under the 4.5:1 the ink holds.`,
     portraitPrompt: "Portrait prompt",
     /* The bound lorebook (§20 phase 139). */
     lore: "Lorebook",

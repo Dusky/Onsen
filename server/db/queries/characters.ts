@@ -9,6 +9,7 @@ import type {
   CharacterDto,
   PromptRoleName,
 } from "../../../shared/types.ts";
+import { isCardColour } from "../../../shared/types.ts";
 
 /**
  * Character storage (SPEC §2, §9).
@@ -59,6 +60,7 @@ export interface CharacterRow {
   source_filename: string | null;
   source_hash: string | null;
   folder: string | null;
+  colour: string | null;
   parent_character_id: number | null;
   created_at: number;
   updated_at: number;
@@ -155,6 +157,7 @@ export function toCharacterDto(db: Database, row: CharacterRow): CharacterDto {
     characterVersion: row.character_version,
     format: row.raw_card_format,
     folder: row.folder,
+    colour: row.colour,
     parentId: parentUlidOf(db, row.parent_character_id),
     lorebook: primaryBookForCharacter(db, row.id),
     unmodelledFields: unmodelledOf(row),
@@ -184,25 +187,38 @@ export function toNormalisedCard(row: CharacterRow): NormalisedCard {
     depthPrompt: row.depth_prompt,
     depthPromptDepth: row.depth_prompt_depth,
     depthPromptRole: row.depth_prompt_role,
-    extensions: withMentionKeywords(parseObject(row.extensions), parseArray(row.mention_keywords)),
+    extensions: withOnsenFields(parseObject(row.extensions), {
+      mention_keywords: parseArray(row.mention_keywords),
+      colour: row.colour,
+    }),
   };
 }
 
 /**
- * Mention keywords are ours, not a card field — SillyTavern has no home for
- * them. Namespaced under `onsen` on the way out and read back on the way in, so
- * exporting and re-importing a character does not silently drop them. The same
- * trick `server/lore/export.ts` uses for the fields V2 cannot carry.
+ * The fields that are ours rather than the card's — SillyTavern has no home
+ * for them. Namespaced under `extensions.onsen` on the way out and read back
+ * on the way in, so exporting and re-importing a character does not silently
+ * drop them. The same trick `server/lore/export.ts` uses for the fields V2
+ * cannot carry.
+ *
+ * One function for all of them rather than a pair per field: the mention
+ * keywords had their own, the colour would have wanted a second identical one
+ * (§162), and the third would have been the one that forgot to delete an empty
+ * key and left `{"onsen":{}}` in every export.
  */
-const MENTION_EXTENSION = "mention_keywords";
+type OnsenFields = { mention_keywords: string[]; colour: string | null };
 
-function withMentionKeywords(
+function withOnsenFields(
   extensions: Record<string, unknown>,
-  keywords: string[],
+  fields: OnsenFields,
 ): Record<string, unknown> {
   const onsen = { ...asRecord(extensions["onsen"]) };
-  if (keywords.length === 0) delete onsen[MENTION_EXTENSION];
-  else onsen[MENTION_EXTENSION] = keywords;
+  // An empty value is an absent key, not a null: a card is read by other
+  // programs and a null they have never seen is noise.
+  if (fields.mention_keywords.length === 0) delete onsen["mention_keywords"];
+  else onsen["mention_keywords"] = fields.mention_keywords;
+  if (fields.colour === null) delete onsen["colour"];
+  else onsen["colour"] = fields.colour;
   if (Object.keys(onsen).length === 0) {
     const { onsen: _dropped, ...rest } = extensions;
     return rest;
@@ -212,8 +228,21 @@ function withMentionKeywords(
 
 /** Mention keywords carried by an imported card, if it was one of ours. */
 function mentionKeywordsOf(extensions: Record<string, unknown>): string[] {
-  const value = asRecord(extensions["onsen"])[MENTION_EXTENSION];
+  const value = asRecord(extensions["onsen"])["mention_keywords"];
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
+}
+
+/**
+ * A colour carried by an imported card.
+ *
+ * Validated on the way in as strictly as on the way out — this is a value from
+ * a file somebody downloaded, and the column would refuse it anyway. Anything
+ * else is dropped rather than refused: one unreadable field is not a reason to
+ * fail an import that is otherwise fine, which is §18's rule.
+ */
+function colourOf(extensions: Record<string, unknown>): string | null {
+  const value = asRecord(extensions["onsen"])["colour"];
+  return isCardColour(value) ? value : null;
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -247,14 +276,14 @@ export function insertCharacter(db: Database, input: NewCharacter): CharacterRow
          mention_keywords, depth_prompt, depth_prompt_depth, depth_prompt_role,
          system_prompt, post_history_instructions, creator_notes, tags, creator,
          character_version, raw_card, raw_card_format, extensions,
-         source_filename, source_hash, created_at, updated_at
+         source_filename, source_hash, colour, created_at, updated_at
        ) VALUES (
          $ulid, $name, $avatar_path, $description, $personality, $scenario, $first_message,
          $alternate_greetings, $group_greetings, $example_dialogue, $voice_notes,
          $mention_keywords, $depth_prompt, $depth_prompt_depth, $depth_prompt_role,
          $system_prompt, $post_history_instructions, $creator_notes, $tags, $creator,
          $character_version, $raw_card, $raw_card_format, $extensions,
-         $source_filename, $source_hash, $now, $now
+         $source_filename, $source_hash, $colour, $now, $now
        ) RETURNING *`,
     )
     .get({
@@ -270,6 +299,8 @@ export function insertCharacter(db: Database, input: NewCharacter): CharacterRow
       example_dialogue: input.card.exampleDialogue,
       voice_notes: input.voiceNotes ?? null,
       mention_keywords: JSON.stringify(mentionKeywordsOf(input.card.extensions)),
+      // Read back off a card we exported; anything else imports without one.
+      colour: colourOf(input.card.extensions),
       depth_prompt: input.card.depthPrompt,
       depth_prompt_depth: input.card.depthPromptDepth,
       depth_prompt_role: input.card.depthPromptRole,
@@ -328,6 +359,7 @@ const PATCHABLE = {
   creator: "creator",
   characterVersion: "character_version",
   folder: "folder",
+  colour: "colour",
   greetingMode: "greeting_mode",
   imagePrompt: "image_prompt",
 } as const;

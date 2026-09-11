@@ -37,6 +37,92 @@ async function upload(
   return { status: response.status, body: (await response.json()) as ImportCharacterResponse };
 }
 
+/**
+ * A colour on the card (§20 phase 162).
+ *
+ * Five characters in a scene were five identical grey columns, told apart only
+ * by reading the name. The colour belongs to the character rather than to a
+ * scene, so the same person looks the same in every roleplay they are in —
+ * which means it has to survive the export/import round trip the README
+ * promises for every other field.
+ */
+describe("a character's colour", () => {
+  async function json<T>(
+    t: TestHarness,
+    method: string,
+    path: string,
+    payload?: unknown,
+  ): Promise<T> {
+    const response = await t.fetch(path, {
+      method,
+      ...(payload === undefined
+        ? {}
+        : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }),
+    });
+    return (await response.json()) as T;
+  }
+
+  test("saves, and comes back on the DTO", async () => {
+    const t = await signedIn();
+    const { body } = await upload(t, pngCard({ chara: V2_CARD }), "bell.png");
+    expect(body.character.colour).toBeNull();
+
+    const patched = await json<CharacterDto>(t, "PATCH", `/api/characters/${body.character.id}`, {
+      colour: "#8fb2d6",
+    });
+    expect(patched.colour).toBe("#8fb2d6");
+  });
+
+  test("anything that is not six hex digits is refused", async () => {
+    // The column has a `CHECK` that would catch it too, but a constraint
+    // violation is a 500 where somebody typed into a field.
+    const t = await signedIn();
+    const { body } = await upload(t, pngCard({ chara: V2_CARD }), "bell.png");
+    for (const bad of ["red", "#fff", "#GGGGGG", "#8fb2d6; x: y", 12, "rgb(1,2,3)"]) {
+      const response = await t.fetch(`/api/characters/${body.character.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ colour: bad }),
+      });
+      expect({ bad, status: response.status }).toMatchObject({ status: 400 });
+    }
+    // And null is how it is cleared, which is not the same as refusing it.
+    const cleared = await json<CharacterDto>(t, "PATCH", `/api/characters/${body.character.id}`, {
+      colour: null,
+    });
+    expect(cleared.colour).toBeNull();
+  });
+
+  test("survives export and re-import, under `extensions.onsen`", async () => {
+    const t = await signedIn();
+    const { body } = await upload(t, pngCard({ chara: V2_CARD }), "bell.png");
+    await json<CharacterDto>(t, "PATCH", `/api/characters/${body.character.id}`, {
+      colour: "#8fb2d6",
+    });
+
+    const exported = await t.fetch(`/api/characters/${body.character.id}/export?format=json`);
+    const doc = (await exported.json()) as {
+      data: { extensions?: { onsen?: { colour?: string } } };
+    };
+    expect(doc.data.extensions?.onsen?.colour).toBe("#8fb2d6");
+
+    const again = await upload(t, jsonBytes(doc), "bell-again.json");
+    expect(again.body.character.colour).toBe("#8fb2d6");
+  });
+
+  test("a card that carries nonsense in that field imports without one", async () => {
+    // §18: one unreadable field is not a reason to fail an import that is
+    // otherwise fine. The card came off the internet.
+    const t = await signedIn();
+    const hostile = {
+      ...V2_CARD,
+      data: { ...V2_CARD.data, extensions: { onsen: { colour: "red } body { display:none" } } },
+    };
+    const { body } = await upload(t, pngCard({ chara: hostile }), "hostile.png");
+    expect(body.character.colour).toBeNull();
+  });
+});
+
 describe("importing", () => {
   test("accepts a PNG card and reports what it preserved", async () => {
     const t = await signedIn();

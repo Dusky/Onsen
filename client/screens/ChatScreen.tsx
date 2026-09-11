@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { MessageDto } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
@@ -230,6 +230,21 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     (authors.data ?? []).find((candidate) => candidate.id === scene.data?.scene.authorId)?.tokens
       .total ?? null;
   const cast = scene.data?.scene.cast ?? [];
+  /**
+   * Who is which colour, by character (§162). Built here because the cast is
+   * already on the scene payload — a lookup per turn rather than a request per
+   * speaker — and handed down rather than looked up in the log, which is
+   * virtualised and renders the same speaker many times.
+   */
+  const colours = useMemo(
+    () =>
+      new Map(
+        cast
+          .filter((member) => member.colour !== null)
+          .map((member) => [member.characterId, member.colour!] as const),
+      ),
+    [cast],
+  );
   // Versioned per message and read off the active path, so this changes when the
   // reader rewinds — which is why it is read from the scene every time rather
   // than cached anywhere (SPEC §8).
@@ -542,6 +557,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           onSaveEdit={(messageId, content) => edit.mutate({ messageId, content })}
           authorName={authorName}
           layout={layout}
+          colours={colours}
           personaId={scene.data?.scene.personaId ?? null}
           onReroll={(message) => void reroll(message)}
           onOpenVersions={(message) => setVersionsFor(message)}

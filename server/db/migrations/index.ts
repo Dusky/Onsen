@@ -69,6 +69,7 @@ import builtinExtensions from "./0068_builtin_extensions.sql" with { type: "text
 import extensionState from "./0069_extension_state.sql" with { type: "text" };
 import extensionGlobalState from "./0070_extension_global_state.sql" with { type: "text" };
 import selfResponses from "./0071_self_responses.sql" with { type: "text" };
+import characterColour from "./0072_character_colour.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -155,4 +156,5 @@ export const migrations: readonly Migration[] = [
   { version: 69, name: "extension_state", sql: extensionState },
   { version: 70, name: "extension_global_state", sql: extensionGlobalState },
   { version: 71, name: "self_responses", sql: selfResponses },
+  { version: 72, name: "character_colour", sql: characterColour },
 ];
