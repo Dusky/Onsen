@@ -1,6 +1,8 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { spawn } from "node:child_process";
+import { createInterface } from "node:readline";
 import { openDatabase } from "../server/db/index.ts";
 import { migrate } from "../server/db/migrate.ts";
 import { seedBuiltins } from "../server/db/queries/options.ts";
@@ -392,4 +394,35 @@ export async function until(
     if (Date.now() > deadline) throw new Error("timed out waiting for a condition");
     await new Promise((resolve) => setTimeout(resolve, 5));
   }
+}
+
+/**
+ * Serves a local git repo (from `packs.test.ts`/`extensions.test.ts`'s own
+ * `makeRepo`/`repoWith` fixtures) over real smart-HTTP, for `install-url`
+ * tests — that route only accepts http(s) since a fix closing a
+ * `git clone`-argument RCE (the `ext::` transport, and local-path/`file://`
+ * disclosure), so a bare filesystem path no longer reaches it.
+ *
+ * Runs as a genuinely separate process (`git-cgi-server.ts`), not an
+ * in-process server: the route under test calls `git clone` via
+ * `Bun.spawnSync`, which blocks the test's own event loop until the clone
+ * finishes, so a same-process server could never run its handler to answer
+ * the very clone it is blocking on.
+ */
+export async function serveGitRepo(dir: string): Promise<{ url: string; stop(): void }> {
+  const child = spawn("bun", ["run", join(import.meta.dir, "git-cgi-server.ts"), dir], {
+    stdio: ["ignore", "pipe", "inherit"],
+  });
+  const port = await new Promise<string>((resolve, reject) => {
+    const lines = createInterface({ input: child.stdout });
+    lines.on("line", (line) => {
+      const match = /^READY (\d+)$/.exec(line);
+      if (match) {
+        lines.close();
+        resolve(match[1]!);
+      }
+    });
+    child.on("exit", (code) => reject(new Error(`git-cgi-server exited early (${code})`)));
+  });
+  return { url: `http://127.0.0.1:${port}/`, stop: () => child.kill() };
 }

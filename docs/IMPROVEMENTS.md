@@ -1,10 +1,12 @@
 # App improvement plan
 
-**Status:** items 1–7 done (phases 71–78). Item 8 is the conditional set:
-smooth streaming only if it judders, web search after a provider decision, and
-self-responses after a conversation. The redesign (phases 88–99, `REDESIGN.md`)
-superseded the shell work this plan assumed, so nothing here beyond item 8 is
-a live gap.
+**Status:** items 1–7 done (phases 71–78). Self-responses, listed below as
+conditional on a product conversation, in fact had that conversation and
+shipped as phase 155 — this file went unedited across that phase, the same
+way `NEXT.md` and `GAPS.md` did, so treat this doc as closed rather than
+live. What's left of item 8 is: smooth streaming, only if it judders, and web
+search, after a provider decision. The redesign (phases 88–99, `REDESIGN.md`)
+superseded the shell work this plan assumed, so nothing here is a live gap.
 
 Written at phase 71. Ordered by felt improvement per hour of work, which has
 been the thread of every review since phase 65. Each item is its own phase —
@@ -98,5 +100,6 @@ the original language) is almost certainly right.
 - Smooth streaming — only if streaming judders; a render throttle in
   `client/lib/generation.ts`.
 - Web search — needs a provider decision, not an implementation.
-- Self-responses — a conversation under the author model, not code.
+- ~~Self-responses — a conversation under the author model, not code.~~ Done,
+  phase 155 (`scenes.allow_self_responses`, migration 0071).
 - Usage stats, avatar shape/blur/shadow — low priority by their own rows.

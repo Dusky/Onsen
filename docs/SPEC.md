@@ -506,12 +506,19 @@ and §2 omits them only because their phases wrote the columns with the feature:
 - `quick_replies` — §7's saved nudges (phase 65).
 - `app_settings` — the setup-wizard's single row.
 
-**Entities above that are not built yet**, and are here as the target: MemoryEntity
-/ MemoryRelation (§11 narrative memory, phase 38–39),
+**Entities above that are not built yet**, and are here as the target:
 SceneMember `overrides` and `first_seen_message_id` (presence tracking),
 Persona's `lorebook_id` (flagged `[gap]`), Provider's `capabilities` JSON (it is
 computed from the adapter, not stored), and ConnectionProfile's
 `context_template_id`.
+
+(MemoryEntity / MemoryRelation, §11's narrative memory, was in this list until
+phase 157's doc sweep — phases 38–39 built it: migration `0035_narrative_memory.sql`,
+`server/db/queries/memory.ts`, `server/routes/memory.ts`, the
+`memoryBlock` prompt block, and `client/components/NarrativeMemory.tsx`. This
+paragraph named its own target phases as still-pending after they had shipped;
+re-check any other line here against the code before trusting it, the same
+way.)
 
 **Divergences where reality is simpler than the sketch, deliberately:**
 

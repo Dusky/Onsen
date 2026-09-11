@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { completeSetup, createHarness, type TestHarness } from "./helpers.ts";
+import { completeSetup, createHarness, serveGitRepo, type TestHarness } from "./helpers.ts";
 import { loadExtensionModule } from "../server/extensions/loader.ts";
 import { loadInstalledExtensions, installShippedExtensions } from "../server/extensions/install.ts";
 import { postGenerationExtensionTasks, clearExtensionTasks, collectExtensionInjections, dispatchExtensionEvent } from "../server/extensions/registry.ts";
@@ -78,11 +78,12 @@ describe("the extension code API", () => {
       "pack.json": JSON.stringify({ name: "Dice", version: "1.0.0", author: "me", description: "" }),
       "server.ts": SERVER_TS,
     });
+    const served = await serveGitRepo(dir);
     try {
       const response = await t.fetch("/api/packs/install-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: dir }),
+        body: JSON.stringify({ url: served.url }),
       });
       expect(response.status).toBe(201);
 
@@ -93,6 +94,7 @@ describe("the extension code API", () => {
       expect(row?.key).toBe("ext:Dice:roll");
       expect(row?.stage).toBe("post_generation");
     } finally {
+      served.stop();
       rmSync(dir, { recursive: true, force: true });
     }
   });
@@ -103,11 +105,12 @@ describe("the extension code API", () => {
       "pack.json": JSON.stringify({ name: "Dice", version: "1.0.0", author: "me", description: "" }),
       "server.ts": SERVER_TS,
     });
+    const served = await serveGitRepo(dir);
     try {
       const installed = await t.fetch("/api/packs/install-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: dir }),
+        body: JSON.stringify({ url: served.url }),
       });
       expect(installed.status).toBe(201);
       const packId = (await installed.json()).packId as string;
@@ -129,6 +132,7 @@ describe("the extension code API", () => {
       // The code directory is gone.
       expect(existsSync(codeDir)).toBe(false);
     } finally {
+      served.stop();
       rmSync(dir, { recursive: true, force: true });
     }
   });
@@ -169,11 +173,12 @@ describe("extension management", () => {
       "pack.json": JSON.stringify(TONE_PACK),
       "server.ts": SETTINGS_SERVER_TS,
     });
+    const served = await serveGitRepo(dir);
     try {
       const response = await t.fetch("/api/packs/install-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: dir }),
+        body: JSON.stringify({ url: served.url }),
       });
       expect(response.status).toBe(201);
 
@@ -196,6 +201,7 @@ describe("extension management", () => {
       const prompt = (postGenerationExtensionTasks().find((e) => e.task.key === "tone")?.task.prompt) ?? "";
       expect(prompt).toContain("terse");
     } finally {
+      served.stop();
       rmSync(dir, { recursive: true, force: true });
     }
   });
@@ -206,11 +212,12 @@ describe("extension management", () => {
       "pack.json": JSON.stringify(TONE_PACK),
       "server.ts": SETTINGS_SERVER_TS,
     });
+    const served = await serveGitRepo(dir);
     try {
       const installed = await t.fetch("/api/packs/install-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: dir }),
+        body: JSON.stringify({ url: served.url }),
       });
       expect(installed.status).toBe(201);
       const list = await (await t.fetch("/api/extensions")).json() as Array<{ id: string; name: string }>;
@@ -226,6 +233,7 @@ describe("extension management", () => {
       const prompt = (postGenerationExtensionTasks().find((e) => e.task.key === "tone")?.task.prompt) ?? "";
       expect(prompt).toContain("verbose");
     } finally {
+      served.stop();
       rmSync(dir, { recursive: true, force: true });
     }
   });
@@ -236,11 +244,12 @@ describe("extension management", () => {
       "pack.json": JSON.stringify(TONE_PACK),
       "server.ts": SETTINGS_SERVER_TS,
     });
+    const served = await serveGitRepo(dir);
     try {
       const installed = await t.fetch("/api/packs/install-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: dir }),
+        body: JSON.stringify({ url: served.url }),
       });
       expect(installed.status).toBe(201);
       const list = await (await t.fetch("/api/extensions")).json() as Array<{ id: string; name: string }>;
@@ -258,6 +267,7 @@ describe("extension management", () => {
       expect(removed.status).toBe(200);
       expect(t.ctx.db.query("SELECT id FROM extensions WHERE name = 'Tone'").get()).toBeNull();
     } finally {
+      served.stop();
       rmSync(dir, { recursive: true, force: true });
     }
   });
@@ -352,11 +362,12 @@ describe("task gating and prompt injection", () => {
       "pack.json": JSON.stringify({ name: "Notes", version: "1.0.0", author: "me", description: "" }),
       "server.ts": INJECT_SERVER_TS,
     });
+    const served = await serveGitRepo(dir);
     try {
       const installed = await t.fetch("/api/packs/install-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: dir }),
+        body: JSON.stringify({ url: served.url }),
       });
       expect(installed.status).toBe(201);
 
@@ -366,6 +377,7 @@ describe("task gating and prompt injection", () => {
       expect(note?.placement).toEqual({ kind: "depth", depth: 1 });
       expect(note?.role).toBe("system");
     } finally {
+      served.stop();
       rmSync(dir, { recursive: true, force: true });
     }
   });
@@ -470,11 +482,12 @@ describe("extension actions", () => {
       "pack.json": JSON.stringify({ name: "Buttons", version: "1.0.0", author: "me", description: "" }),
       "server.ts": "export function register(ctx) { ctx.action({ key: 'poke', label: 'Poke', prompt: 'do it', apply() {} }); }",
     });
+    const served = await serveGitRepo(dir);
     try {
       const installed = await t.fetch("/api/packs/install-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: dir }),
+        body: JSON.stringify({ url: served.url }),
       });
       expect(installed.status).toBe(201);
 
@@ -483,6 +496,7 @@ describe("extension actions", () => {
       expect(poke?.label).toBe("Poke");
       expect(poke?.description).toBeNull();
     } finally {
+      served.stop();
       rmSync(dir, { recursive: true, force: true });
     }
   });
@@ -518,11 +532,12 @@ describe("chat scope and global scope", () => {
   });
 }`,
     });
+    const served = await serveGitRepo(dir);
     try {
       const installed = await t.fetch("/api/packs/install-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: dir }),
+        body: JSON.stringify({ url: served.url }),
       });
       expect(installed.status).toBe(201);
 
@@ -538,6 +553,7 @@ describe("chat scope and global scope", () => {
         .get() as { value: string };
       expect(row.value).toBe("2");
     } finally {
+      served.stop();
       rmSync(dir, { recursive: true, force: true });
     }
   });
@@ -552,11 +568,12 @@ describe("chat scope and global scope", () => {
   ctx.action({ key: "a", label: "A", prompt: "do it" });
 }`,
     });
+    const served = await serveGitRepo(dir);
     try {
       const installed = await t.fetch("/api/packs/install-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: dir }),
+        body: JSON.stringify({ url: served.url }),
       });
       expect(installed.status).toBe(201);
       expect(postGenerationExtensionTasks().map((entry) => entry.task.key)).toContain("t");
@@ -573,6 +590,7 @@ describe("chat scope and global scope", () => {
       const actions = (await (await t.fetch("/api/extensions/actions")).json()) as Array<{ key: string }>;
       expect(actions.map((entry) => entry.key)).not.toContain("a");
     } finally {
+      served.stop();
       rmSync(dir, { recursive: true, force: true });
     }
   });
@@ -596,11 +614,12 @@ describe("extension lifecycle", () => {
   });
 }`,
     });
+    const served = await serveGitRepo(dir);
     try {
       const installed = await t.fetch("/api/packs/install-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: dir }),
+        body: JSON.stringify({ url: served.url }),
       });
       expect(installed.status).toBe(201);
 
@@ -633,6 +652,7 @@ describe("extension lifecycle", () => {
       await t.fetch(`/api/extensions/${id}`, { method: "DELETE" });
       expect(g("uninstall")).toBe("1");
     } finally {
+      served.stop();
       rmSync(dir, { recursive: true, force: true });
     }
   });
@@ -667,11 +687,12 @@ describe("events and host services", () => {
   });
 }`,
     });
+    const served = await serveGitRepo(dir);
     try {
       const installed = await t.fetch("/api/packs/install-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: dir }),
+        body: JSON.stringify({ url: served.url }),
       });
       expect(installed.status).toBe(201);
 
@@ -688,6 +709,7 @@ describe("events and host services", () => {
       await t.fetch("/api/extensions/actions/show/run", { method: "POST" });
       expect(g("n")).toBe("7");
     } finally {
+      served.stop();
       rmSync(dir, { recursive: true, force: true });
     }
   });

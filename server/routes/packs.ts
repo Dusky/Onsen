@@ -36,6 +36,29 @@ function notFound(what: string) {
 
 const MAX_PACK_BYTES = 200 * 1024 * 1024;
 
+/**
+ * `git clone` treats its source argument as more than a location — the
+ * `ext::` transport runs an arbitrary shell command as part of "cloning",
+ * and `file://` reaches the local disk. Both are reachable through a plain
+ * string here, and installing a pack from a shared link is an explicitly
+ * encouraged workflow, so an attacker only needs a URL for someone to paste,
+ * not a valid pack. Restricting to http(s) (the same rule webhooks already
+ * apply to outbound URLs, `webhooks/sender.ts`'s `urlProblem`) closes that
+ * off without needing to allowlist or parse every safe git transport.
+ */
+function gitUrlProblem(raw: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return "That is not a URL.";
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    return "Only http and https repository URLs are supported.";
+  }
+  return null;
+}
+
 async function archiveOf(c: {
   req: { formData(): Promise<FormData> };
 }): Promise<Uint8Array | string> {
@@ -163,6 +186,8 @@ export function packRoutes(ctx: AppContext): Hono<AppEnv> {
     const body = (await c.req.json().catch(() => null)) as { url?: unknown } | null;
     const url = typeof body?.url === "string" ? body.url.trim() : "";
     if (url === "") return c.json(badRequest("A repository URL is required."), 400);
+    const problem = gitUrlProblem(url);
+    if (problem !== null) return c.json(badRequest(problem), 400);
 
     const dir = mkdtempSync(join(tmpdir(), "onsen-ext-"));
     try {

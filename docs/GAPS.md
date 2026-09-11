@@ -7,6 +7,13 @@ manager, and group controls. That install runs **139 chats, 23 personas, 18
 ordered prompt blocks, 7 group members**, at font scale 0.98 with two side
 panels open.
 
+**Freshness:** the table rows were last swept for drift at phase 157 (one
+row — self-responses — had gone stale by four phases and was corrected then).
+The "Progress" log at the bottom is not kept current past phase 78 and should
+not be read as a changelog of everything since; `PHASES.md` is that record.
+A row not touched in a later sweep can still drift the same way self-responses
+did — re-run its evidence command rather than trusting the table on sight.
+
 ## How to read this
 
 **No row is asserted from a screenshot alone.** Every status was produced by a
@@ -105,7 +112,7 @@ are `have` or `rejected` rather than gaps.
 | Reorder members | **have** | `SceneMemberDto.displayOrder` | — |
 | Bench a member | **have** | phase 62. **The row above was wrong.** `isActive` was *not* benching: `buildPromptContext` built `cast` from every member, so a benched character still appeared under "Also in this scene" — out of rotation and firmly in the prompt, which is a mute. `is_active = 0` now means out of the prompt entirely (`server/generation/context.ts:465`) | — |
 | **Mute** a member | **have** | phase 62; `scene_members.is_muted`, and migration 0046 turns every existing bench into one, because that is what it already was | — |
-| Allow self-responses | **missing** | — | judgement call under the author model |
+| Allow self-responses | **have** (phase 155) | migration 0071 `scenes.allow_self_responses`; a three-way toggle in `client/screens/SceneSetupScreen.tsx`, read in `server/generation/director.ts` | — |
 | Auto mode, n turns | **have** | autopilot + `autopilotMaxTurns` (`shared/types.ts:1056`) | — |
 | Group generation handling | **rejected** | §22: *"Don't add an independent-agent group mode… causes speaker-selection lotteries, characters speaking for each other, and merged personalities."* ST's own "swap/join character cards" is the thing being rejected | — |
 

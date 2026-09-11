@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { zipSync } from "fflate";
-import { completeSetup, createHarness, type TestHarness } from "./helpers.ts";
+import { completeSetup, createHarness, serveGitRepo, type TestHarness } from "./helpers.ts";
 import { V2_CARD, pngCard } from "./card-fixtures.ts";
 import { readManifest, satisfiesHost, PackError } from "../server/packs/manifest.ts";
 import { readPack, safeName } from "../server/packs/archive.ts";
@@ -215,17 +215,34 @@ describe("installing", () => {
       }),
       "lorebooks/ridge.json": LOREBOOK,
     });
+    const served = await serveGitRepo(dir);
     try {
       const response = await t.fetch("/api/packs/install-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: dir }),
+        body: JSON.stringify({ url: served.url }),
       });
       expect(response.status).toBe(201);
       const books = await json<{ name: string }[]>(t, "GET", "/api/lorebooks");
       expect(books.some((book) => book.name === "The ridge")).toBe(true);
     } finally {
+      served.stop();
       rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("a URL that is not http(s) is refused before git ever runs", async () => {
+    // `git clone`'s source argument is more than a location — `ext::` runs a
+    // shell command as part of "cloning," and a bare path or `file://` reaches
+    // the local disk. Both must be rejected the same way a malformed URL is.
+    const t = await signedIn();
+    for (const url of ["ext::sh -c touch /tmp/onsen-pwned", "/etc/passwd", "file:///etc/passwd"]) {
+      const response = await t.fetch("/api/packs/install-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      expect(response.status).toBe(400);
     }
   });
 
