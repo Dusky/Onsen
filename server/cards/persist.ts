@@ -28,52 +28,96 @@ export async function persistCard(
     await Bun.write(join(ctx.config.avatarsDir, avatarPath), imported.avatar.data);
   }
 
-  const row = insertCharacter(ctx.db, {
-    card: imported.card,
-    rawCard: imported.rawCard,
-    format: imported.format,
-    avatarPath,
-    sourceFilename: filename,
-    sourceHash: imported.sourceHash,
-  });
+  /*
+   * One transaction for the character, its sprites and its embedded lorebook
+   * (the server-hardening pass).
+   *
+   * These were three unguarded groups of writes. A malformed
+   * `character_book` throwing partway through — and it is the least trusted
+   * part of a downloaded card — committed a character with half a lorebook
+   * bound to it, which is worse than no import at all: nothing says the rest
+   * is missing, and the same card imported again makes a second character.
+   * This is the shared path for one-off import, folder import and the whole
+   * SillyTavern migration, so it happened in bulk or not at all.
+   *
+   * The blocker was one `await` in the middle, writing a sprite between
+   * `ensurePack` and `addExpression`: a `bun:sqlite` transaction is
+   * synchronous and cannot contain one. `server/packs/install.ts` had already
+   * solved exactly this — queue the files, run one synchronous transaction
+   * over the rows, write the files after. Same shape here.
+   */
+  const files: { path: string; data: Uint8Array }[] = [];
 
-  // CharX bundles carry expression sprites under an `expressions/` tree; import
-  // them into the pack so the VN stage has something to draw (§12). The label
-  // is the filename stem; anything that is not named like a sprite is left for
-  // re-export, not guessed at.
-  let expressionCount = 0;
-  for (const [path, data] of imported.assets) {
-    const match = /(?:^|\/)expressions?\/([a-zA-Z0-9_-]+)\.(?:png|jpe?g|webp|gif)$/i.exec(path);
-    if (match === null) continue;
-    const label = match[1]!.toLowerCase();
-    const pack = ensurePack(ctx.db, row.id, `${row.name} sprites`);
-    const filePath = `${row.id}-${label}-${ulid()}.${path.split(".").at(-1) ?? "png"}`;
-    await Bun.write(join(ctx.config.spritesDir, filePath), data);
-    addExpression(ctx.db, pack.id, label, filePath, 0);
-    expressionCount += 1;
-  }
-
-  // A card's embedded `character_book` becomes a real, bindable lorebook, so
-  // the world info a SillyTavern card carries is actually usable (§20 phase
-  // 139) rather than sitting in `raw_card` unread.
-  let loreCount = 0;
-  const embedded = embeddedCharacterBook(imported.rawCard);
-  if (embedded !== null) {
-    const book = insertLorebook(ctx.db, { name: embedded.name, rawImport: embedded.raw });
-    updateLorebook(ctx.db, book.id, {
-      ...(embedded.scanDepth === null ? {} : { scan_depth: embedded.scanDepth }),
-      ...(embedded.tokenBudget === null ? {} : { token_budget: embedded.tokenBudget }),
-      ...(embedded.recursionDepth === null ? {} : { recursion_depth: embedded.recursionDepth }),
+  const persisted = ctx.db.transaction(() => {
+    const row = insertCharacter(ctx.db, {
+      card: imported.card,
+      rawCard: imported.rawCard,
+      format: imported.format,
+      avatarPath,
+      sourceFilename: filename,
+      sourceHash: imported.sourceHash,
     });
-    for (const entry of embedded.entries) {
-      const entryRow = insertEntry(ctx.db, book.id, String(entry.columns.content ?? ""));
-      updateEntry(ctx.db, entryRow.id, entry.columns);
+
+    // CharX bundles carry expression sprites under an `expressions/` tree;
+    // import them into the pack so the VN stage has something to draw (§12).
+    // The label is the filename stem; anything that is not named like a sprite
+    // is left for re-export, not guessed at.
+    let expressionCount = 0;
+    for (const [path, data] of imported.assets) {
+      const match = /(?:^|\/)expressions?\/([a-zA-Z0-9_-]+)\.(?:png|jpe?g|webp|gif)$/i.exec(path);
+      if (match === null) continue;
+      const label = match[1]!.toLowerCase();
+      const pack = ensurePack(ctx.db, row.id, `${row.name} sprites`);
+      const filePath = `${row.id}-${label}-${ulid()}.${path.split(".").at(-1) ?? "png"}`;
+      files.push({ path: filePath, data });
+      addExpression(ctx.db, pack.id, label, filePath, 0);
+      expressionCount += 1;
     }
-    bind(ctx.db, book.id, "character", row.id);
-    loreCount = embedded.entries.length;
+
+    // A card's embedded `character_book` becomes a real, bindable lorebook, so
+    // the world info a SillyTavern card carries is actually usable (§20 phase
+    // 139) rather than sitting in `raw_card` unread.
+    let loreCount = 0;
+    const embedded = embeddedCharacterBook(imported.rawCard);
+    if (embedded !== null) {
+      const book = insertLorebook(ctx.db, { name: embedded.name, rawImport: embedded.raw });
+      updateLorebook(ctx.db, book.id, {
+        ...(embedded.scanDepth === null ? {} : { scan_depth: embedded.scanDepth }),
+        ...(embedded.tokenBudget === null ? {} : { token_budget: embedded.tokenBudget }),
+        ...(embedded.recursionDepth === null ? {} : { recursion_depth: embedded.recursionDepth }),
+      });
+      for (const entry of embedded.entries) {
+        const entryRow = insertEntry(ctx.db, book.id, String(entry.columns.content ?? ""));
+        updateEntry(ctx.db, entryRow.id, entry.columns);
+      }
+      bind(ctx.db, book.id, "character", row.id);
+      loreCount = embedded.entries.length;
+    }
+
+    return { row, expressionCount, loreCount };
+  })();
+
+  const { row, expressionCount, loreCount } = persisted;
+
+  // Sprites last, and a failed write is a warning rather than a rollback —
+  // `install.ts` settled the same trade: throwing away an imported card over a
+  // missing picture is the wrong way round, and the stage falls back to the
+  // placeholder.
+  const missing: string[] = [];
+  for (const file of files) {
+    try {
+      await Bun.write(join(ctx.config.spritesDir, file.path), file.data);
+    } catch {
+      missing.push(file.path);
+    }
   }
 
   const warnings = [...imported.warnings];
+  if (missing.length > 0) {
+    warnings.push(
+      `${missing.length} expression sprite${missing.length === 1 ? "" : "s"} could not be written.`,
+    );
+  }
   if (loreCount > 0) {
     warnings.push(
       `Imported its embedded lorebook \u2014 ${loreCount} ${loreCount === 1 ? "entry" : "entries"}.`,

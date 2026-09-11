@@ -47,11 +47,20 @@ export function insertBackground(
     .get({ ulid: ulid(), path: input.path, prompt: input.prompt, name: input.prompt, default: isFirst ? 1 : 0, now }) as BackgroundRow;
 }
 
+/**
+ * One statement, the way `setDefaultPreset` does it (`connections.ts`).
+ *
+ * This was "clear the old default, set the new" as two unguarded statements
+ * against a table with a `WHERE is_default = 1` partial unique index: a throw
+ * between them left **zero** rows default, which is a state no caller checks
+ * for and no UI can show. The `CASE` form cannot land halfway.
+ *
+ * The row is re-read rather than returned by `RETURNING`, because this
+ * statement touches every row and would return all of them.
+ */
 export function setDefaultBackground(db: Database, id: number): BackgroundRow {
-  db.query("UPDATE backgrounds SET is_default = 0 WHERE is_default = 1").run();
-  return db
-    .query("UPDATE backgrounds SET is_default = 1 WHERE id = $id RETURNING *")
-    .get({ id }) as BackgroundRow;
+  db.query("UPDATE backgrounds SET is_default = CASE id WHEN $id THEN 1 ELSE 0 END").run({ id });
+  return db.query("SELECT * FROM backgrounds WHERE id = $id").get({ id }) as BackgroundRow;
 }
 
 export function deleteBackground(db: Database, id: number): void {

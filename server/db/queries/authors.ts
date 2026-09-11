@@ -172,19 +172,34 @@ export function updateAuthor(
     params["memory_enabled"] = patch["memoryEnabled"] === true ? 1 : 0;
   }
 
-  // Only one author can be the default, so setting one clears the rest first.
-  if (patch["isDefault"] === true) {
-    db.query("UPDATE authors SET is_default = 0 WHERE is_default = 1").run();
-    assignments.push("is_default = 1");
-  }
+  // Only one author can be the default, so setting one clears the rest.
+  const clearOthers = patch["isDefault"] === true;
+  if (clearOthers) assignments.push("is_default = 1");
 
   if (assignments.length === 0) return findAuthorById(db, id) as AuthorRow;
 
-  return db
-    .query(
-      `UPDATE authors SET ${assignments.join(", ")}, updated_at = $now WHERE id = $id RETURNING *`,
-    )
-    .get(params) as AuthorRow;
+  /*
+   * The clear and the set are one transaction when both happen.
+   *
+   * `authors.is_default` has a `WHERE is_default = 1` partial unique index, so
+   * the two statements are not independent: a throw between them — a patch
+   * that violates a constraint, most plausibly — left **zero** authors default,
+   * a state no caller checks for and no screen can show. `media.ts`'s
+   * `makeDefault` had already settled this shape; the `CASE` rewrite
+   * `setDefaultPreset` uses is not available here, because the set half is a
+   * dynamically assembled patch rather than one column.
+   */
+  const write = () =>
+    db
+      .query(
+        `UPDATE authors SET ${assignments.join(", ")}, updated_at = $now WHERE id = $id RETURNING *`,
+      )
+      .get(params) as AuthorRow;
+  if (!clearOthers) return write();
+  return db.transaction(() => {
+    db.query("UPDATE authors SET is_default = 0 WHERE is_default = 1").run();
+    return write();
+  })();
 }
 
 export function deleteAuthor(db: Database, id: number): void {
@@ -256,18 +271,25 @@ export function updatePersona(
     params["depth"] = typeof value === "number" ? Math.trunc(value) : null;
   }
 
-  if (patch["isDefault"] === true) {
-    db.query("UPDATE personas SET is_default = 0 WHERE is_default = 1").run();
-    assignments.push("is_default = 1");
-  }
+  // One transaction when the clear happens, for the reason `updateAuthor`
+  // above spells out: the partial unique index makes the two statements one
+  // change, and half of it leaves no default at all.
+  const clearOthers = patch["isDefault"] === true;
+  if (clearOthers) assignments.push("is_default = 1");
 
   if (assignments.length === 0) return findPersonaById(db, id) as PersonaRow;
 
-  return db
-    .query(
-      `UPDATE personas SET ${assignments.join(", ")}, updated_at = $now WHERE id = $id RETURNING *`,
-    )
-    .get(params) as PersonaRow;
+  const write = () =>
+    db
+      .query(
+        `UPDATE personas SET ${assignments.join(", ")}, updated_at = $now WHERE id = $id RETURNING *`,
+      )
+      .get(params) as PersonaRow;
+  if (!clearOthers) return write();
+  return db.transaction(() => {
+    db.query("UPDATE personas SET is_default = 0 WHERE is_default = 1").run();
+    return write();
+  })();
 }
 
 export function deletePersona(db: Database, id: number): void {
