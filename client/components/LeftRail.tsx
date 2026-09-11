@@ -10,7 +10,7 @@ import type {
 } from "@shared/types.ts";
 import { MODERN_SAMPLER_DEFAULTS, SAMPLER_BOUNDS, GUIDE_KINDS, samplerProblem } from "@shared/types.ts";
 import { strings } from "../strings.ts";
-import { navigate, useRoute } from "../lib/router.ts";
+import { useRoute } from "../lib/router.ts";
 import {
   useAddBan,
   useAnalyseBans,
@@ -43,12 +43,17 @@ import { useConfirm } from "./ConfirmSheet.tsx";
  * The left icon rail and its section panel (the redesign, phase 89).
  *
  * The mockup's left side is not the config sidebar the workbench built. It is a
- * 46px rail of five icons — Prompt, Preset, Lore, Guides, Settings — and, when
- * one is chosen, a panel beside it carrying that section. Prompt shows the
- * window being assembled (the budget bar, the blocks, the evictions), Preset
- * the samplers, Lore what fired, Guides what is injected. Three of the four are
+ * 54px rail of four icons — Prompt, Preset, Lore, Guides — and, when one is
+ * chosen, a panel beside it carrying that section. Prompt shows the window
+ * being assembled (the budget bar, the blocks, the evictions), Preset the
+ * samplers, Lore what fired, Guides what is injected. Three of the four are
  * scene-scoped, so the rail reads the route to find the scene; outside a
  * roleplay they explain themselves and wait.
+ *
+ * Settings is not a fifth icon here — it is a destination, not a section, and
+ * lives in the header instead (design review fix 4). The collapsed and open
+ * branches share one icon-strip width, 54px, so opening the panel does not
+ * also slide the glyphs sideways (design review fix 3).
  *
  * Desktop only. On a phone these bodies stay where they were — the prompt
  * inspector is still a sheet, the preset editor a screen.
@@ -89,9 +94,12 @@ export function LeftRail() {
 
   if (!leftRailOpen) {
     // Collapsed is a glyph rail, not a dead sliver: each section is one tap
-    // away, and tapping expands onto it (§149).
+    // away, and tapping expands onto it (§149). Same 54px width as the open
+    // branch's icon column, with the same labels under the glyphs — this used
+    // to be a 44px sliver, which slid every glyph 10px sideways the instant
+    // the panel opened (design review fix 3).
     return (
-      <nav className="flex w-[44px] flex-none flex-col items-stretch border-r border-rule bg-bg-sunken py-[8px]">
+      <nav className="flex w-[54px] flex-none flex-col items-stretch border-r border-rule bg-bg-sunken py-[8px]">
         {ICONS.map((icon) => {
           const active = leftSection === icon.id;
           return (
@@ -105,7 +113,7 @@ export function LeftRail() {
                 setLeftSection(icon.id);
                 toggleLeftRail();
               }}
-              className="flex min-h-[40px] items-center justify-center"
+              className="flex min-h-[40px] flex-col items-center justify-center gap-[2px] px-[4px]"
               style={{
                 background: active ? "var(--onsen-color-bg-inset)" : "transparent",
                 boxShadow: active ? "inset 2px 0 0 var(--onsen-color-blue)" : "none",
@@ -117,28 +125,28 @@ export function LeftRail() {
               >
                 {icon.glyph}
               </span>
+              <span
+                className="chrome text-[11px] leading-none"
+                style={{ color: active ? "var(--onsen-color-text)" : "var(--onsen-color-text-dim)" }}
+              >
+                {icon.label}
+              </span>
             </button>
           );
         })}
         <div className="flex-1" />
-        <button
-          type="button"
-          title={strings.leftRail.settings}
-          aria-label={strings.leftRail.settings}
-          onClick={() => navigate({ name: "settings" })}
-          className="flex min-h-[40px] items-center justify-center"
-        >
-          <span className="chrome text-[18px] leading-none text-ink-dim">{"\u22ef"}</span>
-        </button>
       </nav>
     );
   }
 
   return (
     <nav className="flex flex-none border-r border-rule bg-bg-sunken">
-      {/* The icon rail: five glyphs, a label under each, the active one picked
+      {/* The icon rail: four glyphs, a label under each, the active one picked
           out in the interactive blue rather than the warm red the workbench
-          used — the mockup's live state is amber, its interactive is blue. */}
+          used — the mockup's live state is amber, its interactive is blue.
+          Settings used to sit at the foot of this column; it moved to the
+          header (design review fix 4) — it is a destination, not a section,
+          and could never show an active state here. */}
       <div className="flex w-[54px] flex-none flex-col items-stretch border-r border-rule py-[8px]">
         {ICONS.map((icon) => {
           const active = leftSection === icon.id;
@@ -170,17 +178,6 @@ export function LeftRail() {
           );
         })}
         <div className="flex-1" />
-        <button
-          type="button"
-          aria-label={strings.leftRail.settings}
-          onClick={() => navigate({ name: "settings" })}
-          className="flex min-h-[44px] flex-col items-center justify-center gap-[2px] px-[4px]"
-        >
-          <span className="chrome text-[20px] leading-none text-ink-dim">{"\u22ef"}</span>
-          <span className="chrome text-[11px] leading-none text-ink-dim">
-            {strings.leftRail.settings}
-          </span>
-        </button>
       </div>
 
       {/* The section panel. */}

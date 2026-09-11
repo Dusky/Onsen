@@ -42,8 +42,10 @@ export function StatusBar({
   /** Opens the next-turn prompt preview (§20 phase 68). */
   onOpenPrompt?: (() => void) | undefined;
 }) {
-  // The fill takes the memory hue rather than the red pencil: this is a gauge,
-  // and red here would read as an alarm at 8% full.
+  // The fill takes the memory hue rather than red: this is a gauge, and red
+  // here would read as an alarm at 8% full. (Red only reappears past 90%,
+  // where it means what it always means — this is genuinely close to the
+  // limit.)
   const gauge =
     tokens === null || contextSize === null || contextSize <= 0 ? null : (
       <>
@@ -107,7 +109,7 @@ export function StatusBar({
           className="chrome flex min-w-0 items-center gap-[7px] text-left"
         >
           {gauge === null ? (
-            <span className="chrome text-[12.5px]" style={{ color: "var(--onsen-color-red)" }}>
+            <span className="chrome text-[12.5px]" style={{ color: "var(--onsen-color-blue-text)" }}>
               {strings.chat.promptPreview}
             </span>
           ) : (
@@ -144,7 +146,7 @@ export function StatusBar({
       <span
         className="chrome text-[12px]"
         style={{
-          color: generating ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)",
+          color: generating ? "var(--onsen-color-amber)" : "var(--onsen-color-text-dim)",
         }}
       >
         {generating ? strings.chat.barWriting : strings.chat.barIdle}

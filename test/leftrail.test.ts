@@ -6,10 +6,17 @@ import { join } from "node:path";
  * The left icon rail and its section panel (the redesign, §20 phase 89).
  *
  * The mockup's left side is not the config sidebar the workbench built — a
- * recent list plus links. It is a 46px rail of five icons, and a panel beside
+ * recent list plus links. It is a 54px rail of four icons, and a panel beside
  * it carrying the chosen section: Prompt (the window being assembled), Preset
  * (the samplers), Lore (what fired), Guides (what is injected). This pins the
  * shape so the sidebar cannot quietly come back.
+ *
+ * Settings is not a fifth icon: it moved to the header, since it is a
+ * destination rather than a section and could never show an active state
+ * here (design review fix 4). The collapsed and open branches share one
+ * icon-strip width, 54px, rather than the 44px the collapsed branch used to
+ * narrow to — which slid every glyph sideways the moment the panel opened
+ * (design review fix 3).
  */
 
 const RAIL = readFileSync(
@@ -18,12 +25,16 @@ const RAIL = readFileSync(
 );
 
 describe("the left side is an icon rail, not a sidebar", () => {
-  test("five glyphs lead to five places", () => {
+  test("four glyphs lead to four sections", () => {
     expect(RAIL).toContain("id: \"prompt\"");
     expect(RAIL).toContain("id: \"preset\"");
     expect(RAIL).toContain("id: \"lore\"");
     expect(RAIL).toContain("id: \"guides\"");
-    expect(RAIL).toContain("strings.leftRail.settings");
+  });
+
+  test("Settings is not a fifth section here (design review fix 4)", () => {
+    expect(RAIL).not.toContain("strings.leftRail.settings");
+    expect(RAIL).not.toContain('navigate({ name: "settings" })');
   });
 
   test("the sections are scene-scoped by reading the route", () => {
@@ -39,8 +50,12 @@ describe("the left side is an icon rail, not a sidebar", () => {
   test("collapsed is a glyph rail, not a dead sliver", () => {
     // §149: the collapsed rail shows the sections, one tap away, instead of a
     // bare chevron that reveals nothing.
-    expect(RAIL).toContain("w-[44px]");
     expect(RAIL).toContain("toggleLeftRail();");
+  });
+
+  test("collapsed and open share one icon-strip width (design review fix 3)", () => {
+    expect(RAIL).not.toContain("w-[44px]");
+    expect(RAIL.match(/w-\[54px\]/g)?.length).toBe(2);
   });
 });
 

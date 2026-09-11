@@ -111,8 +111,9 @@ describe("the deck's hues", () => {
   });
 
   test("none of them is the red pencil", () => {
-    // Red means "now" — the cued speaker, streaming, stop. A readout wearing
-    // it would read as an alarm rather than as a count.
+    // Red means destructive/error only — delete, stop, boundaries (design
+    // review fix 1; "now" is amber). A readout wearing it would read as an
+    // alarm rather than as a count.
     for (const hue of HUES) {
       const apart = distance(dark(hue), dark("color-red"));
       expect({ hue, apart: Math.round(apart), ok: apart > 40 }).toMatchObject({ ok: true });

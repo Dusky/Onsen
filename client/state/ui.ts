@@ -22,6 +22,11 @@ interface UiState {
   sceneInspector: ReactNode | null;
   toggleLeftRail(): void;
   toggleRightRail(): void;
+  /** Set directly rather than toggled — the auto-collapse bands (breakpoint.ts,
+   * design review fix 6) force a rail open or shut when the window crosses a
+   * width boundary, rather than flipping whatever it currently is. */
+  setLeftRailOpen(open: boolean): void;
+  setRightRailOpen(open: boolean): void;
   setLeftSection(section: UiState["leftSection"]): void;
   setRightTab(tab: UiState["rightTab"]): void;
   setSceneInspector(node: ReactNode | null): void;
@@ -35,6 +40,8 @@ export const useUiStore = create<UiState>((set) => ({
   sceneInspector: null,
   toggleLeftRail: () => set((state) => ({ leftRailOpen: !state.leftRailOpen })),
   toggleRightRail: () => set((state) => ({ rightRailOpen: !state.rightRailOpen })),
+  setLeftRailOpen: (open) => set({ leftRailOpen: open }),
+  setRightRailOpen: (open) => set({ rightRailOpen: open }),
   setLeftSection: (section) => set({ leftSection: section }),
   setRightTab: (tab) => set({ rightTab: tab }),
   setSceneInspector: (node) => set({ sceneInspector: node }),

@@ -25,8 +25,9 @@ import { strings } from "../strings.ts";
  *     Four figures in one colour read as one figure — which is why guides keep
  *     the blue pencil, memory takes the green, and media takes a brass.
  *
- * Red is deliberately absent from the readout. It stays the colour of *now*:
- * the cued speaker, and nothing else here.
+ * Red is absent from the readout, and from the deck entirely: amber is the
+ * colour of *now* — the cued speaker, and nothing else here — and red stays
+ * destructive/error only (design review fix 1).
  */
 
 interface DeckProps {
@@ -146,7 +147,7 @@ export function Deck({
         >
           <span
             className="chrome text-[12.5px]"
-            style={{ color: "var(--onsen-color-red-text)" }}
+            style={{ color: "var(--onsen-color-amber-text)" }}
           >
             {strings.chat.speakingNext}
           </span>
@@ -178,7 +179,7 @@ export function Deck({
                 className="chrome min-h-[44px] min-w-0 flex-1 truncate border-r border-rule-strong px-[6px] text-[13px] last:border-r-0"
                 style={{
                   color: cued ? "var(--onsen-color-text-bright)" : "var(--onsen-color-text-muted)",
-                  background: cued ? "var(--onsen-color-red-bg)" : "transparent",
+                  background: cued ? "var(--onsen-color-amber-bg)" : "transparent",
                   // Dimmed, not hidden: still there, simply not being asked.
                   opacity: member.isMuted ? 0.6 : 1,
                 }}
@@ -187,6 +188,10 @@ export function Deck({
               </button>
             );
           })}
+          {/* Unlike a cued member above, "beat" and "auto" pick a mode rather
+              than a speaker — the same chosen-not-live distinction CastStrip's
+              separate scope row draws — so this segment's own highlight is
+              interactive blue. */}
           {canBeat ? (
             <button
               type="button"
@@ -198,7 +203,7 @@ export function Deck({
                   scope === "beat"
                     ? "var(--onsen-color-text-bright)"
                     : "var(--onsen-color-text-muted)",
-                background: scope === "beat" ? "var(--onsen-color-red-bg)" : "transparent",
+                background: scope === "beat" ? "var(--onsen-color-blue-bg)" : "transparent",
               }}
             >
               {strings.chat.scopeBeat}
@@ -215,7 +220,7 @@ export function Deck({
                   scope === "auto"
                     ? "var(--onsen-color-text-bright)"
                     : "var(--onsen-color-text-muted)",
-                background: scope === "auto" ? "var(--onsen-color-red-bg)" : "transparent",
+                background: scope === "auto" ? "var(--onsen-color-blue-bg)" : "transparent",
               }}
             >
               {strings.chat.scopeAuto}
@@ -239,7 +244,7 @@ export function Deck({
           <button
             type="button"
             className="underline underline-offset-2"
-            style={{ color: "var(--onsen-color-red)" }}
+            style={{ color: "var(--onsen-color-blue)" }}
             onClick={() => {
               const at = inPlay.findIndex((m) => m.characterId === cuedId);
               const next = inPlay[(at + 1) % inPlay.length]!;

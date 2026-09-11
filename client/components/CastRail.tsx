@@ -106,14 +106,22 @@ export function CastRail({
         </div>
       ) : null}
 
-      {/* Autopilot (SPEC §6), beside the scope it belongs with. */}
+      {/* Autopilot (SPEC §6), beside the scope it belongs with. Amber rather
+          than the shared `.btn-primary` blue: on while running, it is a live
+          state, not a chosen mode like the scope buttons above it. */}
       <div className="flex-none px-[14px] pt-[6px] pb-[6px]">
         <button
           type="button"
           onClick={() => onToggleAutopilot(!autopilotOn)}
           aria-pressed={autopilotOn}
-          className={`btn w-full ${autopilotOn ? "btn-primary" : ""}`}
-          style={{ minHeight: "32px", fontSize: "8.5px", padding: "0 8px" }}
+          className="btn w-full"
+          style={{
+            minHeight: "32px",
+            fontSize: "8.5px",
+            padding: "0 8px",
+            borderColor: autopilotOn ? "var(--onsen-color-amber)" : undefined,
+            color: autopilotOn ? "var(--onsen-color-amber)" : undefined,
+          }}
         >
           {strings.chat.autopilot}
         </button>
@@ -146,10 +154,11 @@ export function CastRail({
               key={member.characterId}
               className="mb-[8px]"
               style={{
-                // The cued card takes a red-tinted fill and a 2px red top
-                // border; a benched one drops to 72% (design `4a`).
-                background: cued ? "var(--onsen-color-red-bg)" : "transparent",
-                borderTop: `2px solid ${cued ? "var(--onsen-color-red)" : "transparent"}`,
+                // The cued card takes an amber-tinted fill and a 2px amber top
+                // border — live/now, not destructive (design review fix 1) —
+                // a benched one drops to 72% (design `4a`).
+                background: cued ? "var(--onsen-color-amber-bg)" : "transparent",
+                borderTop: `2px solid ${cued ? "var(--onsen-color-amber)" : "transparent"}`,
                 // Benched drops furthest — they are not in the prompt at all;
                 // muted sits between, still present and simply not speaking.
                 opacity: !member.isActive ? 0.72 : member.isMuted ? 0.85 : 1,
@@ -182,7 +191,7 @@ export function CastRail({
                         className="chrome flex-none text-[11.5px]"
                         style={{
                           color: cued || writing
-                            ? "var(--onsen-color-red)"
+                            ? "var(--onsen-color-amber)"
                             : "var(--onsen-color-text-dim)",
                         }}
                       >

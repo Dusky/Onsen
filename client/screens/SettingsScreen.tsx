@@ -17,6 +17,7 @@ import { LAYOUT_PRESETS, READING_BOUNDS, READING_DEFAULTS } from "@shared/types.
 import type { ReadingDto } from "@shared/types.ts";
 import type { LayoutDto, LayoutPreset } from "@shared/types.ts";
 import { strings } from "../strings.ts";
+import { navigate } from "../lib/router.ts";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { InstructPicker } from "../components/InstructPicker.tsx";
 import {
@@ -1672,6 +1673,7 @@ const CATEGORIES = [
   { id: "tasks", words: ["routing", "ops", "background", "guide", "summariser", "classifier"] },
   { id: "reading", words: ["font", "size", "theme", "prose", "light", "dark"] },
   { id: "branding", words: ["logo", "mark", "icon", "wordmark", "silhouette", "branding"] },
+  { id: "backgrounds", words: ["backdrop", "background", "wallpaper", "picture"] },
   { id: "media", words: ["picture", "voice", "image", "speech", "tts", "draw", "caption"] },
   { id: "data", words: ["embedding", "document", "retrieval", "rag", "data bank"] },
   { id: "automation", words: ["trigger", "script", "regex", "action", "event"] },
@@ -2058,6 +2060,23 @@ export function SettingsScreen() {
           {show("reading") ? <ReadingSection /> : null}
 
           {show("branding") ? <BrandingSection /> : null}
+
+          {/* Backgrounds has no rail of its own — it is configured once
+              rather than worked in, so it links out to its own screen
+              instead of inventing a fourth destination (design review
+              fix 5). */}
+          {show("backgrounds") ? (
+            <>
+              <p className="group-heading mb-[12px]">{strings.settings.categories.backgrounds}</p>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => navigate({ name: "backgrounds" })}
+              >
+                {strings.settings.backgroundsOpen}
+              </button>
+            </>
+          ) : null}
 
           {show("outward") ? (
             <>

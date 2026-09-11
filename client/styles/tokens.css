@@ -4,8 +4,19 @@
  * Three rules generate the whole system:
  *   1. Two voices, two typefaces — Spectral is the user's material, IBM Plex
  *      Mono is the app speaking. Never the other way round.
- *   2. Two pencils — red for live/active/destructive/now, blue for the author's
- *      own voice and injected state. Nothing else is coloured.
+ *   2. Three roles, no overlap (§20, design review fix 1–2):
+ *        - Interactive / selected — blue. The active rail section, the active
+ *          tab underline, primary buttons, slider thumbs, the focus ring,
+ *          links: anything the reader can act on or has chosen.
+ *        - Live / now / streaming — amber. A turn writing right now, the
+ *          scene title while it streams, a cued speaker, an in-scene or
+ *          in-use badge, autopilot: whatever is happening this instant.
+ *        - Destructive / error — red. Delete, stop, boundaries, error text,
+ *          disconnected. Red is never "active" or "primary" on its own.
+ *      The subsystem hues below (green, amber, blue-as-guide-hue) are a
+ *      *second* axis — they tint a panel's own furniture (memory, media,
+ *      guides), not a competing accent system, and never substitute for one
+ *      of the three roles above.
  *   3. Everything is a page being marked up — sharp corners, 1px hairlines,
  *      and no shadows anywhere.
  */
@@ -74,8 +85,9 @@
    * what each subsystem is holding, and four figures in one colour read as one
    * figure. So: guides keep the blue pencil they already had, memory takes the
    * green that until now only lit a connection dot in Settings, and media
-   * takes a brass. Red is not among them, which is the point — red stays the
-   * colour of *now*.
+   * takes a brass. Red is not among them — under the three-role system (design
+   * review fix 1) *amber* is the colour of "now" (cued, streaming, autopilot),
+   * and red is destructive/error only.
    */
   --onsen-color-green: #7fa65b;
   --onsen-color-green-text: #b6c6a4;
@@ -83,6 +95,17 @@
   --onsen-color-amber: #a6864f;
   --onsen-color-amber-text: #cbb894;
   --onsen-color-amber-text-muted: #8c7d5b;
+  /*
+   * A background/border wash for the cued-speaker and autopilot states that
+   * need more than a border-left (a cast card, a deck segment) — the same
+   * job `--onsen-color-red-bg`/`-red-border` did before those states moved to
+   * amber. Derived with `color-mix` from the single amber value above, the
+   * way `:root[data-background="1"]` below already derives its translucent
+   * surfaces, rather than hand-picking a fourth per-theme hex family: one
+   * definition here holds for every theme block, dark or light.
+   */
+  --onsen-color-amber-bg: color-mix(in srgb, var(--onsen-color-amber) 14%, var(--onsen-color-bg-raised));
+  --onsen-color-amber-border: color-mix(in srgb, var(--onsen-color-amber) 55%, var(--onsen-color-bg-raised));
 
   /* Placeholder fill standing in for user-supplied imagery. */
   /*
@@ -98,8 +121,8 @@
   );
   --onsen-stripe-cued: repeating-linear-gradient(
     45deg,
-    var(--onsen-color-red-border) 0 6px,
-    var(--onsen-color-red-bg) 6px 12px
+    var(--onsen-color-amber-border) 0 6px,
+    var(--onsen-color-amber-bg) 6px 12px
   );
 
   /* Typefaces */

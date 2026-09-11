@@ -205,7 +205,7 @@ export function MessageLog({
 
       {autopilotActive || isGenerating ? (
         <div className="flex items-center gap-[10px]">
-          <span className="h-[6px] w-[6px] flex-none" style={{ background: "var(--onsen-color-red)" }} />
+          <span className="h-[6px] w-[6px] flex-none" style={{ background: "var(--onsen-color-amber)" }} />
           <span className="chrome flex-1 text-[13px] text-ink-muted">
             {autopilotActive
               ? apState !== null
@@ -249,7 +249,7 @@ export function MessageLog({
       className="min-h-0 flex-1 overflow-y-auto px-[22px] py-[18px]"
       style={
         isGenerating
-          ? { borderLeft: "2px solid var(--onsen-color-red)", paddingLeft: "20px" }
+          ? { borderLeft: "2px solid var(--onsen-color-amber)", paddingLeft: "20px" }
           : undefined
       }
     >

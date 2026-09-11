@@ -10,6 +10,14 @@ import { join } from "node:path";
  * the desktop gets the mockup's header — wordmark, scene, model, prose size,
  * base and the panel toggles — because the destinations moved into the two
  * rails. This pins that split, so the two cannot quietly diverge.
+ *
+ * The header briefly grew its own row of library destinations back
+ * (Characters, Authors, Lorebooks, Backgrounds, Roleplays), duplicating entry
+ * points the rails already had. Design review fix 5 removed it: Characters
+ * and Authors are the right rail's tabs, Lore is the left rail's Lore
+ * section, Roleplays is the wordmark button, and Backgrounds moved into
+ * Settings. Fix 4 moved Settings the other way, out of the left rail's icon
+ * column and into the header.
  */
 
 const TOP = readFileSync(join(import.meta.dir, "..", "client", "components", "TopBar.tsx"), "utf8");
@@ -63,12 +71,16 @@ describe("the desktop header", () => {
     expect(HEADER).toContain("toggleRightRail");
   });
 
-  test("links the libraries — the full editors — by their names (§20 phase 139)", () => {
-    expect(HEADER).toContain("LIBRARIES");
-    expect(HEADER).toContain("strings.nav.roleplays");
-    expect(HEADER).toContain("strings.nav.characters");
-    expect(HEADER).toContain("strings.nav.authors");
-    expect(HEADER).toContain("strings.nav.lorebooks");
-    expect(HEADER).toContain("strings.nav.backgrounds");
+  test("does not duplicate the rails' own destinations (design review fix 5)", () => {
+    expect(HEADER).not.toContain("LIBRARIES");
+    expect(HEADER).not.toContain("strings.nav.characters");
+    expect(HEADER).not.toContain("strings.nav.authors");
+    expect(HEADER).not.toContain("strings.nav.lorebooks");
+    expect(HEADER).not.toContain("strings.nav.backgrounds");
+  });
+
+  test("carries Settings instead, set off from the toggles (design review fix 4)", () => {
+    expect(HEADER).toContain("strings.nav.settings");
+    expect(HEADER).toContain('navigate({ name: "settings" })');
   });
 });

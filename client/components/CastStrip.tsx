@@ -10,8 +10,9 @@ import { strings } from "../strings.ts";
  * The cast strip and the director's reason.
  *
  * Two things the design is emphatic about. The cued speaker's card is larger,
- * lifted above the baseline, and carries a red top border and a red caption —
- * so who is about to speak is legible at a glance rather than by reading. And
+ * lifted above the baseline, and carries an amber top border and an amber
+ * caption — live/now, not destructive (design review fix 1) — so who is
+ * about to speak is legible at a glance rather than by reading. And
  * the director's reason is **printed, always**, with no tooltip and no modal:
  * it is the answer to "why is it picking them", and a decision nobody can read
  * is the arbitrary dice roll this replaces.
@@ -96,7 +97,7 @@ export function CastStrip({
               {cued ? (
                 <span
                   className="chrome absolute -top-[14px] left-0 text-[12px]"
-                  style={{ color: "var(--onsen-color-red)" }}
+                  style={{ color: "var(--onsen-color-amber)" }}
                 >
                   {nextSpeaker!.source === "user"
                     ? scope === "beat" && canBeat
@@ -113,7 +114,7 @@ export function CastStrip({
                 style={{
                   width: cued ? "82px" : "70px",
                   height: cued ? "58px" : "50px",
-                  borderTop: cued ? "2px solid var(--onsen-color-red)" : "1px solid var(--onsen-color-rule)",
+                  borderTop: cued ? "2px solid var(--onsen-color-amber)" : "1px solid var(--onsen-color-rule)",
                   borderLeft: "1px solid var(--onsen-color-rule)",
                   borderRight: "1px solid var(--onsen-color-rule)",
                   borderBottom: "1px solid var(--onsen-color-rule)",
@@ -141,7 +142,9 @@ export function CastStrip({
         })}
       </div>
 
-      {/* One voice, or the room. Offered only when there is a room. */}
+      {/* One voice, or the room. Offered only when there is a room. A chosen
+          mode, so interactive blue — not the amber below, which is live
+          rather than chosen (design review fix 1). */}
       {canBeat ? (
         <div className="mt-[9px] flex gap-[6px]">
           {options.map((option) => (
@@ -153,10 +156,10 @@ export function CastStrip({
               className="chrome flex-1 border py-[8px] text-[12.5px]"
               style={{
                 borderColor:
-                  scope === option ? "var(--onsen-color-red)" : "var(--onsen-color-border-quiet)",
+                  scope === option ? "var(--onsen-color-blue)" : "var(--onsen-color-border-quiet)",
                 color:
                   scope === option
-                    ? "var(--onsen-color-red)"
+                    ? "var(--onsen-color-blue)"
                     : "var(--onsen-color-text-muted)",
               }}
             >
@@ -170,8 +173,8 @@ export function CastStrip({
         </div>
       ) : null}
 
-      {/* Autopilot (SPEC §6). Same border treatment as the scope row, red when
-          live — it is the same kind of decision: what the next turns will be. */}
+      {/* Autopilot (SPEC §6). Amber while running — a live state, not a
+          chosen mode like the scope row above it. */}
       <button
         type="button"
         onClick={() => onToggleAutopilot(!autopilotOn)}
@@ -179,9 +182,9 @@ export function CastStrip({
         className="chrome mt-[6px] w-full border py-[8px] text-[12.5px]"
         style={{
           borderColor: autopilotOn
-            ? "var(--onsen-color-red)"
+            ? "var(--onsen-color-amber)"
             : "var(--onsen-color-border-quiet)",
-          color: autopilotOn ? "var(--onsen-color-red)" : "var(--onsen-color-text-muted)",
+          color: autopilotOn ? "var(--onsen-color-amber)" : "var(--onsen-color-text-muted)",
         }}
       >
         {strings.chat.autopilot}
