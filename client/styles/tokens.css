@@ -4,8 +4,19 @@
  * Three rules generate the whole system:
  *   1. Two voices, two typefaces — Spectral is the user's material, IBM Plex
  *      Mono is the app speaking. Never the other way round.
- *   2. Two pencils — red for live/active/destructive/now, blue for the author's
- *      own voice and injected state. Nothing else is coloured.
+ *   2. Three roles, no overlap (§20, design review fix 1–2):
+ *        - Interactive / selected — blue. The active rail section, the active
+ *          tab underline, primary buttons, slider thumbs, the focus ring,
+ *          links: anything the reader can act on or has chosen.
+ *        - Live / now / streaming — amber. A turn writing right now, the
+ *          scene title while it streams, a cued speaker, an in-scene or
+ *          in-use badge, autopilot: whatever is happening this instant.
+ *        - Destructive / error — red. Delete, stop, boundaries, error text,
+ *          disconnected. Red is never "active" or "primary" on its own.
+ *      The subsystem hues below (green, amber, blue-as-guide-hue) are a
+ *      *second* axis — they tint a panel's own furniture (memory, media,
+ *      guides), not a competing accent system, and never substitute for one
+ *      of the three roles above.
  *   3. Everything is a page being marked up — sharp corners, 1px hairlines,
  *      and no shadows anywhere.
  */

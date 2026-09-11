@@ -15,7 +15,7 @@ import { BackgroundsScreen } from "./screens/BackgroundsScreen.tsx";
 import { api } from "./lib/api.ts";
 import { strings } from "./strings.ts";
 import { useRoute } from "./lib/router.ts";
-import { useIsDesktop } from "./lib/breakpoint.ts";
+import { useAutoCollapseRails, useIsDesktop } from "./lib/breakpoint.ts";
 import { LeftRail } from "./components/LeftRail.tsx";
 import { TopBar } from "./components/TopBar.tsx";
 import { Header } from "./components/Header.tsx";
@@ -124,6 +124,11 @@ export function App() {
  */
 function Shell() {
   const isDesktop = useIsDesktop();
+  // Below the rails' own width bands (breakpoint.ts), collapse them to their
+  // icon strips before the log's prose measure gets squeezed (design review
+  // fix 6). Runs unconditionally — the phone branch below just never reads
+  // the rail state this writes.
+  useAutoCollapseRails();
   const preferences = usePreferences();
   // Here rather than in `App`, which renders the QueryClientProvider itself and
   // so is above the cache a preference hook needs.

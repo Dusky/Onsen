@@ -574,6 +574,10 @@ export const strings = {
 
     /** The backdrop behind everything (§20 phase 108). */
     backgrounds: "Backdrop",
+    /** The Settings category's own link out to the backdrops screen — it has
+     * no rail of its own, and is configured once rather than worked in
+     * (design review fix 5). */
+    backgroundsOpen: "Open backdrops",
     backgroundOpacity: "Opacity",
     backgroundGenerate: "Generate a backdrop",
     backgroundPrompt: "What to draw (optional)",
@@ -1113,7 +1117,6 @@ export const strings = {
     preset: "Preset",
     lore: "Lore",
     guides: "Guides",
-    settings: "Settings",
     promptTitle: "Context",
     presetTitle: "Preset",
     loreTitle: "Lore",

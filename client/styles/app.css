@@ -94,11 +94,12 @@
   }
 
   /*
-   * The design system draws no focus treatment. A 2px red outline offset 2px is
-   * what the language implies, and keyboard focus must be visible.
+   * The design system draws no focus treatment. A 2px outline offset 2px is
+   * what the language implies, and keyboard focus must be visible. Blue,
+   * because focus is interactive/selected, not live or destructive.
    */
   :focus-visible {
-    outline: 2px solid var(--onsen-color-red);
+    outline: 2px solid var(--onsen-color-blue);
     outline-offset: 2px;
   }
 
@@ -158,8 +159,8 @@
    * under the name. That reads as a divider — a thing between two turns —
    * where a rail down the left reads as a thing belonging to one, which is
    * what a speaker is. It also gives the log the one place it can say who is
-   * live without recolouring the prose: `data-live` takes the red pencil, and
-   * nothing else in the log does.
+   * live without recolouring the prose: `data-live` takes the amber
+   * live/now colour, and nothing else in the log does.
    */
   .turn[data-rail] {
     padding-left: 13px;
@@ -171,7 +172,7 @@
   }
 
   .turn[data-live="true"] {
-    border-left-color: var(--onsen-color-red);
+    border-left-color: var(--onsen-color-amber);
   }
 
   /* A docked surface — the composer stack, a footer bar. Same rule. */
@@ -253,11 +254,17 @@
    * 0.06em, 0.08em, 0.12em, 8.5px at 0.1em — none of the differences meaning
    * anything, all of them landing on the same grey. The design table has one
    * entry for this ("cast card name", 9px / 0.08em); this is it.
+   *
+   * The tracking was the one thing still keeping the old figure: phase 53
+   * zeroed `--onsen-tracking-label` everywhere else on the grounds that labels
+   * are read, not decorated, and `.meta` is mostly numbers — token counts,
+   * timestamps — which need tracking least of all and are harder to compare
+   * down a column with it (design review fix 7).
    */
   .meta {
     font-family: var(--onsen-font-mono);
     font-size: 12px;
-    letter-spacing: 0.08em;
+    letter-spacing: 0;
     color: var(--onsen-color-text-dim);
   }
 
@@ -318,11 +325,13 @@
     cursor: default;
   }
 
-  /* Primary actions take the red pencil. */
+  /* Primary actions are interactive, not destructive: the blue pencil. #fdf6ef
+     fails 4.5:1 on this blue, so this uses the dark ink the send button
+     already answers with. */
   .btn-primary {
-    background: var(--onsen-color-red);
-    border-color: var(--onsen-color-red);
-    color: #fdf6ef;
+    background: var(--onsen-color-blue);
+    border-color: var(--onsen-color-blue);
+    color: #0b1219;
   }
 
   /*
@@ -377,10 +386,10 @@
   /*
    * Range inputs take the app's accent rather than the browser's.
    *
-   * The default is the OS blue, which is wrong twice over here: it is not in
-   * any theme's palette, and blue already means the author's voice (§16), so a
-   * blue control reads as belonging to the author rather than to the reader.
-   * Red is what every other live control in the app uses.
+   * The default is the OS blue, which is not in any theme's palette. The
+   * app's own blue is the right one to replace it with anyway: a slider is an
+   * interactive control the reader is dragging, not a live or destructive
+   * state (§20, design review fix 1).
    */
   input[type="range"] {
     appearance: none;
@@ -466,7 +475,7 @@
     height: 16px;
     margin-top: -7px;
     border-radius: 50%;
-    background: var(--onsen-color-red);
+    background: var(--onsen-color-blue);
   }
 
   input[type="range"]::-moz-range-thumb {
@@ -474,11 +483,11 @@
     height: 16px;
     border: 0;
     border-radius: 50%;
-    background: var(--onsen-color-red);
+    background: var(--onsen-color-blue);
   }
 
   input[type="range"]:focus-visible::-webkit-slider-thumb {
-    outline: 2px solid var(--onsen-color-red);
+    outline: 2px solid var(--onsen-color-blue);
     outline-offset: 2px;
   }
 
@@ -532,7 +541,10 @@
    * The handle is a **square**, per the design's slider (§10, "13px red square
    * handle") and its rule that the only rounded corners in the system are the
    * three documented exceptions. `accent-color` alone cannot do this — it
-   * tints the default shapes — so both halves are drawn per engine.
+   * tints the default shapes — so both halves are drawn per engine. The
+   * colour is blue, not the red the design called for: a slider is dragged by
+   * the reader, which is the interactive role, not the destructive one
+   * (§20, design review fix 1).
    */
   .slider {
     -webkit-appearance: none;
@@ -559,7 +571,7 @@
     width: 13px;
     height: 13px;
     margin-top: -5.5px;
-    background: var(--onsen-color-red);
+    background: var(--onsen-color-blue);
     border: 0;
     border-radius: 0;
   }
@@ -567,18 +579,18 @@
   .slider::-moz-range-thumb {
     width: 13px;
     height: 13px;
-    background: var(--onsen-color-red);
+    background: var(--onsen-color-blue);
     border: 0;
     border-radius: 0;
   }
 
   .slider:focus-visible::-webkit-slider-thumb {
-    outline: 2px solid var(--onsen-color-red);
+    outline: 2px solid var(--onsen-color-blue);
     outline-offset: 2px;
   }
 
   .slider:focus-visible::-moz-range-thumb {
-    outline: 2px solid var(--onsen-color-red);
+    outline: 2px solid var(--onsen-color-blue);
     outline-offset: 2px;
   }
 }

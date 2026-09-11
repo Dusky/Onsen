@@ -185,8 +185,9 @@ export function Composer({
           </label>
         )}
 
-        {/* The ops key. Takes the red active treatment while the drawer is
-            open — and is absent where the ops are already a visible row. */}
+        {/* The ops key. A toggle, not a destruction, so it takes the blue
+            active treatment while the drawer is open — and is absent where
+            the ops are already a visible row. */}
         {wide ? null : (
         <button
           type="button"
@@ -197,8 +198,8 @@ export function Composer({
           aria-label={opsOpen ? strings.chat.opsClose : strings.chat.ops}
           className="chrome flex h-[46px] w-[46px] flex-none items-center justify-center border text-[12.5px]"
           style={{
-            borderColor: opsOpen ? "var(--onsen-color-red)" : "var(--onsen-color-border-quiet)",
-            color: opsOpen ? "var(--onsen-color-red)" : "var(--onsen-color-text-muted)",
+            borderColor: opsOpen ? "var(--onsen-color-blue)" : "var(--onsen-color-border-quiet)",
+            color: opsOpen ? "var(--onsen-color-blue)" : "var(--onsen-color-text-muted)",
           }}
         >
           {opsOpen ? strings.chat.opsClose : strings.chat.ops}

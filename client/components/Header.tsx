@@ -18,9 +18,26 @@ import { READING_BOUNDS } from "@shared/types.ts";
  * The mockup's top bar is not the navigation strip the workbench put there —
  * those destinations moved into the two rails. It is the scene's identity and
  * the reading surface's controls: a mono wordmark, the open scene's title and
- * turn count, prose size, the base (dark or light) and the two panel toggles.
- * The model that answers moved down beside the composer (phase 101). Desktop
- * only; the phone keeps the navigation top bar.
+ * turn count, prose size, the base (dark or light), the two panel toggles,
+ * and Settings. The model that answers moved down beside the composer (phase
+ * 101). Desktop only; the phone keeps the navigation top bar.
+ *
+ * The header used to also carry a row of library destinations — Characters,
+ * Authors, Lorebooks, Backgrounds, Roleplays — duplicating entry points the
+ * rails already have (design review fix 5). Characters and Authors are the
+ * right rail's own tabs, better than a screen because they sit beside the
+ * scene being edited against; Lore is the left rail's Lore section; Roleplays
+ * is what the wordmark button already opens. Backgrounds had no rail home and
+ * moved into Settings, since it is configured once rather than worked in.
+ * The `/characters`, `/authors`, `/lorebooks` and `/backgrounds` routes still
+ * work for deep links and the phone layout — this only removed the desktop
+ * top-bar entry points to them.
+ *
+ * Settings moved the other way, in: it used to sit at the foot of the left
+ * rail's icon column, looking like a fifth section though it could never
+ * show an active state and was the only one to navigate off the page
+ * (design review fix 4). It lives here now, set off with a hairline and the
+ * muted treatment rather than the rail's own button shape.
  */
 
 /** The prose step the A−/A+ buttons take, matching the settings slider's. */
@@ -28,16 +45,6 @@ const PROSE_STEP = 0.05;
 
 /** The two flat builtin themes the Dark/Light toggle switches between. */
 const BASE_THEMES = { dark: "Midnight", light: "Bone" } as const;
-
-/** The libraries that are full editors of their own, led by the roleplays list
- * (§20 phase 139). */
-const LIBRARIES: { key: string; label: string; route: { name: "scenes" | "characters" | "authors" | "lorebooks" | "backgrounds" } }[] = [
-  { key: "scenes", label: strings.nav.roleplays, route: { name: "scenes" } },
-  { key: "characters", label: strings.nav.characters, route: { name: "characters" } },
-  { key: "authors", label: strings.nav.authors, route: { name: "authors" } },
-  { key: "lorebooks", label: strings.nav.lorebooks, route: { name: "lorebooks" } },
-  { key: "backgrounds", label: strings.nav.backgrounds, route: { name: "backgrounds" } },
-];
 
 export function Header() {
   const route = useRoute();
@@ -51,17 +58,6 @@ export function Header() {
 
   const sceneId = route.name === "chat" ? route.sceneId : null;
   const scene = (scenes.data ?? []).find((candidate) => candidate.id === sceneId) ?? null;
-
-  // An editor route names its library: a character belongs to the cast, an
-  // author to the authors, a book to the lorebooks.
-  const activeLibrary =
-    route.name === "character"
-      ? "characters"
-      : route.name === "author"
-        ? "authors"
-        : route.name === "lorebook"
-          ? "lorebooks"
-          : route.name;
 
   // The scene's title runs amber while it is writing — the same live state the
   // cast cards carry, so the header and the rail agree on what "now" is.
@@ -120,24 +116,6 @@ export function Header() {
           </span>
         )}
       </button>
-
-      {/* The libraries: each is a full editor of its own, reachable straight
-          from the bar rather than through a rail (§20 phase 139). */}
-      {LIBRARIES.map((library) => {
-        const active = activeLibrary === library.key;
-        return (
-          <button
-            key={library.key}
-            type="button"
-            onClick={() => navigate(library.route)}
-            aria-current={active ? "page" : undefined}
-            className="chrome flex items-center border-l border-rule px-[12px] text-[12px]"
-            style={{ color: active ? "var(--onsen-color-blue-text)" : "var(--onsen-color-text-muted)" }}
-          >
-            {library.label}
-          </button>
-        );
-      })}
 
       <div className="min-w-0 flex-1" />
 
@@ -215,6 +193,18 @@ export function Header() {
           {"\u2595"}
         </button>
       </div>
+
+      {/* Settings: a destination, not a section, so it does not share the
+          panel toggles' shape or the wordmark's weight \u2014 a hairline and the
+          muted treatment mark it as leaving the page (design review fix 4). */}
+      <button
+        type="button"
+        onClick={() => navigate({ name: "settings" })}
+        aria-label={strings.nav.settings}
+        className="chrome flex items-center border-l border-rule px-[12px] text-[12px] text-ink-muted"
+      >
+        {strings.nav.settings}
+      </button>
     </header>
   );
 }
