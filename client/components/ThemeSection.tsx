@@ -18,7 +18,29 @@ import type { ThemeDto, ThemeImportDto } from "@shared/types.ts";
  * the rest of it.
  */
 
-/** The token rows worth putting in front of a person, grouped as they read. */
+/**
+ * The token rows worth putting in front of a person, grouped as `tokens.css`
+ * groups them.
+ *
+ * Every colour the stylesheet defines is now reachable from here, which it was
+ * not: twelve of thirty-seven were exposed, and seven of the rest followed
+ * nothing, so a custom theme could not touch them at all. The whole amber
+ * family was among them — amber is the app's live/now accent since the colour
+ * roles were settled, and a theme could change every other accent but that one.
+ *
+ * Seven new rows close all thirty-seven, because `FOLLOWS`
+ * (`server/themes/index.ts`) derives nineteen tokens from another when a theme
+ * does not name them: `color-amber-text` follows `color-amber`,
+ * `color-blue-prose` follows `color-blue-text`, and so on down the chain. A
+ * row here is worth more than one token, and `test/themes.test.ts` measures
+ * that nothing is left stranded.
+ *
+ * The hues are labelled by the *role* each one holds rather than by where it
+ * happens to appear. Red and blue were labelled "live · now" and "the author",
+ * which is what they meant before the three roles were settled — red is
+ * destructive/error only now, blue is interactive/selected, and amber is what
+ * "live · now" means.
+ */
 const GROUPS: Array<{ label: string; rows: Array<{ token: string; label: string }> }> = [
   {
     label: "Surfaces",
@@ -26,8 +48,14 @@ const GROUPS: Array<{ label: string; rows: Array<{ token: string; label: string 
       { token: "color-bg", label: "ground" },
       { token: "color-bg-raised", label: "raised" },
       { token: "color-bg-sunken", label: "sunken" },
-      { token: "color-rule", label: "rule" },
-      { token: "color-rule-strong", label: "rule, strong" },
+      { token: "color-bg-input", label: "a field" },
+    ],
+  },
+  {
+    label: "Rules",
+    rows: [
+      { token: "color-rule", label: "hairline" },
+      { token: "color-rule-strong", label: "hairline, strong" },
     ],
   },
   {
@@ -40,12 +68,29 @@ const GROUPS: Array<{ label: string; rows: Array<{ token: string; label: string 
     ],
   },
   {
-    label: "Accents",
+    label: "Interactive · selected",
     rows: [
-      { token: "color-red", label: "live · now" },
-      { token: "color-blue", label: "the author" },
-      { token: "color-green", label: "connected" },
+      { token: "color-blue", label: "the accent" },
+      { token: "color-blue-text", label: "text on the ground" },
+      { token: "color-blue-bg", label: "a panel's fill" },
+      { token: "color-blue-border", label: "a panel's edge" },
     ],
+  },
+  {
+    label: "Live · now",
+    rows: [{ token: "color-amber", label: "the accent" }],
+  },
+  {
+    label: "Destructive · error",
+    rows: [
+      { token: "color-red", label: "the accent" },
+      { token: "color-red-bg", label: "a panel's fill" },
+      { token: "color-red-border", label: "a panel's edge" },
+    ],
+  },
+  {
+    label: "Memory",
+    rows: [{ token: "color-green", label: "the accent" }],
   },
 ];
 

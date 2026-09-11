@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { completeSetup, createHarness, type TestHarness } from "./helpers.ts";
 import {
   completeTokens,
@@ -400,3 +402,79 @@ describe("importing somebody else's theme", () => {
     expect(body.theme.tokens).toEqual({ "color-bg": "#0a0b0c", radius: "9px" });
   });
 });
+
+/**
+ * A theme can reach every colour the stylesheet defines (§20 phase 160).
+ *
+ * The editor exposed twelve of thirty-seven, and this is the project's own
+ * recurring defect rather than an oversight: the server accepts any token name
+ * it can safely write, the DTO carries them, the stylesheet renders them, and
+ * the UI reaches a subset nobody re-counted. `docs/GAPS.md` names the shape in
+ * its own "how to read this".
+ *
+ * The whole amber family was on the wrong side of it — amber is the app's
+ * live/now accent, so a custom theme could change every accent except the one
+ * that says a turn is being written.
+ *
+ * A row is worth more than a token: `FOLLOWS` derives nineteen of them from
+ * another when a theme does not name it, and those chains are followed here so
+ * this measures reachability rather than row count.
+ */
+describe("the theme editor reaches the whole palette", () => {
+  const ROOT = join(import.meta.dir, "..");
+  const TOKENS = readFileSync(join(ROOT, "client", "styles", "tokens.css"), "utf8");
+  const SECTION = readFileSync(
+    join(ROOT, "client", "components", "ThemeSection.tsx"),
+    "utf8",
+  );
+
+  test("no colour token is reachable by nothing", () => {
+    // The dark `:root` block is the complete list; the light blocks override a
+    // subset of the same names.
+    const dark = TOKENS.slice(0, TOKENS.indexOf("@media (prefers-color-scheme: light)"));
+    const exposed = new Set(
+      [...SECTION.matchAll(/token: "(color-[a-z0-9-]+)"/g)].map((match) => match[1]!),
+    );
+
+    const stranded: string[] = [];
+    for (const match of dark.matchAll(/--onsen-(color-[a-z0-9-]+):\s*([^;]+);/g)) {
+      const token = match[1]!;
+      if (exposed.has(token)) continue;
+      // Two amber washes are `color-mix` of a token that *is* exposed, so they
+      // move with it and a row of their own would be a second way to say the
+      // same thing.
+      if (match[2]!.includes("color-mix")) continue;
+      // Otherwise it has to follow something a theme can set — and that
+      // something has to be reachable too, so the chain is walked.
+      let source: string | undefined = token;
+      const seen = new Set<string>();
+      while (source !== undefined && !exposed.has(source) && !seen.has(source)) {
+        seen.add(source);
+        source = FOLLOWS_SOURCE.get(source);
+      }
+      if (source === undefined || !exposed.has(source)) stranded.push(token);
+    }
+    expect(stranded).toEqual([]);
+  });
+
+  test("the hues are labelled by the role they hold", () => {
+    // Red and blue carried "live · now" and "the author" from before the three
+    // colour roles were settled. `test/surfaces.test.ts` asserts red means
+    // destructive/error only; this asserts the editor says so.
+    expect(SECTION).toContain("Destructive · error");
+    expect(SECTION).toContain("Interactive · selected");
+    expect(SECTION).toContain("Live · now");
+    expect(SECTION).not.toContain('label: "live · now"');
+    expect(SECTION).not.toContain('label: "the author"');
+  });
+});
+
+/** `FOLLOWS` as a lookup, read from the source so the two cannot drift. */
+const FOLLOWS_SOURCE = new Map<string, string>(
+  [
+    ...readFileSync(
+      join(import.meta.dir, "..", "server", "themes", "index.ts"),
+      "utf8",
+    ).matchAll(/\["(color-[a-z0-9-]+)", "(color-[a-z0-9-]+)"\]/g),
+  ].map((match) => [match[1]!, match[2]!]),
+);
