@@ -105,7 +105,7 @@ describe("the setting", () => {
       autoSwipe: { minChars: 120, attempts: 3 },
     });
     expect(saved.autoContinue).toBe(2);
-    expect(saved.autoSwipe).toEqual({ minChars: 120, attempts: 3 });
+    expect(saved.autoSwipe).toEqual({ minChars: 120, attempts: 3, onBanned: false });
 
     // A slider that pins beats a request that fails, as the reading bounds do.
     const clamped = await patchPreset(t, preset.id, {
@@ -257,5 +257,202 @@ describe("auto-swipe", () => {
 
     await new Promise((resolve) => setTimeout(resolve, 400));
     expect(turnCount()).toBe(2);
+  });
+});
+
+/**
+ * The third trigger (§13.6, §20 phase 169).
+ *
+ * The incumbent rerolls on a blacklisted word; this rerolls on §13.6's own
+ * list, which already exists and already excludes proposals — a suggestion
+ * nobody accepted must not silently cost a generation.
+ *
+ * It spends the same `attempts` budget as the length trigger, because two
+ * independent budgets is two ways for a scene to spend money in a loop.
+ */
+async function ban(t: TestHarness, scene: SceneDto, phrase: string): Promise<void> {
+  await t.fetch(`/api/scenes/${scene.id}/bans`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phrase, scoped: true }),
+  });
+}
+
+describe("auto-swipe on a banned phrase", () => {
+  test("off by default, however offensive the turn", async () => {
+    const { t, scene } = await setup();
+    await ban(t, scene, "a mixture of");
+    await say(t, scene, "Say the thing.");
+
+    await generate(t, scene);
+    await adapter.started;
+    adapter.push("Her face was a mixture of emotions she could not name.");
+    adapter.end();
+
+    await until(async () => (await history(t, scene)).messages.length >= 2, { timeoutMs: 4000 });
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    expect(turnCount()).toBe(1);
+  });
+
+  test("rerolls exactly once, and the rejected turn survives as a sibling", async () => {
+    const { t, scene, preset } = await setup();
+    await patchPreset(t, preset.id, { autoSwipe: { onBanned: true, attempts: 2 } });
+    await ban(t, scene, "a mixture of");
+    await say(t, scene, "Say the thing.");
+
+    await generate(t, scene);
+    await adapter.started;
+    adapter.push("Her face was a mixture of emotions she could not name.");
+    adapter.end();
+
+    await until(() => turnCount() >= 2, { timeoutMs: 4000 });
+    adapter.push("She looked at the door and did not say anything at all.");
+    adapter.end();
+
+    await until(async () => {
+      const log = await history(t, scene);
+      return log.messages.some((message) => message.content.includes("did not say anything"));
+    }, { timeoutMs: 4000 });
+
+    // Exactly once: the replacement is clean, so nothing else fires.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(turnCount()).toBe(2);
+
+    // A swipe is not a delete. A reader who wanted the first one is one tap
+    // away from it, and they paid for it.
+    const log = await history(t, scene);
+    expect(log.messages.at(-1)!.siblingCount).toBeGreaterThan(1);
+  });
+
+  test("the rejected turn says which phrase did it", async () => {
+    /*
+     * The whole point of §8 and §13.6 both: a reroll with no stated reason is
+     * an arbitrary dice roll. The reason goes on the *rejected* turn, because
+     * that is the one a reader swipes back to when they wonder what happened.
+     */
+    const { t, scene, preset } = await setup();
+    await patchPreset(t, preset.id, { autoSwipe: { onBanned: true, attempts: 2 } });
+    await ban(t, scene, "a mixture of");
+    await say(t, scene, "Say the thing.");
+
+    await generate(t, scene);
+    await adapter.started;
+    adapter.push("Her face was a mixture of emotions.");
+    adapter.end();
+
+    await until(() => turnCount() >= 2, { timeoutMs: 4000 });
+    adapter.push("She looked at the door instead.");
+    adapter.end();
+    await until(async () => {
+      const log = await history(t, scene);
+      return log.messages.some((message) => message.content.includes("looked at the door"));
+    }, { timeoutMs: 4000 });
+
+    // Swipe back to the rejected sibling and read its meta.
+    const log = await history(t, scene);
+    const leaf = log.messages.at(-1)!;
+    const siblings = (await (
+      await t.fetch(`/api/scenes/${scene.id}/messages/${leaf.id}/siblings`)
+    ).json()) as MessageDto[];
+    const rejected = siblings.find((message) => message.content.includes("a mixture of"));
+    expect(rejected?.generation?.autoSwipedFor).toBe("a mixture of");
+    // And the turn that replaced it carries no such mark.
+    expect(leaf.generation?.autoSwipedFor ?? null).toBeNull();
+  });
+
+  test("a clean turn is left alone", async () => {
+    const { t, scene, preset } = await setup();
+    await patchPreset(t, preset.id, { autoSwipe: { onBanned: true, attempts: 2 } });
+    await ban(t, scene, "a mixture of");
+    await say(t, scene, "Say the thing.");
+
+    await generate(t, scene);
+    await adapter.started;
+    adapter.push("She looked at the door and said nothing at all.");
+    adapter.end();
+
+    await until(async () => (await history(t, scene)).messages.length >= 2, { timeoutMs: 4000 });
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    expect(turnCount()).toBe(1);
+  });
+
+  test("matches however the phrase is cased, because a ban is a construction", async () => {
+    // §13.6's list is phrases a reader put there on purpose — "a mixture of",
+    // "a mix of emotions" — not tokens. A list that only matched the exact
+    // casing would miss the same sentence at the start of a line.
+    const { t, scene, preset } = await setup();
+    await patchPreset(t, preset.id, { autoSwipe: { onBanned: true, attempts: 2 } });
+    await ban(t, scene, "A Mixture Of");
+    await say(t, scene, "Say the thing.");
+
+    await generate(t, scene);
+    await adapter.started;
+    adapter.push("a mixture of things, honestly, and none of them good.");
+    adapter.end();
+
+    await until(() => turnCount() >= 2, { timeoutMs: 4000 });
+    adapter.push("Nothing at all, in fact.");
+    adapter.end();
+    await until(async () => {
+      const log = await history(t, scene);
+      return log.messages.some((message) => message.content.includes("Nothing at all"));
+    }, { timeoutMs: 4000 });
+    expect(turnCount()).toBe(2);
+  });
+
+  test("shares the length trigger's budget rather than getting its own", async () => {
+    // Two independent budgets is two ways for a scene to spend money in a loop.
+    const { t, scene, preset } = await setup();
+    await patchPreset(t, preset.id, { autoSwipe: { onBanned: true, attempts: 1 } });
+    await ban(t, scene, "a mixture of");
+    await say(t, scene, "Say the thing.");
+
+    await generate(t, scene);
+    await adapter.started;
+    adapter.push("Her face was a mixture of emotions.");
+    adapter.end();
+
+    await until(() => turnCount() >= 2, { timeoutMs: 4000 });
+    // The reroll uses the phrase too. With a budget of one, that is the end.
+    adapter.push("Still a mixture of emotions, sorry.");
+    adapter.end();
+
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(turnCount()).toBe(2);
+  });
+
+  test("length wins when a turn is both short and banned", async () => {
+    // The cheap check first: a string length, where the phrase check reads the
+    // ban list out of the database. And "too short" is the more basic
+    // complaint, so it is the one recorded.
+    const { t, scene, preset } = await setup();
+    await patchPreset(t, preset.id, {
+      autoSwipe: { minChars: 200, onBanned: true, attempts: 2 },
+    });
+    await ban(t, scene, "a mixture of");
+    await say(t, scene, "Say the thing.");
+
+    await generate(t, scene);
+    await adapter.started;
+    adapter.push("A mixture of.");
+    adapter.end();
+
+    await until(() => turnCount() >= 2, { timeoutMs: 4000 });
+    adapter.push("A".repeat(300));
+    adapter.end();
+    await until(async () => {
+      const log = await history(t, scene);
+      return log.messages.some((message) => message.content.length > 250);
+    }, { timeoutMs: 4000 });
+
+    const log = await history(t, scene);
+    const leaf = log.messages.at(-1)!;
+    const siblings = (await (
+      await t.fetch(`/api/scenes/${scene.id}/messages/${leaf.id}/siblings`)
+    ).json()) as MessageDto[];
+    const rejected = siblings.find((message) => message.content.includes("A mixture of"));
+    // No phrase recorded: it was rerolled for being short, which is legible
+    // from the turn itself and from the token count beside it.
+    expect(rejected?.generation?.autoSwipedFor ?? null).toBeNull();
   });
 });

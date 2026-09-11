@@ -85,20 +85,63 @@ describe("the prompt panel shows the window, not a link", () => {
   });
 });
 
+const FIELDS = readFileSync(
+  join(import.meta.dir, "..", "client", "components", "PresetEditor.tsx"),
+  "utf8",
+);
+
 describe("the other sections are real, not placeholders", () => {
-  test("preset carries every sampler and the scene's ban list", () => {
-    expect(RAIL).toContain("GROUPS.map");
-    expect(RAIL).toContain("<Slider");
+  /**
+   * The rail's own comment has claimed since phase 106 that "the rail is the
+   * editor, not a teaser that hides the rest behind a button". It was true of
+   * the samplers and false of everything else: the context size, the automatic
+   * retries, example eviction, squashed system turns, the prefill, the ops'
+   * prompts and reasoning were all in `PresetFields`, which at desktop width
+   * nothing could open — `SettingsScreen` drops its `generation` category on a
+   * desktop precisely to leave this the one surface (§20 phase 169).
+   *
+   * So the assertion is the whole editor rather than a list of the parts the
+   * rail happened to reimplement. A list of parts is how the gap survived:
+   * every named part was present, and the ones nobody named were not.
+   */
+  test("preset is the whole editor, not a chosen subset of it", () => {
+    expect(RAIL).toContain("<PresetFields");
+    // And does not reimplement the half it used to.
+    expect(RAIL).not.toContain("GROUPS.map");
+    expect(RAIL).not.toContain("<Slider");
+    expect(RAIL).not.toContain("download(preset");
+  });
+
+  test("which means every section a phone can reach, a desktop can", () => {
+    for (const marker of [
+      "strings.settings.samplers",
+      "strings.settings.contextSize",
+      "strings.settings.retries",
+      "strings.settings.examples",
+      "strings.settings.squashSystem",
+      "strings.settings.precedence",
+      "strings.settings.prefill",
+      "strings.settings.utilityPrompts",
+      "strings.settings.reasoningTitle",
+      "strings.settings.exportPresetLabel",
+      "strings.settings.presetMakeDefault",
+    ]) {
+      expect(FIELDS).toContain(marker);
+    }
+  });
+
+  test("the scene's ban list stays the rail's own, because it is per scene", () => {
     expect(RAIL).toContain("useBans");
     expect(RAIL).toContain("useAddBan");
   });
 
-  test("the preset tab is a manager: make, import, save, promote, remove, and a model", () => {
+  test("the preset tab is still a manager: make, import, choose, and a model", () => {
     expect(RAIL).toContain("useCreatePreset");
     expect(RAIL).toContain("useImportPreset");
-    expect(RAIL).toContain("useDeletePreset");
-    expect(RAIL).toContain("download(preset");
     expect(RAIL).toContain("connectionProfileId");
+    // Promote and remove moved with the rest into `PresetFields`.
+    expect(FIELDS).toContain("useDeletePreset");
+    expect(FIELDS).toContain("download(preset");
   });
 
   test("lore is editable without a scene, and guides can be written, reordered and flushed", () => {

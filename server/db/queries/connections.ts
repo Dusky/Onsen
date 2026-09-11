@@ -54,9 +54,14 @@ interface PresetRow {
   auto_continue: number;
   auto_swipe_min_chars: number;
   auto_swipe_attempts: number;
+  /** The third trigger, off by default (§13.6, §20 phase 169). */
+  auto_swipe_on_banned: number;
   /** Prompt assembly policy (§20 phase 64). */
   example_eviction: string;
   squash_system: number;
+  /** Who wins when a character and the preset both have one (§20 phase 169). */
+  prefer_character_prompt: number;
+  prefer_character_instructions: number;
   system_prompt: string | null;
   jailbreak: string | null;
   /** The profile this preset answers with, when the scene names none (§20 phase 105). */
@@ -220,11 +225,17 @@ export function toPresetDto(db: Database, row: PresetRow): PresetDto {
     blockOrder: parsePromptOrder(row.prompt_order),
     blocks: listPresetBlocks(db, row.id),
     autoContinue: row.auto_continue,
-    autoSwipe: { minChars: row.auto_swipe_min_chars, attempts: row.auto_swipe_attempts },
+    autoSwipe: {
+      minChars: row.auto_swipe_min_chars,
+      attempts: row.auto_swipe_attempts,
+      onBanned: row.auto_swipe_on_banned === 1,
+    },
     // Parsed with a fallback rather than trusted: the column has no CHECK, so
     // a value written by a newer build must not break an older one.
     exampleEviction: isExampleEviction(row.example_eviction) ? row.example_eviction : "keep",
     squashSystem: row.squash_system === 1,
+    preferCharacterPrompt: row.prefer_character_prompt === 1,
+    preferCharacterInstructions: row.prefer_character_instructions === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -590,9 +601,13 @@ export interface PresetPatch {
   autoContinue?: number;
   autoSwipeMinChars?: number;
   autoSwipeAttempts?: number;
+  autoSwipeOnBanned?: boolean;
   /** Prompt assembly policy (§20 phase 64). */
   exampleEviction?: string;
   squashSystem?: boolean;
+  /** Who wins when a character and the preset both have one (§20 phase 169). */
+  preferCharacterPrompt?: boolean;
+  preferCharacterInstructions?: boolean;
 }
 
 export function createPresetBlock(
@@ -674,8 +689,11 @@ export function updatePreset(db: Database, id: number, patch: PresetPatch): Pres
               auto_continue = $auto_continue,
               auto_swipe_min_chars = $auto_swipe_min_chars,
               auto_swipe_attempts = $auto_swipe_attempts,
+              auto_swipe_on_banned = $auto_swipe_on_banned,
               example_eviction = $example_eviction,
               squash_system = $squash_system,
+              prefer_character_prompt = $prefer_character_prompt,
+              prefer_character_instructions = $prefer_character_instructions,
               updated_at = $now
         WHERE id = $id
         RETURNING *`,
@@ -700,8 +718,14 @@ export function updatePreset(db: Database, id: number, patch: PresetPatch): Pres
       auto_continue: patch.autoContinue ?? current.auto_continue,
       auto_swipe_min_chars: patch.autoSwipeMinChars ?? current.auto_swipe_min_chars,
       auto_swipe_attempts: patch.autoSwipeAttempts ?? current.auto_swipe_attempts,
+      auto_swipe_on_banned:
+        (patch.autoSwipeOnBanned ?? current.auto_swipe_on_banned === 1) ? 1 : 0,
       example_eviction: patch.exampleEviction ?? current.example_eviction,
       squash_system: (patch.squashSystem ?? current.squash_system === 1) ? 1 : 0,
+      prefer_character_prompt:
+        (patch.preferCharacterPrompt ?? current.prefer_character_prompt === 1) ? 1 : 0,
+      prefer_character_instructions:
+        (patch.preferCharacterInstructions ?? current.prefer_character_instructions === 1) ? 1 : 0,
       now: Date.now(),
     }) as PresetRow;
 }

@@ -33,7 +33,7 @@ import {
   useUpdateTask,
 } from "../lib/queries.ts";
 import { useUiStore } from "../state/ui.ts";
-import { GROUPS, LABELS, Slider, PromptManager, download } from "./PresetEditor.tsx";
+import { PresetFields, PromptManager } from "./PresetEditor.tsx";
 import { GuidesBody } from "./GuidesPanel.tsx";
 import { TextField } from "./TextField.tsx";
 import { LorePane } from "./LorePane.tsx";
@@ -467,10 +467,8 @@ function PresetPanel({ sceneId }: { sceneId: string | null }) {
   const profiles = useConnectionProfiles();
   const update = useUpdatePreset();
   const create = useCreatePreset();
-  const remove = useDeletePreset();
   const importPreset = useImportPreset();
   const fileInput = useRef<HTMLInputElement>(null);
-  const [confirmNode, confirm] = useConfirm();
   const [presetId, setPresetId] = useState<string | null>(null);
   const rows = presets.data ?? [];
   const preset =
@@ -481,13 +479,6 @@ function PresetPanel({ sceneId }: { sceneId: string | null }) {
 
   if (preset === null) {
     return <p className="explain mt-[14px]">{strings.settings.presetDefault}</p>;
-  }
-
-  function setSampler(key: BoundedSampler, value: number | undefined) {
-    const next: SamplerSettings = { ...preset!.samplerSettings };
-    if (value === undefined) delete next[key];
-    else next[key] = value;
-    if (samplerProblem(next) === null) update.mutate({ id: preset!.id, samplerSettings: next });
   }
 
   return (
@@ -543,46 +534,6 @@ function PresetPanel({ sceneId }: { sceneId: string | null }) {
           {importPreset.isPending ? strings.settings.importingPreset : strings.settings.importPreset}
         </button>
       </div>
-      <div className="mt-[6px] flex gap-[6px]">
-        <button
-          type="button"
-          className="btn flex-1 px-[8px]"
-          onClick={() => void download(preset, "onsen")}
-        >
-          {strings.settings.exportPresetOwn}
-        </button>
-        <button
-          type="button"
-          className="btn flex-1 px-[8px]"
-          onClick={() => void download(preset, "sillytavern")}
-        >
-          {strings.settings.exportPresetSt}
-        </button>
-      </div>
-      {preset.isDefault ? null : (
-        <div className="mt-[6px] flex gap-[6px]">
-          <button
-            type="button"
-            className="btn flex-1 px-[8px]"
-            onClick={() => update.mutate({ id: preset.id, isDefault: true })}
-          >
-            {strings.settings.presetMakeDefault}
-          </button>
-          <button
-            type="button"
-            className="btn flex-1 px-[8px]"
-            style={{ color: "var(--onsen-color-red)", borderColor: "var(--onsen-color-red-border)" }}
-            onClick={() =>
-              confirm(strings.settings.presetDeleteConfirm, () => {
-                setPresetId(null);
-                remove.mutate(preset.id);
-              })
-            }
-          >
-            {strings.common.delete}
-          </button>
-        </div>
-      )}
       <input
         ref={fileInput}
         type="file"
@@ -619,29 +570,29 @@ function PresetPanel({ sceneId }: { sceneId: string | null }) {
         ))}
       </select>
 
-      {/* Every sampler, grouped with its hint — the rail is the editor, not a
-          teaser that hides the rest behind a button. */}
-      <p className="section-label mb-[10px]">{strings.settings.samplers}</p>
-      {GROUPS.map((group, at) => (
-        <div key={at} className="mb-[14px]">
-          {group.keys.map((key) => (
-            <Slider
-              key={key}
-              label={LABELS[key]}
-              bound={SAMPLER_BOUNDS[key]}
-              value={preset.samplerSettings[key]}
-              fallback={MODERN_SAMPLER_DEFAULTS[key]}
-              onCommit={(value) => setSampler(key, value)}
-            />
-          ))}
-          {group.hint === undefined ? null : <p className="explain mt-[8px]">{group.hint}</p>}
-        </div>
-      ))}
+      {/*
+       * The whole editor, not a subset of it (§20 phase 169).
+       *
+       * This panel's own comment has claimed since phase 106 that "the rail is
+       * the editor, not a teaser that hides the rest behind a button" — and it
+       * was true of the samplers and false of everything else. `PresetFields`
+       * covers seven more sections: the context size, the automatic retries,
+       * example eviction, squashed system turns, the prefill, the ops' prompts
+       * and reasoning. None of them were reachable at desktop width at all,
+       * because `SettingsScreen` drops its `generation` category on a desktop
+       * precisely to leave this the one surface — so the only path to them was
+       * to narrow the window.
+       *
+       * Found while adding the two precedence switches, which would have
+       * shipped into the same dead end. The samplers, the export pair and the
+       * default/delete buttons this replaced were all `PresetFields`' own,
+       * reimplemented here; one copy is the point.
+       */}
+      <PresetFields preset={preset} onClose={() => setPresetId(null)} />
 
       {/* The ban list is per scene, so it sits here only while a roleplay is
           open (§13.6). */}
       {sceneId === null ? null : <BanList sceneId={sceneId} />}
-      {confirmNode}
     </div>
   );
 }

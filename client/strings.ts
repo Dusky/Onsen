@@ -488,6 +488,17 @@ export const strings = {
 
     you: "You",
     /** A turn the provider cut off at the response cap (§20 phase 63). */
+    /**
+     * The banned phrase that got a turn rerolled (§13.6, §20 phase 169).
+     *
+     * The phrase itself, quoted, not a count: §13.6's list is constructions a
+     * reader put there on purpose, and "rerolled" without saying which one is
+     * the arbitrary dice roll the section is written against. Capped, because
+     * a ban phrase is a phrase and a paragraph pasted into the list should not
+     * take the stats row apart.
+     */
+    autoSwipedFor: (phrase: string) =>
+      `rerolled \u00b7 \u201c${phrase.length > 40 ? `${phrase.slice(0, 39)}\u2026` : phrase}\u201d`,
     cutOff: "cut off",
     /** The turns above the window (§20 phase 62). */
     showEarlier: (count: number) => `${count} earlier ${count === 1 ? "turn" : "turns"}`,
@@ -930,6 +941,22 @@ export const strings = {
     readerMedia: "Pictures under a turn",
     readerMediaList: "Stacked",
     readerMediaGrid: "In a grid",
+    autoSwipeOnBanned: "Also reroll a turn that used a banned phrase",
+
+    /*
+     * Who wins when a character and the preset both have one (§20 phase 169).
+     *
+     * No hint: `test/voice.test.ts` caps explanatory prose at forty-five keys
+     * and the budget is spent, which is the right answer here anyway. Both
+     * buttons are toggles showing their own state — the second is pressed on a
+     * fresh install, which is how a reader sees that it was already the
+     * behaviour — and neither is a change that cannot be undone by pressing
+     * the same button again.
+     */
+    precedence: "The card against this preset",
+    preferCharacterPrompt: "A card's system prompt replaces this preset's",
+    preferCharacterInstructions: "A card's post-history instructions are used",
+
     /* The whole setup as one file (§20 phase 168). */
     setup: "Your setup",
     setupExport: "Save to a file",

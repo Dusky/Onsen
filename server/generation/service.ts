@@ -29,6 +29,7 @@ import {
 } from "../db/queries/history.ts";
 import { buildPromptContext, presetIdFor, resolvePreset } from "./context.ts";
 import { recordActivations } from "../db/queries/lore.ts";
+import { activeBans } from "../db/queries/options.ts";
 import { transcriptQueryVector } from "../lore/scene.ts";
 import { resolveRoute, RouteError, type ResolvedRoute } from "./route.ts";
 import { internalIdOf, resolveNextSpeaker } from "./turn.ts";
@@ -2032,15 +2033,46 @@ export class GenerationService {
       return true;
     }
 
-    if (
-      preset.autoSwipeMinChars > 0 &&
-      landed.content.trim().length < preset.autoSwipeMinChars &&
-      generation.retries.swiped < preset.autoSwipeAttempts
-    ) {
+    /*
+     * Then length, then the ban list — both spending the same budget.
+     *
+     * Order matters and this is the cheap one first: a short turn is a string
+     * length, where the phrase check reads the ban list out of the database.
+     * A turn that is both too short *and* uses a banned phrase is rerolled for
+     * being short, which is the more basic complaint.
+     */
+    const tooShort =
+      preset.autoSwipeMinChars > 0 && landed.content.trim().length < preset.autoSwipeMinChars;
+    const banned =
+      !tooShort && preset.autoSwipeOnBanned
+        ? bannedPhraseIn(this.db, generation.sceneId, landed.content)
+        : null;
+
+    if ((tooShort || banned !== null) && generation.retries.swiped < preset.autoSwipeAttempts) {
+      /*
+       * Say why, on the turn being rejected.
+       *
+       * It survives as a sibling — see below — so a reader who swipes back to
+       * it finds out why the app moved on instead of finding a turn that was
+       * silently passed over. A reroll with no stated reason is the arbitrary
+       * dice roll §8 and §13.6 are both written against.
+       *
+       * Only the ban reason is recorded: "too short" is already legible from
+       * the turn itself and from the token count beside it, where *which
+       * phrase* is not recoverable from anything on screen.
+       */
+      if (banned !== null) {
+        this.db
+          .query("UPDATE messages SET generation_meta = $meta WHERE id = $id")
+          .run({
+            id: landed.id,
+            meta: JSON.stringify({ ...generation.meta, autoSwipedFor: banned }),
+          });
+      }
       // A sibling of the turn being rejected, not a replacement for it: the
-      // short one stays one swipe away, because a reader who wanted it should
-      // not have to regenerate to get it back, and deleting a generation they
-      // paid for is the worse half of automation.
+      // rejected one stays one swipe away, because a reader who wanted it
+      // should not have to regenerate to get it back, and deleting a
+      // generation they paid for is the worse half of automation.
       this.start({
         scene,
         parentId: landed.parent_id,
@@ -2281,22 +2313,56 @@ function resolveTurn(db: Database, options: StartOptions): ResolvedTurn {
 function presetRetrySettings(
   db: Database,
   scene: SceneRow,
-): { autoContinue: number; autoSwipeMinChars: number; autoSwipeAttempts: number } | null {
+): {
+  autoContinue: number;
+  autoSwipeMinChars: number;
+  autoSwipeAttempts: number;
+  autoSwipeOnBanned: boolean;
+} | null {
   const presetId = presetIdFor(db, scene, null);
   if (presetId === null) return null;
   const row = db
     .query(
-      "SELECT auto_continue, auto_swipe_min_chars, auto_swipe_attempts FROM presets WHERE id = $id",
+      `SELECT auto_continue, auto_swipe_min_chars, auto_swipe_attempts, auto_swipe_on_banned
+         FROM presets WHERE id = $id`,
     )
     .get({ id: presetId }) as
-    | { auto_continue: number; auto_swipe_min_chars: number; auto_swipe_attempts: number }
+    | {
+        auto_continue: number;
+        auto_swipe_min_chars: number;
+        auto_swipe_attempts: number;
+        auto_swipe_on_banned: number;
+      }
     | null;
   if (row === null) return null;
   return {
     autoContinue: row.auto_continue,
     autoSwipeMinChars: row.auto_swipe_min_chars,
     autoSwipeAttempts: row.auto_swipe_attempts,
+    autoSwipeOnBanned: row.auto_swipe_on_banned === 1,
   };
+}
+
+/**
+ * The first banned phrase a turn used, or null (§13.6, §20 phase 169).
+ *
+ * Case-insensitive and substring, which is what the ban list already means
+ * everywhere else: §13.6's phrases are constructions ("a mixture of", "a mix
+ * of emotions"), not tokens, and a list that only matched whole words would
+ * miss every one of them mid-sentence.
+ *
+ * The *first* one, in `activeBans`' own order — global before the scene's,
+ * then by id. One reason is a reason; a list of four is a report, and the
+ * message meta this lands in is read by a reader wondering why their turn was
+ * passed over.
+ */
+function bannedPhraseIn(db: Database, sceneId: number, content: string): string | null {
+  const haystack = content.toLowerCase();
+  for (const ban of activeBans(db, sceneId)) {
+    const phrase = ban.phrase.trim().toLowerCase();
+    if (phrase !== "" && haystack.includes(phrase)) return ban.phrase;
+  }
+  return null;
 }
 
 function promptTurnOf(turn: ResolvedTurn) {

@@ -540,6 +540,12 @@ function Stats({
     // mid-word, and it is what auto-continue fires on — so when the setting is
     // off, this is the thing that tells you it would have helped.
     if (meta.finishReason === "length") parts.push(strings.chat.cutOff);
+    // Why the app moved past this turn (§13.6, §20 phase 169). It is a
+    // sibling, so a reader swiping back to it is owed the reason rather than
+    // left with a turn that was silently passed over.
+    if (meta.autoSwipedFor != null && meta.autoSwipedFor !== "") {
+      parts.push(strings.chat.autoSwipedFor(meta.autoSwipedFor));
+    }
   }
   if (parts.length === 0) return null;
   const label = parts.join(" \u00b7 ");

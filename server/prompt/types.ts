@@ -453,7 +453,6 @@ export interface PromptPreset {
   systemPrompt: string | null;
   jailbreak: string | null;
   prefill: string | null;
-  postHistoryInstructions: string | null;
   maxResponseTokens: number;
   /**
    * Overrides the default assembly order when set (§3).
@@ -492,6 +491,28 @@ export interface PromptPreset {
    * what every existing prompt looks like.
    */
   squashSystem: boolean;
+  /**
+   * Whether the spotlight's own system prompt replaces the preset's (§2, §20
+   * phase 169).
+   *
+   * Off is what this builder always did: `system_prompt` is the preset's, and
+   * a character's own is appended inside `spotlight_character` — and only when
+   * `author` is null, so with an author set it was dropped silently. On, it
+   * replaces the preset's in either mode.
+   */
+  preferCharacterPrompt: boolean;
+  /**
+   * Whether the spotlight's post-history instructions are injected (§2, §20
+   * phase 169). On is what this builder always did.
+   *
+   * This replaced a dead field. `PromptPreset.postHistoryInstructions` existed
+   * and was hardcoded `null` at both call sites in
+   * `server/generation/context.ts`, so the `?? ctx.preset.postHistoryInstructions`
+   * fallback in the `post_history` block could never fire — the preset's own
+   * final instruction is the separate `jailbreak` block. The flag says what
+   * the code actually decides.
+   */
+  preferCharacterInstructions: boolean;
 }
 
 export interface PromptCustomBlock {

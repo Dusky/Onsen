@@ -91,6 +91,9 @@ interface PresetRow {
   /** Prompt assembly policy (§20 phase 64). */
   example_eviction: string;
   squash_system: number;
+  /** Who wins when a character and the preset both have one (§20 phase 169). */
+  prefer_character_prompt: number;
+  prefer_character_instructions: number;
 }
 
 export interface ResolvedPreset {
@@ -186,13 +189,16 @@ export function resolvePreset(db: Database, presetId: number | null): ResolvedPr
       systemPrompt: row?.system_prompt ?? null,
       jailbreak: row?.jailbreak ?? null,
       prefill: row?.prefill ?? null,
-      postHistoryInstructions: null,
       maxResponseTokens: row?.max_response_tokens ?? 1024,
       // Parsed with a fallback rather than trusted: the column carries no
       // CHECK, so a value written by a newer build reads as the default here
       // instead of reaching the builder as a policy it does not have.
       exampleEviction: isExampleEviction(row?.example_eviction) ? row.example_eviction : "keep",
       squashSystem: row?.squash_system === 1,
+      // Both default to what the builder already did, for an install with no
+      // preset row at all as well as for one that has never touched them.
+      preferCharacterPrompt: row?.prefer_character_prompt === 1,
+      preferCharacterInstructions: row?.prefer_character_instructions !== 0,
       blockOrder,
       customBlocks: blocks
         .filter((block) => block.enabled)

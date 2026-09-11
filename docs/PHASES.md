@@ -7717,3 +7717,80 @@ carrying only `reading` is a legitimate file, so "applied" and "skipped" are
 both lists rather than a boolean — and a theme this install does not have lands
 in `skipped` beside a group that simply was not in the file, because from the
 reader's side those are the same fact: it did not come back.
+
+## Phase 169 — The card against the preset
+
+Three decisions the builder made for the reader with no way past them.
+
+**Whose framing frames the turn.** The `system_prompt` block has always been
+the preset's. A character's own was folded into `spotlight_character`
+instead — and only in single-character mode, so with an author configured it
+went nowhere at all. Silently: the card has the field, a reader fills it in,
+and nothing says it is being dropped. `preferCharacterPrompt` promotes the
+spotlight's own system prompt into the block, replacing the preset's, in either
+mode. Replacing rather than appending, because two framings in one block are
+two framings arguing — the thing §3.5 is written against — and the reader who
+turned this on did so because the card's is the one they want.
+
+**Whether a card's post-history instructions are used at all.** Not a
+"prefer": there was never anything on the preset side to prefer them over. The
+preset's own final instruction is the separate `jailbreak` block, so the real
+decision — and the one a reader running somebody else's card actually makes —
+is whether the card's reach the model.
+
+**A third automatic retry.** `maybeRetry` has rerolled on length since phase 63
+and on nothing else. The incumbent also rerolls on a blacklisted word, and
+§13.6's list already exists with proposals excluded — a suggestion nobody
+accepted must not silently cost a generation. Off by default, sharing the
+`auto_swipe_attempts` budget rather than getting its own, because two
+independent budgets is two ways for a scene to spend money in a loop.
+
+The reason lands on the **rejected** turn, which survives as a sibling — so a
+reader who swipes back to it is told why the app moved on instead of finding a
+turn that was quietly passed over. A reroll with no stated reason is the
+arbitrary dice roll §8 and §13.6 are both written against.
+
+**Verified** in Chromium against the real builder through the real preview
+route, with a card framing and a preset framing both set and an author
+configured: at the defaults the system prompt is the preset's and the card's
+post-history is used, exactly as before; with the first flag on, the block
+becomes the card's and names the card as its source; with the second off, the
+`post_history` block is absent and the preset's `jailbreak` is untouched. The
+reroll itself is driven through a scripted adapter in `test/retries.test.ts` —
+exactly one reroll, the rejected turn surviving as a sibling, the phrase named
+in its meta. Guards: `test/precedence.test.ts` (15), seven more in
+`test/retries.test.ts`. Full suite 1682 pass.
+
+### Surprises
+
+**`PromptPreset.postHistoryInstructions` was a dead field.** Hardcoded `null`
+at both of its call sites in `server/generation/context.ts`, so the
+`?? ctx.preset.postHistoryInstructions` fallback in the `post_history` block
+could never fire. Removed rather than wired: the preset's final instruction is
+already its own block, and a field asserting an unreachable fallback is worse
+than no field. A dead *export* the sweep in `test/dead-exports.test.ts` would
+have caught; a dead interface member it cannot see.
+
+**The preset editor was unreachable at desktop width.** `PresetFields` carries
+the context size, the automatic retries, example eviction, squashed system
+turns, the prefill, the ops' prompts and reasoning — and its only trigger is
+the Settings `generation` category, which `SettingsScreen` drops on a desktop
+outright, precisely to leave the left rail's Preset tab as the one surface.
+But that panel reimplemented only the samplers, while its own comment claimed
+since phase 106 that "the rail is the editor, not a teaser that hides the rest
+behind a button". Seven sections were reachable only by narrowing the window.
+
+Found because the two new switches would have shipped into the same dead end.
+The rail now renders `PresetFields`, which *deleted* code: its duplicated
+sampler grid, its export pair and its default/delete buttons were all
+`PresetFields`' own, reimplemented. `test/leftrail.test.ts` asserted the
+reimplementation part by part — and a list of parts is exactly how the gap
+survived, since every named part was present and the ones nobody named were
+not. It now asserts the whole editor.
+
+**The two triggers had to be ordered, not combined.** Length is a string
+length; the phrase check reads the ban list out of the database. Cheap first —
+and a turn that is both too short and uses a banned phrase is rerolled for
+being short, which is the more basic complaint, and the one already legible
+from the turn and the token count beside it. So only the ban reason is
+recorded: *which phrase* is the part nothing else on screen can tell you.

@@ -222,7 +222,19 @@ export interface PresetDto {
    * one is one tap away from it, and silently deleting a generation the user
    * paid for would be the worse half of automation.
    */
-  autoSwipe: { minChars: number; attempts: number };
+  autoSwipe: {
+    minChars: number;
+    attempts: number;
+    /**
+     * Reroll a turn that used a banned phrase (§13.6, §20 phase 169).
+     *
+     * Off by default, because on would change what every existing preset does
+     * with the ban list it already has. It shares `attempts` rather than
+     * carrying its own budget: two independent budgets is two ways for a
+     * scene to spend money in a loop.
+     */
+    onBanned: boolean;
+  };
   /**
    * What happens to the example dialogue as a scene fills up (§3, §20 phase 64).
    *
@@ -233,6 +245,33 @@ export interface PresetDto {
   exampleEviction: ExampleEvictionName;
   /** Merge consecutive system messages into one (§3, §20 phase 64). */
   squashSystem: boolean;
+  /**
+   * Whether a character's own system prompt beats the preset's (§2, §20 phase
+   * 169).
+   *
+   * Off is what the builder always did: the `system_prompt` block is the
+   * preset's, and a character's own is folded into `spotlight_character`
+   * instead — and *only* in single-character mode, so with an author set it was
+   * dropped with nothing saying so. On, the spotlight's system prompt replaces
+   * the preset's, in either mode.
+   *
+   * The spotlight's, specifically: in a beat that is the character who opens
+   * it. A prompt assembled from four cards' framings at once would be four
+   * framings arguing, which is the thing §3.5 is written against.
+   */
+  preferCharacterPrompt: boolean;
+  /**
+   * Whether a character's post-history instructions are injected (§2, §20
+   * phase 169).
+   *
+   * On is what the builder always did. Named for what it decides rather than
+   * as a "prefer": there was never anything on the preset side to prefer it
+   * over, because the preset's own final instruction is the separate
+   * `jailbreak` block. So the real decision — and the one a reader running
+   * somebody else's card actually makes — is whether the card's instructions
+   * reach the model at all.
+   */
+  preferCharacterInstructions: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -323,12 +362,15 @@ export interface UpdatePresetRequest {
    * half-orders. Null restores the default.
    */
   blockOrder?: PromptOrderEntry[] | null;
-  /** The two automatic retries (§20 phase 63). Zero is off for both. */
+  /** The automatic retries (§20 phase 63, §20 phase 169). Zero is off. */
   autoContinue?: number;
-  autoSwipe?: { minChars?: number; attempts?: number };
+  autoSwipe?: { minChars?: number; attempts?: number; onBanned?: boolean };
   /** What happens to the examples as a scene fills up (§20 phase 64). */
   exampleEviction?: ExampleEvictionName;
   squashSystem?: boolean;
+  /** Who wins when a character and the preset both have one (§20 phase 169). */
+  preferCharacterPrompt?: boolean;
+  preferCharacterInstructions?: boolean;
   /** The model this preset answers with, when the scene names none (§20 phase 105). */
   connectionProfileId?: string | null;
   /** The ops' prompts (§20 phase 107). */
@@ -579,6 +621,15 @@ export interface GenerationMeta {
    * back into a later prompt.
    */
   nudge?: string | null;
+  /**
+   * The banned phrase that got this turn rerolled (§13.6, §20 phase 169).
+   *
+   * Written on the *rejected* turn, which survives as a sibling — so a reader
+   * who swipes back to it is told why the app moved on rather than finding a
+   * turn that was silently passed over. A reroll with no stated reason is the
+   * arbitrary dice roll §8 and §13.6 are both written against.
+   */
+  autoSwipedFor?: string | null;
 }
 
 /** A scene rolled up: messages, words, and who carried it (§20 phase 128). */

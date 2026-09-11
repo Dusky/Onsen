@@ -562,19 +562,47 @@ export function draftBlocks(ctx: PromptContext): Map<string, DraftBlock[]> {
     ]);
   }
 
-  add("system_prompt", "System prompt", "preset", ctx.preset.systemPrompt);
+  /*
+   * Whose framing the model is given (§2, §20 phase 169).
+   *
+   * The preset's, unless this preset has been told to let a character's own
+   * replace it. Not appended to it: two framings in one block are two framings
+   * arguing, and the reader who turned this on did so because the card's is
+   * the one they want.
+   *
+   * The source is named in the block, so the Inspector says which it is
+   * rather than leaving the reader to infer it from the text.
+   */
+  const characterPrompt = ctx.spotlight.systemPrompt?.trim();
+  const preferCharacter =
+    ctx.preset.preferCharacterPrompt && characterPrompt !== undefined && characterPrompt !== "";
+  add(
+    "system_prompt",
+    "System prompt",
+    preferCharacter ? ctx.spotlight.name : "preset",
+    preferCharacter ? characterPrompt : ctx.preset.systemPrompt,
+  );
   add("author_identity", "Author", ctx.author?.name ?? "author", authorIdentity(ctx));
   const inTurn = turnCharactersOf(ctx);
   add(
     "spotlight_character",
     inTurn.length === 1 ? "Spotlight" : "Beat participants",
     inTurn.map((member) => member.name).join(", "),
-    // In single-character mode a per-character system prompt overrides the
-    // preset's framing for this character (§2). Every character the turn is
-    // writing gets a full definition, voice notes included: §3.5 makes that the
-    // first mitigation for the voices converging.
+    /*
+     * In single-character mode a per-character system prompt has always been
+     * folded in here (§2). Every character the turn is writing gets a full
+     * definition, voice notes included: §3.5 makes that the first mitigation
+     * for the voices converging.
+     *
+     * Two conditions, not one. `author === null` is the original: with an
+     * author set, a character's system prompt went nowhere at all — a real
+     * gap, and `preferCharacterPrompt` is now how a reader closes it. And when
+     * it *has* been promoted to the `system_prompt` block above, it must not
+     * also appear here, or the card's framing arrives twice and is billed
+     * twice.
+     */
     paragraphs(
-      ctx.author === null ? ctx.spotlight.systemPrompt : null,
+      ctx.author === null && !preferCharacter ? ctx.spotlight.systemPrompt : null,
       ...inTurn.map(fullCharacter),
     ),
   );
@@ -693,11 +721,22 @@ export function draftBlocks(ctx: PromptContext): Map<string, DraftBlock[]> {
     steerDepth === 0 ? NEAR_TURN : { kind: "depth", depth: steerDepth },
     steerOp?.role ?? "system",
   );
+  /*
+   * A card's post-history instructions, if this preset lets them through
+   * (§2, §20 phase 169).
+   *
+   * The `?? ctx.preset.postHistoryInstructions` this replaces could never
+   * fire: that field was hardcoded `null` at both of its call sites, because
+   * the preset's own final instruction is the separate `jailbreak` block
+   * below. So the source was always the character, and the real decision — the
+   * one a reader running somebody else's card is making — is whether it
+   * reaches the model at all.
+   */
   add(
     "post_history",
     "Post-history instructions",
-    ctx.spotlight.postHistoryInstructions === null ? "preset" : ctx.spotlight.name,
-    ctx.spotlight.postHistoryInstructions ?? ctx.preset.postHistoryInstructions,
+    ctx.spotlight.name,
+    ctx.preset.preferCharacterInstructions ? ctx.spotlight.postHistoryInstructions : null,
     NEAR_TURN,
   );
   const nudgeOp = ctx.ops?.["nudge"];

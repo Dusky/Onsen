@@ -414,6 +414,14 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
         if (attempts === undefined) return c.json(badRequest("attempts is a number."), 400);
         patch.autoSwipeAttempts = attempts;
       }
+      // The third trigger (§13.6, §20 phase 169). Inside `autoSwipe` rather
+      // than beside it: it spends the same budget, so it belongs to the same
+      // setting.
+      if ("onBanned" in swipe) {
+        const value = swipe["onBanned"];
+        if (typeof value !== "boolean") return c.json(badRequest("onBanned is a boolean."), 400);
+        patch.autoSwipeOnBanned = value;
+      }
     }
 
     /* Prompt assembly policy (§3, §20 phase 64). */
@@ -428,6 +436,14 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
       const value = body["squashSystem"];
       if (typeof value !== "boolean") return c.json(badRequest("squashSystem is a boolean."), 400);
       patch.squashSystem = value;
+    }
+    // Who wins when a character and the preset both have something to say
+    // (§20 phase 169).
+    for (const field of ["preferCharacterPrompt", "preferCharacterInstructions"] as const) {
+      if (!(field in body)) continue;
+      const value = body[field];
+      if (typeof value !== "boolean") return c.json(badRequest(`${field} is a boolean.`), 400);
+      patch[field] = value;
     }
 
     return c.json(toPresetDto(ctx.db, updatePreset(ctx.db, row.id, patch)));
