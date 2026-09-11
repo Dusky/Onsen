@@ -1175,7 +1175,7 @@ function ApiKeysSection() {
           <button
             type="button"
             onClick={() => setEditing(key)}
-            className="flex w-full items-baseline gap-[9px] text-left"
+            className="tap flex w-full items-baseline gap-[9px] text-left"
           >
             {statusDot(!key.revoked)}
             <span className="min-w-0 flex-1">
@@ -1256,7 +1256,7 @@ function WebhooksSection() {
             <button
               type="button"
               onClick={() => setEditing(webhook)}
-              className="flex w-full items-baseline gap-[9px] text-left"
+              className="tap flex w-full items-baseline gap-[9px] text-left"
             >
               {statusDot(webhook.enabled && !failing)}
               <span className="min-w-0 flex-1">
@@ -1345,7 +1345,7 @@ function PacksSection() {
           <button
             type="button"
             onClick={() => setRemoving(pack)}
-            className="flex w-full items-baseline gap-[9px] text-left"
+            className="tap flex w-full items-baseline gap-[9px] text-left"
           >
             <span className="min-w-0 flex-1">
               <span className="block truncate text-[15px] font-medium">{pack.name}</span>
@@ -1483,7 +1483,7 @@ function AutomationSection() {
           <button
             type="button"
             onClick={() => setEditingScript(script)}
-            className="flex w-full items-baseline gap-[9px] text-left"
+            className="tap flex w-full items-baseline gap-[9px] text-left"
           >
             <span className="min-w-0 flex-1">
               <span
@@ -1520,7 +1520,7 @@ function AutomationSection() {
           <button
             type="button"
             onClick={() => setEditingTrigger(trigger)}
-            className="flex w-full items-baseline gap-[9px] text-left"
+            className="tap flex w-full items-baseline gap-[9px] text-left"
           >
             <span className="min-w-0 flex-1">
               <span
@@ -1814,7 +1814,7 @@ export function SettingsScreen() {
                   type="button"
                   onClick={() => setEditingProviderId(isOpen ? undefined : provider.id)}
                   aria-expanded={isDesktop ? isOpen : undefined}
-                  className="flex w-full gap-[9px] text-left"
+                  className="tap flex w-full gap-[9px] text-left"
                 >
                   {statusDot(provider.enabled && provider.baseUrl !== null)}
                   <span className="min-w-0 flex-1">
@@ -1864,7 +1864,7 @@ export function SettingsScreen() {
                   type="button"
                   onClick={() => setEditingProfile(isOpen ? undefined : profile)}
                   aria-expanded={isDesktop ? isOpen : undefined}
-                  className="flex w-full items-baseline gap-[9px] text-left"
+                  className="tap flex w-full items-baseline gap-[9px] text-left"
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[15px] font-medium">{profile.name}</span>
@@ -1927,7 +1927,7 @@ export function SettingsScreen() {
               <button
                 type="button"
                 onClick={() => setEditingPreset(preset)}
-                className="flex w-full items-baseline gap-[9px] text-left"
+                className="tap flex w-full items-baseline gap-[9px] text-left"
               >
                 <span className="min-w-0 flex-1">
                   <span className="flex items-baseline gap-[8px]">
@@ -2021,7 +2021,7 @@ export function SettingsScreen() {
                     isDesktop ? setOpenOp(isOpen ? null : task.key) : setEditingOp(task)
                   }
                   aria-expanded={isDesktop ? isOpen : undefined}
-                  className="flex w-full items-baseline gap-[9px] text-left"
+                  className="tap flex w-full items-baseline gap-[9px] text-left"
                 >
                   <span className="min-w-0 flex-1">
                     <span

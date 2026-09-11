@@ -7135,3 +7135,74 @@ composer below untouched ("or just write your turn" is never taken away).
 **Verified** by two cases — the premise becomes the title, scenario and
 narrator opening, and a non-string premise is refused before anything runs —
 plus the full suite (1510 pass).
+
+## Phase 158 — The accessibility pass
+
+Four findings from a six-angle audit, all of the same kind: a rule the app
+states about itself that the code does not keep.
+
+**Ink now clears WCAG AA in all nine palettes.** `--onsen-color-text-dim`
+measured 3.47:1 on the dark ground and 2.97:1 inside an inset panel, against
+AA's 4.5:1 — and it is not decoration: `.meta`, `.token-count` and
+`.screen-kicker` wear it, so token counts, timestamps and every screen's kicker
+sat under the floor at 11–12.5px nearly everywhere. `shared/contrast.ts` holds
+the maths (the character editor will want the same answer at the moment a
+reader picks a colour), and `test/surfaces.test.ts` measures every tier against
+every ground in the three `tokens.css` blocks and all eight builtin themes,
+with `FOLLOWS` applied. Two assertions, because the floor alone has a cheap
+wrong answer: the ramp has to stay ordered and separated too, so flattening it
+into one grey does not pass. `color-text-placeholder` now follows
+`color-text-dim` rather than sitting a step below the floor.
+
+**Both modals keep focus and give it back.** `Sheet` — 56 usages across 32
+files plus every `useConfirm()` question — had no focus code at all and a
+comment claiming it did; `CommandPalette` had the same holes plus an Escape on
+its search box and the app's only suppressed focus ring. One hook,
+`client/lib/modal.ts`, for both: focus in on open without stealing from an
+`autoFocus`ed field, Tab and Shift+Tab trapped, Escape closing the topmost
+modal only, focus back on whatever opened it.
+
+**Nineteen controls were under the 44px floor on touch.** `.btn`, `.field` and
+`.row` carried it; everything else counted its own padding and reached it by
+accident — the whole turn-action row at 32px, every screen's back arrow at
+34px, a card row's favourite star at 24px square, both status-bar handles at
+18px. One class, `.tap`, with the same polarity `.row` and `.turn-actions`
+already use: the floor is the default and a fine pointer relaxes it.
+
+**The phone's Settings category row admits it scrolls.** Twelve categories in
+354px, four visible, eight past the edge with nothing saying so. `Scroller`
+fades whichever edge still has content past it.
+
+**Verified** by three new guards (`modal-focus`, the ink measurement, the touch
+floor) plus a Chromium drive at 1600×950 and 390×844 with `hasTouch`:
+Tab/Shift+Tab/Escape through nested sheets with focus landing where it should,
+every control at or above the floor on touch and unchanged under a pointer, and
+the category row's fade appearing at the edge that has more. Full suite 1538
+pass.
+
+### Surprises
+
+**The audit's own numbers were wrong three times, and each time the
+measurement disagreed in the app's favour.** The contrast finding named one
+token in one file; it was seven tiers across nine palettes, because every theme
+spells out its own ramp. The touch finding named two components; a drive found
+nineteen controls across eleven files, and the two it named were not among
+them. And the ink figure the audit was arguing against came from
+`docs/design/DESIGN.md`, which states that pair as "~4.6:1" — the handoff
+averaged the channels without undoing the sRGB transfer curve, which overstates
+a dark colour by a third. Every theme inherited a ramp built on that line.
+
+**`CastStrip` is dead code.** The touch-target finding pointed at its scope row
+as "the turn-control row"; the component is imported by `ChatScreen` and
+rendered nowhere — the redesign replaced it with `Deck` and `CastRail` and left
+the import. The import is gone; the file is left for a decision rather than
+deleted on the way past.
+
+**Two focus bugs only a browser could find, both in the fix rather than the
+original.** The trigger has to be read during the first *render*: read in an
+effect, React's development double-invoke captures the modal's own dialog on
+the second pass, so the restore aims at a node that no longer exists — and it
+misbehaves in development only. And the restore has to wait a frame, because
+the cleanup runs mid-commit while the modal's DOM is still mounted: asking "has
+anyone else taken focus" there has no answer, and answering it eagerly took
+focus straight back off the rename field that Manage → Rename had just opened.

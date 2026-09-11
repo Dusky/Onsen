@@ -106,7 +106,7 @@ export function StatusBar({
           onClick={onOpenPrompt}
           title={strings.chat.promptPreviewTitle}
           aria-label={strings.chat.promptPreviewTitle}
-          className="chrome flex min-w-0 items-center gap-[7px] text-left"
+          className="chrome tap flex min-w-0 items-center gap-[7px] text-left"
         >
           {gauge === null ? (
             <span className="chrome text-[12.5px]" style={{ color: "var(--onsen-color-blue-text)" }}>
@@ -131,11 +131,11 @@ export function StatusBar({
           </span>
         </>
       ) : (
-        // 44px, because on a phone this is the only way to the inspector.
+        // The floor, because on a phone this is the only way to the inspector.
         <button
           type="button"
           onClick={onOpenContext}
-          className="chrome -mr-[6px] flex min-h-[44px] items-center gap-[5px] px-[6px] text-[12px]"
+          className="chrome tap -mr-[6px] flex items-center gap-[5px] px-[6px] text-[12px]"
           style={{ color: "var(--onsen-color-text-label)" }}
         >
           {strings.chat.barContext}

@@ -483,8 +483,8 @@ The message log and the character grid are both virtualized. Designs must surviv
 
 - **Keyboard focus must be visible.** The system has no focus treatment drawn — add one that fits: a 2px red outline offset 2px is consistent with the language.
 - **Respect `prefers-reduced-motion`.** Suppress the streaming pulse and any sheet-slide transitions; do not suppress the state changes themselves.
-- Contrast: the mono chrome runs small and low-contrast by design. `text-dim #6f6a5f` on `bg #14120f` is ~4.6:1 — acceptable at these weights but do not push dimmer.
-- Tap targets never below 44px **on touch**. A pointer device may go to 28px — see §Density rule 4.
+- Contrast: the mono chrome runs small and low-contrast by design. ~~`text-dim #6f6a5f` on `bg #14120f` is ~4.6:1 — acceptable at these weights but do not push dimmer.~~ **The figure was wrong, and this line is where the bug came from:** that pair measures **3.47:1**, not 4.6:1 — the handoff averaged the channels without undoing the sRGB transfer curve, which overstates a dark colour. Every theme inherited the ramp built on it. Corrected in the accessibility pass: the ink now clears 4.5:1 against every surface in all nine palettes, and `test/surfaces.test.ts` measures it rather than restating it.
+- Tap targets never below 44px **on touch**. A pointer device may go to 28px — see §Density rule 4. Carried by `.btn`, `.field`, `.row` and the `.tap` utility; anything else counting its own padding is how nineteen controls ended up under the floor.
 
 ---
 

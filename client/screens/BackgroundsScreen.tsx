@@ -78,7 +78,7 @@ export function BackgroundsScreen() {
           type="button"
           onClick={() => navigate({ name: "scenes" })}
           aria-label={strings.common.back}
-          className="chrome -ml-[6px] flex h-[34px] w-[24px] flex-none items-center text-[18px] text-ink-muted"
+          className="chrome tap -ml-[6px] flex h-[34px] w-[24px] flex-none items-center self-center text-[18px] text-ink-muted"
         >
           {strings.chat.back}
         </button>

@@ -99,7 +99,7 @@ export function TopBar() {
       <button
         type="button"
         onClick={() => navigate({ name: "scenes" })}
-        className="chrome flex flex-none items-center gap-[7px] py-[11px] pl-[6px] pr-[10px] text-[12px] font-medium"
+        className="chrome tap flex flex-none items-center gap-[7px] py-[11px] pl-[6px] pr-[10px] text-[12px] font-medium"
         style={{ color: "var(--onsen-color-text-bright)" }}
       >
         <Logo className="h-[20px] w-auto" />
@@ -140,7 +140,7 @@ export function TopBar() {
         <button
           type="button"
           onClick={() => navigate({ name: "chat", sceneId: writing!.sceneId })}
-          className="chrome flex flex-none items-center gap-[6px] py-[12px] pl-[10px] pr-[4px] text-[11px]"
+          className="chrome tap flex flex-none items-center gap-[6px] py-[12px] pl-[10px] pr-[4px] text-[11px]"
           style={{ color: "var(--onsen-color-amber)" }}
         >
           <span

@@ -23,7 +23,6 @@ import { useGeneration } from "../lib/generation.ts";
 import { Composer } from "../components/Composer.tsx";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
 import { StatusBar } from "../components/StatusBar.tsx";
-import { CastStrip } from "../components/CastStrip.tsx";
 import { Deck } from "../components/Deck.tsx";
 import { speakerFor } from "./chat/attribution.ts";
 import { ScenePane } from "./chat/ScenePane.tsx";
@@ -807,7 +806,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             type="button"
             onClick={() => navigate({ name: "scenes" })}
             aria-label={strings.common.back}
-            className="chrome -ml-[6px] flex h-[34px] w-[24px] items-center text-[18px] text-ink-muted"
+            className="chrome tap -ml-[6px] flex h-[34px] w-[24px] items-center self-center text-[18px] text-ink-muted"
           >
             {strings.chat.back}
           </button>
@@ -832,7 +831,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         <button
           type="button"
           onClick={() => navigate({ name: "setup", sceneId })}
-          className="chrome flex-none border border-border-quiet px-[9px] py-[6px] text-[12.5px] text-ink-muted"
+          className="chrome tap flex flex-none items-center self-center border border-border-quiet px-[9px] text-[12.5px] text-ink-muted"
         >
           {strings.chat.setup}
         </button>

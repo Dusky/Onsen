@@ -379,6 +379,35 @@
     }
   }
 
+  /*
+   * The 44px floor, for a control that is not a `.btn`, a `.field` or a `.row`
+   * (SPEC §16 §Density rule 4; the accessibility pass).
+   *
+   * Those three carry the floor already. Everything else was left to count its
+   * own padding, and a browser drive at 390×844 with `hasTouch` found nineteen
+   * controls under it: the whole turn-action row at 32px, a scene's back arrow
+   * at 34px, the cast strip's scope and autopilot at 33px, a card row's
+   * favourite star at 24px square, the wordmark at 42px. None of it is
+   * decoration — that row of glyphs is how a turn is rerolled, branched and
+   * edited on a phone.
+   *
+   * Same polarity as `.row` and `.turn-actions` above: the floor is the
+   * default and a pointer relaxes it, because a device that reports a fine
+   * pointer is the exception and a device that reports nothing at all should
+   * get the safe answer.
+   */
+  .tap {
+    min-height: var(--onsen-tap-target);
+    min-width: var(--onsen-tap-target);
+  }
+
+  @media (pointer: fine) {
+    .tap {
+      min-height: 0;
+      min-width: 0;
+    }
+  }
+
   .hairline {
     border-bottom: 1px solid var(--onsen-color-rule);
   }
@@ -420,9 +449,15 @@
    * under it on touch, and the glyphs are spaced rather than packed to pay
    * for it.
    */
+  /*
+   * The floor, not 32px. These six glyphs are how a turn is rerolled,
+   * branched, edited, copied and kept on a phone — the primary per-turn
+   * controls, and the design's own rule is "never smaller, anywhere" on
+   * touch. A pointer still gets 24px below.
+   */
   .turn-actions > button {
-    width: 32px;
-    height: 32px;
+    width: var(--onsen-tap-target);
+    height: var(--onsen-tap-target);
   }
 
   @media (pointer: fine) {

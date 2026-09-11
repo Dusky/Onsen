@@ -97,24 +97,27 @@ function Tile({
             onClick={onFavourite}
             aria-label={`${character.isFavourite ? strings.scenes.unfavourite : strings.scenes.favourite}: ${character.name}`}
             aria-pressed={character.isFavourite}
-            className="chrome flex h-[24px] w-[24px] items-center justify-center text-[13px]"
+            className="chrome tap flex items-center justify-center text-[13px]"
             style={{
-              background: "rgba(0,0,0,0.45)",
               color: character.isFavourite
                 ? "var(--onsen-color-blue)"
                 : "var(--onsen-color-text-bright)",
             }}
           >
-            {character.isFavourite ? "\u2605" : "\u2606"}
+            <span className="flex h-[24px] w-[24px] items-center justify-center" style={{ background: "rgba(0,0,0,0.45)" }}>
+              {character.isFavourite ? "\u2605" : "\u2606"}
+            </span>
           </button>
           <button
             type="button"
             aria-label={strings.characters.actions}
             onClick={onMenu}
-            className="chrome flex h-[24px] w-[24px] items-center justify-center text-[13px]"
-            style={{ background: "rgba(0,0,0,0.45)", color: "var(--onsen-color-text-bright)" }}
+            className="chrome tap flex items-center justify-center text-[13px]"
+            style={{ color: "var(--onsen-color-text-bright)" }}
           >
-            ⋯
+            <span className="flex h-[24px] w-[24px] items-center justify-center" style={{ background: "rgba(0,0,0,0.45)" }}>
+              ⋯
+            </span>
           </button>
         </span>
       ) : null}

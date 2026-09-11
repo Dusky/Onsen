@@ -33,7 +33,7 @@ export function ExtensionActionsSheet({ sceneId, onClose }: { sceneId: string; o
             <button
               key={action.key}
               type="button"
-              className="row flex w-full items-baseline gap-[9px] text-left"
+              className="row tap flex w-full items-baseline gap-[9px] text-left"
               disabled={run.isPending}
               onClick={() => {
                 setResult(null);

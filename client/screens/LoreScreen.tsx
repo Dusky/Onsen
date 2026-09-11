@@ -1406,7 +1406,7 @@ function BookEditor({ bookId, onBack }: { bookId: string; onBack?: () => void })
               type="button"
               onClick={onBack}
               aria-label={strings.common.back}
-              className="chrome -ml-[6px] flex h-[34px] w-[24px] items-center text-[18px] text-ink-muted"
+              className="chrome tap -ml-[6px] flex h-[34px] w-[24px] items-center self-center text-[18px] text-ink-muted"
             >
               {strings.chat.back}
             </button>

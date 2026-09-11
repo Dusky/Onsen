@@ -129,3 +129,81 @@ describe("every turn command is reachable", () => {
     expect(log).toMatch(/\n\s*actions=\{\{/);
   });
 });
+
+/**
+ * Nothing a thumb has to hit is under the floor (§16 §Density rule 4; the
+ * accessibility pass).
+ *
+ * `.btn`, `.field` and `.row` carried it from the start; everything else was
+ * left to count its own padding and reach it by accident. A browser drive at
+ * 390×844 with `hasTouch` found nineteen controls under 44px — the entire
+ * turn-action row at 32px, every screen's back arrow at 34px, a card row's
+ * favourite star at 24px square, the wordmark at 42px, both status-bar
+ * handles at 18px. None of them decoration: that row of glyphs is how a turn
+ * is rerolled, branched and edited on a phone.
+ *
+ * The fix was one class, `.tap`, and this pins the two halves of it that a
+ * later edit could quietly undo.
+ */
+describe("a thumb can hit it", () => {
+  test(".tap sets the floor, and only a pointer relaxes it", () => {
+    // Same polarity as `.row` and `.turn-actions`: the floor is the default,
+    // and a device reporting a fine pointer is the exception. A device that
+    // reports nothing gets the safe answer.
+    expect(APP_CSS).toMatch(/\.tap \{\s*min-height: var\(--onsen-tap-target\);\s*min-width: var\(--onsen-tap-target\);/);
+    expect(APP_CSS).toMatch(/@media \(pointer: fine\) \{\s*\.tap \{\s*min-height: 0;/);
+  });
+
+  test("the turn's action glyphs are at the floor on touch", () => {
+    // 32px for eleven phases, which is the pointer figure, applied to the one
+    // row a phone reader uses most.
+    expect(APP_CSS).toMatch(
+      /\.turn-actions > button \{\s*width: var\(--onsen-tap-target\);\s*height: var\(--onsen-tap-target\);/,
+    );
+  });
+
+  /**
+   * The controls the drive measured short now say so in their class list.
+   *
+   * Structural rather than rendered — this project runs no DOM tests — so it
+   * cannot measure a height. What it can do is stop the class being dropped
+   * from the specific controls that were found short, which is the way this
+   * regresses: somebody rewrites one button's `className` and the floor goes
+   * with it.
+   */
+  test("every control the drive found short still asks for the floor", () => {
+    const short: [string, string][] = [
+      ["components/TopBar.tsx", "the wordmark and the writing-elsewhere indicator"],
+      ["components/StatusBar.tsx", "the prompt-preview and inspector handles"],
+      ["components/QuickReplies.tsx", "the quick-reply chips"],
+      ["screens/CharactersScreen.tsx", "a card row's favourite star and action menu"],
+      ["screens/ChatScreen.tsx", "the Setup chip and the back arrow"],
+      ["screens/AuthorsScreen.tsx", "the back arrow"],
+      ["screens/SceneSetupScreen.tsx", "the back arrow"],
+      ["screens/LoreScreen.tsx", "the back arrow"],
+      ["screens/BackgroundsScreen.tsx", "the back arrow"],
+      ["screens/CharacterEditorScreen.tsx", "the back arrow"],
+      ["screens/SettingsScreen.tsx", "the provider, profile and key rows"],
+    ];
+    const missing = short.filter(
+      // In a class list, not in the prose above it.
+      ([file]) => !/className="[^"]*\btap\b/.test(readFileSync(join(ROOT, "client", file), "utf8")),
+    );
+    expect(missing.map(([file, what]) => `${file} — ${what}`)).toEqual([]);
+  });
+
+  /**
+   * One exemption, deliberately.
+   *
+   * A turn's token count doubles as the handle that opens the prompt inspector
+   * (§Density rule 2: "a number behind a tap is a number nobody reads"), and it
+   * sits inline in a line of 12px mono. Giving it a 44px box would push the
+   * meta line apart to serve the rule that put the number there in the first
+   * place. The same action is on the turn's `⋯` sheet and in the palette, both
+   * at the floor, so nothing is only reachable through it.
+   */
+  test("the token-count doorway is left inline on purpose", () => {
+    const block = readFileSync(join(ROOT, "client", "components", "MessageBlock.tsx"), "utf8");
+    expect(block).toContain('className="meta shrink-0 tabular-nums"');
+  });
+});

@@ -49,7 +49,7 @@ export function QuickReplyRow({
           disabled={disabled}
           onClick={() => onFire(reply.prompt)}
           title={reply.prompt}
-          className="chrome flex-none border border-border-quiet px-[9px] py-[6px] text-[12px] text-ink-label disabled:opacity-40"
+          className="chrome tap flex flex-none items-center border border-border-quiet px-[9px] text-[12px] text-ink-label disabled:opacity-40"
         >
           {reply.label}
         </button>
@@ -59,7 +59,7 @@ export function QuickReplyRow({
         onClick={onEdit}
         aria-label={strings.chat.quickRepliesEdit}
         title={strings.chat.quickRepliesEdit}
-        className="chrome flex-none border border-border-quiet px-[9px] py-[6px] text-[12px] text-ink-dim"
+        className="chrome tap flex flex-none items-center border border-border-quiet px-[9px] text-[12px] text-ink-dim"
       >
         {list.length === 0 ? strings.chat.quickReplies : "✎"}
       </button>
