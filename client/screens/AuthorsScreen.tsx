@@ -137,7 +137,7 @@ export function AuthorsScreen() {
                 {author.isDefault ? (
                   <span
                     className="chrome flex-none text-[12px]"
-                    style={{ color: "var(--onsen-color-red)" }}
+                    style={{ color: "var(--onsen-color-amber)" }}
                   >
                     {strings.authors.isDefault}
                   </span>
@@ -364,12 +364,13 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
             <span className="min-w-0">
               <span className="section-label">{strings.authors.memory}</span>
             </span>
-            {/* A square toggle, not a pill (design handoff). */}
+            {/* A square toggle, not a pill (design handoff). Blue when on — a
+                setting the reader chose, not a live state. */}
             <span
               className="flex h-[22px] w-[42px] flex-none items-center border"
               style={{
                 borderColor: author.memoryEnabled
-                  ? "var(--onsen-color-red)"
+                  ? "var(--onsen-color-blue)"
                   : "var(--onsen-color-rule-strong)",
                 justifyContent: author.memoryEnabled ? "flex-end" : "flex-start",
                 padding: "2px",
@@ -379,7 +380,7 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
                 className="h-[16px] w-[16px]"
                 style={{
                   background: author.memoryEnabled
-                    ? "var(--onsen-color-red)"
+                    ? "var(--onsen-color-blue)"
                     : "var(--onsen-color-text-dim)",
                 }}
               />

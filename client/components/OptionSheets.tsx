@@ -52,7 +52,7 @@ export function OptionGroupSheet({
           >
             <span
               className="chrome mt-[1px] w-[9px] flex-none text-[12.5px] leading-none"
-              style={{ color: "var(--onsen-color-red)" }}
+              style={{ color: "var(--onsen-color-blue)" }}
               aria-hidden
             >
               {option.selected ? (oneOf ? "●" : "▪") : ""}

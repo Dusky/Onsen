@@ -1774,7 +1774,9 @@ export function SettingsScreen() {
                   entry.id === active
                     ? "var(--onsen-color-text)"
                     : "var(--onsen-color-text-muted)",
-                borderBottom: `2px solid ${entry.id === active ? "var(--onsen-color-red)" : "transparent"}`,
+                // Interactive/selected — blue, matching the rails' own active
+                // tab (design review fix 1, follow-up sweep).
+                borderBottom: `2px solid ${entry.id === active ? "var(--onsen-color-blue)" : "transparent"}`,
               }}
             >
               {strings.settings.categories[entry.id] ?? entry.id}
@@ -1925,7 +1927,7 @@ export function SettingsScreen() {
                   <span className="flex items-baseline gap-[8px]">
                     <span className="truncate text-[15px] font-medium">{preset.name}</span>
                     {preset.isDefault ? (
-                      <span className="meta flex-none" style={{ color: "var(--onsen-color-red)" }}>
+                      <span className="meta flex-none" style={{ color: "var(--onsen-color-amber)" }}>
                         {strings.settings.presetIsDefault}
                       </span>
                     ) : null}

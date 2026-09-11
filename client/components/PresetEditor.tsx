@@ -158,11 +158,13 @@ export function PromptManager({ preset }: { preset: PresetDto }) {
                 {/* A dot, not the word: the app's on/off pair was drawn for one
                     toggle in a form, and twenty-five of them down a list is a
                     column of shouting. The row already dims when it is off, so
-                    the word was saying it twice. Red is still live (§16). */}
+                    the word was saying it twice. Blue: a block the reader
+                    switched on is a selection, not a live state (design
+                    review fix 1, follow-up sweep). */}
                 <span
                   className="block h-[7px] w-[7px] rounded-full"
                   style={{
-                    background: entry.enabled ? "var(--onsen-color-red)" : "transparent",
+                    background: entry.enabled ? "var(--onsen-color-blue)" : "transparent",
                     border: entry.enabled ? "0" : "1px solid var(--onsen-color-rule-strong)",
                   }}
                 />

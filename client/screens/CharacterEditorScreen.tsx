@@ -213,7 +213,9 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
           </div>
         </div>
 
-        {/* Tab row: the active tab takes a 2px red underline. */}
+        {/* Tab row: the active tab takes a 2px blue underline — interactive/
+            selected, matching the rails' own active tab (design review
+            fix 1, follow-up sweep). */}
         <div className="mt-[12px] flex gap-[18px] border-b border-rule">
           {tabs.map((entry) => (
             <button
@@ -227,7 +229,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                     ? "var(--onsen-color-text-label)"
                     : "var(--onsen-color-text-muted)",
                 borderBottom:
-                  tab === entry.key ? "2px solid var(--onsen-color-red)" : "2px solid transparent",
+                  tab === entry.key ? "2px solid var(--onsen-color-blue)" : "2px solid transparent",
               }}
             >
               {entry.label}
@@ -690,7 +692,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                       onClick={() => updateScript.mutate({ id: script.id, enabled: !script.enabled })}
                       aria-pressed={script.enabled}
                       className="chrome flex-none text-[12px]"
-                      style={{ color: script.enabled ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)" }}
+                      style={{ color: script.enabled ? "var(--onsen-color-blue)" : "var(--onsen-color-text-dim)" }}
                     >
                       {script.enabled ? strings.lore.on : strings.lore.off}
                     </button>

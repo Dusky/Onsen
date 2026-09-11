@@ -99,7 +99,7 @@ function BookRow({ book, onOpen }: { book: LorebookDto; onOpen(): void }) {
         onClick={() => update.mutate({ enabled: !book.enabled })}
         aria-pressed={book.enabled}
         className="chrome flex-none text-[12.5px]"
-        style={{ color: book.enabled ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)" }}
+        style={{ color: book.enabled ? "var(--onsen-color-blue)" : "var(--onsen-color-text-dim)" }}
       >
         {book.enabled ? strings.lore.on : strings.lore.off}
       </button>

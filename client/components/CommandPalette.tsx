@@ -98,11 +98,13 @@ export function CommandPalette({
             }}
           />
           {/* What the turn commands will act on. Without this the palette is
-              ambiguous the moment more than one turn is on screen. */}
+              ambiguous the moment more than one turn is on screen. Blue,
+              matching the selected turn's own gutter in the log (design
+              review fix 1, follow-up sweep) — a selection, not a live state. */}
           {selectedSpeaker === null ? null : (
             <span
               className="chrome flex-none text-[12px]"
-              style={{ color: "var(--onsen-color-red)" }}
+              style={{ color: "var(--onsen-color-blue)" }}
             >
               {strings.chat.paletteScope(selectedSpeaker)}
             </span>
@@ -135,9 +137,12 @@ export function CommandPalette({
                       // phone now that the sheet is gone, and the design system
                       // sets that floor for exactly this reason.
                       className="flex min-h-[44px] w-full items-center gap-[12px] px-[16px] py-[9px] text-left"
+                      // The keyboard's own position is a selection, the same
+                      // role the focus ring and the selected-turn gutter
+                      // draw in blue (design review fix 1, follow-up sweep).
                       style={{
-                        background: here ? "var(--onsen-color-red-bg)" : "transparent",
-                        borderLeft: `2px solid ${here ? "var(--onsen-color-red)" : "transparent"}`,
+                        background: here ? "var(--onsen-color-blue-bg)" : "transparent",
+                        borderLeft: `2px solid ${here ? "var(--onsen-color-blue)" : "transparent"}`,
                         opacity: blocked ? 0.5 : 1,
                       }}
                     >

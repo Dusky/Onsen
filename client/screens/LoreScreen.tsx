@@ -216,7 +216,7 @@ function BookListRow({
         onClick={() => update.mutate({ enabled: !book.enabled })}
         aria-pressed={book.enabled}
         className="chrome flex-none text-[12.5px]"
-        style={{ color: book.enabled ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)" }}
+        style={{ color: book.enabled ? "var(--onsen-color-blue)" : "var(--onsen-color-text-dim)" }}
       >
         {book.enabled ? strings.lore.on : strings.lore.off}
       </button>
@@ -468,7 +468,7 @@ function Toggle({
         <span className="section-label">{label}</span>
         <span
           className="chrome flex-none text-[12.5px]"
-          style={{ color: value ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)" }}
+          style={{ color: value ? "var(--onsen-color-blue)" : "var(--onsen-color-text-dim)" }}
         >
           {value ? strings.lore.on : strings.lore.off}
         </span>
@@ -513,11 +513,14 @@ function EntryEditor({
   }
 
   return (
-    <section className="mb-[18px] border border-red-border bg-bg-raised">
-      <div className="flex items-baseline justify-between gap-[10px] border-b border-red-border px-[14px] py-[10px]">
+    // Blue, not red: the entry open for editing is a selection the reader
+    // made, not a live or destructive state (design review fix 1, follow-up
+    // sweep).
+    <section className="mb-[18px] border border-blue-border bg-bg-raised">
+      <div className="flex items-baseline justify-between gap-[10px] border-b border-blue-border px-[14px] py-[10px]">
         <p
           className="chrome text-[12.5px]"
-          style={{ color: "var(--onsen-color-red)" }}
+          style={{ color: "var(--onsen-color-blue)" }}
         >
           {strings.lore.editing}
         </p>

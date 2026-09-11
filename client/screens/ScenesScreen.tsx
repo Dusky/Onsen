@@ -149,7 +149,7 @@ function SceneRow({
             aria-pressed={scene.isFavourite}
             className="chrome flex h-[44px] w-[28px] items-center justify-center text-[13px]"
             style={{
-              color: scene.isFavourite ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)",
+              color: scene.isFavourite ? "var(--onsen-color-blue)" : "var(--onsen-color-text-dim)",
             }}
           >
             {scene.isFavourite ? "\u2605" : "\u2606"}
@@ -228,7 +228,7 @@ function SceneRow({
 
           {scene.directorNote === null || scene.directorNote === "" ? null : (
             <p className="meta mt-[6px]">
-              <span style={{ color: "var(--onsen-color-red)" }}>
+              <span style={{ color: "var(--onsen-color-amber)" }}>
                 {strings.scenes.steerLabel}:{" "}
               </span>
               {scene.directorNote}

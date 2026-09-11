@@ -132,7 +132,7 @@ export function ModelPicker({
                   style={
                     model === selected
                       ? {
-                          background: "var(--onsen-color-red-bg)",
+                          background: "var(--onsen-color-blue-bg)",
                           color: "var(--onsen-color-text-bright)",
                         }
                       : { color: "var(--onsen-color-text-label)" }

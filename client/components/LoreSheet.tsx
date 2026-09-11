@@ -149,9 +149,12 @@ export function LoreSheet({
           <div key={row.entryId} className="flex items-baseline gap-[10px] border-b border-rule py-[9px]">
             <span
               className="chrome w-[26px] flex-none text-[12.5px]"
+              // Green for fired, matching the same verdict in the left rail's
+              // own lore trace and book list (LeftRail.tsx) — this was the
+              // one place that had drifted onto red instead.
               style={{
                 color:
-                  row.skipped === null ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)",
+                  row.skipped === null ? "var(--onsen-color-green-text)" : "var(--onsen-color-text-dim)",
               }}
             >
               {row.skipped === null ? strings.lore.testFired : strings.lore.testSkipped}

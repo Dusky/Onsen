@@ -71,8 +71,8 @@ function Tile({
         <div
           className="h-[128px] w-full border bg-cover bg-center"
           style={{
-            borderColor: selected ? "var(--onsen-color-red)" : "var(--onsen-color-rule)",
-            outline: selected ? "2px solid var(--onsen-color-red)" : "none",
+            borderColor: selected ? "var(--onsen-color-blue)" : "var(--onsen-color-rule)",
+            outline: selected ? "2px solid var(--onsen-color-blue)" : "none",
             ...(character.hasAvatar
               ? { backgroundImage: `url(/api/characters/${character.id}/avatar)` }
               : { background: "var(--onsen-stripe)" }),
@@ -101,7 +101,7 @@ function Tile({
             style={{
               background: "rgba(0,0,0,0.45)",
               color: character.isFavourite
-                ? "var(--onsen-color-red)"
+                ? "var(--onsen-color-blue)"
                 : "var(--onsen-color-text-bright)",
             }}
           >

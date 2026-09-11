@@ -614,7 +614,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             className="flex-none border-t border-rule bg-bg-raised px-[16px] py-[8px] text-left"
           >
             <span className="chrome mx-auto flex w-full max-w-[var(--onsen-prose-measure)] gap-[8px] text-[12.5px] leading-[1.5]">
-              <span style={{ color: "var(--onsen-color-red)" }}>{strings.chat.steerActive}</span>
+              <span style={{ color: "var(--onsen-color-amber)" }}>{strings.chat.steerActive}</span>
               <span className="min-w-0 flex-1 truncate text-ink-dim">{steer}</span>
             </span>
           </button>

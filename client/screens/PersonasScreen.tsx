@@ -163,7 +163,7 @@ function Row({
         </span>
       </span>
       {persona.isDefault ? (
-        <span className="meta flex-none" style={{ color: "var(--onsen-color-red)" }}>
+        <span className="meta flex-none" style={{ color: "var(--onsen-color-amber)" }}>
           {strings.settings.presetIsDefault}
         </span>
       ) : null}

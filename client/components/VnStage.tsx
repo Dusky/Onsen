@@ -49,8 +49,10 @@ function Sprite({
     <div className="flex flex-none flex-col items-center" style={{ opacity: dimmed ? 0.45 : 1 }}>
       <div
         className="h-[132px] w-[92px] border bg-cover bg-center"
+        // The last speaker's sprite is live/now, not dimmed — amber, not red
+        // (design review fix 1, follow-up sweep).
         style={{
-          borderColor: dimmed ? "var(--onsen-color-rule)" : "var(--onsen-color-red)",
+          borderColor: dimmed ? "var(--onsen-color-rule)" : "var(--onsen-color-amber)",
           borderTopWidth: dimmed ? "1px" : "2px",
           ...(image === null
             ? { background: "var(--onsen-stripe)" }

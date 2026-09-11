@@ -64,11 +64,13 @@ export function MediaSettings() {
                         .join(" · ")}
                     </span>
                   </span>
-                  {/* The one in use is marked in red: it is what happens now. */}
+                  {/* The one in use is marked in amber: an in-use badge, the
+                      same role the cast rail's own badges draw (design
+                      review fix 1, follow-up sweep). */}
                   {service.isDefault ? (
                     <span
                       className="chrome flex-none text-[12px]"
-                      style={{ color: "var(--onsen-color-red)" }}
+                      style={{ color: "var(--onsen-color-amber)" }}
                     >
                       {strings.media.serviceIsDefault}
                     </span>

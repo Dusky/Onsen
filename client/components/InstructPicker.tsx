@@ -272,7 +272,7 @@ function Editor({
         <span
           className="chrome flex-none text-[12.5px]"
           style={{
-            color: draft.systemInUser ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)",
+            color: draft.systemInUser ? "var(--onsen-color-blue)" : "var(--onsen-color-text-dim)",
           }}
         >
           {draft.systemInUser ? strings.lore.on : strings.lore.off}
