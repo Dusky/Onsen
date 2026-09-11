@@ -96,7 +96,7 @@ describe("auth", () => {
     await completeSetup(t);
     expect((await t.fetch("/api/connections/profiles")).status).toBe(200);
 
-    // This is what a password change will do — revocation without a session table.
+    // What a password change does — revocation without a session table.
     bumpSessionGeneration(t.ctx.db);
     expect((await t.fetch("/api/connections/profiles")).status).toBe(401);
   });
@@ -131,6 +131,81 @@ describe("auth", () => {
     // The counter was reset, so there is fresh headroom rather than an
     // immediate 429.
     expect((await login(t, "wrong password")).status).toBe(401);
+  });
+});
+
+describe("changing the password", () => {
+  /**
+   * The revocation half of this existed for a hundred phases with no caller.
+   * `bumpSessionGeneration` was referenced nowhere, while the token verifier
+   * has always rejected a `gen` that does not match the stored one — so the
+   * only way to invalidate a leaked cookie was complete, wired up and
+   * unreachable. Logging out clears the browser's own cookie and nothing else,
+   * and the TTL is thirty days.
+   */
+  function change(t: TestHarness, current: string, next: string): Promise<Response> {
+    return t.fetch("/api/auth/password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ current, next }),
+    });
+  }
+
+  test("signs out every other session, and keeps this one", async () => {
+    const t = h();
+    await completeSetup(t);
+    const stolen = t.cookie;
+    expect((await t.fetch("/api/connections/profiles")).status).toBe(200);
+
+    const response = await change(t, VALID_SETUP.password, "a new long password");
+    expect(response.status).toBe(200);
+
+    // The caller keeps working, because the response re-issued at the new
+    // generation. This is the difference between a password change and
+    // locking yourself out.
+    t.captureCookie(response);
+    expect(t.cookie).not.toBe(stolen);
+    expect((await t.fetch("/api/connections/profiles")).status).toBe(200);
+
+    // The cookie anyone else was holding does not. That is the whole point.
+    t.cookie = stolen;
+    expect((await t.fetch("/api/connections/profiles")).status).toBe(401);
+  });
+
+  test("the new password is the one that works afterwards", async () => {
+    const t = h();
+    await completeSetup(t);
+    const response = await change(t, VALID_SETUP.password, "a new long password");
+    t.captureCookie(response);
+
+    t.cookie = null;
+    expect((await login(t, VALID_SETUP.password)).status).toBe(401);
+    expect((await login(t, "a new long password")).status).toBe(200);
+  });
+
+  test("the current password has to be right", async () => {
+    const t = h();
+    await completeSetup(t);
+    expect((await change(t, "not the password", "a new long password")).status).toBe(401);
+
+    // Nothing moved: the old password still works and no session was revoked.
+    t.cookie = null;
+    expect((await login(t, VALID_SETUP.password)).status).toBe(200);
+  });
+
+  test("a short new password is refused before anything is written", async () => {
+    const t = h();
+    await completeSetup(t);
+    expect((await change(t, VALID_SETUP.password, "short")).status).toBe(400);
+    t.cookie = null;
+    expect((await login(t, VALID_SETUP.password)).status).toBe(200);
+  });
+
+  test("needs a session of its own", async () => {
+    const t = h();
+    await completeSetup(t);
+    t.cookie = null;
+    expect((await change(t, VALID_SETUP.password, "a new long password")).status).toBe(401);
   });
 });
 

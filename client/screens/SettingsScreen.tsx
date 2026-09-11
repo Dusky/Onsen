@@ -12,7 +12,7 @@ import type {
   TaskDto,
   UpdateStatusDto,
 } from "@shared/types.ts";
-import { PROVIDER_KINDS, INJECTION_ROLES, type ProviderKind } from "@shared/types.ts";
+import { PROVIDER_KINDS, INJECTION_ROLES, MIN_PASSWORD_LENGTH, type ProviderKind } from "@shared/types.ts";
 import { LAYOUT_PRESETS, READING_BOUNDS, READING_DEFAULTS } from "@shared/types.ts";
 import type { ReadingDto } from "@shared/types.ts";
 import type { LayoutDto, LayoutPreset } from "@shared/types.ts";
@@ -53,6 +53,7 @@ import {
   useSetPreferences,
   useApiKeys,
   useSignOut,
+  useChangePassword,
 } from "../lib/queries.ts";
 import { useIsDesktop } from "../lib/breakpoint.ts";
 import { Sheet } from "../components/Sheet.tsx";
@@ -1688,8 +1689,77 @@ const CATEGORIES = [
 
 type CategoryId = (typeof CATEGORIES)[number]["id"];
 
+/**
+ * Changing the password, which is also the app's only session revocation.
+ *
+ * Two fields and a consequence worth stating: the server bumps a generation
+ * counter that every outstanding cookie is checked against, so this signs out
+ * every other device. The one making the change is re-issued in the response
+ * and stays put — a password change that logged you out would be indisputably
+ * correct and completely useless.
+ */
+function PasswordSheet({ onClose }: { onClose(): void }) {
+  const change = useChangePassword();
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  return (
+    <Sheet title={strings.settings.changePassword} onClose={onClose}>
+      <form
+        className="pt-[8px] pb-[14px]"
+        onSubmit={(event) => {
+          event.preventDefault();
+          setError(null);
+          change.mutate(
+            { current, next },
+            {
+              onSuccess: () => {
+                setDone(true);
+                setCurrent("");
+                setNext("");
+              },
+              onError: (caught: Error) => setError(caught.message),
+            },
+          );
+        }}
+      >
+        <p className="section-label mb-[6px]">{strings.settings.currentPassword}</p>
+        <input
+          type="password"
+          autoComplete="current-password"
+          className="field mb-[14px]"
+          value={current}
+          onChange={(event) => setCurrent(event.target.value)}
+          required
+        />
+
+        <p className="section-label mb-[6px]">{strings.settings.newPassword}</p>
+        <input
+          type="password"
+          autoComplete="new-password"
+          className="field mb-[14px]"
+          value={next}
+          onChange={(event) => setNext(event.target.value)}
+          minLength={MIN_PASSWORD_LENGTH}
+          required
+        />
+
+        {error !== null ? <p className="explain explain-alert mb-[12px]">{error}</p> : null}
+        {done ? <p className="explain mb-[12px]">{strings.settings.changePasswordDone}</p> : null}
+
+        <button type="submit" className="btn btn-primary w-full" disabled={change.isPending}>
+          {strings.settings.changePasswordGo}
+        </button>
+      </form>
+    </Sheet>
+  );
+}
+
 export function SettingsScreen() {
   const signOut = useSignOut();
+  const [passwordOpen, setPasswordOpen] = useState(false);
   const [category, setCategory] = useState<CategoryId>("models");
   const [filter, setFilter] = useState("");
   const isDesktop = useIsDesktop();
@@ -2118,15 +2188,24 @@ export function SettingsScreen() {
 
           {show("migrate") ? <MigrationSection /> : null}
 
-          {/* Last, and on its own: the only control here that ends the
-              session rather than changing it. */}
-          <div className="mt-[26px] border-t border-rule pt-[18px]">
+          {/* Last, and on their own: the two controls here that act on the
+              session rather than on what is in it. The password change is
+              beside Sign out because it is the stronger version of it — the
+              server bumps a generation counter every outstanding cookie is
+              checked against, so it signs out every *other* device too, which
+              is the only revocation this install has. */}
+          <div className="mt-[26px] flex flex-col gap-[8px] border-t border-rule pt-[18px]">
+            <button type="button" className="btn w-full" onClick={() => setPasswordOpen(true)}>
+              {strings.settings.changePassword}
+            </button>
             <button type="button" className="btn w-full" onClick={() => signOut.mutate(undefined)}>
               {strings.settings.signOut}
             </button>
           </div>
         </div>
       </main>
+
+      {passwordOpen ? <PasswordSheet onClose={() => setPasswordOpen(false)} /> : null}
 
       {/* The preset editor deserves more than a sheet (§20 phase 73): with
           room it is a pane beside the list, the same shape the chat screen's

@@ -545,6 +545,12 @@ export const strings = {
     railClose: "Close the rail",
     /* There was no way out of a signed-in install until now. */
     signOut: "Sign out",
+    /* And no way to revoke a cookie somebody else was holding. */
+    changePassword: "Change password",
+    currentPassword: "Current password",
+    newPassword: "New password",
+    changePasswordGo: "Change it",
+    changePasswordDone: "Changed. Every other device is signed out.",
     /* §20 phase 43: eight places instead of one 1,596-line scroll. */
     filterSettings: "Filter settings",
     categories: {

@@ -783,6 +783,21 @@ export function useSignOut() {
   });
 }
 
+/**
+ * Changing the password, which is also the only way to revoke a session.
+ *
+ * The server bumps a generation counter that every outstanding cookie is
+ * checked against, so one call signs out every other device — and re-issues
+ * this one, which is why nothing is cleared here the way `useSignOut` clears
+ * it. A password change is not a sign-out for the person making it.
+ */
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: (input: { current: string; next: string }) =>
+      api.post<{ ok: true }>("/auth/password", input),
+  });
+}
+
 /* ------------------------------------------------------------------ */
 /* Checkpoints (SPEC §2)                                               */
 /* ------------------------------------------------------------------ */
