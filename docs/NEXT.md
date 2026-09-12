@@ -2,16 +2,24 @@
 
 A short, honest list. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 157, plus an unnumbered UI colour/layout review (three colour
-roles, rail auto-collapse, Settings moved to the header — see the PR that
-merged it). 1515 tests across 113 files, typecheck clean. Feature complete
-against `SPEC.md` §20 apart from the deferred phase 42.
+**State:** phase 174. 1754 tests across 127 files, typecheck clean. Feature
+complete against `SPEC.md` §20 apart from the deferred phase 42.
 
-This file had gone stale: it still listed ChatScreen extraction (done phase
-149) and self-responses (done phase 155) as open. Caught when the user asked
-"what's left" and pushed back on the ChatScreen item — a reminder that this
-queue is only as good as the last time someone reconciled it against
-`PHASES.md`, per the evidence rule below.
+This file has now gone stale twice, and the second time was worse. It said
+phase 157 and 1515 tests while the repository stood at 174 and 1754 — a
+seventeen-phase drift covering two whole batches (158–164's audit work,
+165–169's settings parity, 170–174's structural UI), and `SPEC.md` §20 and
+`GAPS.md` had drifted with it. Caught the same way as last time: somebody
+asked what was next and the answer had to be re-derived from `PHASES.md`
+by hand.
+
+Worth naming why, because the rule was already written. Step 5 below says
+§20, `PHASES.md`, `GAPS.md` and the README move *in the same commit*, and
+the phases that drifted updated `PHASES.md` and the README only — the two
+documents a phase is writing about itself, not the two that tell the next
+person where they are. A queue is only as good as the last reconciliation,
+and a reconciliation nobody is forced to do is one that happens seventeen
+phases late.
 
 ## The queue
 
@@ -62,8 +70,10 @@ that gate the rest. Each line is a todo; check one off by closing its phase in
    codebase, and a preset that brings its own scripts simply works.
 
 6. **Multihog** — the RPG engine. State Tracker first, then the RNG, then
-   World Progression and Map Evolution. Still not built as of phase 157 — no
-   hits in `PHASES.md`.
+   World Progression and Map Evolution. Still not built as of phase 174 — no
+   hits in `PHASES.md`. Note that item 3's split applies here too: the RNG is
+   server-side and deterministic or it is not an RNG (§21 — "don't roll dice
+   in the model"), and `{{roll}}` already does that half.
 
 ## How to pick up
 

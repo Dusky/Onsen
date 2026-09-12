@@ -7,8 +7,18 @@ manager, and group controls. That install runs **139 chats, 23 personas, 18
 ordered prompt blocks, 7 group members**, at font scale 0.98 with two side
 panels open.
 
-**Freshness:** the table rows were last swept for drift at phase 157 (one
-row — self-responses — had gone stale by four phases and was corrected then).
+**Freshness:** the table rows were last swept for drift at phase 174. The
+sweep before it was at 157, and the seventeen phases between them moved very
+little here — which is worth stating rather than leaving as an absence. 158
+and 159 were an accessibility and hardening audit, 160–164 wired up what was
+already built and gave the reading surface emphasis and per-character colour,
+165–169 were settings parity measured against this very install, and 170–174
+changed the shape of the app rather than its capabilities. Almost none of that
+is a row in a parity table: two rows moved (timestamps, MovingUI), and the
+honest reading is that this document tracks *what the incumbent does that
+Onsen does not*, so a phase spent on what Onsen does badly leaves no trace in
+it. `PHASES.md` is where that work is recorded.
+
 The "Progress" log at the bottom is not kept current past phase 78 and should
 not be read as a changelog of everything since; `PHASES.md` is that record.
 A row not touched in a later sweep can still drift the same way self-responses
@@ -123,7 +133,7 @@ Every message in the screenshot carries `#46 · 27.3s · 868t` in its gutter.
 | Capability | Onsen | Evidence | Verdict |
 | --- | --- | --- | --- |
 | Per-message id / elapsed / tokens / model | **have** (phase 55) | `MessageDto.generation` carries the record; `MessageBlock` renders `#4 · 20ms · ~126t · 10/s` in the gutter, untapped. Model on hover. Was: measured since phase 4, on no DTO | — |
-| Timestamps | **have** | `createdAt` throughout | — |
+| Timestamps | **have** (phase 166) | `createdAt` has been on every message throughout; what was missing until 166 was a way to *see* one — `ReaderDto.timestamps`, off by default because `DESIGN.md` says a turn carries "no avatar, no timestamp, no shadow", so this is an opt-in rather than a correction | — |
 | Actions on every turn | **have** (phase 57) | An always-visible row of six plus `…`, on every width — was three, hover-only, `isDesktop`-gated, hiding twelve commands from every phone | — |
 | Exclude a turn from the prompt | **have** (phase 57) | `hide` existed and worked (`server/prompt/history.ts:125`); it now has a control and the turn dims. Verified by `historyIncluded` in the inspector, not by a text match | — |
 | Swipe history reachable | **have** (phase 57) | The `versions` command, and a `◂▸` button on any turn with siblings | — |
@@ -145,7 +155,7 @@ Every message in the screenshot carries `#46 · 27.3s · 868t` in its gutter.
 | Chat width / measure | **have** (phase 55) | `reading_measure`, 520–1100px, default 720 (was a 620px constant). Line spacing too | — |
 | Row density | **have** (phase 55) | `.row` is 12px touch / 6px under `@media (pointer: fine)`; the hand-rolled list rows swept onto it. Measured 95px phone / 83px desktop on the same scene row | — |
 | Avatar shape, blur, shadow | **partial** | theme tokens carry radius/shadow; no direct control | low priority |
-| MovingUI (drag panels) | **rejected** | not a §21 clause, but a desktop-only affordance at odds with a layout that is one set of components unrolled (§16 layout direction) | — |
+| MovingUI (drag panels) | **rejected** | not a §21 clause, but a desktop-only affordance at odds with a layout that is one set of components unrolled (§16 layout direction). Still rejected as *drag*, and phase 173 is not a reversal: the rail dock answers the want underneath it — any of the seven panels, either side, in any order, at a width the reader sets — with a 3-way control and ↑/↓, no free positioning, and the shipped arrangement as the default | — |
 | STscript | **rejected** | §21: *"A scripting language beyond regex + event triggers."* Onsen has both (`server/routes/scripts.ts`, `triggers.ts`) | — |
 | Extras API | **rejected** | deprecated in the incumbent itself; §21 excludes a code-executing extension runtime | — |
 

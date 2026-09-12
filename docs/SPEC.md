@@ -3887,6 +3887,90 @@ Each phase ends in a working, usable application.
     question, not a note: the reader describes the scene in a sentence or two,
     and the model sets it up — a title, a framing scenario, and a narrator
     opening the scene lands on. See §2, `server/generation/service.ts`.
+158. **The accessibility pass** — four findings of one kind: a rule the app
+    states about itself that the code did not keep. Ink cleared to WCAG AA in
+    all nine palettes with a contrast guard behind it, `Sheet` and
+    `CommandPalette` got the focus trap and Escape stacking their comments
+    already claimed, and touch targets came up to the 44px floor. See §16,
+    `shared/contrast.ts`, `client/lib/modal.ts`.
+159. **The server-hardening pass** — the other half of the same audit: two
+    helpers named `text()` that meant different things, non-atomic default
+    writes and card imports, a password change that could not revoke a
+    session, and regex scripts with no ReDoS guard. Each already had a correct
+    answer somewhere else in the codebase. See §17, `server/lib/routes.ts`.
+160. **Two half-wired features** — storage, query and DTO present with nothing
+    in the UI reaching them: a theme editor exposing twelve of thirty-seven
+    colour tokens, and trigger and regex-script order that could not be
+    changed. See §16, `client/components/ThemeSection.tsx`.
+161. **Emphasis in the reading surface** — roleplay prose is written in
+    asterisks and `Prose` set it as one text node, so a paragraph of
+    `*she looked up*` was a paragraph of punctuation. Two marks and nothing
+    else: no markdown, no links, no HTML, and the streaming tail renders the
+    same as the settled turn. See §16, `client/lib/emphasis.ts`.
+162. **A colour per character** — who is speaking was carried by name and
+    spine in the same ink as every other turn, so five characters read as five
+    grey columns. The colour is on the card rather than the scene, because the
+    same person should look the same in every roleplay, and null — every
+    existing card — changes nothing. See §9, `characters.colour`.
+163. **The state a turn was written under** — the phase-108 queue's "Blocks"
+    item, closed natively: a tracker row has been anchored to the message that
+    produced it since phase 31, so the card under a reply renders structured
+    state the app itself wrote, with nothing parsed out of prose. See §11,
+    `client/components/TrackerCard.tsx`.
+164. **Asking for the emphasis that now renders** — the other half of 161: a
+    `prose_formatting` group for a model that has been told not to use the
+    marks, or needs reminding. Its default says nothing, so no existing scene
+    changes. See §13.5, `server/options/builtin.ts`.
+165. **A scene that reads as one manuscript** — the fourth named layout, and
+    the first to remove the turn as an object: Document drops the name row,
+    the spine and the glyph row so a scene reads as the thing it is a record
+    of would be printed. See §16, `shared/types.ts` `LAYOUT_PRESETS`.
+166. **Eight things the app decided for you** — the reading surface has been
+    the reader's since phase 55; the discrete behaviours around it were still
+    the app's. What Return does, the two emphasis accelerators, timestamps,
+    motion, auto-scroll, kept drafts, click-to-edit and picture layout, each
+    defaulting to what the app already did. See §16, `ReaderDto`.
+167. **The app had no way to say anything** — measured, not guessed: not one
+    `aria-live` region or `role="status"` anywhere in `client/`. Every async
+    outcome surfaced as inline text in whichever component owned the request.
+    A notice region with three positions, all clear of the composer and the
+    reading column. See §16, `client/state/notices.ts`.
+168. **Your whole setup as one file** — packs carry content and themes export
+    alone; the shape of the app travelled nowhere. Export and import every
+    decision about how it behaves, with the theme by name rather than by
+    value, and a report naming what was applied and what was skipped. See
+    §18, `server/routes/system.ts`.
+169. **The card against the preset** — three decisions the builder made with no
+    way past them, the load-bearing one being whose framing frames the turn:
+    a character's own system prompt was folded into `spotlight_character` and
+    only in single-character mode. Now precedence is stated. See §13,
+    `server/prompt/blocks.ts`.
+170. **Vanish mode** — one key drops every piece of chrome, both rails and the
+    header, down to bare log. The composer stays: this removes navigation, not
+    the ability to act, so a mid-scene correction does not require leaving the
+    mode first. See §16, `client/App.tsx`.
+171. **Settings over the scene, not instead of it** — `Routed()` was a flat
+    switch, so opening Settings unmounted whatever was being read. Two screens
+    are the base a reader lives in; everything else layers over one of them in
+    a `RouteOverlay`. `Route` is untouched — only rendering changed, so the URL
+    is still the state. See §16, `client/lib/router.ts`.
+172. **The branch map** — the tree has been real since the first schema and
+    nothing drew it as one. A hand-rolled SVG with nodes only where they
+    matter — a fork, a checkpoint, a dead end, the current leaf — and
+    unbranched runs collapsed to one line and a turn count. Clicking a node is
+    the leaf move every other navigation already shares. See §2,
+    `client/components/BranchMap.tsx`.
+173. **The rail dock** — two bespoke rails with hardcoded panel lists become
+    one registry: any of the seven panels, either side, in any order, at a
+    width the reader sets, with the shipped arrangement as the default so
+    nothing moves until it is moved. §16's rule against a matrix of toggles is
+    answered by an opt-in editor that leaves the default undisturbed. See §16,
+    `client/components/DockPanels.tsx`.
+174. **A sheet is a dialog on a desktop** — `Sheet` shipped bottom-anchored at
+    every width, which is a phone shape stranded on a wide screen. On a
+    desktop it takes `CommandPalette`'s treatment — top-anchored, centred,
+    square — and the phone keeps the sheet. From use, not review. See §16,
+    `client/components/Sheet.tsx`.
 
 Settled while building phase 15.
 
