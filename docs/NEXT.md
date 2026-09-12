@@ -2,7 +2,7 @@
 
 A short, honest list. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 174. 1754 tests across 127 files, typecheck clean. Feature
+**State:** phase 175. 1761 tests across 127 files, typecheck clean. Feature
 complete against `SPEC.md` §20 apart from the deferred phase 42.
 
 This file has now gone stale twice, and the second time was worse. It said
@@ -54,12 +54,16 @@ that gate the rest. Each line is a todo; check one off by closing its phase in
 
 ### Carried forward from the phase-108 queue
 
-5. **Story Config + tracker cards under a reply.** ~~The Blocks (tracker cards
-   under a reply)~~ — **done, phase 163**, and natively: a tracker row is
-   already anchored to the turn that produced it, so the card renders the
-   app's own structured state rather than parsing markup out of a reply.
-   Story Config dropdowns (genre, POV, friction, pace → scene prompt options)
-   are still not built.
+5. ~~**Story Config + tracker cards under a reply.**~~ — **done**, both
+   halves. ~~The Blocks (tracker cards under a reply)~~ — **phase 163**, and
+   natively: a tracker row is already anchored to the turn that produced it,
+   so the card renders the app's own structured state rather than parsing
+   markup out of a reply. ~~Story Config dropdowns (genre, POV, friction,
+   pace → scene prompt options)~~ — **phase 175**, and mostly already built:
+   point of view had shipped since §13.5's first pass and the option
+   machinery generalises, so it came to three groups of words (genre, pace,
+   friction) rather than a feature. Each ships with a silent default, so no
+   scene that predates them reads differently.
 
    Worth restating what this entry was: it named a *preset* somebody uses, and
    the interesting thing about reading that preset was that its formatting and

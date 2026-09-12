@@ -2150,18 +2150,33 @@ Ship these groups:
 
 | Group | Cardinality | Options |
 | --- | --- | --- |
+| **Genre** | one_of | let the scene decide, literary, noir, romance, horror, comedy, adventure |
 | **POV** | one_of | first, second, third limited, third omniscient |
+| **Pace** | one_of | let the scene decide, slow burn, steady, driving |
+| **Friction** | one_of | let the scene decide, gentle, honest, adversarial |
 | **Prose structure** | one_of | flowing prose, screenplay, web-novel chapter, minimal |
 | **Length** | one_of | a hard word range, adaptive, scene-driven adaptive |
 | **Reasoning depth** | one_of | none, brief plan, full per-character planning |
 | **Content rating** | one_of | project-defined |
 | **Mode** | one_of | immersive prose, chat/messaging, tabletop, visual novel, co-writing |
 | **Prose discipline** | any_of | the anti-pattern rules below |
+| **Prose formatting** | one_of | as the author writes, actions in italics, italics and bold |
+
+The first four are what kind of story this is; the rest are how it gets
+written, and they read in that order. **Pace and Length are separate on
+purpose** — length is how much to write in one turn, pace is how fast the
+story moves through it, and they come apart in both directions: a slow burn
+in short turns, a chase in long ones.
 
 Every option is visible in the prompt inspector as a labeled block with a token
 cost, which is strictly better than a wall of toggles whose effect you can't see.
 Ship a sensible default configuration rather than shipping everything off — a
-preset that arrives entirely disabled is a bad first run.
+preset that arrives entirely disabled is a bad first run. Where a group has no
+business having an opinion until asked — genre, pace, friction, planning,
+formatting, content — the default is a *named* option with an empty fragment
+rather than nothing selected: it satisfies that rule, and an empty fragment is
+dropped before the prompt is assembled, so a scene nobody has configured reads
+exactly as it did before the group shipped.
 
 ### 13.6 Anti-slop
 
@@ -3971,6 +3986,13 @@ Each phase ends in a working, usable application.
     desktop it takes `CommandPalette`'s treatment — top-anchored, centred,
     square — and the phone keeps the sheet. From use, not review. See §16,
     `client/components/Sheet.tsx`.
+175. **Story Config** — the phase-108 queue's last unbuilt item, and mostly
+    already built: genre, pace and friction join the point of view that has
+    shipped since §13.5's first pass, as three option groups rather than a
+    feature. Each leads with a silent default so no existing scene changes,
+    and the seeder now reconciles `sort_order` as structure so a group shipped
+    between two others lands in the same place on a fresh install and an
+    upgraded one. See §13.5, `server/options/builtin.ts`.
 
 Settled while building phase 15.
 

@@ -83,10 +83,23 @@ export interface BanPhraseRow {
  * stale is a correctness bug rather than a preference kept: a group narrowed
  * from `any_of` to `one_of` in a release would keep the old value in every
  * existing install and go on holding two selections in a group the code calls
- * single-choice. So that one column is reconciled.
+ * single-choice. So that column is reconciled.
  *
  * Found by shipping exactly that: the prose-formatting group below was drafted
  * `any_of`, became `one_of`, and the seeder kept the draft.
+ *
+ * `sort_order` is structure by the same argument, and was added to the
+ * reconcile in §20 phase 175. Nothing in the app reorders groups either, and
+ * it was written on insert only — so shipping a new group *between* two
+ * existing ones (which 175 does: the story decisions belong beside Point of
+ * view, not after Prose formatting) gave a fresh install one order and an
+ * upgraded install another, with two groups claiming the same index and the
+ * tie broken by row id. Reconciling it means the shipped order is the order
+ * everywhere.
+ *
+ * Option-level `sort_order` is deliberately left alone: no shipped option has
+ * ever been inserted into the middle of an existing group, and until one is,
+ * this is the note saying where that fix would go.
  *
  * The other half of insert-and-skip is left alone and worth naming: an option
  * the code stops shipping stays in the database, selectable, forever. Deleting
@@ -118,12 +131,14 @@ export function seedBuiltins(db: Database): void {
           sort: groupOrder,
           now,
         }) as OptionGroupRow;
-    } else if (row.cardinality !== group.cardinality) {
+    } else if (row.cardinality !== group.cardinality || row.sort_order !== groupOrder) {
       // Structure, not words — see the note above `seedBuiltins`.
       db.query(
-        "UPDATE option_groups SET cardinality = $cardinality, updated_at = $now WHERE id = $id AND is_builtin = 1",
-      ).run({ id: row.id, cardinality: group.cardinality, now });
-      row = { ...row, cardinality: group.cardinality };
+        `UPDATE option_groups
+            SET cardinality = $cardinality, sort_order = $sort, updated_at = $now
+          WHERE id = $id AND is_builtin = 1`,
+      ).run({ id: row.id, cardinality: group.cardinality, sort: groupOrder, now });
+      row = { ...row, cardinality: group.cardinality, sort_order: groupOrder };
     }
 
     for (const [optionOrder, option] of group.options.entries()) {
@@ -192,6 +207,28 @@ export function findOptionByUlid(db: Database, value: string): OptionRow | null 
  * anti-pattern, and "the first run looks broken" is exactly what happens when
  * every group is empty.
  */
+/**
+ * What this scene is actually running on.
+ *
+ * A scene that has never chosen runs on the shipped defaults. A scene that
+ * has chosen runs on its own rows — plus the shipped default of any group it
+ * has *no* row for, which is the case a group shipped after the scene was
+ * configured (§20 phase 175).
+ *
+ * That last clause is not hypothetical, and the all-or-nothing version of
+ * this function hid it. `setSceneOption` materialises every current default
+ * into the scene on its first write, so every group the reader had at that
+ * moment gets a row — and a group added in a later release gets none. Before
+ * this, such a group came back with nothing selected at all: three rows in
+ * scene setup reading as unanswered, and the §22 invariant that every group
+ * holds a selection quietly false for every scene anybody had configured.
+ * Found by booting phase 175 against a database that predated its groups,
+ * which the test suite could not have caught — its scenes are always newer
+ * than the code.
+ *
+ * Read-time rather than a backfill in the seeder: nothing is written to a
+ * reader's rows, and it is self-healing for whatever the next release ships.
+ */
 export function selectedOptions(db: Database, sceneId: number): OptionRow[] {
   const chosen = db
     .query(
@@ -201,8 +238,14 @@ export function selectedOptions(db: Database, sceneId: number): OptionRow[] {
         ORDER BY o.group_id, o.sort_order`,
     )
     .all({ scene: sceneId }) as OptionRow[];
-  if (chosen.length > 0) return chosen;
-  return defaultOptions(db);
+  if (chosen.length === 0) return defaultOptions(db);
+
+  const answered = new Set(chosen.map((option) => option.group_id));
+  const unanswered = defaultOptions(db).filter((option) => !answered.has(option.group_id));
+  if (unanswered.length === 0) return chosen;
+  return [...chosen, ...unanswered].sort(
+    (a, b) => a.group_id - b.group_id || a.sort_order - b.sort_order,
+  );
 }
 
 /** Whether this scene has ever chosen for itself, as opposed to inheriting. */

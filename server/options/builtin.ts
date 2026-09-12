@@ -31,6 +31,77 @@ export interface BuiltinGroup {
 }
 
 export const BUILTIN_GROUPS: readonly BuiltinGroup[] = [
+  /*
+   * Story Config (§20 phase 175).
+   *
+   * `NEXT.md` carried this as "Story Config dropdowns (genre, POV, friction,
+   * pace → scene prompt options)" from the phase-108 queue, and reading it
+   * against the code, most of it was already here: point of view has shipped
+   * since §13.5's first pass, and the machinery — seeding, per-scene
+   * selection, `one_of` enforced on write, the prompt block, the cost
+   * readout, the sheet — generalises to any group. So the gap was three sets
+   * of words, not a feature, and this is where words live.
+   *
+   * All three lead with a named option whose fragment is empty, which is the
+   * idiom `reasoning_depth`, `content` and `prose_formatting` already use
+   * three times over. Two reasons it has to be that rather than a real
+   * default: §22's rule that a group arriving entirely switched off looks
+   * broken on a first run (enforced by `test/options.test.ts`), and the
+   * stronger one — every scene in every install predates these groups, and a
+   * genre arriving switched *on* would quietly rewrite how all of them are
+   * written. An empty fragment is dropped before the prompt is built, so a
+   * scene nobody has configured reads exactly as it did.
+   *
+   * `pace` is deliberately not folded into `length` below. Length is how much
+   * to write in one turn; pace is how fast the story moves through it. They
+   * come apart in both directions — a slow burn in short turns, a chase in
+   * long ones — and a single control could say neither.
+   */
+  {
+    key: "genre",
+    name: "Genre",
+    description: "The kind of story this is.",
+    cardinality: "one_of",
+    options: [
+      { key: "unset", name: "Let the scene decide", fragment: "", isDefault: true },
+      {
+        key: "literary",
+        name: "Literary",
+        fragment:
+          "Write with attention to sentences. Interiority over incident, concrete detail over abstraction, and no tidy resolution where an honest one will not come.",
+      },
+      {
+        key: "noir",
+        name: "Noir",
+        fragment:
+          "Write with the restraint of noir: short declaratives, dialogue that withholds, motives that stay unstated. Offer no consolation.",
+      },
+      {
+        key: "romance",
+        name: "Romance",
+        fragment:
+          "Write with the charge between people as the engine. What goes unsaid, what is noticed, what almost happens — proximity and restraint do the work.",
+      },
+      {
+        key: "horror",
+        name: "Horror",
+        fragment:
+          "Write so the reader knows something is wrong before the characters do. Understate the threat; a detail slightly out of place unsettles more than a description of the thing itself.",
+      },
+      {
+        key: "comedy",
+        name: "Comedy",
+        fragment:
+          "Write for the timing. Let characters be wrong with conviction, let the gap between what they intend and what happens do the work, and never explain the joke.",
+      },
+      {
+        key: "adventure",
+        name: "Adventure",
+        fragment:
+          "Write with momentum and appetite. Places worth arriving at, decisions with consequences, and competence that is fun to watch.",
+      },
+    ],
+  },
   {
     key: "pov",
     name: "Point of view",
@@ -60,6 +131,60 @@ export const BUILTIN_GROUPS: readonly BuiltinGroup[] = [
         name: "Third omniscient",
         fragment:
           "Write in third person with access to what every character is thinking and to events elsewhere.",
+      },
+    ],
+  },
+  {
+    key: "pace",
+    name: "Pace",
+    description: "How fast the story moves.",
+    cardinality: "one_of",
+    options: [
+      { key: "unset", name: "Let the scene decide", fragment: "", isDefault: true },
+      {
+        key: "slow_burn",
+        name: "Slow burn",
+        fragment:
+          "Let the scene breathe. Stay inside a moment rather than moving on from it, and let a turn end with nothing resolved.",
+      },
+      {
+        key: "steady",
+        name: "Steady",
+        fragment:
+          "Move the story forward a step each turn. Something should be different at the end of a turn from the start of it, without rushing what is happening now.",
+      },
+      {
+        key: "driving",
+        name: "Driving",
+        fragment:
+          "Keep the story moving. End each turn somewhere new, and do not linger once a beat has landed.",
+      },
+    ],
+  },
+  {
+    key: "friction",
+    name: "Friction",
+    description: "How much the story pushes back.",
+    cardinality: "one_of",
+    options: [
+      { key: "unset", name: "Let the scene decide", fragment: "", isDefault: true },
+      {
+        key: "gentle",
+        name: "Gentle",
+        fragment:
+          "Let things go well. Obstacles are small and resolve kindly, and nobody is cruel without reason.",
+      },
+      {
+        key: "honest",
+        name: "Honest",
+        fragment:
+          "Let people disagree and let plans cost something. Do not manufacture conflict, and do not smooth it away either — if a choice should have a consequence, give it one.",
+      },
+      {
+        key: "adversarial",
+        name: "Adversarial",
+        fragment:
+          "Push back hard. Characters have their own agendas and pursue them against the reader's, and a plan that deserves to fail should fail.",
       },
     ],
   },

@@ -15,10 +15,10 @@
   <img src="https://img.shields.io/badge/Hono-4.x-360d0a?logo=hono" alt="Hono 4.x">
   <img src="https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=20272f" alt="React 19">
   <img src="https://img.shields.io/badge/SQLite-WAL-003b57?logo=sqlite&logoColor=white" alt="SQLite WAL">
-  <img src="https://img.shields.io/badge/phase-174-989286" alt="Phase 174">
+  <img src="https://img.shields.io/badge/phase-175-989286" alt="Phase 175">
 </p>
 
-> **Status: phase 174 — feature complete, less the deferred phase 42.**
+> **Status: phase 175 — feature complete, less the deferred phase 42.**
 > Set it up, **point it at your SillyTavern folder and move in** — cards, chats, group chats, personas, world info, instruct templates and regex scripts all come across, with your swipes intact as branches.
 
 ---
@@ -42,7 +42,7 @@ It is built for a phone first. On a wide screen the same pieces unroll into a wo
 
 **How it writes**
 
-- A set of small switches rather than one long instruction — point of view, prose structure, length, planning.
+- A set of small switches rather than one long instruction — genre, point of view, pace, friction, prose structure, length, planning. Each ships with a default, and the ones with no business having an opinion until asked say nothing at all.
 - A **ban list** of the phrasings models fall into, which it will offer to fill in for you by counting what your scene keeps repeating.
 
 **Lore and memory**

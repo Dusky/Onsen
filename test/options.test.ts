@@ -172,6 +172,49 @@ describe("what ships", () => {
     expect(chosen[0]!.tokenCount).toBe(0);
   });
 
+  /**
+   * Story Config (§20 phase 175).
+   *
+   * Three groups where the machinery already existed and only the words were
+   * missing — genre, pace and friction, beside the point of view that has
+   * shipped all along. Each has to arrive saying nothing, and for a stronger
+   * reason than §22's: every scene in every install predates them, and a
+   * genre switched on by default would rewrite how all of them are written.
+   */
+  for (const key of ["genre", "pace", "friction"] as const) {
+    test(`${key} ships, and ships silent`, async () => {
+      const t = await signedIn();
+      const { sceneId } = await scene(t);
+      const state = await json<SceneOptionsDto>(t, "GET", `/api/scenes/${sceneId}/options`);
+
+      const group = state.groups.find((entry) => entry.key === key);
+      expect(group, key).toBeDefined();
+      const chosen = group!.options.filter((option) => option.selected);
+      // Exactly one, per §22 — and the one that contributes no words.
+      expect(chosen.map((option) => option.key), key).toEqual(["unset"]);
+      expect(chosen[0]!.fragment, key).toBe("");
+      expect(chosen[0]!.tokenCount, key).toBe(0);
+    });
+  }
+
+  test("the story decisions sit together, ahead of the craft ones", () => {
+    // Genre / point of view / pace / friction are what kind of story this is;
+    // everything after them is how it gets written. The order is the reading
+    // order in scene setup, so it is worth pinning rather than leaving to
+    // wherever a new group happened to get appended.
+    const order = BUILTIN_GROUPS.map((group) => group.key);
+    expect(order.slice(0, 4)).toEqual(["genre", "pov", "pace", "friction"]);
+  });
+
+  test("pace and length stay separate knobs", () => {
+    // They come apart in both directions — a slow burn in short turns, a
+    // chase in long ones — so one control could say neither.
+    const pace = BUILTIN_GROUPS.find((group) => group.key === "pace")!;
+    const length = BUILTIN_GROUPS.find((group) => group.key === "length")!;
+    expect(pace.description).toContain("fast");
+    expect(length.description).toContain("one turn");
+  });
+
   test("the flowing option no longer forbids the marks it asks for", () => {
     // "No formatting scaffolding" was written before anything rendered
     // formatting; once it does, that clause reads as "no italics" and
@@ -222,6 +265,102 @@ describe("what ships", () => {
 
     const state = await json<SceneOptionsDto>(t, "GET", `/api/scenes/${sceneId}/options`);
     expect(state.groups.find((group) => group.key === "pov")!.cardinality).toBe("one_of");
+  });
+
+  test("a group shipped between two existing ones lands in the same place everywhere", async () => {
+    /*
+     * §20 phase 175. `sort_order` was written on insert only, so an install
+     * that had already seeded the eight earlier groups would keep their old
+     * indices while three new ones took the indices they hold in the
+     * registry — two groups claiming the same number, resolved by row id.
+     * A fresh install and an upgraded one would disagree about the order of
+     * the rails' own settings. So it is reconciled like `cardinality`.
+     */
+    const t = await signedIn();
+    const { sceneId } = await scene(t);
+    // Stand in for that older install: the story groups gone entirely, and
+    // the survivors packed into the indices they would have had.
+    t.ctx.db.query("DELETE FROM option_groups WHERE key IN ('genre', 'pace', 'friction')").run();
+    for (const [index, key] of [
+      "pov",
+      "prose_structure",
+      "length",
+      "reasoning_depth",
+      "mode",
+      "prose_discipline",
+      "content",
+      "prose_formatting",
+    ].entries()) {
+      t.ctx.db
+        .query("UPDATE option_groups SET sort_order = $sort WHERE key = $key")
+        .run({ sort: index, key });
+    }
+
+    seedBuiltins(t.ctx.db);
+
+    const state = await json<SceneOptionsDto>(t, "GET", `/api/scenes/${sceneId}/options`);
+    // The shipped order, not the order this install happened to grow in.
+    expect(state.groups.map((group) => group.key)).toEqual(
+      BUILTIN_GROUPS.map((group) => group.key),
+    );
+    // And the three arrived whole, each with its silent default selected.
+    for (const key of ["genre", "pace", "friction"]) {
+      const group = state.groups.find((entry) => entry.key === key)!;
+      expect(group.options.length, key).toBe(
+        BUILTIN_GROUPS.find((entry) => entry.key === key)!.options.length,
+      );
+      expect(group.options.filter((option) => option.selected).map((o) => o.key), key).toEqual([
+        "unset",
+      ]);
+    }
+  });
+
+  test("a group shipped after a scene was configured still has its default", async () => {
+    /*
+     * §20 phase 175, and the bug the suite could not have found: its scenes
+     * are always newer than the code. `setSceneOption` materialises the
+     * current defaults into a scene on its first write, so every group the
+     * reader had *then* gets a row and a group added in a later release gets
+     * none — and `selectedOptions` used to be all-or-nothing, so that group
+     * came back with nothing selected. Three rows reading as unanswered in
+     * scene setup, and §22's every-group-holds-a-selection quietly false for
+     * every scene anybody had configured. Found by booting against a database
+     * that predated these groups.
+     */
+    const t = await signedIn();
+    const { sceneId } = await scene(t);
+
+    // Configure something, which materialises today's defaults into the scene.
+    const before = await json<SceneOptionsDto>(t, "GET", `/api/scenes/${sceneId}/options`);
+    const noir = optionIn(before, "genre", "noir");
+    await json<SceneOptionsDto>(t, "PUT", `/api/scenes/${sceneId}/options/${noir.id}`, { on: true });
+
+    // Now stand in for a group that shipped afterwards: drop this scene's
+    // rows for one group entirely, as an older install would never have had.
+    t.ctx.db
+      .query(
+        `DELETE FROM scene_options
+          WHERE option_id IN (SELECT o.id FROM options o
+                                JOIN option_groups g ON g.id = o.group_id
+                               WHERE g.key = 'friction')`,
+      )
+      .run();
+
+    const after = await json<SceneOptionsDto>(t, "GET", `/api/scenes/${sceneId}/options`);
+    const friction = after.groups.find((group) => group.key === "friction")!;
+    expect(friction.options.filter((option) => option.selected).map((o) => o.key)).toEqual([
+      "unset",
+    ]);
+    // And the scene's own answer is untouched by the fallback.
+    expect(
+      after.groups.find((group) => group.key === "genre")!.options
+        .filter((option) => option.selected)
+        .map((o) => o.key),
+    ).toEqual(["noir"]);
+    // §22 holds for a configured scene too, not just a fresh one.
+    for (const group of after.groups) {
+      expect(group.options.some((option) => option.selected), group.key).toBe(true);
+    }
   });
 
   test("an edited built-in survives re-seeding", async () => {
@@ -335,6 +474,26 @@ describe("what reaches the prompt", () => {
       .map((block) => block.label);
     // "No planning" and "immersive prose" are real choices that say nothing.
     expect(labels.some((label) => label.includes("None"))).toBe(false);
+  });
+
+  test("a chosen story decision arrives as its own labelled block", async () => {
+    // §20 phase 175. The silent default means an unconfigured scene carries
+    // no genre block at all; choosing one has to produce exactly one.
+    const t = await signedIn();
+    const { sceneId } = await scene(t);
+    const labelsOf = () =>
+      promptOf(t, sceneId)
+        .debug.blocks.filter((block) => block.id === "prompt_option")
+        .map((block) => block.label);
+    expect(labelsOf().some((label) => label.startsWith("Genre: "))).toBe(false);
+
+    const state = await json<SceneOptionsDto>(t, "GET", `/api/scenes/${sceneId}/options`);
+    const noir = optionIn(state, "genre", "noir");
+    await json<SceneOptionsDto>(t, "PUT", `/api/scenes/${sceneId}/options/${noir.id}`, { on: true });
+
+    const after = labelsOf();
+    expect(after.filter((label) => label === "Genre: Noir")).toHaveLength(1);
+    expect(JSON.stringify(promptOf(t, sceneId).messages)).toContain("restraint of noir");
   });
 
   test("swapping an option swaps what the prompt says", async () => {
