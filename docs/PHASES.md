@@ -8180,3 +8180,69 @@ reached it. Fixed in passing, which is the tracker reconciliation from the
 commit before this one arriving at its own conclusion: the table drifted
 because nothing forces a phase to update the document that describes what it
 just shipped.
+
+## Phase 176 — The other modal that was still a bottom sheet
+
+Phase 174 turned a sheet into a dialog on a desktop, and the way that landed
+is the whole content of this phase: it fixed `Sheet.tsx`, which fixed all 56
+usages at once, and it looked complete. It was not. The off-script channel —
+`OocChannel.tsx`, design `2a` — had hand-rolled the entire overlay for itself
+long before: its own covering layer, its own backdrop button, its own bottom
+anchor, its own rounded top, its own `role="dialog"`. So one window in the app
+kept rising from the bottom edge of a 1600px screen after every other sheet
+had stopped, and the fix that was reported as app-wide had missed it.
+
+The report came from use, the same way 174's did: *"the 'off script' chat
+window still has the awful bottom dock thing in desktop. scour the app for
+others and fix them."*
+
+**The fix is a shell, not a second copy of the branch.** `SheetShell` now owns
+what a modal over the dimmed scene *is* — the desktop/phone branch, the
+backdrop, the dialog element with its border, radius, ground and safe-area
+allowance, and `useModalFocus`. `Sheet` is a header and a scroll composed
+inside it; `OocChannel` composes its own interior, which is the part a plain
+`Sheet` could never have held: a scrolling exchange with a composer and a hint
+pinned underneath. A single-file fix was what let this hide, so the fix is
+arranged so the next modal with an unusual interior composes the shape instead
+of copying it.
+
+The channel gains two things by coming through the shell. It had no focus trap
+at all, despite claiming `aria-modal="true"`: Tab walked out of it into the log
+behind. And its Escape was a bare `window` listener, so a confirmation opened
+over the channel closed both on one press — the exact bug phase 158 wrote
+`useModalFocus`'s stacking to fix, still live in the one file that had not
+adopted it.
+
+**Verified** in Chromium at 1600×950 and 390×844, both themes, by measuring
+the box rather than looking at it. Desktop: top at 64px, 189px tall against a
+950px window, 720px wide (the prose measure), `border-radius: 0`, all four
+borders 1px in blue — and it grows to 239px as a bubble lands, so it is
+hugging its content rather than sitting at a fixed height. Phone: bottom at
+844 of 844, 16px top radius, a 2px blue top border and no others — unchanged,
+which is the point. A question typed in the channel still posts and still
+appears inline in the log; Escape still closes it. Full suite 1771 pass.
+
+### Surprises
+
+**The command palette had the same defect, invisibly.** It was already
+top-anchored, so it looked fine — but its container was a row flex without
+`items-start`, which stretches a child on the cross axis, and its panel's
+`max-h-[70vh]` was therefore acting as a *fixed* height. Filtered down to one
+command it still measured 665px of a 950px window, nearly all of it empty; on
+a search matching nothing, the same. Now 165px and 143px. This is the identical
+bug 174 found in `Sheet` and fixed there only, which is the phase's theme
+twice over.
+
+**The guard that would have caught this is a sweep, not an assertion.** A test
+naming `OocChannel.tsx` would only have existed if somebody had already
+thought of `OocChannel.tsx` — and nobody did, for two phases. So
+`test/sheet-dialog.test.ts` now reads every `.tsx` in `client/components` and
+asserts that the list of files anchoring anything to the bottom of the window
+is exactly `["Sheet.tsx"]`, the same for the rounded top corner, and that a
+full-screen overlay is one of exactly three files. It fails on the *next* file
+to copy the shape, which is the one nobody will write a test for.
+
+**It failed on a comment first.** The sweep matches source as text, so the
+doc comment explaining what `OocChannel` used to contain — which quoted the
+classes — read as a use. The comment is written around the guard now and says
+so, because the alternative is a guard that cannot tell a mention from a use.

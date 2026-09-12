@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { MessageDto } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { blueSolid } from "./blue.ts";
+import { SheetShell } from "./Sheet.tsx";
 
 /**
  * The OOC channel (design `2a`, SPEC §7).
@@ -10,6 +11,18 @@ import { blueSolid } from "./blue.ts";
  * where a note *becomes a conversation*." So the sheet holds only the
  * off-script exchange, and the scene dims behind it rather than disappearing —
  * the story is still what this is about.
+ *
+ * Its shape is `SheetShell`'s, which is the point of the shell existing: this
+ * channel had hand-rolled the whole overlay for itself — the same covering
+ * layer, the same backdrop button, the same bottom anchor and rounded top — so
+ * when phase 174 turned a sheet into a dialog on a desktop, the off-script
+ * window alone kept rising from the bottom edge of a 1600px screen. It owns
+ * its interior (a scrolling exchange with a composer pinned under it, which a
+ * plain `Sheet` cannot hold) and nothing about where it sits.
+ *
+ * The classes are deliberately not quoted above: `test/sheet-dialog.test.ts`
+ * sweeps this directory for them as text, and a guard that cannot tell a
+ * mention from a use is one worth writing the comment around.
  *
  * Alternating bubbles, unlike the inline treatment: the author left with the
  * blue tail, the reader right in the warm tint the design gives their own
@@ -40,15 +53,6 @@ export function OocChannel({
   const [draft, setDraft] = useState("");
   const foot = useRef<HTMLDivElement>(null);
 
-  // Escape closes it, as it does every other sheet.
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   // Follow the conversation down as it grows, including while an answer streams.
   useEffect(() => {
     foot.current?.scrollIntoView({ block: "end" });
@@ -62,110 +66,103 @@ export function OocChannel({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end">
-      <button
-        type="button"
-        aria-label={strings.ooc.back}
-        onClick={onClose}
-        // ~30% rather than the usual dimming: the scene is still the point, and
-        // this sheet is a margin note about it.
-        className="absolute inset-0 bg-black/70"
-      />
+    // The whole exchange is the author speaking as itself, which is what the
+    // blue pencil marks everywhere else — so the shell's blue tone, not a
+    // border this file draws for itself.
+    //
+    // `max-h-[80dvh]` on the panel rather than on the scroll area, because the
+    // composer and the hint are pinned below it: the log takes whatever height
+    // is left, and the pair under it never scrolls away. The `pb` gives the
+    // hint room on a desktop and is overridden on a phone, where the shell's
+    // own safe-area allowance is the inline style and wins.
+    <SheetShell
+      label={strings.ooc.title}
+      tone="blue"
+      panelClassName="max-h-[80dvh] pb-[12px]"
+      onClose={onClose}
+    >
       <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={strings.ooc.title}
-        className="relative flex max-h-[80dvh] flex-col"
-        style={{
-          borderRadius: "16px 16px 0 0",
-          borderTop: "2px solid var(--onsen-color-blue)",
-          background: "var(--onsen-color-blue-bg-sheet)",
-          paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
-        }}
+        className="flex flex-none items-baseline justify-between gap-[10px] px-[22px] pt-[16px] pb-[10px]"
+        style={{ borderBottom: "1px solid var(--onsen-color-blue-border)" }}
       >
-        <div
-          className="flex flex-none items-baseline justify-between gap-[10px] px-[22px] pt-[16px] pb-[10px]"
-          style={{ borderBottom: "1px solid var(--onsen-color-blue-border)" }}
-        >
-          <p className="section-label" style={{ color: "var(--onsen-color-blue-text)" }}>
-            {strings.ooc.title}
-          </p>
-          <button
-            type="button"
-            onClick={onClose}
-            className="chrome text-[12.5px]"
-            style={{ color: "var(--onsen-color-blue-text-muted)" }}
-          >
-            {strings.ooc.back}
-          </button>
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto px-[22px] py-[12px]">
-          {messages.length === 0 && pending === null ? (
-            <p
-              className="chrome text-[13.5px] leading-[1.6]"
-              style={{ color: "var(--onsen-color-blue-text-muted)" }}
-            >
-              {strings.ooc.empty}
-            </p>
-          ) : null}
-
-          {messages.map((message) => (
-            <Bubble
-              key={message.id}
-              text={message.content}
-              fromReader={message.authorType === "user"}
-              name={message.authorType === "user" ? personaName : authorName}
-            />
-          ))}
-          {pending === null ? null : (
-            <Bubble text={pending === "" ? strings.ooc.thinking : pending} fromReader={false} name={authorName} />
-          )}
-          <div ref={foot} />
-        </div>
-
-        <div
-          className="flex flex-none items-end gap-[8px] px-[22px] pt-[10px]"
-          style={{ borderTop: "1px solid var(--onsen-color-blue-border)" }}
-        >
-          <textarea
-            rows={1}
-            value={draft}
-            aria-label={strings.ooc.placeholder}
-            placeholder={strings.ooc.placeholder}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault();
-                send();
-              }
-            }}
-            className="chrome max-h-[120px] min-h-[44px] flex-1 resize-none px-[12px] py-[12px] text-[12.5px] leading-[1.55]"
-            style={{
-              background: "var(--onsen-color-blue-bg)",
-              border: "1px solid var(--onsen-color-blue-border-strong)",
-              color: "var(--onsen-color-blue-text)",
-            }}
-          />
-          <button
-            type="button"
-            onClick={send}
-            disabled={draft.trim() === ""}
-            className="btn flex-none"
-            style={blueSolid}
-          >
-            {strings.ooc.send}
-          </button>
-        </div>
-
-        <p
-          className="chrome px-[22px] pt-[8px] text-[12.5px] leading-[1.5]"
+        <p className="section-label" style={{ color: "var(--onsen-color-blue-text)" }}>
+          {strings.ooc.title}
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="chrome text-[12.5px]"
           style={{ color: "var(--onsen-color-blue-text-muted)" }}
         >
-          {strings.ooc.hint}
-        </p>
+          {strings.ooc.back}
+        </button>
       </div>
-    </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto px-[22px] py-[12px]">
+        {messages.length === 0 && pending === null ? (
+          <p
+            className="chrome text-[13.5px] leading-[1.6]"
+            style={{ color: "var(--onsen-color-blue-text-muted)" }}
+          >
+            {strings.ooc.empty}
+          </p>
+        ) : null}
+
+        {messages.map((message) => (
+          <Bubble
+            key={message.id}
+            text={message.content}
+            fromReader={message.authorType === "user"}
+            name={message.authorType === "user" ? personaName : authorName}
+          />
+        ))}
+        {pending === null ? null : (
+          <Bubble text={pending === "" ? strings.ooc.thinking : pending} fromReader={false} name={authorName} />
+        )}
+        <div ref={foot} />
+      </div>
+
+      <div
+        className="flex flex-none items-end gap-[8px] px-[22px] pt-[10px]"
+        style={{ borderTop: "1px solid var(--onsen-color-blue-border)" }}
+      >
+        <textarea
+          rows={1}
+          value={draft}
+          aria-label={strings.ooc.placeholder}
+          placeholder={strings.ooc.placeholder}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              send();
+            }
+          }}
+          className="chrome max-h-[120px] min-h-[44px] flex-1 resize-none px-[12px] py-[12px] text-[12.5px] leading-[1.55]"
+          style={{
+            background: "var(--onsen-color-blue-bg)",
+            border: "1px solid var(--onsen-color-blue-border-strong)",
+            color: "var(--onsen-color-blue-text)",
+          }}
+        />
+        <button
+          type="button"
+          onClick={send}
+          disabled={draft.trim() === ""}
+          className="btn flex-none"
+          style={blueSolid}
+        >
+          {strings.ooc.send}
+        </button>
+      </div>
+
+      <p
+        className="chrome flex-none px-[22px] pt-[8px] text-[12.5px] leading-[1.5]"
+        style={{ color: "var(--onsen-color-blue-text-muted)" }}
+      >
+        {strings.ooc.hint}
+      </p>
+    </SheetShell>
   );
 }
 

@@ -4001,6 +4001,17 @@ Each phase ends in a working, usable application.
     between two others lands in the same place on a fresh install and an
     upgraded one. See §13.5, `server/options/builtin.ts`.
 
+176. **The other modal that was still a bottom sheet** — phase 174 fixed
+    `Sheet` and so fixed all 56 of its usages, but the off-script channel had
+    hand-rolled its own overlay and kept docking to the bottom of a desktop
+    window. The desktop/phone shape, the backdrop and the focus trap now live
+    in one `SheetShell` that both compose, the channel gains the focus trap
+    and Escape stacking it never had, and the command palette loses the same
+    cross-axis stretch that made its height fixed. Guarded by a sweep of
+    `client/components` rather than a named assertion, since the file that
+    hid was the one nobody thought to name. See §7,
+    `client/components/Sheet.tsx`.
+
 Settled while building phase 15.
 
 - **The desktop layout is phase 19, not a polish item.** The design is explicit
