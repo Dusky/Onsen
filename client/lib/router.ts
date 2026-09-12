@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * A small fixed-set router over the History API.
@@ -98,4 +98,45 @@ export function useRoute(): Route {
   }, []);
 
   return route;
+}
+
+/**
+ * The two screens a reader actually lives in (§20 phase 171).
+ *
+ * Everything else — Settings, the character and author editors, the
+ * lorebook and persona lists, scene setup, backdrops — is a destination you
+ * visit *from* one of these and mean to come back to. That's the split
+ * `useShellRoute` renders on: one of these two stays mounted no matter what
+ * else the URL names.
+ */
+function isBaseRoute(route: Route): boolean {
+  return route.name === "scenes" || route.name === "chat" || route.name === "unknown";
+}
+
+/**
+ * Which screen is the persistent base, and which — if any — is floating on
+ * top of it (§20 phase 171).
+ *
+ * `Route` itself is untouched: every existing `navigate()` call site still
+ * just names where the URL should point, and the URL still *is* the state,
+ * deep-linkable and back-button-correct. Only rendering changes — `Shell`
+ * stops swapping its one mounted screen for another and instead keeps the
+ * base mounted always, layering the overlay screen on top when the current
+ * route is not one of the two base names.
+ *
+ * `baseRef` is written during render rather than in an effect: an effect
+ * would run one render late, so the very first paint after navigating
+ * straight to an overlay route (a fresh load of `/settings`, say) would
+ * still see the *previous* base — there being none yet — undefined. Setting
+ * it inline is safe here because it is idempotent (the same route in, the
+ * same ref out, however many times this render happens to run) and it never
+ * schedules a render of its own, which is what makes a write during render
+ * sanctioned rather than a footgun.
+ */
+export function useShellRoute(): { base: Route; overlay: Route | null } {
+  const route = useRoute();
+  const isBase = isBaseRoute(route);
+  const baseRef = useRef<Route>(isBase ? route : { name: "scenes" });
+  if (isBase) baseRef.current = route;
+  return { base: baseRef.current, overlay: isBase ? null : route };
 }

@@ -3,6 +3,7 @@ import type {
   AnnotationDto,
   AutopilotStateDto,
   LayoutDto,
+  ReaderDto,
   MessageDto,
   TrackerDto,
 } from "@shared/types.ts";
@@ -15,6 +16,7 @@ import {
   MessageEditor,
   OocBlock,
   Reasoning,
+  RunIn,
 } from "../../components/MessageBlock.tsx";
 import { VirtualizedLog } from "../../components/VirtualizedLog.tsx";
 import { TrackerCard } from "../../components/TrackerPanel.tsx";
@@ -44,6 +46,7 @@ export function MessageLog({
   onSaveEdit,
   authorName,
   layout,
+  reader,
   colours,
   trackerState,
   personaId,
@@ -63,9 +66,6 @@ export function MessageLog({
   apState,
   onStopAutopilot,
   onCancel,
-  autopilotNote,
-  mediaNote,
-  onDismissMediaNote,
 }: {
   logRef: RefObject<HTMLDivElement | null>;
   /** The scene, so a generation's error only shows for the scene it belongs to. */
@@ -87,6 +87,8 @@ export function MessageLog({
   /** Message id → the state written at that turn (§163). */
   trackerState: Map<string, TrackerDto[]>;
   layout: LayoutDto;
+  /** The reader's own controls (§20 phase 166). */
+  reader: ReaderDto;
   personaId: string | null;
   onReroll(message: MessageDto): void;
   onOpenVersions(message: MessageDto): void;
@@ -104,9 +106,6 @@ export function MessageLog({
   apState: AutopilotStateDto | null;
   onStopAutopilot(): void;
   onCancel(): void;
-  autopilotNote: string | null;
-  mediaNote: string | null;
-  onDismissMediaNote(): void;
 }) {
   // One message, in every shape it can be: an aside, an edit, or a turn.
   const renderMessage = (message: MessageDto, index: number) =>
@@ -150,6 +149,9 @@ export function MessageLog({
         onInspect={() => onInspect(message)}
         selected={selectedId === message.id}
         onSelect={() => onSelect(message.id)}
+        {...(reader.timestamps ? { timestamp: true } : {})}
+        mediaLayout={reader.media}
+        {...(reader.clickToEdit ? { onOpenEditor: () => runCommand("edit", message) } : {})}
         onRevert={onRevert}
         // Every one goes through `runCommand`, the same path the palette takes,
         // so the row and the sheet can never disagree about what an action does
@@ -219,22 +221,35 @@ export function MessageLog({
     <>
       {isGenerating && recastInFlight === null && !oocInFlight && active?.speaker != null ? (
         <article>
-          <header className="mb-[10px]">
-            <div className="flex items-center gap-[10px]">
-              <span className="chrome shrink-0 text-[13.5px] font-semibold text-ink-label">
-                {active.speaker}
-              </span>
-              <span className="h-px flex-1 bg-rule" />
-            </div>
-            {active.director !== null && active.director.reason !== "" ? (
-              <p className="meta mt-[5px] leading-[1.5]">{active.director.reason}</p>
-            ) : null}
-          </header>
+          {/* Document mode runs the name into the paragraph here too (§20 phase
+              165). The director's reason stays either way: it is only on screen
+              while the turn is being written, and "why this speaker" is the one
+              question §13.6 says the reader is owed. */}
+          {layout.attribution === "runin" ? (
+            active.director !== null && active.director.reason !== "" ? (
+              <p className="meta mb-[5px] leading-[1.5]">{active.director.reason}</p>
+            ) : null
+          ) : (
+            <header className="mb-[10px]">
+              <div className="flex items-center gap-[10px]">
+                <span className="chrome shrink-0 text-[13.5px] font-semibold text-ink-label">
+                  {active.speaker}
+                </span>
+                <span className="h-px flex-1 bg-rule" />
+              </div>
+              {active.director !== null && active.director.reason !== "" ? (
+                <p className="meta mt-[5px] leading-[1.5]">{active.director.reason}</p>
+              ) : null}
+            </header>
+          )}
           <Reasoning text={active.reasoning} />
           {/* The same emphasis a finished turn gets. Without it the prose
               renders flat while it streams and reflows the instant the turn
               completes, which reads as the app changing its mind. */}
           <p className="text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)] whitespace-pre-wrap">
+            {layout.attribution === "runin" ? (
+              <RunIn name={active.speaker} colour={null} isUser={false} />
+            ) : null}
             <Emphasis text={active.text} />
           </p>
         </article>
@@ -272,20 +287,11 @@ export function MessageLog({
         </div>
       ) : null}
 
-      {autopilotNote !== null && !autopilotActive ? (
-        <p className="meta leading-[1.5]">{autopilotNote}</p>
-      ) : null}
-
-      {mediaNote !== null ? (
-        <button
-          type="button"
-          onClick={onDismissMediaNote}
-          className="chrome block text-left text-[12.5px] leading-[1.5]"
-          style={{ color: "var(--onsen-color-red)" }}
-        >
-          {mediaNote}
-        </button>
-      ) : null}
+      {/* The autopilot's stop reason and a failed caption used to sit here, as
+          two props threaded down from `ChatScreen`'s state. They are the app
+          reporting that a background task finished or failed, so they go to
+          the notice region instead (§20 phase 167) — where they are announced,
+          and where the next turn arriving cannot scroll them away. */}
     </>
   );
 

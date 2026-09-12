@@ -222,7 +222,19 @@ export interface PresetDto {
    * one is one tap away from it, and silently deleting a generation the user
    * paid for would be the worse half of automation.
    */
-  autoSwipe: { minChars: number; attempts: number };
+  autoSwipe: {
+    minChars: number;
+    attempts: number;
+    /**
+     * Reroll a turn that used a banned phrase (§13.6, §20 phase 169).
+     *
+     * Off by default, because on would change what every existing preset does
+     * with the ban list it already has. It shares `attempts` rather than
+     * carrying its own budget: two independent budgets is two ways for a
+     * scene to spend money in a loop.
+     */
+    onBanned: boolean;
+  };
   /**
    * What happens to the example dialogue as a scene fills up (§3, §20 phase 64).
    *
@@ -233,6 +245,33 @@ export interface PresetDto {
   exampleEviction: ExampleEvictionName;
   /** Merge consecutive system messages into one (§3, §20 phase 64). */
   squashSystem: boolean;
+  /**
+   * Whether a character's own system prompt beats the preset's (§2, §20 phase
+   * 169).
+   *
+   * Off is what the builder always did: the `system_prompt` block is the
+   * preset's, and a character's own is folded into `spotlight_character`
+   * instead — and *only* in single-character mode, so with an author set it was
+   * dropped with nothing saying so. On, the spotlight's system prompt replaces
+   * the preset's, in either mode.
+   *
+   * The spotlight's, specifically: in a beat that is the character who opens
+   * it. A prompt assembled from four cards' framings at once would be four
+   * framings arguing, which is the thing §3.5 is written against.
+   */
+  preferCharacterPrompt: boolean;
+  /**
+   * Whether a character's post-history instructions are injected (§2, §20
+   * phase 169).
+   *
+   * On is what the builder always did. Named for what it decides rather than
+   * as a "prefer": there was never anything on the preset side to prefer it
+   * over, because the preset's own final instruction is the separate
+   * `jailbreak` block. So the real decision — and the one a reader running
+   * somebody else's card actually makes — is whether the card's instructions
+   * reach the model at all.
+   */
+  preferCharacterInstructions: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -323,12 +362,15 @@ export interface UpdatePresetRequest {
    * half-orders. Null restores the default.
    */
   blockOrder?: PromptOrderEntry[] | null;
-  /** The two automatic retries (§20 phase 63). Zero is off for both. */
+  /** The automatic retries (§20 phase 63, §20 phase 169). Zero is off. */
   autoContinue?: number;
-  autoSwipe?: { minChars?: number; attempts?: number };
+  autoSwipe?: { minChars?: number; attempts?: number; onBanned?: boolean };
   /** What happens to the examples as a scene fills up (§20 phase 64). */
   exampleEviction?: ExampleEvictionName;
   squashSystem?: boolean;
+  /** Who wins when a character and the preset both have one (§20 phase 169). */
+  preferCharacterPrompt?: boolean;
+  preferCharacterInstructions?: boolean;
   /** The model this preset answers with, when the scene names none (§20 phase 105). */
   connectionProfileId?: string | null;
   /** The ops' prompts (§20 phase 107). */
@@ -579,6 +621,15 @@ export interface GenerationMeta {
    * back into a later prompt.
    */
   nudge?: string | null;
+  /**
+   * The banned phrase that got this turn rerolled (§13.6, §20 phase 169).
+   *
+   * Written on the *rejected* turn, which survives as a sibling — so a reader
+   * who swipes back to it is told why the app moved on rather than finding a
+   * turn that was silently passed over. A reroll with no stated reason is the
+   * arbitrary dice roll §8 and §13.6 are both written against.
+   */
+  autoSwipedFor?: string | null;
 }
 
 /** A scene rolled up: messages, words, and who carried it (§20 phase 128). */
@@ -1302,6 +1353,14 @@ export interface SceneDto {
    * when it gets asked.
    */
   importSource: string | null;
+  /**
+   * An unsent turn, kept with the roleplay (§20 phase 166).
+   *
+   * Empty string for none — one state, not two. Written and read only while
+   * the reader has `drafts` on: keeping keystrokes for a feature somebody
+   * turned off would be storing prose nobody asked to have stored.
+   */
+  draft: string;
   /** Organisation (§20 phase 59), shaped like the character library's. */
   tags: string[];
   folder: string | null;
@@ -1456,6 +1515,35 @@ export interface CheckpointDto {
    */
   excerpt: string | null;
   createdAt: number;
+}
+
+/**
+ * One message as a node in the branch map (§20 phase 172).
+ *
+ * Deliberately thin — no `content`, no segments, no media — so reading a
+ * whole scene's shape costs nothing close to reading its prose. `preview` is
+ * the one piece of text, already flattened and cut server-side the same way
+ * a checkpoint's `excerpt` is.
+ */
+export interface TreeNodeDto {
+  id: string;
+  parentId: string | null;
+  kind: MessageKind;
+  authorType: MessageAuthorType;
+  speakerName: string | null;
+  /** The speaking character's colour (§20 phase 162), for tinting the node. */
+  speakerColour: string | null;
+  preview: string;
+  createdAt: number;
+  isCheckpoint: boolean;
+  /** Whether this node lies on the scene's current active path. */
+  isOnActivePath: boolean;
+}
+
+/** A scene's whole message tree, flattened (§20 phase 172). */
+export interface SceneTreeDto {
+  nodes: TreeNodeDto[];
+  activeLeafId: string | null;
 }
 
 export interface CreateSceneRequest {
@@ -1681,10 +1769,17 @@ export interface UpdateTaskRequest {
  *
  * The guardrail is in §16 and matters more than the feature: a matrix of
  * toggles in place of a default is the incumbent's answer, and it is the thing
- * this app is reacting against. Four switches, three named starting points,
+ * this app is reacting against. Four switches, four named starting points,
  * and Instrument is what the app is when nobody has touched anything.
+ *
+ * `document` is the fourth, added later (§20 phase 165): the one direction
+ * the other three do not reach, because all three keep the turn as a visible
+ * object — a name row, a spine, a row of glyphs. Document drops the boundary
+ * and lets a scene read as continuous prose. It is still a preset over the
+ * same switches rather than a fourth screen; what it adds is one attribution
+ * style, and every consequence follows from that one value.
  */
-export type LayoutPreset = "instrument" | "quiet" | "broadsheet";
+export type LayoutPreset = "instrument" | "quiet" | "broadsheet" | "document";
 
 /** The cast control above the composer. */
 export type CastDisplay =
@@ -1693,12 +1788,27 @@ export type CastDisplay =
   /** Quiet and Broadsheet: a line of prose naming who answers, and a way to change it. */
   | "line";
 
-/** Where a turn's attribution sits. */
+/**
+ * Where a turn's attribution sits.
+ *
+ * `runin` is the printer's run-in head, and it is the whole of Document mode
+ * (§20 phase 165). Everything else that reads as a turn boundary is derived
+ * from it rather than switched separately — no name row, no spine, and the
+ * chrome that acts on a turn revealed rather than standing. One value, because
+ * §16's guardrail is against a matrix of toggles, and "the name is inside the
+ * paragraph" already implies all three.
+ *
+ * It differs from `inline` in more than the separator: `inline` sets the whole
+ * message as one paragraph beside the director's reason, where `runin` keeps
+ * real paragraphs and emphasis and only opens the first one with the name.
+ */
 export type AttributionStyle =
   /** The name on its own row above the prose. */
   | "stacked"
   /** Broadsheet: the name and the director's reason on one line with the text. */
-  | "inline";
+  | "inline"
+  /** Document: the name opens the first paragraph and nothing else marks the turn. */
+  | "runin";
 
 /**
  * The reading surface, which the reader owns rather than the designer
@@ -1757,6 +1867,142 @@ export function clampReading(input: Partial<Record<keyof ReadingDto, unknown>>):
     // A window is a count of turns, so a fractional one is meaningless; the
     // other three are genuinely continuous.
     out[key] = key === "window" ? Math.round(clamped) : clamped;
+  }
+  return out;
+}
+
+/* ------------------------------------------------------------------ */
+/* Reader controls (SPEC §16 §Density, §20 phase 166)                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * What happens when the composer sees Return.
+ *
+ * Three, not two, because the two the app had were a keyboard's. A reader
+ * writing long turns wants Return to be Return; a reader steering a scene
+ * wants it to send. The third is the one the incumbent ships and the reason
+ * this is a setting at all.
+ *
+ * None of them change the phone: a software keyboard does not report a shift
+ * state, so its return key stays a newline in all three and the send button is
+ * the send button. `Composer.tsx` has said so in a comment since phase 45;
+ * this is the first time the comment has had a choice to be right about.
+ */
+export type SendKey =
+  /** Return sends, Shift+Return is a newline. The default, and today's. */
+  | "enter"
+  /** ⌘/Ctrl+Return sends, Return is always a newline. */
+  | "modEnter"
+  /** Only the button sends. */
+  | "button";
+
+/** Whether a reader has overridden the machine's motion setting. */
+export type MotionPreference = "system" | "reduced";
+
+/** How a turn's pictures are laid out under it (§20 phase 41 shipped one). */
+export type MediaLayout = "list" | "grid";
+
+/**
+ * Where the app says what it has to say (§20 phase 167).
+ *
+ * Four corners and the two centres the incumbent offers, minus the ones that
+ * would sit on top of something: this app docks the composer to the bottom of
+ * the chat and the rails to the sides, so a notice at bottom-centre would
+ * cover the field you are typing in. Three positions, all of them clear of
+ * the composer and of the reading column's centre.
+ */
+export type NoticePosition = "top" | "topRight" | "bottomRight";
+
+/**
+ * The controls that belong to the person reading and writing, not to the
+ * layout (§20 phase 166).
+ *
+ * Separate from `ReadingDto` deliberately. That is the type system — four
+ * numbers with bounds, every one of them continuous, all four published as
+ * custom properties. These are discrete behaviours, and lumping them in would
+ * have made `clampReading` mean two different things.
+ *
+ * Server-side like every other preference, for the reason `client/App.tsx`
+ * states outright: there is no browser storage in this app. A draft restored
+ * from one browser and missing in another is worse than no draft restore.
+ */
+export interface ReaderDto {
+  send: SendKey;
+  /**
+   * ⌘/Ctrl+B and +I wrap the composer's selection in the tokenizer's own two
+   * marks. Worth having only since phase 161 made those marks render.
+   */
+  marks: boolean;
+  /**
+   * A time under each turn, off by default.
+   *
+   * `docs/design/DESIGN.md` says "no avatar, no timestamp, no shadow" for a
+   * turn, so this is an opt-in rather than a correction: the default stays
+   * what the design chose, and a reader who wants the clock can have it.
+   */
+  timestamps: boolean;
+  /**
+   * The manual override for `prefers-reduced-motion`, which the stylesheet has
+   * honoured since phase 45. For a machine that does not set it, or a reader
+   * who wants it here and not everywhere.
+   */
+  motion: MotionPreference;
+  /** Follow a streaming turn to the bottom. Off is for reading back. */
+  autoScroll: boolean;
+  /** Keep an unsent turn when the scene is closed. Server-side; see above. */
+  drafts: boolean;
+  /** Double-click a turn to edit it in place. */
+  clickToEdit: boolean;
+  media: MediaLayout;
+  /**
+   * Where a notice appears (§20 phase 167).
+   *
+   * Here rather than in a group of its own, and the reason is the same one
+   * that put the reading column here: it is a decision about not covering
+   * what you are reading. A reader with the rails open and a reader on a
+   * phone want it in different places.
+   */
+  notices: NoticePosition;
+}
+
+export const READER_DEFAULTS: ReaderDto = {
+  send: "enter",
+  marks: true,
+  timestamps: false,
+  motion: "system",
+  autoScroll: true,
+  drafts: true,
+  clickToEdit: false,
+  media: "list",
+  notices: "top",
+};
+
+/** The value sets, so a reader and a writer cannot disagree about them. */
+export const SEND_KEYS: readonly SendKey[] = ["enter", "modEnter", "button"];
+export const MOTION_PREFERENCES: readonly MotionPreference[] = ["system", "reduced"];
+export const MEDIA_LAYOUTS: readonly MediaLayout[] = ["list", "grid"];
+export const NOTICE_POSITIONS: readonly NoticePosition[] = ["top", "topRight", "bottomRight"];
+
+/**
+ * Fall back per field rather than rejecting the lot — `clampReading`'s rule,
+ * and for the same reason: one unrecognised value should not cost a reader the
+ * other seven, and a settings screen is the worst place to be strict.
+ *
+ * Used on the way out of the database as well as in, because a value written
+ * by an older build or by hand must not be able to render the app unusable.
+ */
+export function readReader(input: Partial<Record<keyof ReaderDto, unknown>>): ReaderDto {
+  const out = { ...READER_DEFAULTS };
+  for (const key of ["marks", "timestamps", "autoScroll", "drafts", "clickToEdit"] as const) {
+    if (typeof input[key] === "boolean") out[key] = input[key] as boolean;
+  }
+  if (SEND_KEYS.includes(input.send as SendKey)) out.send = input.send as SendKey;
+  if (MOTION_PREFERENCES.includes(input.motion as MotionPreference)) {
+    out.motion = input.motion as MotionPreference;
+  }
+  if (MEDIA_LAYOUTS.includes(input.media as MediaLayout)) out.media = input.media as MediaLayout;
+  if (NOTICE_POSITIONS.includes(input.notices as NoticePosition)) {
+    out.notices = input.notices as NoticePosition;
   }
   return out;
 }
@@ -1825,6 +2071,19 @@ export const LAYOUT_PRESETS: Record<LayoutPreset, Omit<LayoutDto, "preset">> = {
     reader: { bubble: false, avatar: false },
     author: { bubble: false, avatar: false },
   },
+  // Document reads as one manuscript, so nothing here draws a turn: no
+  // readouts, no dek, no bubble on either side, and a run-in name. It is
+  // Quiet's switches with the attribution moved into the paragraph — which is
+  // exactly how little it takes, and why this is a preset and not a screen.
+  document: {
+    readouts: false,
+    cast: "line",
+    dek: false,
+    attribution: "runin",
+    avatarShape: "circle",
+    reader: { bubble: false, avatar: false },
+    author: { bubble: false, avatar: false },
+  },
 };
 
 /** Which preset a set of switches is, or `custom` when it is none of them. */
@@ -1844,6 +2103,95 @@ export function presetOf(layout: Omit<LayoutDto, "preset">): LayoutDto["preset"]
     }
   }
   return "custom";
+}
+
+/* ------------------------------------------------------------------ */
+/* The rail dock (§20 phase 173)                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A panel either rail can host.
+ *
+ * Six of these are pure functions of a scene id, self-explaining with no
+ * roleplay open. `scene` is the seventh — not a component of its own, a slot
+ * `ChatScreen` fills with the scene's own Context/Cast/You panes — and it
+ * docks the same as the rest.
+ */
+export type DockPanel = "prompt" | "preset" | "lore" | "guides" | "scene" | "characters" | "authors";
+
+export const DOCK_PANELS: readonly DockPanel[] = [
+  "prompt",
+  "preset",
+  "lore",
+  "guides",
+  "scene",
+  "characters",
+  "authors",
+];
+
+/**
+ * Which panels live on which side, in what order, and how wide each side's
+ * panel is (§20 phase 173).
+ *
+ * A panel named in neither list is hidden — reachable again from the same
+ * editor that hid it, never deleted. The default below is today's exact
+ * arrangement, so nothing changes for a reader who never opens that editor —
+ * the same non-negotiable every preference in this app has followed since
+ * phase 165.
+ */
+export interface DockDto {
+  left: DockPanel[];
+  right: DockPanel[];
+  leftWidth: number;
+  rightWidth: number;
+}
+
+export const DOCK_DEFAULTS: DockDto = {
+  left: ["prompt", "preset", "lore", "guides"],
+  right: ["scene", "characters", "authors"],
+  leftWidth: 326,
+  rightWidth: 352,
+};
+
+/**
+ * Inclusive px bounds per side, the same idea `READING_BOUNDS` applies to the
+ * reading surface: narrow enough that a panel never becomes useless, wide
+ * enough that it never eats the log out of its own measure.
+ */
+export const DOCK_WIDTH_BOUNDS: readonly [number, number] = [260, 480];
+
+/**
+ * Validate a stored or incoming dock preference, falling back per field
+ * rather than refusing the lot — the rule every preference in this app
+ * follows, `clampReading` and `readReader`'s own included.
+ *
+ * A panel named on both sides is a contradiction, not a feature: the right
+ * side wins and the left drops it, so the result is never a panel drawn
+ * twice. A panel that appears nowhere is simply hidden, which is a valid and
+ * expected state, not an error to correct.
+ */
+export function readDock(input: Partial<Record<keyof DockDto, unknown>>): DockDto {
+  // Empty is a valid list — a reader may move every panel off one side —
+  // so only the shape is checked here, never the length.
+  const isPanelList = (value: unknown): value is DockPanel[] =>
+    Array.isArray(value) && value.every((item) => (DOCK_PANELS as readonly unknown[]).includes(item));
+
+  const rawLeft = isPanelList(input.left) ? [...new Set(input.left)] : DOCK_DEFAULTS.left;
+  const right = isPanelList(input.right) ? [...new Set(input.right)] : DOCK_DEFAULTS.right;
+  const left = rawLeft.filter((panel) => !right.includes(panel));
+
+  const clampWidth = (value: unknown, fallback: number): number => {
+    const raw = typeof value === "number" && Number.isFinite(value) ? value : fallback;
+    const [min, max] = DOCK_WIDTH_BOUNDS;
+    return Math.round(Math.min(max, Math.max(min, raw)));
+  };
+
+  return {
+    left,
+    right,
+    leftWidth: clampWidth(input.leftWidth, DOCK_DEFAULTS.leftWidth),
+    rightWidth: clampWidth(input.rightWidth, DOCK_DEFAULTS.rightWidth),
+  };
 }
 
 /* Persistent guides (SPEC §8)                                         */

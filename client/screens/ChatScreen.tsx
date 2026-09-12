@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { MessageDto } from "@shared/types.ts";
 import { strings } from "../strings.ts";
+import { notify } from "../state/notices.ts";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { navigate } from "../lib/router.ts";
 import { useSceneChannel } from "../lib/scene-channel.ts";
@@ -8,6 +9,8 @@ import {
   useDeleteMessage,
   useEditMessage,
   useScene,
+  saveDraft,
+  useReader,
   useReading,
   useSendMessage,
   useSetLeaf,
@@ -200,13 +203,14 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
 
   /** The chosen layout (§20 phase 52). Instrument until preferences arrive. */
   const layout = useLayout();
+  const reader = useReader();
 
   const log = useRef<HTMLDivElement>(null);
   // The cast becomes a rail and the ops flatten (design `4a`). Everything
   // else about this screen is the same components at a different width.
   const isDesktop = useIsDesktop();
   const setSceneInspector = useUiStore((state) => state.setSceneInspector);
-  const setRightTab = useUiStore((state) => state.setRightTab);
+  const setRightActive = useUiStore((state) => state.setRightActive);
   // §5's held view. While another device has moved the head somewhere this one
   // is not, the log keeps showing what the reader was reading — the whole point
   // of the prompt is that the scene does not change under them, and a client
@@ -337,14 +341,12 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   // furniture. Tracked locally so it clears the next time the reader acts,
   // rather than living on the row forever.
   const sawAutopilot = useRef(false);
-  const [autopilotNote, setAutopilotNote] = useState<string | null>(null);
   /**
    * What a picture or voice service said when it refused (§20 phase 41).
    *
    * Shown where the autopilot's reason is shown: a service being unreachable is
    * news for a moment and then it is furniture, and it clears on the next act.
    */
-  const [mediaNote, setMediaNote] = useState<string | null>(null);
   /** The message being marked, while the name is being typed (§2). */
   const [marking, setMarking] = useState<MessageDto | null>(null);
   const signOut = useSignOut();
@@ -454,9 +456,9 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       "check": () => turn && runPasses.mutate(turn.id),
       "illustrate": () =>
         turn &&
-        illustrate.mutate({ messageId: turn.id }, { onError: (e) => setMediaNote(e.message) }),
+        illustrate.mutate({ messageId: turn.id }, { onError: (e) => notify("failed", e.message) }),
       "speak": () =>
-        turn && speak.mutate(turn.id, { onError: (e) => setMediaNote(e.message) }),
+        turn && speak.mutate(turn.id, { onError: (e) => notify("failed", e.message) }),
       "expand": () => void (turn && revise(turn, "expand")),
       "correct": () => turn && setCorrecting(turn),
       "recast": () => turn && setRecasting(turn),
@@ -491,6 +493,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       "guides": () => setGuidesOpen(true),
       "attach": () => document.querySelector<HTMLInputElement>('input[type="file"][accept="image/*"]')?.click(),
       "marks": () => setMarksOpen(true),
+      "branch-map": () => setBranchMapOpen(true),
       "setup": () => navigate({ name: "setup", sceneId }),
 
       /* go to */
@@ -508,6 +511,8 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const checkpoints = useCheckpoints(sceneId);
   const stats = useSceneStats(sceneId);
   const [statsOpen, setStatsOpen] = useState(false);
+  /** The branch map (§20 phase 172): every branch and checkpoint, at once. */
+  const [branchMapOpen, setBranchMapOpen] = useState(false);
   const illustrate = useIllustrate(sceneId);
   const speak = useSpeak(sceneId);
   const attach = useAttachImage(sceneId);
@@ -515,12 +520,16 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     if (apState === null) return;
     if (apState.active) {
       sawAutopilot.current = true;
-      setAutopilotNote(null);
       return;
     }
     if (sawAutopilot.current && apState.stopReason !== null) {
       sawAutopilot.current = false;
-      setAutopilotNote(strings.chat.autopilotStopped(
+      // Posted rather than held in state and rendered at the bottom of the log
+      // (§20 phase 167). It is the app reporting that a background task
+      // finished, which is the notice region's whole job — and down there it
+      // was never announced, and scrolled away the moment the next turn
+      // arrived.
+      notify("done", strings.chat.autopilotStopped(
         strings.chat.autopilotReasons[apState.stopReason] ?? apState.stopReason,
       ));
     }
@@ -535,13 +544,66 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     void generation.adopt({ generationId: adoptable, sceneId, sceneTitle: title });
   }, [adoptable, active, sceneId, title, generation]);
 
-  // Keep the newest content in view as it arrives. Bottom-anchored layout does
-  // most of the work; this covers the case where the log has overflowed.
+  /*
+   * The unsent turn, kept and restored (§20 phase 166).
+   *
+   * Two effects rather than one, because they are two different events.
+   *
+   * The first restores: it fires when the scene's draft arrives, and only into
+   * an empty composer. Guarded by the scene id so switching roleplays restores
+   * the new one's draft rather than the old one's, and guarded on emptiness so
+   * a late refetch cannot overwrite a sentence being typed right now — the
+   * request that carries the draft is the same one that carries the log, and it
+   * runs whenever the window regains focus.
+   *
+   * The second saves, debounced: a keystroke is not a save. `draftSaved` holds
+   * what was last sent, so a scene whose draft already matches the server's —
+   * the common case on open — issues no write at all.
+   */
+  const restoredFor = useRef<string | null>(null);
+  const draftSaved = useRef<string | null>(null);
+  const storedDraft = scene.data?.scene.draft ?? null;
+  useEffect(() => {
+    if (!reader.drafts || storedDraft === null) return;
+    if (restoredFor.current === sceneId) return;
+    restoredFor.current = sceneId;
+    draftSaved.current = storedDraft;
+    if (storedDraft !== "" && draft === "") setDraft(storedDraft);
+  }, [reader.drafts, storedDraft, sceneId, draft, setDraft]);
+
+  useEffect(() => {
+    if (!reader.drafts) return;
+    if (restoredFor.current !== sceneId) return;
+    if (draftSaved.current === draft) return;
+    const timer = setTimeout(() => {
+      draftSaved.current = draft;
+      saveDraft(sceneId, draft);
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [draft, reader.drafts, sceneId]);
+
+  /*
+   * Keep the newest content in view as it arrives. Bottom-anchored layout does
+   * most of the work; this covers the case where the log has overflowed.
+   *
+   * The reader can turn it off (§20 phase 166), which is the difference between
+   * reading back through a scene while a turn streams and being yanked to the
+   * bottom every few hundred milliseconds. A *new* turn still scrolls either
+   * way: arriving text is the thing being followed, and a log that silently
+   * stopped moving when a message landed would read as a broken log rather
+   * than as a setting.
+   */
   useLayoutEffect(() => {
     const element = log.current;
     if (element === null) return;
     element.scrollTop = element.scrollHeight;
-  }, [logMessages.length, active?.text]);
+  }, [logMessages.length]);
+
+  useLayoutEffect(() => {
+    const element = log.current;
+    if (element === null || !reader.autoScroll) return;
+    element.scrollTop = element.scrollHeight;
+  }, [active?.text, reader.autoScroll]);
 
   // Once a generation lands, its text belongs to the tree rather than the
   // store, so the streaming block is dropped and the refetched message shows.
@@ -581,6 +643,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           onSaveEdit={(messageId, content) => edit.mutate({ messageId, content })}
           authorName={authorName}
           layout={layout}
+          reader={reader}
           colours={colours}
           trackerState={trackerState}
           personaId={scene.data?.scene.personaId ?? null}
@@ -600,9 +663,6 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           apState={apState}
           onStopAutopilot={() => stopAutopilot.mutate()}
           onCancel={() => void generation.cancel()}
-          autopilotNote={autopilotNote}
-          mediaNote={mediaNote}
-          onDismissMediaNote={() => setMediaNote(null)}
         />
 
         {/* The tracker panel (§8, phase 31): collapsible, above the composer. */}
@@ -749,8 +809,10 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             attach.mutate(file, {
               // A caption that failed is worth saying once — the picture is
               // still here, and the reader may have wanted it that way.
-              onSuccess: (result) => setMediaNote(result.captionError),
-              onError: (error) => setMediaNote(error.message),
+              onSuccess: (result) => {
+                if (result.captionError !== null) notify("failed", result.captionError);
+              },
+              onError: (error) => notify("failed", error.message),
             })
           }
           attaching={attach.isPending}
@@ -769,6 +831,8 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             />
           }
           wide={isDesktop}
+          sendKey={reader.send}
+          marks={reader.marks}
         />
 
         {/* §20 phase 43: what is true right now, in one line. On a phone its
@@ -779,6 +843,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           tokens={scene.data?.scene.lastPromptTokens ?? null}
           contextSize={scene.data?.scene.contextSize ?? null}
           generating={isGenerating}
+          onOpenBranchMap={() => setBranchMapOpen(true)}
           onOpenPrompt={() => {
             preview.mutate({
               ...(nextSpeaker === null ? {} : { characterId: nextSpeaker.characterId }),
@@ -822,7 +887,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       authorName={scene.data?.scene.authorName ?? strings.chat.narratorName}
       authorTokens={authorTokens}
       onEditPersona={() => setPersonaEditing(true)}
-      onEditAuthor={() => setRightTab("authors")}
+      onEditAuthor={() => setRightActive("authors")}
     />
   );
 
@@ -997,6 +1062,12 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           setToolsOpen(false);
           setStatsOpen(true);
         }}
+        branchMapOpen={branchMapOpen}
+        onOpenBranchMap={() => {
+          setToolsOpen(false);
+          setBranchMapOpen(true);
+        }}
+        onCloseBranchMap={() => setBranchMapOpen(false)}
         guidesOpen={guidesOpen}
         contextTab={contextTab}
         onContextTab={setContextTab}

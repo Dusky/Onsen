@@ -7437,3 +7437,679 @@ that contract outright ("an edited built-in survives re-seeding"), so only
 stale is a correctness bug rather than a preference kept. The other half is
 named and left: an option the code stops shipping stays in the database,
 selectable, forever, and removing it would take a reader's edited words with it.
+
+## Phase 165 — A scene that reads as one manuscript
+
+The fourth named layout, and the first that removes the turn as an object.
+Instrument, Quiet and Broadsheet differ in what chrome a turn carries;
+all three still draw one — a name row, a spine, a row of glyphs. Document
+drops the boundary, so a scene reads the way the thing it is a record of would
+be printed.
+
+It is still a preset over the same switches rather than a fourth chat screen.
+The whole of it is one new attribution style: `runin`, the printer's run-in
+head, where the speaker's name opens their own paragraph. Everything that
+follows — no name row, no spine, no card, the controls out of flow — is derived
+from that one value rather than switched separately, because §16's guardrail is
+against a matrix of toggles and "the name is inside the paragraph" already
+implies all four.
+
+`runin` goes through `Prose`, which is what distinguishes it from Broadsheet's
+`inline`. `inline` sets a whole message as one unformatted paragraph beside the
+director's reason; run-in keeps the paragraph split and the emphasis tokenizer,
+and only opens the first paragraph with the name. An em space rather than
+Broadsheet's middle dot: the dot separates two pieces of chrome, and this is a
+name running into prose.
+
+**Verified** in Chromium at 1600×950 and 390×844, in both themes through the
+app's own picker, on a four-turn scene with two coloured speakers: continuous
+prose with real paragraphs and rendered emphasis, each name in its own colour,
+no rails, no horizontal scroll, and Instrument and Broadsheet unchanged beside
+it. Guard: `test/document-mode.test.ts`, 16 tests.
+
+### Surprises
+
+**Broadsheet has shipped its turn actions unreachable since phase 52.** Its
+`<header>` carries the name, the glyphs and the stats, and `inline` hid the
+whole element — so the six per-turn controls and the token counts were gone,
+reachable only by a long-press. That is the exact defect phase 57 removed from
+the stacked row, re-introduced five phases later by a layout nobody drove with
+a keyboard. Document needed the same row in the same place, so one mechanism
+fixes both: the chrome leaves flow rather than being hidden, positioned over
+the turn and revealed by hover, by keyboard focus, or by the turn being
+selected — which is what a tap already does.
+
+**The theme draws the turn boundary too.** `.turn` takes `--onsen-card-bg` and
+`--onsen-shadow-card`, so in the light theme Document was four white cards down
+a mode whose premise is that there are no cards. A card *is* a turn boundary; it
+just happens to be the theme's rather than the preset's, and the preset is what
+was asked for. Suppressed for `runin` only — Broadsheet is a bounded turn with a
+rail and the card belongs to that reading — which is why the `data-flow`
+attribute carries *which* out-of-flow style it is rather than a bare flag.
+
+**Two positions were wrong before one was right, and only a browser said so.**
+Anchored top-right the cluster sat squarely over the first line and hid four
+words of it; at 390px it is the full column width — six glyphs at the 44px floor
+plus the stats — so on the turn you had just tapped it hid a line and a half.
+Bottom-right fixed the pointer case, because a last line is ragged. The thumb
+case needed the turn to make room: the cluster stays positioned and stays in the
+accessibility tree, and `padding-bottom` on the selected turn grows it by the
+cluster's height. The shift is caused by the reader's own tap, on the turn they
+tapped, and nothing above it moves.
+
+**A latent bug in the preference, found by adding a third value.**
+`layout_attribution` was read back with a two-way ternary — anything but
+`inline` came back as `stacked` — so a third value would have been accepted by
+the PATCH, written to the settings row, and read back as something else. Read
+and write now share one list.
+
+**Document's selection had to be quieter.** The stacked selection draws a blue
+edge with a −20px margin and +18px padding, which is a fine thing to happen to a
+block and a bad thing to happen to a paragraph you are reading: the text shifts
+sideways by 20px. Document selects with a ground and nothing else.
+
+## Phase 166 — Eight things the app decided for you
+
+The reading surface has been the reader's since phase 55 — four numbers with
+bounds, published as custom properties. What was still the app's were the
+discrete behaviours around it: what Return does, whether a streaming turn drags
+the log to the bottom, whether an unsent sentence survives closing the
+roleplay. Each was a reasonable default with no way past it.
+
+Eight of them now have one, and **every default is what the app already did**,
+so a fresh install behaves exactly as it did before. A settings group that
+changes behaviour by existing is a settings group nobody asked for.
+
+`ReaderDto` is its own type rather than four more fields on `ReadingDto`. That
+one is the type system: continuous values with bounds, all four clamped by
+`clampReading`. These are discrete, and sharing the type would have made
+`clampReading` mean two different things. Both follow the same rule on the way
+in — fall back per field rather than reject the lot, because a settings screen
+is the worst place to be strict and one typo should not cost a reader the other
+seven values.
+
+**What Return does** is three choices, not two, and none of them can reach a
+phone. `Composer.tsx` has carried a comment since phase 45 explaining that a
+software keyboard cannot report a held shift, so its return key has to stay a
+newline; this is the first time that comment has had a choice to be right
+about. `modEnter` takes either modifier rather than sniffing the platform.
+
+**⌘/Ctrl+B and +I** are worth having only because phase 161 made those marks
+render. `client/lib/marks.ts` is its own module because the interesting part is
+string arithmetic with no DOM in it, which means it can be tested — and the
+round trip is the property that matters: everything it writes,
+`client/lib/emphasis.ts` has to read back as the emphasis that was asked for.
+
+**The unsent turn** is a column on `scenes`, not a key in the settings table: a
+key per scene would outlive every scene it named, with nothing to notice.
+`saveDraft` is its own statement rather than a field on `updateScene`, and
+deliberately does not touch `updated_at` — a keystroke in the composer is not
+activity in the roleplay, and the newest-first list should follow the story
+rather than the cursor.
+
+**Verified** in Chromium at 1600×950 and 390×844: ⌘+B wrapping the selection
+and unwrapping on a second press, ⌘+I after it; Return inserting a newline in
+both non-default modes and sending in the default one; the clock appearing with
+the turn's other numbers; three differently-shaped plates lining up as one row
+of cells in grid mode and stacking at their own sizes in list mode; a draft
+typed, the scene left, and the draft back in the composer on return. At 390px:
+all eight controls reachable, nothing under the tap floor, no horizontal
+scroll. Guards: `test/marks.test.ts`, `test/reader.test.ts`.
+
+### Surprises
+
+**A boolean read the obvious way can never be turned off.** Comparing a stored
+setting to `"1"` makes an absent row and an explicit `false` the same thing —
+which is harmless for a default-off switch and fatal for a default-on one:
+following a streaming turn is on by default, so `=== "1"` would have made
+turning it off a no-op that re-read as on. Every flag asks `=== null` first.
+
+**Auto-scroll had to be split into two effects, not gated in one.** The single
+effect fired on both a new message and each streaming chunk. Gating the whole
+thing meant a log that stopped moving when a message *landed*, which reads as a
+broken log rather than as a setting. A new turn scrolls either way; only the
+streaming tail is the reader's to refuse.
+
+**`Segmented` was declared inside its parent component.** `LayoutSection` had
+it as a nested function, so every render produced a new component type and
+React unmounted and remounted the whole row rather than updating it. Harmless
+while it had one caller; lifted to module scope rather than copied when the
+reader controls became the second.
+
+**The motion override can only add reduction.** Two ways in — the machine
+asking through `prefers-reduced-motion`, and the reader asking here for this
+app only — reaching one set of suppression rules. There is no `data-motion`
+value that *removes* reduction, so a reader who has asked their OS for less
+motion gets it whatever this app is set to. The alternative, a three-way that
+could override the system downward, would be an app deciding it knows better
+than an accessibility setting.
+
+**The grid does not become a grid for one picture.** A single attachment
+cropped to a square cell is the "64px thumbnail blown up to the prose measure"
+mistake in the other direction. `auto-fill` rather than `auto-fit`, too: cells
+stay the same size whether a turn drew two or seven, where `auto-fit` would
+stretch two of them across the whole column.
+
+## Phase 167 — The app had no way to say anything
+
+Measured, not guessed: there was **not one** `aria-live` region or
+`role="status"` anywhere in `client/`. Every async outcome surfaced as inline
+text in whichever component happened to own the request.
+
+That works for a rejected field and fails completely for everything else. A
+background task that finished, an export that was written, a preference that
+did not save — none of those have a field to sit under, so several of them said
+nothing at all, and not one of them was ever announced to a screen reader. It
+is a feature gap and an accessibility gap at the same time, and the incumbent's
+"Notifications: Top Center" is the visible half of the thing Onsen needed the
+whole of.
+
+One primitive, not a per-caller variant — the lesson `Scroller` and
+`useModalFocus` both came out of. A store beside `client/state/ui.ts`, one
+region mounted at the shell, and a position preference. Anything transient
+posts there; a genuinely inline error — this field is wrong, this pattern will
+not compile — stays next to the thing it is about.
+
+Three callers to start, chosen because two were in the wrong place and one said
+nothing:
+
+- The autopilot's stop reason and a failed caption were two props threaded from
+  `ChatScreen`'s state down into `MessageLog`, rendered at the bottom of the
+  log where nothing announced them and the next turn scrolled them away. Both
+  are the app reporting that a background task ended. Gone, with their props.
+- A pack export ran `anchor.click()` and said nothing. A browser download
+  leaves no mark on the page, so a pack that built and a click that was
+  swallowed looked identical.
+- A failed preference PATCH said nothing either, and that one is worse: one
+  mutation sits behind forty controls, and the render reads the cached value —
+  so a failure left the button showing the old answer, which is
+  indistinguishable from a button that does not work.
+
+**Verified** in Chromium at 1600×950 and 390×844 by failing the preferences
+PATCH at the network layer and clicking a switch: the failure announced in the
+assertive region, still there after the success window elapsed, dismissed by
+one click, and the same again from each of the three positions. Both regions
+present and empty before anything is posted; an empty region passes clicks
+through; focus stays on the control the reader clicked. Guard:
+`test/notices.test.ts`, 19 tests, including the sweep that proves this is still
+the only live region in the client. Full suite 1643 pass.
+
+### Surprises
+
+**One region cannot serve both tones.** A live region's politeness is read when
+the region is *created*, not when its contents change, so a single region
+flipping `aria-live` between polite and assertive announces at whichever
+politeness it happened to mount with. Two regions, each fixed, both always
+mounted — because a region that appears at the moment it has something to say
+is a region assistive technology has not been watching, and the first notice is
+silently lost.
+
+**A fixed container is an invisible sheet over the app.** The region spans the
+top of the window, so without `pointer-events-none` on the stack and back on
+for each strip, every click in that band would have landed on nothing. Checked
+with `elementFromPoint` rather than by reasoning about it.
+
+**12px put the notice on the wordmark.** A failure has no deadline — an error
+that removed itself before it was read is an error that never happened — so a
+persistent one sat on the header's text-size controls until it was dismissed.
+52px clears the desktop header and the phone's top bar both.
+
+**The de-duplication is not a nicety.** Two identical notices are a retry, a
+double-click, or two components reporting one failure; they are never two
+facts. Reading the same sentence twice is the best-known failure mode of an
+unfiltered live region, so a repeat refreshes the deadline instead of stacking.
+
+## Phase 168 — Your whole setup as one file
+
+Packs carry content — characters, lorebooks, presets, authors, options, regex,
+triggers, the banlist. Themes export on their own. What travelled nowhere was
+the shape of the app: the layout, the reading surface, the reader's controls,
+which theme is on. There was no "my whole setup as one file", which is exactly
+what is wanted when moving machines.
+
+It sits beside those two exporters rather than inside either. A pack is
+content; a theme is a palette. This is neither — it is every decision the
+reader has made about how the app behaves and none about what is in it.
+
+`GET /system/settings/export` and `POST /system/settings/import`, versioned
+behind an `onsen-settings` marker. The theme travels **by name**, not by value:
+a theme is already portable on its own, and inlining one here would mean an
+import of *settings* silently adding a palette to your list. A name the
+importing install does not have is reported as skipped rather than guessed at.
+
+The refactor is the interesting part. The PATCH handler's per-group logic came
+out into `applyLayout` / `applyReading` / `applyReader` / `applyChime`, and the
+import path calls those rather than growing validation of its own. Not tidying:
+a second copy of "how a layout patch is applied" is a second answer to what
+`preset: quiet` plus `readouts: true` means, and a file arriving from another
+machine is exactly where the two would drift unnoticed. A hostile file now gets
+precisely the validation a hostile request body does — `clampReading` pins a
+slider, `readReader` falls back per field, the layout's switches are checked
+against their own unions — and nothing can be written that the settings screen
+could not have produced.
+
+The report says what was applied and what was skipped rather than answering
+200-and-silence: an import that quietly did four of five things is the
+silent-partial failure §18 is written against.
+
+**Verified** in Chromium: a distinctive setup exported as
+`onsen-settings.json`, wiped, re-imported, and everything back including the
+layout preset and the active theme. Then a truncated file, a theme file and a
+version-99 file, each refused with its own reason and nothing applied. The
+outcomes come through phase 167's notice region, which is what it is for.
+Guard: `test/settings-transfer.test.ts`, 15 tests. Full suite 1658 pass.
+
+### Surprises
+
+**A theme file is also a JSON object with a name**, which is why the marker
+exists. Without it, importing the wrong file would have applied nothing and
+reported success — the quietest possible failure, and one a reader would have
+no way to notice.
+
+**A file from a newer build is refused, not partly applied.** The instinct is
+to take what you recognise and ignore the rest, but a newer file's extra
+groups are not merely unknown fields: one of them may be a whole group this
+build would silently drop, and the reader would have no way to know what did
+not arrive.
+
+**Four groups and a theme, and every one of them can be absent.** A file
+carrying only `reading` is a legitimate file, so "applied" and "skipped" are
+both lists rather than a boolean — and a theme this install does not have lands
+in `skipped` beside a group that simply was not in the file, because from the
+reader's side those are the same fact: it did not come back.
+
+## Phase 169 — The card against the preset
+
+Three decisions the builder made for the reader with no way past them.
+
+**Whose framing frames the turn.** The `system_prompt` block has always been
+the preset's. A character's own was folded into `spotlight_character`
+instead — and only in single-character mode, so with an author configured it
+went nowhere at all. Silently: the card has the field, a reader fills it in,
+and nothing says it is being dropped. `preferCharacterPrompt` promotes the
+spotlight's own system prompt into the block, replacing the preset's, in either
+mode. Replacing rather than appending, because two framings in one block are
+two framings arguing — the thing §3.5 is written against — and the reader who
+turned this on did so because the card's is the one they want.
+
+**Whether a card's post-history instructions are used at all.** Not a
+"prefer": there was never anything on the preset side to prefer them over. The
+preset's own final instruction is the separate `jailbreak` block, so the real
+decision — and the one a reader running somebody else's card actually makes —
+is whether the card's reach the model.
+
+**A third automatic retry.** `maybeRetry` has rerolled on length since phase 63
+and on nothing else. The incumbent also rerolls on a blacklisted word, and
+§13.6's list already exists with proposals excluded — a suggestion nobody
+accepted must not silently cost a generation. Off by default, sharing the
+`auto_swipe_attempts` budget rather than getting its own, because two
+independent budgets is two ways for a scene to spend money in a loop.
+
+The reason lands on the **rejected** turn, which survives as a sibling — so a
+reader who swipes back to it is told why the app moved on instead of finding a
+turn that was quietly passed over. A reroll with no stated reason is the
+arbitrary dice roll §8 and §13.6 are both written against.
+
+**Verified** in Chromium against the real builder through the real preview
+route, with a card framing and a preset framing both set and an author
+configured: at the defaults the system prompt is the preset's and the card's
+post-history is used, exactly as before; with the first flag on, the block
+becomes the card's and names the card as its source; with the second off, the
+`post_history` block is absent and the preset's `jailbreak` is untouched. The
+reroll itself is driven through a scripted adapter in `test/retries.test.ts` —
+exactly one reroll, the rejected turn surviving as a sibling, the phrase named
+in its meta. Guards: `test/precedence.test.ts` (15), seven more in
+`test/retries.test.ts`. Full suite 1682 pass.
+
+### Surprises
+
+**`PromptPreset.postHistoryInstructions` was a dead field.** Hardcoded `null`
+at both of its call sites in `server/generation/context.ts`, so the
+`?? ctx.preset.postHistoryInstructions` fallback in the `post_history` block
+could never fire. Removed rather than wired: the preset's final instruction is
+already its own block, and a field asserting an unreachable fallback is worse
+than no field. A dead *export* the sweep in `test/dead-exports.test.ts` would
+have caught; a dead interface member it cannot see.
+
+**The preset editor was unreachable at desktop width.** `PresetFields` carries
+the context size, the automatic retries, example eviction, squashed system
+turns, the prefill, the ops' prompts and reasoning — and its only trigger is
+the Settings `generation` category, which `SettingsScreen` drops on a desktop
+outright, precisely to leave the left rail's Preset tab as the one surface.
+But that panel reimplemented only the samplers, while its own comment claimed
+since phase 106 that "the rail is the editor, not a teaser that hides the rest
+behind a button". Seven sections were reachable only by narrowing the window.
+
+Found because the two new switches would have shipped into the same dead end.
+The rail now renders `PresetFields`, which *deleted* code: its duplicated
+sampler grid, its export pair and its default/delete buttons were all
+`PresetFields`' own, reimplemented. `test/leftrail.test.ts` asserted the
+reimplementation part by part — and a list of parts is exactly how the gap
+survived, since every named part was present and the ones nobody named were
+not. It now asserts the whole editor.
+
+**The two triggers had to be ordered, not combined.** Length is a string
+length; the phrase check reads the ban list out of the database. Cheap first —
+and a turn that is both too short and uses a banned phrase is rerolled for
+being short, which is the more basic complaint, and the one already legible
+from the turn and the token count beside it. So only the ban reason is
+recorded: *which phrase* is the part nothing else on screen can tell you.
+
+## Phase 170 — Vanish mode
+
+The first of four structural UI ideas, not settings parity with SillyTavern —
+this batch started from the reader's own examples: separate the rails from the
+chat so they're customizable, and let the chat live under the chrome so a menu
+overlays it rather than replacing it. Four candidates came out of that
+conversation; all four were picked. This is the smallest, built first to prove
+nothing else in the batch depends on it.
+
+One key (`z`, unmodified, ignored while a field has focus) drops both rails
+and the header/top bar down to bare log; the same key, or an always-present
+restore handle, brings them back. The composer stays — vanish removes
+navigation and settings chrome, not the ability to act, so a mid-scene
+correction never requires breaking out of the mode first.
+
+In memory only, like the rest of `useUiStore`: a reading posture, not a
+preference, and resetting on reload is the same behaviour the rails' own
+open/closed state already has.
+
+**Verified** in Chromium at 1600×950 and 390×844, in both themes: `z` removes
+exactly the app's own chrome (measured by counting `<header>` elements before
+and after — 7 → 6 on desktop, 7 → 6 on phone — rather than trusting a
+screenshot), the composer stays reachable and typing a literal "z" into it is
+not eaten, the restore handle brings everything back, and the key works again
+afterward. Guard: `test/vanish.test.ts`. Full suite 1691 pass.
+
+### Surprises
+
+**Selecting the whole store from `Shell` closed a render loop that had never
+existed.** `ChatScreen` writes `sceneInspector` into `useUiStore` on *every*
+render of its own, by a deliberately dependency-less layout effect — its own
+comment says "refreshed every render." That was always safe only because
+nothing between `Shell` and `ChatScreen` subscribed to the store: `LeftRail`
+and `RightRail` do, but they're `ChatScreen`'s siblings, not its ancestors, so
+their re-renders never reached back down into it. Adding
+`const { vanished, toggleVanished } = useUiStore()` to `Shell` — an actual
+ancestor of `ChatScreen` — subscribed it to *every* field, `sceneInspector`
+included, and closed the loop: `Shell` re-renders on the write → `ChatScreen`
+re-renders as its descendant → the effect fires again → writes the store again
+→ `Shell` re-renders again. React's own "Maximum update depth exceeded" is
+what that turns into, and it only showed up once the browser drive actually
+opened a scene — nothing in the type system or the existing test suite could
+have caught it. Fixed with per-field selectors (`useUiStore((s) => s.vanished)`
+and the same for the setter) instead of the whole-store destructure the rest
+of this file's components use safely only because none of them sit above a
+component that writes back into it.
+
+**`.tap` alone made the restore handle nearly unusable with a mouse.** That
+class exists for a *row* of controls that can afford to shrink under a fine
+pointer — `@media (pointer: fine)` relaxes its floor to nothing, on the theory
+that a dense row of controls under a mouse can spend the saved space on
+something else. A single isolated floating button has no row to spend it on:
+measured in a browser, `.tap` by itself rendered it a 6px × 24px sliver rather
+than a square. An explicit 44px fixed it; screenshots alone would not have
+caught this either — the button was there, just barely there.
+
+## Phase 171 — Settings lives over the chat, not instead of it
+
+The second of four structural UI ideas from the same conversation as vanish
+mode. `Routed()` was a flat switch: navigating to Settings — or Characters, or
+a lorebook, or scene setup — fully unmounted whatever was showing. Nothing
+about that was inherent. The rails and header already stay mounted across
+every navigation; only the routed content itself was ever torn down.
+
+Two screens are the base a reader actually lives in: the scene list and an
+open scene. Everything else is a destination you visit *from* one of those and
+mean to come back to. `useShellRoute()` (`client/lib/router.ts`) renders that
+split without touching `Route` itself — parsing, `pathFor`, every existing
+`navigate()` call site are untouched, because only *rendering* changes. The
+base renders unconditionally; whatever is not one of the two base names
+layers on top of it via a new `RouteOverlay`, which reuses `Sheet`'s own
+keyboard obligations (`useModalFocus`: focus in, Tab trapped, Escape closing
+only the topmost, focus back on close) at content-area size rather than
+`Sheet`'s bottom-anchored, full-viewport shape.
+
+It fills exactly the box `<Routed/>` normally occupies — `absolute inset-0`
+against the shell's own wrapper, not `fixed inset-0` — so the rails and header
+stay visible and reachable at every edge the whole time an overlay is open.
+Back/forward composes for free: `navigate()` still does a plain `pushState`,
+so Back from a character editor lands on the characters list, Back again
+lands on the base scene, an ordinary browsable stack with nothing rewritten.
+
+**Verified** in Chromium at 1600×950 and 390×844, in both themes: a composer
+draft and scroll position survive opening and closing Settings; navigating
+between two different overlay routes (Settings → Characters) swaps the one
+overlay rather than stacking a second; Escape returns to the correct base;
+a fresh deep-link straight to `/settings` falls back to the scene list
+underneath rather than crashing; every other overlay screen (Authors, a
+character editor, scene setup, lorebooks, backdrops, personas) measured its
+own height correctly against its container rather than the viewport. Guard:
+`test/overlay.test.ts`. Full suite 1703 pass.
+
+### Surprises
+
+**This app's surface tokens are deliberately translucent, and that became a
+real bug the instant two screens stacked.** `--onsen-color-bg` and its
+siblings let the shared `<Background/>` artwork bleed through every screen —
+by design, and harmless while only one screen was ever in the paint order.
+Stacked on top of a *second*, fully rendered screen instead of just that
+artwork, the same translucency made the base screen's own text legible behind
+an overlay that looked, from the source, like it should have been opaque.
+Found by looking at a screenshot, not by reading the CSS. Fixed by hiding the
+base screen (`hidden`, the same convention `MessageBlock.tsx` already uses for
+a still-mounted element that should not paint) rather than by hunting for an
+opaque override — the fix holds for every theme, translucent or not, without
+needing to know which.
+
+**Selecting the whole store from `Shell` had already taught this lesson once,
+this phase.** No new instance of it here, but the `RouteOverlay` component
+itself takes no store subscription at all — `onClose` is a plain closure over
+`base`, passed down rather than read from a hook inside the overlay — precisely
+because phase 170 had just shown what an ancestor-of-`ChatScreen` subscribing
+to shared state can close into a loop.
+
+**A pre-existing ~38px scroll allowance surfaced on two screens** (the
+character editor, scene setup) once they were measured against their real
+container instead of assumed. Not a visible defect — no content is cut off,
+it is 38px of harmless extra scroll room at the very end of an already-long
+form — and it predates this batch: these screens' own internal sizing is
+unchanged, only what wraps them is different. Left as found rather than
+chased, since fixing it would mean auditing internal height chains in two
+screens this batch never needed to touch.
+
+## Phase 172 — The branch map
+
+The third of four structural UI ideas. The message tree has been real since
+the schema's first version — `parent_id`, `scenes.active_leaf_id` — and
+nothing before this showed it as one. A swipe carousel answers "what else did
+this turn say"; a checkpoint list answers "what did I bookmark." Neither
+answers "what does the whole shape of this roleplay look like," which is what
+a branch or an old detour actually wants: a map, not another list.
+
+`GET /scenes/:sceneId/tree` (`server/db/queries/history.ts`'s `sceneTree`)
+reads every message the scene has, not just the active path — the map's whole
+point is showing branches a reader swiped away from — as a flat, deliberately
+thin `TreeNodeDto` list: no content, no segments, no media, so this stays
+cheap regardless of how long a scene has run, the same reasoning phase 62 gave
+the windowed log. `activePath()` and `listCheckpoints()` already existed and
+answer exactly the two questions the map needs (what's current, what's
+marked); this is their first caller outside the log itself.
+
+`client/components/BranchMap.tsx` draws it hand-rolled, per this session's own
+house style: no graph library, a plain SVG line and a positioned button
+already do the job. A node earns a dot only for a real reason — it is a root,
+has siblings (a fork), is a checkpoint, is a dead end, or is the scene's
+current leaf — and every run of ordinary single-parent, single-child messages
+between two such points collapses to one line carrying a turn count, so a
+long unbranched stretch draws as one segment rather than one dot per message.
+Clicking any node calls the same `PUT /scenes/:id/leaf` that swipe, rewind,
+and checkpoint restore already share, landing exactly on the node clicked
+rather than descending into whatever a branch went on to say — a dot on this
+map is a specific point, the same contract a checkpoint restore already
+keeps.
+
+Reachable three ways, as the plan asked: the palette (`branch-map`, scoped to
+an open scene), the `⋯ Tools` sheet beside Checkpoints and Stats, and a direct
+`Map` handle on the status bar. One click from any of them opens the same
+sheet.
+
+On a phone the diagram is the same SVG, not a simplified one — most scenes
+collapse to only a handful of significant points regardless of how long they
+run, so the common case fits without scrolling, and the rest scrolls
+horizontally inside the sheet rather than shrinking to illegibility.
+
+**Verified** in Chromium at 1600×950 and 390×844, in both themes, on a scene
+with a real fork and a named checkpoint: the fork, the checkpoint, and the
+current leaf each render as visually distinct dots (a checkpoint's amber ring
+independent of any speaker-colour fill, the active leaf a filled ring with its
+own `aria-label`); the collapsed run between them shows a turn-count badge
+that does not collide with either row's own label; clicking a past node moves
+the active leaf and the log reflects it on return; all three entry points
+open the same sheet; no console errors. Guard: `test/branchmap.test.ts`
+(18 tests). Full suite 1721 pass.
+
+### Surprises
+
+**The first badge placement collided with the very labels it sat between.**
+The turn-count label started life as plain text in the same column as the
+row labels, sized for a full sentence ("12 turns") in a gutter only 26px
+wide — nowhere near enough room, and the first screenshot showed it plainly
+overlapping the branch point's own description above it. Fixed by shrinking
+it to a compact `×N` badge on its own background, centred on the vertical
+midpoint between the two rows it joins — the one location neither row's own
+label band ever reaches — with the full sentence kept as a hover title rather
+than dropped. Caught by looking at the actual render, not by re-reading the
+layout math, which had looked fine on paper both times.
+
+## Phase 173 — The rail dock: any panel, either side
+
+The last of four structural UI ideas. `LeftRail.tsx` and `RightRail.tsx` were
+two bespoke components with hardcoded panel lists — `prompt/preset/lore/
+guides` on the left at 326px, `scene/characters/authors` on the right at
+352px — and nothing about that was inherent. Six of the seven panels were
+already pure functions of a scene id, self-explaining with no roleplay open;
+the seventh, the scene's own Context/Cast/You panes, was already a slot
+`ChatScreen` fills. They were portable the whole time and only their file
+said otherwise.
+
+So the panels moved out to `client/components/DockPanels.tsx` — verbatim,
+not rewritten, because a panel being movable does not change what it draws —
+behind one `PANEL_META` registry of icon, label, header label and component.
+Each rail keeps its own chrome and loses its list, reading `useDock().left`
+or `.right` instead: which panels, in what order, at what width. A panel
+named in neither list is hidden and reachable again from the editor that hid
+it. A side with nothing on it renders no rail at all rather than a hollow
+icon column.
+
+`DockDto` is a preference like any other (`shared/types.ts`, validated by
+`readDock` on the way out of the database as well as in; stored and served by
+`server/routes/system.ts` beside the layout and the reading surface, and
+carried in a settings file). The default is today's exact arrangement, so
+nothing moves until a reader moves it. `client/lib/breakpoint.ts`'s two
+auto-collapse bands now derive from the stored widths as base-plus-delta,
+which is exactly 1452/1126 at the shipped widths: a rail made wider needs
+that many more px of window, and nothing changes for anyone who never
+touches a width.
+
+### The doctrine tension, named rather than avoided
+
+§16's own rule is that "a matrix of toggles in place of a default is the
+incumbent's answer... the default is what the app is." This *is* a matrix of
+toggles, deliberately, and it was picked with that on the table. What keeps
+it from being the thing the rule is written against: it is an opt-in editor
+reached once from Settings, not a screen full of switches everyone sees; the
+default arrangement is undisturbed by its own existence; and one button puts
+everything back. The same shape `LAYOUT_PRESETS` uses — a name is a mode, and
+the switches under it stay editable for whoever wants them. Reordering is
+↑/↓, never drag, on `PromptManager`'s own stated grounds.
+
+**Verified** in Chromium at 1600×950 and 390×844, both themes. The check
+that mattered most was the first one: with no editor opened, both rails are
+pixel-identical to before the batch (left 381 = 54 + 326 + 1, right 352).
+Then: Characters moved right→left and appeared there and nowhere else; Lore
+hidden and gone from both; Characters reordered up a place inside the left;
+the left panel narrowed to 280px and the rail measured 335; all of it still
+true after a cold page load, which is what proves it is server-side. Emptying
+the right side entirely removed the rail element rather than leaving a
+column. The Scene slot docked with no roleplay open says "Open a roleplay to
+see its cast here." and fills with the scene's panes when one is. The
+collapse bands still fire correctly — both rails open at 1500px, the right
+one shut at 1400px, the phone layout below 1144px. Reset restored 381/352.
+No console errors. Guards: `test/dock.test.ts` (29 tests, with `readDock` and
+`autoCollapseBands` called rather than read as text), plus
+`test/leftrail.test.ts` and `test/rightrail.test.ts` re-pointed at the file
+that now owns each half. Full suite 1750 pass.
+
+### Surprises
+
+**Every failing test was the same fact, and the fix was to re-point them
+rather than weaken them.** Moving the panel bodies broke 21 assertions
+across three files that read them out of the rail files. The temptation is
+to delete the ones that no longer fit; what they were actually pinning — the
+sidebar cannot come back, the prompt panel is the window and not a link, the
+right rail does not grow a fourth hardcoded tab — is all still true and
+still worth pinning, so each assertion moved to the file that now owns the
+thing, and the two "four sections / three tabs" shape tests now assert
+against `DOCK_DEFAULTS`. They gained a reason to be true instead of losing
+one.
+
+**The voice guard caught an explanation I had no business adding.** The dock
+section shipped with a hint under its button — "Move a panel to the other
+rail, hide it, or reorder it." — and `test/voice.test.ts` failed on its
+explanatory-string ceiling, 46 against a cap of 45. The right answer was not
+to raise the cap: by §20's own rule an explanation earns its place only if
+its absence would cause a mistake that cannot be undone, and this one sat
+under a button that names what it opens, in front of an editor where every
+move is reversible. Deleted, and the duplicated section label above it went
+with it.
+
+**A panel keeps the edge padding of the side it was authored for.** The left
+rail pads its panel body 14px; the right rail does not, because its own
+panels manage their own. Dock Characters to the left and its search row sits
+inside that gutter instead of flush to the rail edge. Cosmetic, only
+reachable by customising, and fixing it properly means auditing six panels'
+internal padding — left as found and named here rather than quietly shipped.
+
+
+## Phase 174 — A sheet is a dialog on a desktop
+
+Not planned. It came from someone using phase 172's branch map on a desktop
+and saying so: *"the popups that come from the bottom? Awful on desktop. I
+hate them."* `Sheet` — the app's one modal primitive, 56 usages across 32
+files plus every `useConfirm()` question — shipped bottom-anchored at every
+width. A bottom sheet is the right gesture where a thumb is doing the
+reaching, and a phone shape stretched across a 1600px screen, sliding up
+from the edge furthest from where a mouse-and-keyboard reader is looking, is
+not.
+
+Fixed in `Sheet` itself rather than per caller, which is why Checkpoints,
+Stats, the versions list, every confirmation and the new dock editor are all
+fixed by it too. On a desktop it renders top-anchored and horizontally
+centred with a plain square border and no radius — which is what
+`CommandPalette`, the app's other modal, already does, so this is the second
+caller of an existing treatment rather than a third treatment. The phone
+keeps the bottom sheet, its rounded top corners and its safe-area
+allowance.
+
+**Verified** in Chromium by measuring the dialog rather than trusting the
+screenshot: at 1600×950 it sits at top 64, centred (left 440 of a 720 column
+in a 1600 viewport), square (radius 0), bordered on all four sides, and as
+tall as its content (138px for the branch map, 213px for Checkpoints). At
+390×844 it is unchanged — top 608, flush to the bottom edge, full width,
+16px top corners, one top border. Guard: three cases in
+`test/dock.test.ts`.
+
+### Surprises
+
+**Two real bugs, both found by measuring and neither visible in the first
+screenshot.** The desktop dialog ran the full height of the window: a row
+flex stretches its children on the cross axis by default, so the dialog was
+886px tall and glued to the bottom edge — the exact complaint, in a
+different way. `items-start` fixed it. And its top border was missing:
+React writes a style key whose value is `undefined` as an empty string,
+which *removes* that longhand, so pairing `border` with `borderTop:
+undefined` expanded the shorthand and then cleared the top edge. The dialog
+had three borders and an open top, at 1px, in a dim theme — invisible until
+`getComputedStyle` said `borderTopWidth: 0px`. Fixed by spreading a
+per-branch object so the key is absent rather than undefined.

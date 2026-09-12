@@ -14,7 +14,7 @@ import type {
 } from "@shared/types.ts";
 import { PROVIDER_KINDS, INJECTION_ROLES, MIN_PASSWORD_LENGTH, type MoveDirection, type ProviderKind } from "@shared/types.ts";
 import { LAYOUT_PRESETS, READING_BOUNDS, READING_DEFAULTS } from "@shared/types.ts";
-import type { ReadingDto } from "@shared/types.ts";
+import type { ReaderDto, ReadingDto } from "@shared/types.ts";
 import type { LayoutDto, LayoutPreset } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { navigate } from "../lib/router.ts";
@@ -49,6 +49,9 @@ import {
   useWebhooks,
   useScenes,
   usePreferences,
+  useExportSettings,
+  useImportSettings,
+  useReader,
   useReading,
   useSetPreferences,
   useApiKeys,
@@ -72,6 +75,8 @@ import { MediaSettings } from "../components/MediaSettings.tsx";
 import { MigrationSection } from "../components/MigrationSection.tsx";
 import { ThemeSection } from "../components/ThemeSection.tsx";
 import { BrandingSection } from "../components/BrandingSection.tsx";
+import { Segmented } from "../components/Segmented.tsx";
+import { DockSection } from "../components/DockEditor.tsx";
 
 /**
  * Settings (design handoff, screen 3i).
@@ -895,58 +900,26 @@ function LayoutSection() {
   const layout = preferences.data?.layout ?? { preset: "instrument", ...LAYOUT_PRESETS.instrument };
 
   function set(patch: Partial<Omit<LayoutDto, "preset">> | { preset: LayoutPreset }) {
-    save.mutate({ layout: patch } as never);
-  }
-
-  function Segmented<T extends string>({
-    label,
-    value,
-    options,
-    onPick,
-    hint,
-  }: {
-    label: string;
-    value: T;
-    options: { value: T; label: string }[];
-    onPick(next: T): void;
-    hint?: string;
-  }) {
-    return (
-      <div className="mb-[14px]">
-        {/* An empty label is a deliberate second row under one heading (the
-            per-side avatar switch), not a missing string — and an empty
-            heading with a margin is just a gap. */}
-        {label === "" ? null : <p className="section-label mb-[6px]">{label}</p>}
-        <div className="flex gap-[6px]">
-          {options.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              aria-pressed={option.value === value}
-              onClick={() => onPick(option.value)}
-              className={`btn flex-1 ${option.value === value ? "btn-primary" : ""}`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-        {hint === undefined ? null : <p className="explain mt-[6px]">{hint}</p>}
-      </div>
-    );
+    save.mutate({ layout: patch });
   }
 
   return (
     <>
       <p className="section-label mb-[6px]">{strings.settings.layout}</p>
 
-      <div className="mb-[8px] flex gap-[6px]">
-        {(["instrument", "quiet", "broadsheet"] as const).map((preset) => (
+      {/* Four now, so it wraps: a fourth button squeezed onto one phone row
+          would be under the tap floor, and the floor is not negotiable. */}
+      <div className="mb-[8px] flex flex-wrap gap-[6px]">
+        {(["instrument", "quiet", "broadsheet", "document"] as const).map((preset) => (
           <button
             key={preset}
             type="button"
             aria-pressed={layout.preset === preset}
             onClick={() => set({ preset })}
-            className={`btn flex-1 ${layout.preset === preset ? "btn-primary" : ""}`}
+            // A basis rather than bare `flex-1`: four items that may all shrink
+            // never wrap, they just get narrow, and narrow is the one thing a
+            // button is not allowed to get.
+            className={`btn flex-1 basis-[120px] ${layout.preset === preset ? "btn-primary" : ""}`}
           >
             {strings.settings.layoutPresets[preset]}
           </button>
@@ -993,6 +966,7 @@ function LayoutSection() {
         options={[
           { value: "stacked", label: strings.settings.layoutAttributionStacked },
           { value: "inline", label: strings.settings.layoutAttributionInline },
+          { value: "runin", label: strings.settings.layoutAttributionRunin },
         ]}
         onPick={(next) => set({ attribution: next })}
       />
@@ -1113,6 +1087,167 @@ function ReadingControls() {
   );
 }
 
+/**
+ * The controls that belong to the person reading and writing (§20 phase 166).
+ *
+ * Beside the reading surface rather than inside it: that is four numbers with
+ * bounds, published as custom properties; these are discrete behaviours, and
+ * the two would have had to mean the same thing to share a type.
+ *
+ * Every one of them is something the app decided for the reader until now, and
+ * every default is what it already did — so nothing here changes behaviour
+ * until it is touched. `docs/design/DESIGN.md` says a turn has "no avatar, no
+ * timestamp, no shadow", which is why timestamps are an opt-in rather than a
+ * correction.
+ */
+function ReaderControls() {
+  const reader = useReader();
+  const save = useSetPreferences();
+  const set = (patch: Partial<ReaderDto>) => save.mutate({ reader: patch });
+  const onOff = [
+    { value: "off" as const, label: strings.lore.off },
+    { value: "on" as const, label: strings.lore.on },
+  ];
+
+  return (
+    <>
+      <p className="section-label mb-[6px]">{strings.settings.reader}</p>
+
+      <Segmented
+        label={strings.settings.readerSend}
+        value={reader.send}
+        options={[
+          { value: "enter", label: strings.settings.readerSendEnter },
+          { value: "modEnter", label: strings.settings.readerSendMod },
+          { value: "button", label: strings.settings.readerSendButton },
+        ]}
+        onPick={(send) => set({ send })}
+      />
+
+      <Segmented
+        label={strings.settings.readerMarks}
+        value={reader.marks ? "on" : "off"}
+        options={onOff}
+        onPick={(next) => set({ marks: next === "on" })}
+      />
+
+      <Segmented
+        label={strings.settings.readerTimestamps}
+        value={reader.timestamps ? "on" : "off"}
+        options={onOff}
+        onPick={(next) => set({ timestamps: next === "on" })}
+      />
+
+      <Segmented
+        label={strings.settings.readerAutoScroll}
+        value={reader.autoScroll ? "on" : "off"}
+        options={onOff}
+        onPick={(next) => set({ autoScroll: next === "on" })}
+      />
+
+      <Segmented
+        label={strings.settings.readerClickToEdit}
+        value={reader.clickToEdit ? "on" : "off"}
+        options={onOff}
+        onPick={(next) => set({ clickToEdit: next === "on" })}
+      />
+
+      <Segmented
+        label={strings.settings.readerDrafts}
+        value={reader.drafts ? "on" : "off"}
+        options={onOff}
+        onPick={(next) => set({ drafts: next === "on" })}
+      />
+
+      <Segmented
+        label={strings.settings.readerMedia}
+        value={reader.media}
+        options={[
+          { value: "list", label: strings.settings.readerMediaList },
+          { value: "grid", label: strings.settings.readerMediaGrid },
+        ]}
+        onPick={(media) => set({ media })}
+      />
+
+      <Segmented
+        label={strings.settings.readerNotices}
+        value={reader.notices}
+        options={[
+          { value: "top", label: strings.settings.readerNoticesTop },
+          { value: "topRight", label: strings.settings.readerNoticesTopRight },
+          { value: "bottomRight", label: strings.settings.readerNoticesBottomRight },
+        ]}
+        onPick={(notices) => set({ notices })}
+      />
+
+      <Segmented
+        label={strings.settings.readerMotion}
+        value={reader.motion}
+        options={[
+          { value: "system", label: strings.settings.readerMotionSystem },
+          { value: "reduced", label: strings.settings.readerMotionReduced },
+        ]}
+        onPick={(motion) => set({ motion })}
+      />
+    </>
+  );
+}
+
+/**
+ * The whole setup as one file (§20 phase 168).
+ *
+ * At the end of the Reading group rather than in a category of its own,
+ * because what it carries is everything above it: the theme, the sliders, the
+ * layout, the reader's controls. A section that travels with the thing it is
+ * about needs no explaining.
+ *
+ * The outcome goes to the notice region rather than to inline text here. It is
+ * a background task that finished — and the useful case is a reader who
+ * exported, then went on reading, and wants to know the file was written.
+ */
+function SetupSection() {
+  const file = useRef<HTMLInputElement>(null);
+  const save = useExportSettings();
+  const load = useImportSettings();
+
+  return (
+    <>
+      <p className="section-label mb-[6px]">{strings.settings.setup}</p>
+      <div className="mb-[14px] flex flex-wrap gap-[6px]">
+        <button
+          type="button"
+          className="btn flex-1 basis-[140px]"
+          disabled={save.isPending}
+          onClick={() => save.mutate()}
+        >
+          {strings.settings.setupExport}
+        </button>
+        <button
+          type="button"
+          className="btn flex-1 basis-[140px]"
+          disabled={load.isPending}
+          onClick={() => file.current?.click()}
+        >
+          {strings.settings.setupImport}
+        </button>
+        <input
+          ref={file}
+          type="file"
+          hidden
+          accept=".json,application/json"
+          onChange={(event) => {
+            const chosen = event.target.files?.[0];
+            // Cleared so choosing the same file twice fires again, which a
+            // file input otherwise refuses to do.
+            event.target.value = "";
+            if (chosen !== undefined) load.mutate(chosen);
+          }}
+        />
+      </div>
+    </>
+  );
+}
+
 function ReadingSection() {
   const preferences = usePreferences();
   const save = useSetPreferences();
@@ -1127,6 +1262,12 @@ function ReadingSection() {
       <ReadingControls />
 
       <LayoutSection />
+
+      <DockSection />
+
+      <ReaderControls />
+
+      <SetupSection />
 
       <p className="section-label mb-[6px]">{strings.settings.chime}</p>
       <div className="flex gap-[6px]">

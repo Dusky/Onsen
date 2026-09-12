@@ -1,8 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api.ts";
+import { notify } from "../state/notices.ts";
+import { strings } from "../strings.ts";
 import type { UpdateStatusDto } from "@shared/types.ts";
-import type { LayoutDto, ReadingDto, SceneFilterQuery, SceneListDto } from "@shared/types.ts";
-import { LAYOUT_PRESETS, READING_DEFAULTS } from "@shared/types.ts";
+import type {
+  DockDto,
+  LayoutDto,
+  ReaderDto,
+  ReadingDto,
+  SceneFilterQuery,
+  SceneListDto,
+} from "@shared/types.ts";
+import { DOCK_DEFAULTS, LAYOUT_PRESETS, READER_DEFAULTS, READING_DEFAULTS } from "@shared/types.ts";
 import type {
   AppendMessageRequest,
   AuthorDto,
@@ -79,6 +88,7 @@ import type {
   SceneDto,
   TurnScope,
   SceneWithHistoryDto,
+  SceneTreeDto,
   SetActiveLeafRequest,
   DossierDto,
   DossierProposalDto,
@@ -862,6 +872,21 @@ export function useDeleteCheckpoint(sceneId: string) {
   return useCheckpointMutation(sceneId, (checkpointId: string) =>
     api.delete<void>(`/scenes/${sceneId}/checkpoints/${checkpointId}`),
   );
+}
+
+/**
+ * The scene's whole tree, for the branch map (§20 phase 172).
+ *
+ * Gated on `enabled` — the map is the one screen that wants every branch a
+ * scene has ever grown, not just the active path, and there is no reason to
+ * carry that home on every visit to the chat screen that opens no map.
+ */
+export function useSceneTree(sceneId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["scenes", sceneId, "tree"],
+    queryFn: () => api.get<SceneTreeDto>(`/scenes/${sceneId}/tree`),
+    enabled,
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -2347,11 +2372,18 @@ export function useExportPack() {
       const blob = await api.download("/packs/export", body);
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
+      const name = `${String(body["name"] ?? "pack")}.onsenpack`;
       anchor.href = url;
-      anchor.download = `${String(body["name"] ?? "pack")}.onsenpack`;
+      anchor.download = name;
       anchor.click();
       URL.revokeObjectURL(url);
+      return name;
     },
+    // This said nothing at all (§20 phase 167). A browser download leaves no
+    // mark on the page, so a pack that built correctly and one whose click was
+    // swallowed looked identical — and there is no field for it to sit under,
+    // which is why it stayed silent through every inline-error pass.
+    onSuccess: (name) => notify("done", strings.notices.exported(name)),
   });
 }
 
@@ -2418,7 +2450,11 @@ export interface PreferencesDto {
   layout: LayoutDto;
   /** The reading surface, which the reader sets (§20 phase 55). */
   reading: ReadingDto;
+  /** The reader's own controls — discrete behaviours (§20 phase 166). */
+  reader: ReaderDto;
   completionChime: boolean;
+  /** Which panels dock to which rail, in what order, at what width (§20 phase 173). */
+  dock: DockDto;
 }
 
 export function usePreferences() {
@@ -2453,12 +2489,139 @@ export function useReading(): ReadingDto {
   return usePreferences().data?.reading ?? READING_DEFAULTS;
 }
 
+/**
+ * Keeping an unsent turn (§20 phase 166).
+ *
+ * Deliberately **not** a `useMutation`, and deliberately invalidating nothing.
+ * It fires on a debounce while somebody is typing; a mutation would put every
+ * keystroke's state through the component tree, and an invalidation would
+ * refetch the log to learn a fact the composer already holds. The draft comes
+ * back with the scene on the next open, which is the only time it is read.
+ *
+ * Failures are swallowed on purpose. A draft that did not reach the server is
+ * a draft that will be saved by the next keystroke; an error banner for it
+ * would be the app interrupting the writing to report on the writing.
+ */
+export function saveDraft(sceneId: string, text: string): void {
+  void api.put(`/scenes/${sceneId}/draft`, { text }).catch(() => undefined);
+}
+
+/**
+ * The reader's controls, with the shipped defaults standing in until
+ * preferences arrive — the same reasoning `useLayout` and `useReading` give.
+ * Every consumer of this reads it on the first frame.
+ */
+export function useReader(): ReaderDto {
+  return usePreferences().data?.reader ?? READER_DEFAULTS;
+}
+
+/**
+ * The rail dock, with today's arrangement standing in until preferences
+ * arrive (§20 phase 173) — the same reasoning `useLayout`, `useReading` and
+ * `useReader` give: a rail that reflowed one frame after paint would be worse
+ * than one that is briefly the default every fresh install already is.
+ */
+export function useDock(): DockDto {
+  return usePreferences().data?.dock ?? DOCK_DEFAULTS;
+}
+
+/**
+ * What a preferences PATCH may carry.
+ *
+ * Partial one level deeper than `Partial<PreferencesDto>`, because the server
+ * merges each group onto what is stored — "start from Quiet but keep the
+ * readouts" is one request, and so is "just change what Return does". The
+ * layout's callers used to reach this with `as never`; naming the shape is the
+ * same thing said once instead of at each site.
+ */
+export interface PreferencesPatch {
+  layout?: Partial<Omit<LayoutDto, "preset">> & { preset?: LayoutDto["preset"] };
+  reading?: Partial<ReadingDto>;
+  reader?: Partial<ReaderDto>;
+  completionChime?: boolean;
+  dock?: Partial<DockDto>;
+}
+
+/**
+ * The whole setup as one file (§20 phase 168).
+ *
+ * Built as a blob in the browser rather than served as a download, for the
+ * reason the pack exporter gives: the endpoint is a plain GET, but naming the
+ * file is the client's job — a reader wants `onsen-settings.json`, not the
+ * path it came from.
+ */
+export function useExportSettings() {
+  return useMutation({
+    mutationFn: async () => {
+      const document = await api.get<Record<string, unknown>>("/system/settings/export");
+      const name = "onsen-settings.json";
+      const url = URL.createObjectURL(
+        new Blob([JSON.stringify(document, null, 2)], { type: "application/json" }),
+      );
+      const anchor = window.document.createElement("a");
+      anchor.href = url;
+      anchor.download = name;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      return name;
+    },
+    onSuccess: (name) => notify("done", strings.notices.exported(name)),
+    onError: (error: Error) => notify("failed", error.message),
+  });
+}
+
+/**
+ * The other direction, which reports what came back.
+ *
+ * The report is the point: an import that quietly did four of five things is
+ * the silent-partial failure §18 is written against, and a theme named in the
+ * file that this install does not have is the ordinary case rather than an
+ * error. Invalidates everything, because a settings file can change the
+ * layout, the reading surface and the active theme in one go.
+ */
+export interface SettingsImportReport {
+  applied: string[];
+  skipped: string[];
+}
+
+export function useImportSettings() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      return api.upload<SettingsImportReport>("/system/settings/import", form);
+    },
+    onSuccess: (report) => {
+      void client.invalidateQueries();
+      notify(
+        "done",
+        report.skipped.length === 0
+          ? strings.notices.settingsImported(report.applied.length)
+          : strings.notices.settingsImportedPartly(report.applied.length, report.skipped),
+      );
+    },
+    onError: (error: Error) => notify("failed", error.message),
+  });
+}
+
 export function useSetPreferences() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (body: Partial<PreferencesDto>) =>
+    mutationFn: (body: PreferencesPatch) =>
       api.patch<PreferencesDto>("/system/preferences", body),
     onSuccess: () => void client.invalidateQueries({ queryKey: ["preferences"] }),
+    /*
+     * A failed preference used to say nothing (§20 phase 167).
+     *
+     * Every switch in Settings goes through here, and the render reads the
+     * cached value — so a PATCH that failed left the button showing the old
+     * answer with no explanation, which is indistinguishable from a button
+     * that does not work. There is no field for this to sit under: it is one
+     * mutation behind forty controls.
+     */
+    onError: (error: Error) =>
+      notify("failed", strings.notices.settingNotSaved(error.message)),
   });
 }
 

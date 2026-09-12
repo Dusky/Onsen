@@ -25,6 +25,7 @@ export function StatusBar({
   generating,
   onOpenContext,
   onOpenPrompt,
+  onOpenBranchMap,
 }: {
   profileName: string | null;
   tokens: number | null;
@@ -41,6 +42,8 @@ export function StatusBar({
   onOpenContext?: (() => void) | undefined;
   /** Opens the next-turn prompt preview (§20 phase 68). */
   onOpenPrompt?: (() => void) | undefined;
+  /** Opens the branch map (§20 phase 172): every branch, at once. */
+  onOpenBranchMap?: (() => void) | undefined;
 }) {
   // The fill takes the memory hue rather than red: this is a gauge, and red
   // here would read as an alarm at 8% full. (Red only reappears past 90%,
@@ -89,6 +92,18 @@ export function StatusBar({
         />
         {profileName ?? strings.chat.barNoModel}
       </span>
+
+      {onOpenBranchMap === undefined ? null : (
+        <button
+          type="button"
+          onClick={onOpenBranchMap}
+          title={strings.chat.branchMap}
+          aria-label={strings.chat.branchMap}
+          className="chrome tap text-[12.5px] text-ink-dim"
+        >
+          {strings.chat.barBranchMap}
+        </button>
+      )}
 
       {onOpenPrompt === undefined ? (
         gauge === null ? (

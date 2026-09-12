@@ -428,6 +428,24 @@ export function PresetFields({ preset, onClose }: { preset: PresetDto; onClose()
           />
         </div>
 
+        {/* The third trigger (§13.6, §20 phase 169). Under the three numbers
+            because it spends the same attempts budget they do, and off,
+            because on would change what every existing preset does with the
+            ban list it already has. */}
+        <button
+          type="button"
+          aria-pressed={preset.autoSwipe.onBanned}
+          onClick={() =>
+            update.mutate({
+              id: preset.id,
+              autoSwipe: { onBanned: !preset.autoSwipe.onBanned },
+            })
+          }
+          className={`btn mb-[8px] w-full ${preset.autoSwipe.onBanned ? "btn-primary" : ""}`}
+        >
+          {strings.settings.autoSwipeOnBanned}
+        </button>
+
         {/* Prompt assembly policy (§3, §20 phase 64). Both change what every
             prompt on this preset looks like, which is why both ship as they
             were: examples kept, system turns unmerged. */}
@@ -454,6 +472,29 @@ export function PresetFields({ preset, onClose }: { preset: PresetDto; onClose()
         >
           {strings.settings.squashSystem}
         </button>
+
+        {/* Who wins when a character and the preset both have something to
+            say (§2, §20 phase 169). Both start where the builder already was,
+            so an existing preset is unchanged: the preset's framing, and the
+            card's post-history instructions let through. */}
+        <p className="section-label mb-[8px]">{strings.settings.precedence}</p>
+        {(
+          [
+            ["preferCharacterPrompt", strings.settings.preferCharacterPrompt],
+            ["preferCharacterInstructions", strings.settings.preferCharacterInstructions],
+          ] as const
+        ).map(([field, label]) => (
+          <button
+            key={field}
+            type="button"
+            aria-pressed={preset[field]}
+            onClick={() => update.mutate({ id: preset.id, [field]: !preset[field] })}
+            className={`btn mb-[8px] w-full ${preset[field] ? "btn-primary" : ""}`}
+          >
+            {label}
+          </button>
+        ))}
+        <div className="mb-[14px]" />
 
         <p className="section-label mb-[8px]">{strings.settings.prefill}</p>
         <textarea

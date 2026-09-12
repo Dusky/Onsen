@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { MediaAssetDto } from "@shared/types.ts";
+import type { MediaAssetDto, MediaLayout } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { Sheet } from "./Sheet.tsx";
 import { useConfirm } from "./ConfirmSheet.tsx";
@@ -20,18 +20,40 @@ import {
 export function MessageMedia({
   sceneId,
   assets,
+  layout = "list",
 }: {
   sceneId: string;
   assets: MediaAssetDto[];
+  /**
+   * Stacked or in a grid (§20 phase 166). Stacked is what this shipped as and
+   * stays the default: one picture at its own size under the prose it
+   * illustrates is the right reading of a single attachment, and it is the
+   * common case. A grid is for the turn that drew four.
+   */
+  layout?: MediaLayout;
 }) {
   const [inspecting, setInspecting] = useState<MediaAssetDto | null>(null);
   if (assets.length === 0) return null;
 
   const images = assets.filter((asset) => asset.kind === "image");
   const audio = assets.filter((asset) => asset.kind === "audio");
+  /*
+   * A grid of one is a stack of one, so it does not become a grid until there
+   * is something to lay out — otherwise a single attachment gets cropped to a
+   * square cell for no reason, which is the "64px thumbnail blown up" mistake
+   * in the other direction.
+   */
+  const grid = layout === "grid" && images.filter((asset) => !asset.hidden).length > 1;
 
   return (
     <div className="mt-[10px]">
+      <div
+        className={
+          grid
+            ? "grid gap-[8px] [grid-template-columns:repeat(auto-fill,minmax(140px,1fr))]"
+            : undefined
+        }
+      >
       {images.map((asset) =>
         asset.hidden ? (
           <button
@@ -44,24 +66,38 @@ export function MessageMedia({
             {`${strings.media.hiddenNote} · ${strings.media.unhide}`}
           </button>
         ) : (
-          <figure key={asset.id} className="mb-[10px]">
+          <figure key={asset.id} className={grid ? "m-0" : "mb-[10px]"}>
             <button type="button" onClick={() => setInspecting(asset)} className="block w-full">
               <img
                 src={asset.url}
                 alt={asset.caption ?? asset.prompt ?? ""}
                 loading="lazy"
                 className="block"
-                style={{
-                  // Its own size, capped — never stretched. A 64px thumbnail
-                  // blown up to the prose measure is an empty box with a dot
-                  // in it, which is what this did the first time.
-                  border: "1px solid var(--onsen-color-rule)",
-                  maxWidth: "100%",
-                  maxHeight: "60vh",
-                  width: "auto",
-                  height: "auto",
-                  background: "var(--onsen-color-bg-raised)",
-                }}
+                style={
+                  grid
+                    ? {
+                        // A cell, so the row lines up: the grid's whole point
+                        // is that four pictures of four different shapes read
+                        // as one set rather than four interruptions.
+                        border: "1px solid var(--onsen-color-rule)",
+                        width: "100%",
+                        aspectRatio: "1 / 1",
+                        objectFit: "cover",
+                        background: "var(--onsen-color-bg-raised)",
+                      }
+                    : {
+                        // Its own size, capped — never stretched. A 64px
+                        // thumbnail blown up to the prose measure is an empty
+                        // box with a dot in it, which is what this did the
+                        // first time.
+                        border: "1px solid var(--onsen-color-rule)",
+                        maxWidth: "100%",
+                        maxHeight: "60vh",
+                        width: "auto",
+                        height: "auto",
+                        background: "var(--onsen-color-bg-raised)",
+                      }
+                }
               />
             </button>
             {asset.role === "attachment" && !asset.inPrompt ? (
@@ -72,6 +108,7 @@ export function MessageMedia({
           </figure>
         ),
       )}
+      </div>
 
       {audio.map((asset) => (
         <audio

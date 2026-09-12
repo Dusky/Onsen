@@ -14,7 +14,7 @@ import { LoreScreen } from "./screens/LoreScreen.tsx";
 import { BackgroundsScreen } from "./screens/BackgroundsScreen.tsx";
 import { api } from "./lib/api.ts";
 import { strings } from "./strings.ts";
-import { useRoute } from "./lib/router.ts";
+import { navigate, useShellRoute, type Route } from "./lib/router.ts";
 import { useAutoCollapseRails, useIsDesktop } from "./lib/breakpoint.ts";
 import { LeftRail } from "./components/LeftRail.tsx";
 import { TopBar } from "./components/TopBar.tsx";
@@ -22,8 +22,11 @@ import { Header } from "./components/Header.tsx";
 import { Background } from "./components/Background.tsx";
 import { RightRail } from "./components/RightRail.tsx";
 import { setChimeWanted, unlockAudio } from "./lib/chime.ts";
-import { usePreferences, useReading } from "./lib/queries.ts";
-import { useReadingVariables, useViewportHeight } from "./lib/viewport.ts";
+import { usePreferences, useReader, useReading } from "./lib/queries.ts";
+import { useMotionPreference, useReadingVariables, useViewportHeight } from "./lib/viewport.ts";
+import { NoticeRegion } from "./components/NoticeRegion.tsx";
+import { RouteOverlay } from "./components/RouteOverlay.tsx";
+import { useUiStore } from "./state/ui.ts";
 import type { BootstrapDto } from "@shared/types.ts";
 
 /**
@@ -132,7 +135,47 @@ function Shell() {
   const preferences = usePreferences();
   // Here rather than in `App`, which renders the QueryClientProvider itself and
   // so is above the cache a preference hook needs.
+  const reader = useReader();
   useReadingVariables(useReading());
+  useMotionPreference(reader.motion);
+  /*
+   * Selected, not destructured whole (§20 phase 170).
+   *
+   * `Shell` sits above `<Routed/>`, and `ChatScreen` writes `sceneInspector`
+   * into this same store on every render of its own by design (a
+   * dependency-less layout effect — "refreshed every render", its own
+   * comment says). `useUiStore()` with no selector subscribes to the whole
+   * store, so if `Shell` used that form it would re-render on every one of
+   * those writes — and since `Shell` is `ChatScreen`'s ancestor, that
+   * re-render reaches `ChatScreen` again, which reruns the effect, which
+   * writes the store again: a loop that does not exist today only because
+   * nothing above `ChatScreen` currently subscribes to this store. Found by
+   * driving this in a browser, not by reading the code: React's own
+   * "Maximum update depth exceeded" is what a selector-less subscribe here
+   * turns into.
+   */
+  const vanished = useUiStore((state) => state.vanished);
+  const toggleVanished = useUiStore((state) => state.toggleVanished);
+
+  /*
+   * Vanish mode: `z`, unmodified, anywhere the reader isn't typing. Global —
+   * at the Shell level rather than in `useCommandKeys`, because that hook is
+   * chat-only and the rails/header exist on every screen. Same field-focus
+   * guard that hook uses, so a literal "z" typed into a field is never eaten.
+   */
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const inField = document.activeElement?.matches("input, textarea, [contenteditable]");
+      if (inField === true) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.key === "z") {
+        event.preventDefault();
+        toggleVanished();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [toggleVanished]);
 
   // §5's chime, and the autoplay policy that shapes it. A browser will not let
   // a page make a sound before the person has interacted with it, so the audio
@@ -156,16 +199,45 @@ function Shell() {
   // showing, on both layouts: a reader who wandered off gets one way back
   // wherever they wandered to (SPEC §5, design §403). It lives in the top bar
   // now, beside the destinations (§20 phase 80).
+  const { base, overlay } = useShellRoute();
+  const overlayLabel = overlay === null ? "" : overlayLabelFor(overlay);
+
   if (!isDesktop) {
     return (
       <div className="relative screen-height">
         <Background />
         <div className="relative z-10 flex h-full flex-col bg-bg">
-          <TopBar />
-          <div className="flex min-h-0 flex-1 flex-col">
-            <Routed />
+          {/* On a phone there is no rail to lose — vanish still recovers the
+              top bar's ~44px, which is worth having and not worth special-
+              casing away just because it is the smaller half of the win. */}
+          {vanished ? null : <TopBar />}
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            {/* `hidden`, not unmounted — `MessageBlock.tsx`'s own convention
+                for the same shape: kept alive underneath, just not painted.
+                Needed for more than the obvious reason. This app's surface
+                tokens (`bg-bg` included) are deliberately translucent, so the
+                shared `<Background/>` artwork shows through every screen —
+                fine when only one screen is ever in the stack. Stacked on
+                top of a *second*, fully rendered screen instead of just that
+                artwork, the same translucency let the base screen's own text
+                bleed through legibly behind the overlay. Hiding it rather
+                than fighting the theme's opacity is also the more honest fix:
+                it holds for every theme, translucent or not, without this
+                needing to know which. */}
+            <div hidden={overlay !== null}>
+              <Routed route={base} />
+            </div>
+            {overlay === null ? null : (
+              <RouteOverlay label={overlayLabel} onClose={() => navigate(base)}>
+                <Routed route={overlay} />
+              </RouteOverlay>
+            )}
           </div>
         </div>
+        {/* Above every screen on both layouts, mounted once: the live regions
+            have to be watched before the first notice arrives (§167). */}
+        <NoticeRegion position={reader.notices} />
+        {vanished ? <VanishHandle onRestore={toggleVanished} /> : null}
       </div>
     );
   }
@@ -173,21 +245,110 @@ function Shell() {
     <div className="relative screen-height">
       <Background />
       <div className="relative z-10 flex h-full bg-bg">
-        <LeftRail />
+        {vanished ? null : <LeftRail />}
         <div className="flex min-w-0 flex-1 flex-col">
-          <Header />
-          <div className="flex min-h-0 flex-1 flex-col">
-            <Routed />
+          {vanished ? null : <Header />}
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            {/* `hidden`, not unmounted — see the same wrapper on the phone
+                branch for why: this app's surface tokens are deliberately
+                translucent for the shared `<Background/>` artwork, and left
+                visible the base screen's own text bled through legibly
+                behind an opaque-looking overlay stacked on top of it. */}
+            <div hidden={overlay !== null}>
+              <Routed route={base} />
+            </div>
+            {overlay === null ? null : (
+              <RouteOverlay label={overlayLabel} onClose={() => navigate(base)}>
+                <Routed route={overlay} />
+              </RouteOverlay>
+            )}
           </div>
         </div>
-        <RightRail />
+        {vanished ? null : <RightRail />}
       </div>
+      <NoticeRegion position={reader.notices} />
+      {vanished ? <VanishHandle onRestore={toggleVanished} /> : null}
     </div>
   );
 }
 
-function Routed() {
-  const route = useRoute();
+/**
+ * The dialog's accessible name (§20 phase 171).
+ *
+ * Each overlay screen already renders its own visible heading, but a
+ * `role="dialog"` should still name itself for anyone not reading that
+ * heading visually. Reuses `strings.nav`'s existing destination labels rather
+ * than inventing a second set of names for the same screens.
+ */
+function overlayLabelFor(route: Route): string {
+  switch (route.name) {
+    case "characters":
+    case "character":
+      return strings.nav.characters;
+    case "authors":
+    case "author":
+      return strings.nav.authors;
+    case "personas":
+      return strings.nav.personas;
+    case "setup":
+      return strings.sceneSetup.kicker;
+    case "settings":
+      return strings.nav.settings;
+    case "lorebooks":
+    case "lorebook":
+      return strings.nav.lorebooks;
+    case "backgrounds":
+      return strings.nav.backgrounds;
+    case "scenes":
+    case "chat":
+    case "unknown":
+      // Never reached — these are the base routes `RouteOverlay` is never
+      // rendered for — but exhaustive rather than a default that could
+      // silently swallow a route added here later without a label.
+      return "";
+  }
+}
+
+/**
+ * The way back in, always present while vanished (§20 phase 170).
+ *
+ * `z` is the fast path; this is the one a reader who forgot it, or is on a
+ * phone with no keyboard, still has. Fixed at the opposite corner from where
+ * a notice can land (`NoticeRegion`'s three positions are top-centre, top
+ * right, bottom right), so the two can never sit on top of each other.
+ *
+ * An explicit 44px square, not `.tap`. That class exists for a *row* of
+ * controls that can afford to shrink under a pointer (`@media (pointer:
+ * fine)` relaxes its floor to nothing, on the theory that a mouse can aim at
+ * something smaller) — but this is a single isolated floating control with
+ * no row to spend the saved space on, and under a fine pointer `.tap` alone
+ * left it a 6px × 24px sliver. Found by measuring the rendered button, not by
+ * reading the class name.
+ */
+function VanishHandle({ onRestore }: { onRestore(): void }) {
+  return (
+    <button
+      type="button"
+      onClick={onRestore}
+      aria-label={strings.common.showChrome}
+      title={strings.common.showChrome}
+      className="chrome fixed bottom-[12px] left-[12px] z-50 flex h-[44px] w-[44px] items-center justify-center border border-rule bg-bg-raised text-[15px] text-ink-dim opacity-60 hover:opacity-100"
+      style={{ borderRadius: "var(--onsen-radius)" }}
+    >
+      {"›"}
+    </button>
+  );
+}
+
+/**
+ * One screen for one route (§20 phase 171).
+ *
+ * Took `route` as a parameter rather than reading `useRoute()` itself once
+ * `Shell` needed to call this twice in the same render — once for the
+ * persistent base, once for whatever is layered on top of it as an overlay.
+ * The switch itself is unchanged; only where the route comes from moved.
+ */
+function Routed({ route }: { route: Route }) {
   switch (route.name) {
     case "chat":
       return <ChatScreen sceneId={route.sceneId} />;

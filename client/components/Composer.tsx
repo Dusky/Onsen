@@ -2,6 +2,8 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { ArrowUp, ImagePlus, Play } from "lucide-react";
 import { strings } from "../strings.ts";
 import { CHARS_PER_TOKEN } from "@shared/types.ts";
+import type { SendKey } from "@shared/types.ts";
+import { wrapSelection } from "../lib/marks.ts";
 
 /**
  * The composer stack.
@@ -59,6 +61,13 @@ interface ComposerProps {
   attaching?: boolean;
   /** Pictures waiting to go with the next line, as thumbnails. */
   pending?: { id: string; url: string }[];
+  /**
+   * What Return does (§20 phase 166). Defaults to `enter`, which is what this
+   * component did unconditionally for twenty phases.
+   */
+  sendKey?: SendKey;
+  /** ⌘/Ctrl+B and +I wrap the selection in the marks the log now renders. */
+  marks?: boolean;
 }
 
 export function Composer({
@@ -77,6 +86,8 @@ export function Composer({
   ops,
   quickReplies,
   wide = false,
+  sendKey = "enter",
+  marks = true,
 }: ComposerProps) {
   const field = useRef<HTMLTextAreaElement>(null);
 
@@ -144,12 +155,63 @@ export function Composer({
           value={draft}
           onChange={(event) => onDraftChange(event.target.value)}
           onKeyDown={(event) => {
-            // Enter sends on a keyboard; Shift+Enter is a newline. On a phone
-            // the on-screen return key inserts a newline as it should, because
-            // the software keyboard does not report a shift state.
-            if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+            if (event.nativeEvent.isComposing) return;
+
+            /*
+             * What Return does is the reader's (§20 phase 166). It was Enter
+             * unconditionally, and the comment here said why the phone is not
+             * affected either way: a software keyboard does not report a shift
+             * state, so its return key has to stay a newline. That is still
+             * true of all three settings — none of them can reach the phone's
+             * return key, and the send button is how a phone sends.
+             *
+             * `modEnter` takes either modifier rather than sniffing the
+             * platform. A keyboard that sends on ⌘+Return and refuses
+             * Ctrl+Return is a keyboard arguing about which machine it is on.
+             */
+            if (event.key === "Enter") {
+              const modified = event.metaKey || event.ctrlKey;
+              const sends =
+                sendKey === "enter"
+                  ? !event.shiftKey && !modified
+                  : sendKey === "modEnter"
+                    ? modified
+                    : false;
+              if (sends) {
+                event.preventDefault();
+                send();
+              }
+              return;
+            }
+
+            /*
+             * The two marks the log renders (§20 phase 161), on the two keys
+             * every editor binds them to.
+             *
+             * Only with a modifier and only for `b`/`i`, so nothing here can
+             * swallow a character. The selection is put back around the text it
+             * wrapped rather than collapsed, because the next thing a writer
+             * does after emphasising a phrase is often to emphasise it
+             * differently.
+             */
+            if (marks && (event.metaKey || event.ctrlKey) && !event.altKey) {
+              const mark =
+                event.key === "b" || event.key === "B"
+                  ? "**"
+                  : event.key === "i" || event.key === "I"
+                    ? "*"
+                    : null;
+              if (mark === null) return;
+              const element = event.currentTarget;
+              const next = wrapSelection(draft, element.selectionStart, element.selectionEnd, mark);
+              if (next === null) return;
               event.preventDefault();
-              send();
+              onDraftChange(next.text);
+              // After React has written the new value, or the browser puts the
+              // caret back where the old string ended.
+              requestAnimationFrame(() => {
+                element.setSelectionRange(next.start, next.end);
+              });
             }
           }}
         />

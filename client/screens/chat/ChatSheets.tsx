@@ -13,6 +13,7 @@ import { strings } from "../../strings.ts";
 import { navigate } from "../../lib/router.ts";
 import { CommandPalette } from "../../components/CommandPalette.tsx";
 import { CheckpointsSheet, MarkSheet } from "../../components/Checkpoints.tsx";
+import { BranchMapSheet } from "../../components/BranchMap.tsx";
 import { Sheet, SheetAction } from "../../components/Sheet.tsx";
 import { ContextSheet, type ContextTab } from "../../components/ContextSheet.tsx";
 import { InspectorSheet } from "../../components/InspectorSheet.tsx";
@@ -63,6 +64,9 @@ export function ChatSheets({
   checkpointCount,
   onOpenCheckpoints,
   onOpenStats,
+  branchMapOpen,
+  onOpenBranchMap,
+  onCloseBranchMap,
   // context (guides + memory)
   guidesOpen,
   contextTab,
@@ -143,6 +147,9 @@ export function ChatSheets({
   checkpointCount: number;
   onOpenCheckpoints(): void;
   onOpenStats(): void;
+  branchMapOpen: boolean;
+  onOpenBranchMap(): void;
+  onCloseBranchMap(): void;
   guidesOpen: boolean;
   contextTab: ContextTab;
   onContextTab(tab: ContextTab): void;
@@ -230,7 +237,12 @@ export function ChatSheets({
             onClick={onOpenCheckpoints}
           />
           <SheetAction label={strings.chat.opToolsStats} onClick={onOpenStats} />
+          <SheetAction label={strings.chat.opToolsBranchMap} onClick={onOpenBranchMap} />
         </Sheet>
+      ) : null}
+
+      {branchMapOpen ? (
+        <BranchMapSheet sceneId={sceneId} authorName={authorName} onClose={onCloseBranchMap} />
       ) : null}
 
       {guidesOpen ? (

@@ -67,12 +67,13 @@ export const PRESET: PromptPreset = {
   systemPrompt: null,
   jailbreak: null,
   prefill: null,
-  postHistoryInstructions: null,
   maxResponseTokens: 200,
   blockOrder: null,
   customBlocks: [],
   exampleEviction: "keep",
   squashSystem: false,
+  preferCharacterPrompt: false,
+  preferCharacterInstructions: true,
 };
 
 export const OPENAI: ProviderCapabilities = {

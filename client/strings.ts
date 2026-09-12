@@ -38,6 +38,8 @@ export const strings = {
     /** The default answer, where a caller has no better verb to name. */
     confirm: "Yes, do it",
     working: "Working…",
+    /** The always-present way back from vanish mode (§20 phase 170). */
+    showChrome: "Show the rails and header",
   },
 
   setup: {
@@ -381,6 +383,16 @@ export const strings = {
     opTools: "Tools",
     opToolsCheckpoints: "Checkpoints",
     opToolsStats: "Stats",
+    opToolsBranchMap: "Branch map",
+
+    /** The branch map (§20 phase 172): every branch and checkpoint, at once. */
+    branchMap: "Branch map",
+    branchMapLoading: "Mapping the tree…",
+    branchMapEmpty: "Nothing branches here yet.",
+    branchMapCount: (n: number) => `${n} ${n === 1 ? "point" : "points"}`,
+    branchMapTurns: (n: number) => `${n} ${n === 1 ? "turn" : "turns"}`,
+    branchMapHere: "You are here",
+    barBranchMap: "Map",
     opContinue: "Continue",
     opContinueUnavailable: "This provider cannot continue a finished message.",
     /** Quick replies (SPEC §7, §20 phase 65). A saved nudge, one tap away. */
@@ -488,6 +500,17 @@ export const strings = {
 
     you: "You",
     /** A turn the provider cut off at the response cap (§20 phase 63). */
+    /**
+     * The banned phrase that got a turn rerolled (§13.6, §20 phase 169).
+     *
+     * The phrase itself, quoted, not a count: §13.6's list is constructions a
+     * reader put there on purpose, and "rerolled" without saying which one is
+     * the arbitrary dice roll the section is written against. Capped, because
+     * a ban phrase is a phrase and a paragraph pasted into the list should not
+     * take the stats row apart.
+     */
+    autoSwipedFor: (phrase: string) =>
+      `rerolled \u00b7 \u201c${phrase.length > 40 ? `${phrase.slice(0, 39)}\u2026` : phrase}\u201d`,
     cutOff: "cut off",
     /** The turns above the window (§20 phase 62). */
     showEarlier: (count: number) => `${count} earlier ${count === 1 ? "turn" : "turns"}`,
@@ -870,6 +893,7 @@ export const strings = {
       instrument: "Instrument",
       quiet: "Quiet",
       broadsheet: "Broadsheet",
+      document: "Document",
       custom: "Yours",
     } as Record<string, string>,
     layoutPresetHint: {
@@ -877,6 +901,8 @@ export const strings = {
       quiet: "Everything but the story gets out of the way. One line above the composer.",
       broadsheet:
         "The log as a printed page — a standing line under the title, names set into the prose.",
+      document:
+        "One continuous manuscript. No turn boundaries; each name opens its own paragraph, and a turn’s controls appear when you point at it or select it.",
       custom: "Your own mix of the switches below.",
     } as Record<string, string>,
     layoutReadouts: "Readout row",
@@ -897,6 +923,63 @@ export const strings = {
     layoutAvatarSquare: "Square",
     layoutAttributionStacked: "Above the text",
     layoutAttributionInline: "In the text",
+    layoutAttributionRunin: "Opening the paragraph",
+
+    /*
+     * The reader's own controls (§20 phase 166).
+     *
+     * Eight labels and no hints. `test/voice.test.ts` caps explanatory prose at
+     * forty-five keys and the budget was already spent, which is the test doing
+     * its job rather than a number in the way: the rule it enforces is that an
+     * explanation earns its place only where its absence causes a mistake that
+     * cannot be undone, and none of these qualify — every one is reversible by
+     * pressing the other button.
+     *
+     * So two labels carry what a hint would have said, which is where it
+     * belonged anyway. "Bold and italic on" says what the key does; "with the
+     * roleplay" says where the draft is kept, and therefore that it is on the
+     * phone too. The rest say enough on their own.
+     */
+    reader: "Reading and writing",
+    readerSend: "Return in the composer",
+    readerSendEnter: "Sends",
+    readerSendMod: "⌘ or Ctrl + Return sends",
+    readerSendButton: "Only the button sends",
+    readerMarks: "Bold and italic on ⌘ or Ctrl + B and I",
+    readerTimestamps: "A time under each turn",
+    readerAutoScroll: "Follow a turn as it arrives",
+    readerClickToEdit: "Double-click a turn to edit it",
+    readerDrafts: "Keep an unsent turn with the roleplay",
+    readerMedia: "Pictures under a turn",
+    readerMediaList: "Stacked",
+    readerMediaGrid: "In a grid",
+    autoSwipeOnBanned: "Also reroll a turn that used a banned phrase",
+
+    /*
+     * Who wins when a character and the preset both have one (§20 phase 169).
+     *
+     * No hint: `test/voice.test.ts` caps explanatory prose at forty-five keys
+     * and the budget is spent, which is the right answer here anyway. Both
+     * buttons are toggles showing their own state — the second is pressed on a
+     * fresh install, which is how a reader sees that it was already the
+     * behaviour — and neither is a change that cannot be undone by pressing
+     * the same button again.
+     */
+    precedence: "The card against this preset",
+    preferCharacterPrompt: "A card's system prompt replaces this preset's",
+    preferCharacterInstructions: "A card's post-history instructions are used",
+
+    /* The whole setup as one file (§20 phase 168). */
+    setup: "Your setup",
+    setupExport: "Save to a file",
+    setupImport: "Load from a file",
+    readerNotices: "Where notices appear",
+    readerNoticesTop: "Top",
+    readerNoticesTopRight: "Top right",
+    readerNoticesBottomRight: "Bottom right",
+    readerMotion: "Motion",
+    readerMotionSystem: "As this machine asks",
+    readerMotionReduced: "Reduced",
     /* The reading surface, which the reader sets (§20 phase 55). */
     prose: "Text size",
     proseMeasure: "Column width",
@@ -906,6 +989,19 @@ export const strings = {
     proseSample:
       "She set the ledger down without closing it, and waited to see which of them would look first.",
     proseReset: "Back to defaults",
+
+    /** The rail dock editor (§20 phase 173). */
+    dock: "Rails",
+    dockOpen: "Customize rails",
+    dockTitle: "Customize rails",
+    dockSideLeft: "Left",
+    dockSideRight: "Right",
+    dockSideHidden: "Hidden",
+    dockLeftWidth: "Left panel width",
+    dockRightWidth: "Right panel width",
+    dockReset: "Back to the default arrangement",
+    dockHiddenEmpty: "Nothing hidden.",
+
     chime: "Chime when a reply lands",
     chimeOn: "On",
     chimeOff: "Off",
@@ -1953,6 +2049,9 @@ export const strings = {
     authors: "Authors",
     lorebooks: "Lorebooks",
     backgrounds: "Backdrops",
+    /** Not a TopBar destination — reached from scene setup — but still named,
+     * for the overlay's accessible label (§20 phase 171). */
+    personas: "Personas",
     /** The overflow menu for destinations that do not fit a phone's bar. */
     more: "More",
     /** A roleplay in the recent list that is generating right now (§5). */
@@ -1966,11 +2065,42 @@ export const strings = {
   },
 
   /** Relative time, one implementation for every list that shows it. */
+  /* What the app says when something finished or failed (§20 phase 167). */
+  notices: {
+    dismiss: "dismiss",
+    exported: (name: string) => `Saved ${name}.`,
+    settingNotSaved: (why: string) => `That setting did not save — ${why}`,
+    settingsImported: (n: number) =>
+      `Your setup is back — ${n} ${n === 1 ? "group" : "groups"} applied.`,
+    settingsImportedPartly: (n: number, skipped: string[]) =>
+      `${n} ${n === 1 ? "group" : "groups"} applied. Not in that file, or not on this install: ${skipped.join(", ")}.`,
+  },
   time: {
     justNow: "just now",
     minutesAgo: (n: number) => `${n}m ago`,
     hoursAgo: (n: number) => `${n}h ago`,
     daysAgo: (n: number) => `${n}d ago`,
+    /**
+     * A turn's clock time (§20 phase 166).
+     *
+     * The machine's locale and the machine's 12/24-hour choice, because this
+     * is one of the few strings in the app that is a fact about the reader's
+     * day rather than the app's own vocabulary. A turn from another day says
+     * which day: "14:32" on a scene resumed a week later is a time that means
+     * nothing, and the date is the half worth having.
+     */
+    clock: (at: number) => {
+      const when = new Date(at);
+      const sameDay = new Date().toDateString() === when.toDateString();
+      return sameDay
+        ? when.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+        : when.toLocaleString(undefined, {
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          });
+    },
   },
 } as const;
 

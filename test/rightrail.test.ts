@@ -1,20 +1,32 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { DOCK_DEFAULTS } from "@shared/types.ts";
 
 /**
- * The global right rail (SPEC §16, the redesign phase 90).
+ * The global right rail (SPEC §16, the redesign phase 90; re-pointed at the
+ * dock registry by phase 173).
  *
  * The mockup's right side is three flat tabs, not the workbench's five: In
  * this scene (the cast, scene-scoped and fed in by the chat screen), Characters
  * (the library with an inline editor) and Authors (the authors with an inline
  * editor). Lore moved to the left rail, and the persona moved into the scene
  * pane. This pins that shape.
+ *
+ * Phase 173 moved the three panel bodies into `DockPanels.tsx`, shared with
+ * the left rail because either rail may now host any of the seven, and made
+ * the tab list a stored arrangement rather than a literal. The shape is
+ * asserted against `DOCK_DEFAULTS` for that reason: three tabs is still the
+ * answer, it is just now the *default* answer rather than the only one.
  */
 
 const APP = readFileSync(join(import.meta.dir, "..", "client", "App.tsx"), "utf8");
 const RAIL = readFileSync(
   join(import.meta.dir, "..", "client", "components", "RightRail.tsx"),
+  "utf8",
+);
+const PANELS = readFileSync(
+  join(import.meta.dir, "..", "client", "components", "DockPanels.tsx"),
   "utf8",
 );
 const CHAT = readFileSync(join(import.meta.dir, "..", "client", "screens", "ChatScreen.tsx"), "utf8");
@@ -29,40 +41,42 @@ describe("the global right rail", () => {
   });
 
   test("collapsed is an icon rail, not a dead sliver", () => {
-    // §149: three linework icons, one tap to expand onto the tab.
-    expect(RAIL).toContain("TAB_ICONS");
+    // §149: linework icons, one tap to expand onto the tab. The icons
+    // themselves moved to the registry with the panels they belong to.
+    expect(RAIL).toContain("PANEL_META");
     expect(RAIL).toContain("w-[44px]");
-    expect(RAIL).toContain('from "lucide-react"');
+    expect(PANELS).toContain('from "lucide-react"');
   });
 
-  test("has the mockup's three tabs, not the workbench's five", () => {
-    expect(RAIL).toContain("strings.rightRail.inThisScene");
-    expect(RAIL).toContain("strings.rightRail.characters");
-    expect(RAIL).toContain("strings.rightRail.authors");
+  test("has the mockup's three tabs by default, not the workbench's five", () => {
+    expect(DOCK_DEFAULTS.right).toEqual(["scene", "characters", "authors"]);
+    expect(PANELS).toContain("strings.rightRail.inThisScene");
+    expect(PANELS).toContain("strings.rightRail.characters");
+    expect(PANELS).toContain("strings.rightRail.authors");
     expect(RAIL).not.toContain("strings.nav.lorebooks");
     expect(RAIL).not.toContain("inspectorTab");
   });
 
   test("the scene tab shows the slot the chat screen fills", () => {
-    expect(RAIL).toContain("sceneInspector");
+    expect(PANELS).toContain("sceneInspector");
   });
 
   test("characters and authors have search, a new button and the scene markers", () => {
-    expect(RAIL).toContain("strings.characters.searchPlaceholder");
-    expect(RAIL).toContain("useCreateCharacter");
-    expect(RAIL).toContain("useCreateAuthor");
-    expect(RAIL).toContain("strings.rightRail.inScene");
-    expect(RAIL).toContain("strings.rightRail.inUse");
+    expect(PANELS).toContain("strings.characters.searchPlaceholder");
+    expect(PANELS).toContain("useCreateCharacter");
+    expect(PANELS).toContain("useCreateAuthor");
+    expect(PANELS).toContain("strings.rightRail.inScene");
+    expect(PANELS).toContain("strings.rightRail.inUse");
   });
 
   test("the author editor samples the aside voice", () => {
-    expect(RAIL).toContain("strings.authors.sampleVoice");
+    expect(PANELS).toContain("strings.authors.sampleVoice");
   });
 
   test("the editors state the card's share of the window, and an author can be set on the scene", () => {
-    expect(RAIL).toContain("strings.characters.cardContext");
-    expect(RAIL).toContain("strings.authors.use");
-    expect(RAIL).toContain("useUpdateScene");
+    expect(PANELS).toContain("strings.characters.cardContext");
+    expect(PANELS).toContain("strings.authors.use");
+    expect(PANELS).toContain("useUpdateScene");
   });
 });
 
@@ -77,7 +91,9 @@ describe("the scene pane carries the cast and the scene's people", () => {
 
   test("the persona edits inline, the author in its own tab", () => {
     expect(SCENE_PANE).toContain("<PersonaEditPane");
-    expect(CHAT).toContain("setRightTab(\"authors\")");
+    // Named for the side rather than the tab since phase 173: any of the
+    // seven panels can be the one showing there.
+    expect(CHAT).toContain('setRightActive("authors")');
   });
 
   test("the nested inspector tabs are gone", () => {

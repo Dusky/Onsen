@@ -58,3 +58,24 @@ export function useReadingVariables(reading: {
     root.setProperty("--onsen-leading-prose", String(leading));
   }, [scale, measure, leading]);
 }
+
+/**
+ * The reader's motion override (§20 phase 166).
+ *
+ * `app.css` has honoured `prefers-reduced-motion` since phase 45, and that
+ * stays the default: a machine that asks for less motion gets it whatever is
+ * set here. This is the other direction — a machine that does not ask, or a
+ * reader who wants it in this app and not in every other one.
+ *
+ * An attribute on `documentElement` rather than a second copy of the
+ * suppression rules, so there is exactly one place in the stylesheet that
+ * decides what "less motion" means and both paths reach it.
+ */
+export function useMotionPreference(motion: "system" | "reduced"): void {
+  useEffect(() => {
+    const root = document.documentElement;
+    if (motion === "reduced") root.setAttribute("data-motion", "reduced");
+    else root.removeAttribute("data-motion");
+    return () => root.removeAttribute("data-motion");
+  }, [motion]);
+}
