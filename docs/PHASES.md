@@ -7981,3 +7981,93 @@ midpoint between the two rows it joins — the one location neither row's own
 label band ever reaches — with the full sentence kept as a hover title rather
 than dropped. Caught by looking at the actual render, not by re-reading the
 layout math, which had looked fine on paper both times.
+
+## Phase 173 — The rail dock: any panel, either side
+
+The last of four structural UI ideas. `LeftRail.tsx` and `RightRail.tsx` were
+two bespoke components with hardcoded panel lists — `prompt/preset/lore/
+guides` on the left at 326px, `scene/characters/authors` on the right at
+352px — and nothing about that was inherent. Six of the seven panels were
+already pure functions of a scene id, self-explaining with no roleplay open;
+the seventh, the scene's own Context/Cast/You panes, was already a slot
+`ChatScreen` fills. They were portable the whole time and only their file
+said otherwise.
+
+So the panels moved out to `client/components/DockPanels.tsx` — verbatim,
+not rewritten, because a panel being movable does not change what it draws —
+behind one `PANEL_META` registry of icon, label, header label and component.
+Each rail keeps its own chrome and loses its list, reading `useDock().left`
+or `.right` instead: which panels, in what order, at what width. A panel
+named in neither list is hidden and reachable again from the editor that hid
+it. A side with nothing on it renders no rail at all rather than a hollow
+icon column.
+
+`DockDto` is a preference like any other (`shared/types.ts`, validated by
+`readDock` on the way out of the database as well as in; stored and served by
+`server/routes/system.ts` beside the layout and the reading surface, and
+carried in a settings file). The default is today's exact arrangement, so
+nothing moves until a reader moves it. `client/lib/breakpoint.ts`'s two
+auto-collapse bands now derive from the stored widths as base-plus-delta,
+which is exactly 1452/1126 at the shipped widths: a rail made wider needs
+that many more px of window, and nothing changes for anyone who never
+touches a width.
+
+### The doctrine tension, named rather than avoided
+
+§16's own rule is that "a matrix of toggles in place of a default is the
+incumbent's answer... the default is what the app is." This *is* a matrix of
+toggles, deliberately, and it was picked with that on the table. What keeps
+it from being the thing the rule is written against: it is an opt-in editor
+reached once from Settings, not a screen full of switches everyone sees; the
+default arrangement is undisturbed by its own existence; and one button puts
+everything back. The same shape `LAYOUT_PRESETS` uses — a name is a mode, and
+the switches under it stay editable for whoever wants them. Reordering is
+↑/↓, never drag, on `PromptManager`'s own stated grounds.
+
+**Verified** in Chromium at 1600×950 and 390×844, both themes. The check
+that mattered most was the first one: with no editor opened, both rails are
+pixel-identical to before the batch (left 381 = 54 + 326 + 1, right 352).
+Then: Characters moved right→left and appeared there and nowhere else; Lore
+hidden and gone from both; Characters reordered up a place inside the left;
+the left panel narrowed to 280px and the rail measured 335; all of it still
+true after a cold page load, which is what proves it is server-side. Emptying
+the right side entirely removed the rail element rather than leaving a
+column. The Scene slot docked with no roleplay open says "Open a roleplay to
+see its cast here." and fills with the scene's panes when one is. The
+collapse bands still fire correctly — both rails open at 1500px, the right
+one shut at 1400px, the phone layout below 1144px. Reset restored 381/352.
+No console errors. Guards: `test/dock.test.ts` (29 tests, with `readDock` and
+`autoCollapseBands` called rather than read as text), plus
+`test/leftrail.test.ts` and `test/rightrail.test.ts` re-pointed at the file
+that now owns each half. Full suite 1750 pass.
+
+### Surprises
+
+**Every failing test was the same fact, and the fix was to re-point them
+rather than weaken them.** Moving the panel bodies broke 21 assertions
+across three files that read them out of the rail files. The temptation is
+to delete the ones that no longer fit; what they were actually pinning — the
+sidebar cannot come back, the prompt panel is the window and not a link, the
+right rail does not grow a fourth hardcoded tab — is all still true and
+still worth pinning, so each assertion moved to the file that now owns the
+thing, and the two "four sections / three tabs" shape tests now assert
+against `DOCK_DEFAULTS`. They gained a reason to be true instead of losing
+one.
+
+**The voice guard caught an explanation I had no business adding.** The dock
+section shipped with a hint under its button — "Move a panel to the other
+rail, hide it, or reorder it." — and `test/voice.test.ts` failed on its
+explanatory-string ceiling, 46 against a cap of 45. The right answer was not
+to raise the cap: by §20's own rule an explanation earns its place only if
+its absence would cause a mistake that cannot be undone, and this one sat
+under a button that names what it opens, in front of an editor where every
+move is reversible. Deleted, and the duplicated section label above it went
+with it.
+
+**A panel keeps the edge padding of the side it was authored for.** The left
+rail pads its panel body 14px; the right rail does not, because its own
+panels manage their own. Dock Characters to the left and its search row sits
+inside that gutter instead of flush to the rail edge. Cosmetic, only
+reachable by customising, and fixing it properly means auditing six panels'
+internal padding — left as found and named here rather than quietly shipped.
+

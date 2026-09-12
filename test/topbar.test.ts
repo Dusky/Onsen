@@ -53,7 +53,11 @@ describe("the top bar", () => {
   test("the rail is the icon rail, not the old destination list", () => {
     expect(RAIL).not.toContain("strings.nav.roleplays");
     expect(RAIL).not.toContain("strings.nav.recent");
-    expect(RAIL).toContain("id: \"prompt\"");
+    // It renders sections from the dock registry (§20 phase 173) — which of
+    // them is a per-reader arrangement now, but they are sections either
+    // way, never destinations.
+    expect(RAIL).toContain("PANEL_META");
+    expect(RAIL).toContain("useDock()");
   });
 });
 

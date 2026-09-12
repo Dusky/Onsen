@@ -4,13 +4,14 @@ import { notify } from "../state/notices.ts";
 import { strings } from "../strings.ts";
 import type { UpdateStatusDto } from "@shared/types.ts";
 import type {
+  DockDto,
   LayoutDto,
   ReaderDto,
   ReadingDto,
   SceneFilterQuery,
   SceneListDto,
 } from "@shared/types.ts";
-import { LAYOUT_PRESETS, READER_DEFAULTS, READING_DEFAULTS } from "@shared/types.ts";
+import { DOCK_DEFAULTS, LAYOUT_PRESETS, READER_DEFAULTS, READING_DEFAULTS } from "@shared/types.ts";
 import type {
   AppendMessageRequest,
   AuthorDto,
@@ -2452,6 +2453,8 @@ export interface PreferencesDto {
   /** The reader's own controls — discrete behaviours (§20 phase 166). */
   reader: ReaderDto;
   completionChime: boolean;
+  /** Which panels dock to which rail, in what order, at what width (§20 phase 173). */
+  dock: DockDto;
 }
 
 export function usePreferences() {
@@ -2513,6 +2516,16 @@ export function useReader(): ReaderDto {
 }
 
 /**
+ * The rail dock, with today's arrangement standing in until preferences
+ * arrive (§20 phase 173) — the same reasoning `useLayout`, `useReading` and
+ * `useReader` give: a rail that reflowed one frame after paint would be worse
+ * than one that is briefly the default every fresh install already is.
+ */
+export function useDock(): DockDto {
+  return usePreferences().data?.dock ?? DOCK_DEFAULTS;
+}
+
+/**
  * What a preferences PATCH may carry.
  *
  * Partial one level deeper than `Partial<PreferencesDto>`, because the server
@@ -2526,6 +2539,7 @@ export interface PreferencesPatch {
   reading?: Partial<ReadingDto>;
   reader?: Partial<ReaderDto>;
   completionChime?: boolean;
+  dock?: Partial<DockDto>;
 }
 
 /**

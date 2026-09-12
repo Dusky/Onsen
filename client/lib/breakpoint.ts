@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { DOCK_DEFAULTS } from "@shared/types.ts";
+import { useDock } from "./queries.ts";
 import { useUiStore } from "../state/ui.ts";
 
 /**
@@ -45,6 +47,34 @@ const DESKTOP = "(min-width: 1144px)";
 export const RIGHT_RAIL_MIN_WIDTH = 1452;
 export const LEFT_PANEL_MIN_WIDTH = 1126;
 
+/**
+ * The same two bands, fed the dock's *current* panel widths instead of the
+ * two literals above (§20 phase 173's rail dock rework made those widths a
+ * preference, `DockDto.leftWidth`/`rightWidth`, rather than a constant).
+ *
+ * Expressed as this constant plus however far each width has moved from its
+ * own default, not re-derived from scratch: at the shipped widths (326/352)
+ * both deltas are zero and this returns exactly `RIGHT_RAIL_MIN_WIDTH` and
+ * `LEFT_PANEL_MIN_WIDTH`, so nothing about today's behaviour changes until a
+ * reader actually opens the dock editor and drags a width. Past that point
+ * the relationship is the same one already commented above: a rail a reader
+ * has made wider needs that many more px of window to still fit alongside
+ * the log's own measure, and a rail made narrower needs that many fewer.
+ */
+export function autoCollapseBands(leftWidth: number, rightWidth: number): {
+  rightRailMinWidth: number;
+  leftPanelMinWidth: number;
+} {
+  const leftDelta = leftWidth - DOCK_DEFAULTS.leftWidth;
+  const rightDelta = rightWidth - DOCK_DEFAULTS.rightWidth;
+  return {
+    rightRailMinWidth: RIGHT_RAIL_MIN_WIDTH + leftDelta + rightDelta,
+    // The right rail is already closed to its icon strip by the time this
+    // band matters, so only the left panel's own width is still in play.
+    leftPanelMinWidth: LEFT_PANEL_MIN_WIDTH + leftDelta,
+  };
+}
+
 function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() =>
     typeof window === "undefined" ? false : window.matchMedia(query).matches,
@@ -79,8 +109,10 @@ export function useIsDesktop(): boolean {
  * a rail the reader just closed.
  */
 export function useAutoCollapseRails(): void {
-  const hasRightRoom = useMediaQuery(`(min-width: ${RIGHT_RAIL_MIN_WIDTH}px)`);
-  const hasLeftRoom = useMediaQuery(`(min-width: ${LEFT_PANEL_MIN_WIDTH}px)`);
+  const dock = useDock();
+  const { rightRailMinWidth, leftPanelMinWidth } = autoCollapseBands(dock.leftWidth, dock.rightWidth);
+  const hasRightRoom = useMediaQuery(`(min-width: ${rightRailMinWidth}px)`);
+  const hasLeftRoom = useMediaQuery(`(min-width: ${leftPanelMinWidth}px)`);
   const setLeftRailOpen = useUiStore((state) => state.setLeftRailOpen);
   const setRightRailOpen = useUiStore((state) => state.setRightRailOpen);
 

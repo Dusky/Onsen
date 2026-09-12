@@ -210,7 +210,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   // else about this screen is the same components at a different width.
   const isDesktop = useIsDesktop();
   const setSceneInspector = useUiStore((state) => state.setSceneInspector);
-  const setRightTab = useUiStore((state) => state.setRightTab);
+  const setRightActive = useUiStore((state) => state.setRightActive);
   // §5's held view. While another device has moved the head somewhere this one
   // is not, the log keeps showing what the reader was reading — the whole point
   // of the prompt is that the scene does not change under them, and a client
@@ -887,7 +887,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       authorName={scene.data?.scene.authorName ?? strings.chat.narratorName}
       authorTokens={authorTokens}
       onEditPersona={() => setPersonaEditing(true)}
-      onEditAuthor={() => setRightTab("authors")}
+      onEditAuthor={() => setRightActive("authors")}
     />
   );
 

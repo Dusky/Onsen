@@ -2105,6 +2105,95 @@ export function presetOf(layout: Omit<LayoutDto, "preset">): LayoutDto["preset"]
   return "custom";
 }
 
+/* ------------------------------------------------------------------ */
+/* The rail dock (§20 phase 173)                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A panel either rail can host.
+ *
+ * Six of these are pure functions of a scene id, self-explaining with no
+ * roleplay open. `scene` is the seventh — not a component of its own, a slot
+ * `ChatScreen` fills with the scene's own Context/Cast/You panes — and it
+ * docks the same as the rest.
+ */
+export type DockPanel = "prompt" | "preset" | "lore" | "guides" | "scene" | "characters" | "authors";
+
+export const DOCK_PANELS: readonly DockPanel[] = [
+  "prompt",
+  "preset",
+  "lore",
+  "guides",
+  "scene",
+  "characters",
+  "authors",
+];
+
+/**
+ * Which panels live on which side, in what order, and how wide each side's
+ * panel is (§20 phase 173).
+ *
+ * A panel named in neither list is hidden — reachable again from the same
+ * editor that hid it, never deleted. The default below is today's exact
+ * arrangement, so nothing changes for a reader who never opens that editor —
+ * the same non-negotiable every preference in this app has followed since
+ * phase 165.
+ */
+export interface DockDto {
+  left: DockPanel[];
+  right: DockPanel[];
+  leftWidth: number;
+  rightWidth: number;
+}
+
+export const DOCK_DEFAULTS: DockDto = {
+  left: ["prompt", "preset", "lore", "guides"],
+  right: ["scene", "characters", "authors"],
+  leftWidth: 326,
+  rightWidth: 352,
+};
+
+/**
+ * Inclusive px bounds per side, the same idea `READING_BOUNDS` applies to the
+ * reading surface: narrow enough that a panel never becomes useless, wide
+ * enough that it never eats the log out of its own measure.
+ */
+export const DOCK_WIDTH_BOUNDS: readonly [number, number] = [260, 480];
+
+/**
+ * Validate a stored or incoming dock preference, falling back per field
+ * rather than refusing the lot — the rule every preference in this app
+ * follows, `clampReading` and `readReader`'s own included.
+ *
+ * A panel named on both sides is a contradiction, not a feature: the right
+ * side wins and the left drops it, so the result is never a panel drawn
+ * twice. A panel that appears nowhere is simply hidden, which is a valid and
+ * expected state, not an error to correct.
+ */
+export function readDock(input: Partial<Record<keyof DockDto, unknown>>): DockDto {
+  // Empty is a valid list — a reader may move every panel off one side —
+  // so only the shape is checked here, never the length.
+  const isPanelList = (value: unknown): value is DockPanel[] =>
+    Array.isArray(value) && value.every((item) => (DOCK_PANELS as readonly unknown[]).includes(item));
+
+  const rawLeft = isPanelList(input.left) ? [...new Set(input.left)] : DOCK_DEFAULTS.left;
+  const right = isPanelList(input.right) ? [...new Set(input.right)] : DOCK_DEFAULTS.right;
+  const left = rawLeft.filter((panel) => !right.includes(panel));
+
+  const clampWidth = (value: unknown, fallback: number): number => {
+    const raw = typeof value === "number" && Number.isFinite(value) ? value : fallback;
+    const [min, max] = DOCK_WIDTH_BOUNDS;
+    return Math.round(Math.min(max, Math.max(min, raw)));
+  };
+
+  return {
+    left,
+    right,
+    leftWidth: clampWidth(input.leftWidth, DOCK_DEFAULTS.leftWidth),
+    rightWidth: clampWidth(input.rightWidth, DOCK_DEFAULTS.rightWidth),
+  };
+}
+
 /* Persistent guides (SPEC §8)                                         */
 /* ------------------------------------------------------------------ */
 

@@ -989,6 +989,19 @@ export const strings = {
     proseSample:
       "She set the ledger down without closing it, and waited to see which of them would look first.",
     proseReset: "Back to defaults",
+
+    /** The rail dock editor (§20 phase 173). */
+    dock: "Rails",
+    dockOpen: "Customize rails",
+    dockTitle: "Customize rails",
+    dockSideLeft: "Left",
+    dockSideRight: "Right",
+    dockSideHidden: "Hidden",
+    dockLeftWidth: "Left panel width",
+    dockRightWidth: "Right panel width",
+    dockReset: "Back to the default arrangement",
+    dockHiddenEmpty: "Nothing hidden.",
+
     chime: "Chime when a reply lands",
     chimeOn: "On",
     chimeOff: "Off",

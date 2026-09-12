@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { completeSetup, createHarness, type TestHarness } from "./helpers.ts";
-import { READER_DEFAULTS, READING_DEFAULTS, LAYOUT_PRESETS } from "../shared/types.ts";
-import type { LayoutDto, ReaderDto, ReadingDto } from "../shared/types.ts";
+import { DOCK_DEFAULTS, READER_DEFAULTS, READING_DEFAULTS, LAYOUT_PRESETS } from "../shared/types.ts";
+import type { DockDto, LayoutDto, ReaderDto, ReadingDto } from "../shared/types.ts";
 
 /**
  * The whole setup as one file (§20 phase 168).
@@ -36,6 +36,8 @@ interface Preferences {
   reading: ReadingDto;
   reader: ReaderDto;
   completionChime: boolean;
+  /** Which panels dock to which rail (§20 phase 173). */
+  dock: DockDto;
 }
 
 async function json<T>(t: TestHarness, method: string, path: string, body?: unknown): Promise<T> {
@@ -79,6 +81,9 @@ describe("the round trip", () => {
     expect(file["reader"]).toEqual(READER_DEFAULTS);
     expect(file["reading"]).toEqual(READING_DEFAULTS);
     expect(file["layout"]).toMatchObject({ preset: "instrument" });
+    // The rails travel too (§20 phase 173): an arrangement is a decision
+    // about the app's shape, which is exactly what this file is for.
+    expect(file["dock"]).toEqual(DOCK_DEFAULTS);
     // The theme travels by name. A theme is already portable on its own, and
     // an import of *settings* is not where a new palette should appear in your
     // list.
@@ -92,6 +97,7 @@ describe("the round trip", () => {
       reading: { scale: 1.2, measure: 860 },
       reader: { send: "modEnter", timestamps: true, media: "grid", notices: "bottomRight" },
       completionChime: true,
+      dock: { left: ["prompt", "scene"], right: ["characters"], leftWidth: 300 },
     });
     const file = await exported(t);
 
@@ -101,6 +107,7 @@ describe("the round trip", () => {
       reading: READING_DEFAULTS,
       reader: READER_DEFAULTS,
       completionChime: false,
+      dock: DOCK_DEFAULTS,
     });
     expect((await json<Preferences>(t, "GET", "/api/system/preferences")).reader.send).toBe("enter");
 
@@ -117,6 +124,11 @@ describe("the round trip", () => {
     expect(after.reader.media).toBe("grid");
     expect(after.reader.notices).toBe("bottomRight");
     expect(after.completionChime).toBe(true);
+    // Including the panel that was moved, the one that was hidden by being
+    // named nowhere, and the width.
+    expect(after.dock.left).toEqual(["prompt", "scene"]);
+    expect(after.dock.right).toEqual(["characters"]);
+    expect(after.dock.leftWidth).toBe(300);
   });
 
   test("the theme comes back by name", async () => {
@@ -158,7 +170,7 @@ describe("the round trip", () => {
       reading: { scale: 1.1 },
     });
     expect(body["applied"]).toEqual(["reading"]);
-    expect(body["skipped"]).toEqual(["layout", "reader", "completionChime", "theme"]);
+    expect(body["skipped"]).toEqual(["layout", "reader", "dock", "completionChime", "theme"]);
   });
 });
 

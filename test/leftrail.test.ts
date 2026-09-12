@@ -1,15 +1,25 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { DOCK_DEFAULTS } from "@shared/types.ts";
 
 /**
- * The left icon rail and its section panel (the redesign, §20 phase 89).
+ * The left icon rail and its section panel (the redesign, §20 phase 89;
+ * re-pointed at the dock registry by phase 173).
  *
  * The mockup's left side is not the config sidebar the workbench built — a
- * recent list plus links. It is a 54px rail of four icons, and a panel beside
- * it carrying the chosen section: Prompt (the window being assembled), Preset
+ * recent list plus links. It is a 54px rail of icons, and a panel beside it
+ * carrying the chosen section: Prompt (the window being assembled), Preset
  * (the samplers), Lore (what fired), Guides (what is injected). This pins the
  * shape so the sidebar cannot quietly come back.
+ *
+ * What changed in phase 173 is *where each half lives*, not what either half
+ * says. The rail file owns the rail's own chrome; the four panels it used to
+ * declare inline are now in `DockPanels.tsx`, shared with the right rail
+ * because either of them may host any of the seven. So the panel assertions
+ * below read that file, and the shape assertions read `DOCK_DEFAULTS` — the
+ * arrangement is now a stated default rather than a hardcoded list, and the
+ * default is the thing worth pinning.
  *
  * Settings is not a fifth icon: it moved to the header, since it is a
  * destination rather than a section and could never show an active state
@@ -23,13 +33,17 @@ const RAIL = readFileSync(
   join(import.meta.dir, "..", "client", "components", "LeftRail.tsx"),
   "utf8",
 );
+const PANELS = readFileSync(
+  join(import.meta.dir, "..", "client", "components", "DockPanels.tsx"),
+  "utf8",
+);
 
 describe("the left side is an icon rail, not a sidebar", () => {
-  test("four glyphs lead to four sections", () => {
-    expect(RAIL).toContain("id: \"prompt\"");
-    expect(RAIL).toContain("id: \"preset\"");
-    expect(RAIL).toContain("id: \"lore\"");
-    expect(RAIL).toContain("id: \"guides\"");
+  test("four sections, and the default says which four", () => {
+    expect(DOCK_DEFAULTS.left).toEqual(["prompt", "preset", "lore", "guides"]);
+    // Each one is a real entry in the registry the rail renders from, not a
+    // name the arrangement mentions and nothing answers to.
+    for (const id of DOCK_DEFAULTS.left) expect(PANELS).toContain(`  ${id}: {`);
   });
 
   test("Settings is not a fifth section here (design review fix 4)", () => {
@@ -61,27 +75,27 @@ describe("the left side is an icon rail, not a sidebar", () => {
 
 describe("the prompt panel shows the window, not a link", () => {
   test("it assembles the next turn's prompt, block by block", () => {
-    expect(RAIL).toContain("usePreviewPrompt");
-    expect(RAIL).toContain("debug.blocks");
+    expect(PANELS).toContain("usePreviewPrompt");
+    expect(PANELS).toContain("debug.blocks");
   });
 
   test("the budget bar and the evictions are on the same panel", () => {
-    expect(RAIL).toContain("<BudgetBar");
-    expect(RAIL).toContain("debug.evicted");
-    expect(RAIL).toContain("strings.chat.inspectorEvicted");
+    expect(PANELS).toContain("<BudgetBar");
+    expect(PANELS).toContain("debug.evicted");
+    expect(PANELS).toContain("strings.chat.inspectorEvicted");
   });
 
   test("the top states the window in one line, not a legend", () => {
     // One summary line — used / budget · % free — and the stripe carries the
     // colour, while the block list below carries the labels (§20 phase 129).
-    expect(RAIL).toContain("promptSummary");
-    expect(RAIL).not.toContain("leftRail.free");
+    expect(PANELS).toContain("promptSummary");
+    expect(PANELS).not.toContain("leftRail.free");
   });
 
   test("blocks carry their provenance, and the lore trace and raw view are there", () => {
-    expect(RAIL).toContain("placementOf");
-    expect(RAIL).toContain("debug.loreTrace");
-    expect(RAIL).toContain("strings.leftRail.viewRaw");
+    expect(PANELS).toContain("placementOf");
+    expect(PANELS).toContain("debug.loreTrace");
+    expect(PANELS).toContain("strings.leftRail.viewRaw");
   });
 });
 
@@ -105,11 +119,11 @@ describe("the other sections are real, not placeholders", () => {
    * every named part was present, and the ones nobody named were not.
    */
   test("preset is the whole editor, not a chosen subset of it", () => {
-    expect(RAIL).toContain("<PresetFields");
+    expect(PANELS).toContain("<PresetFields");
     // And does not reimplement the half it used to.
-    expect(RAIL).not.toContain("GROUPS.map");
-    expect(RAIL).not.toContain("<Slider");
-    expect(RAIL).not.toContain("download(preset");
+    expect(PANELS).not.toContain("GROUPS.map");
+    expect(PANELS).not.toContain("<Slider");
+    expect(PANELS).not.toContain("download(preset");
   });
 
   test("which means every section a phone can reach, a desktop can", () => {
@@ -130,39 +144,39 @@ describe("the other sections are real, not placeholders", () => {
     }
   });
 
-  test("the scene's ban list stays the rail's own, because it is per scene", () => {
-    expect(RAIL).toContain("useBans");
-    expect(RAIL).toContain("useAddBan");
+  test("the scene's ban list stays the panel's own, because it is per scene", () => {
+    expect(PANELS).toContain("useBans");
+    expect(PANELS).toContain("useAddBan");
   });
 
   test("the preset tab is still a manager: make, import, choose, and a model", () => {
-    expect(RAIL).toContain("useCreatePreset");
-    expect(RAIL).toContain("useImportPreset");
-    expect(RAIL).toContain("connectionProfileId");
+    expect(PANELS).toContain("useCreatePreset");
+    expect(PANELS).toContain("useImportPreset");
+    expect(PANELS).toContain("connectionProfileId");
     // Promote and remove moved with the rest into `PresetFields`.
     expect(FIELDS).toContain("useDeletePreset");
     expect(FIELDS).toContain("download(preset");
   });
 
   test("lore is editable without a scene, and guides can be written, reordered and flushed", () => {
-    expect(RAIL).toContain("useLoreActivation");
-    expect(RAIL).toContain("<LorePane");
-    expect(RAIL).toContain("<GuidesBody");
-    expect(RAIL).toContain("onMove");
-    expect(RAIL).toContain("useRebuildGuides");
-    expect(RAIL).toContain("useFlushGuides");
+    expect(PANELS).toContain("useLoreActivation");
+    expect(PANELS).toContain("<LorePane");
+    expect(PANELS).toContain("<GuidesBody");
+    expect(PANELS).toContain("onMove");
+    expect(PANELS).toContain("useRebuildGuides");
+    expect(PANELS).toContain("useFlushGuides");
   });
 
   test("the prompt is editable without a scene", () => {
-    expect(RAIL).toContain("<PromptManager");
-    expect(RAIL).toContain('sceneId === null');
+    expect(PANELS).toContain("<PromptManager");
+    expect(PANELS).toContain("sceneId === null");
   });
 
   test("the guides' prompts are editable without a scene", () => {
     // §149: the generated notes are per scene, but what each guide asks is
     // not — so outside a roleplay the Guides tab edits the prompts.
-    expect(RAIL).toContain("<GuidePrompts");
-    expect(RAIL).toContain("useUpdateTask");
-    expect(RAIL).toContain('startsWith("guide_")');
+    expect(PANELS).toContain("<GuidePrompts");
+    expect(PANELS).toContain("useUpdateTask");
+    expect(PANELS).toContain('startsWith("guide_")');
   });
 });

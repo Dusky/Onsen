@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { ReactNode } from "react";
+import type { DockPanel } from "@shared/types.ts";
 
 /**
  * UI chrome state (SPEC §16, §20 phases 85–87).
@@ -14,10 +15,16 @@ import type { ReactNode } from "react";
 interface UiState {
   leftRailOpen: boolean;
   rightRailOpen: boolean;
-  /** Which section the left rail's panel shows (§20 phase 89). */
-  leftSection: "prompt" | "preset" | "lore" | "guides";
-  /** Which tab the right rail's panel shows (§20 phase 90). */
-  rightTab: "scene" | "characters" | "authors";
+  /**
+   * Which panel each side's own panel currently shows (§20 phase 89, widened
+   * to any of the seven dockable panels by phase 173's rail dock rework).
+   * Not necessarily one this side actually hosts right now — a panel moved to
+   * the other side, or hidden, leaves its old side remembering an id it no
+   * longer has; `RailDock` clamps to the first panel it does have whenever
+   * the remembered one is not among them.
+   */
+  leftActive: DockPanel;
+  rightActive: DockPanel;
   /** The chat's scene-scoped panes, set while a scene is open. */
   sceneInspector: ReactNode | null;
   /**
@@ -34,8 +41,8 @@ interface UiState {
    * width boundary, rather than flipping whatever it currently is. */
   setLeftRailOpen(open: boolean): void;
   setRightRailOpen(open: boolean): void;
-  setLeftSection(section: UiState["leftSection"]): void;
-  setRightTab(tab: UiState["rightTab"]): void;
+  setLeftActive(panel: DockPanel): void;
+  setRightActive(panel: DockPanel): void;
   setSceneInspector(node: ReactNode | null): void;
   toggleVanished(): void;
 }
@@ -43,16 +50,16 @@ interface UiState {
 export const useUiStore = create<UiState>((set) => ({
   leftRailOpen: true,
   rightRailOpen: true,
-  leftSection: "prompt",
-  rightTab: "scene",
+  leftActive: "prompt",
+  rightActive: "scene",
   sceneInspector: null,
   vanished: false,
   toggleLeftRail: () => set((state) => ({ leftRailOpen: !state.leftRailOpen })),
   toggleRightRail: () => set((state) => ({ rightRailOpen: !state.rightRailOpen })),
   setLeftRailOpen: (open) => set({ leftRailOpen: open }),
   setRightRailOpen: (open) => set({ rightRailOpen: open }),
-  setLeftSection: (section) => set({ leftSection: section }),
-  setRightTab: (tab) => set({ rightTab: tab }),
+  setLeftActive: (panel) => set({ leftActive: panel }),
+  setRightActive: (panel) => set({ rightActive: panel }),
   setSceneInspector: (node) => set({ sceneInspector: node }),
   toggleVanished: () => set((state) => ({ vanished: !state.vanished })),
 }));

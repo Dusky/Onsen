@@ -6,15 +6,19 @@ import { getSetting, setSetting } from "../db/queries/settings.ts";
 import { activeTheme, setActiveTheme } from "../db/queries/themes.ts";
 import { badRequest } from "../lib/routes.ts";
 import {
+  DOCK_DEFAULTS,
   LAYOUT_PRESETS,
   READER_DEFAULTS,
   READING_DEFAULTS,
   clampReading,
   presetOf,
+  readDock,
   readReader,
 } from "@shared/types.ts";
 import type {
   AttributionStyle,
+  DockDto,
+  DockPanel,
   LayoutDto,
   LayoutPreset,
   ReaderDto,
@@ -125,12 +129,43 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
     });
   }
 
+  /**
+   * The rail dock (§20 phase 173): which of the seven panels live on which
+   * side, in what order, and how wide each side's panel is.
+   *
+   * Stored as two JSON arrays plus two widths rather than seven booleans —
+   * order matters and a panel belongs to at most one side, which a flat set
+   * of switches cannot express without an extra pass to resolve conflicts.
+   * Validated through `readDock` on the way out as well as in, the same
+   * reason every other preference here is: a row written by hand or by an
+   * older build cannot put the app into an arrangement its own editor could
+   * not have produced.
+   */
+  function dock(): DockDto {
+    const parseList = (raw: string | null): DockPanel[] | undefined => {
+      if (raw === null) return undefined;
+      try {
+        const parsed: unknown = JSON.parse(raw);
+        return Array.isArray(parsed) ? (parsed as DockPanel[]) : undefined;
+      } catch {
+        return undefined;
+      }
+    };
+    return readDock({
+      left: parseList(getSetting(ctx.db, "dock_left")),
+      right: parseList(getSetting(ctx.db, "dock_right")),
+      leftWidth: Number(getSetting(ctx.db, "dock_left_width") ?? DOCK_DEFAULTS.leftWidth),
+      rightWidth: Number(getSetting(ctx.db, "dock_right_width") ?? DOCK_DEFAULTS.rightWidth),
+    });
+  }
+
   function preferences() {
     return {
       completionChime: getSetting(ctx.db, "completion_chime") === "1",
       layout: layout(),
       reading: reading(),
       reader: reader(),
+      dock: dock(),
     };
   }
 
@@ -234,6 +269,21 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
     return true;
   }
 
+  /**
+   * Merged onto what is stored, like every other group here — a request
+   * moving one panel must not silently reset the other side's arrangement or
+   * either width.
+   */
+  function applyDock(value: unknown): boolean {
+    if (typeof value !== "object" || value === null) return false;
+    const next = readDock({ ...dock(), ...(value as Record<string, unknown>) });
+    setSetting(ctx.db, "dock_left", JSON.stringify(next.left));
+    setSetting(ctx.db, "dock_right", JSON.stringify(next.right));
+    setSetting(ctx.db, "dock_left_width", String(next.leftWidth));
+    setSetting(ctx.db, "dock_right_width", String(next.rightWidth));
+    return true;
+  }
+
   app.get("/preferences", (c) => c.json(preferences()));
 
   app.patch("/preferences", async (c) => {
@@ -248,6 +298,7 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
     applyLayout(body["layout"]);
     applyReader(body["reader"]);
     applyReading(body["reading"]);
+    applyDock(body["dock"]);
     return c.json(preferences());
   });
 
@@ -349,6 +400,7 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
       ["layout", applyLayout],
       ["reading", applyReading],
       ["reader", applyReader],
+      ["dock", applyDock],
       ["completionChime", applyChime],
     ] as const) {
       (apply(doc[name]) ? applied : skipped).push(name);
