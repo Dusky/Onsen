@@ -8113,3 +8113,70 @@ undefined` expanded the shorthand and then cleared the top edge. The dialog
 had three borders and an open top, at 1px, in a dim theme — invisible until
 `getComputedStyle` said `borderTopWidth: 0px`. Fixed by spreading a
 per-branch object so the key is absent rather than undefined.
+
+## Phase 175 — Story Config
+
+`NEXT.md` has carried this since the phase-108 queue: "Story Config dropdowns
+(genre, POV, friction, pace → scene prompt options) are still not built."
+Reading it against the code first, rather than building from the sentence,
+changed what the work was. Point of view has shipped since §13.5's first pass.
+And the machinery around it — seeding, per-scene selection with `one_of`
+enforced in SQL on write, the inspector's labelled block with its token cost,
+the cost readout on the row, the option sheet — generalises to any group in
+`BUILTIN_GROUPS`. So the gap was three sets of *words*, and words are the one
+thing `server/options/builtin.ts` exists to hold.
+
+Genre, Pace and Friction, each `one_of`, each placed beside Point of view so
+the four read as one block of story decisions ahead of the craft ones. No
+component, no route, no DTO field, no migration: a group added to the registry
+appears in scene setup and in the prompt on its own, and `server/index.ts`
+seeds at boot, so an existing install picks them up on its next start.
+
+**Every one leads with a named option whose fragment is empty** — the idiom
+`reasoning_depth`'s "None", `content`'s "As the story goes" and
+`prose_formatting`'s "As the author writes" already use three times over.
+§22's rule that a group arriving entirely switched off looks broken on a first
+run is the stated reason, and `test/options.test.ts` enforces it. The stronger
+reason is the one that decided the wording: every scene in every install
+predates these groups, and a genre arriving switched *on* would quietly
+rewrite how all of them are written. An empty fragment is dropped in
+`server/generation/context.ts` before a block is built, so a scene nobody has
+configured reads exactly as it did.
+
+Pace is deliberately not folded into Length. Length is how much to write in
+one turn; pace is how fast the story moves through it. They come apart in both
+directions — a slow burn in short turns, a chase in long ones — and one
+control could have said neither.
+
+**Verified** in Chromium at 1600×950 and 390×844, in both themes: Genre, Pace
+and Friction appear as rows under "How it writes" beside Point of view, each
+reading "Let the scene decide" with a 0-token cost; choosing *Noir* puts one
+`Genre: Noir` block at depth 0 / system in the prompt inspector and the
+fragment in the assembled prompt; a scene that has never been configured
+carries no block from any of the three; and reset puts it all back. Also
+booted against the pre-existing `data/onsen.db` to confirm the upgrade path.
+Guards: five new tests in `test/options.test.ts`, including the re-seed case.
+Full suite 1761 pass.
+
+### Surprises
+
+**The seeder wrote `sort_order` on insert and never again, which made
+placement a per-install accident.** `seedBuiltins` is insert-and-skip by key
+for words — an edited built-in has to survive a re-seed, which is a contract
+its own tests state — but it already reconciled `cardinality`, on the argument
+that structure is not words and stale structure is a correctness bug. Group
+order is structure by exactly that argument: nothing in the app reorders
+groups. Without extending the reconcile, shipping these three *between*
+existing groups would have given a fresh install the registry's order and an
+upgraded install its own historical one, with two groups claiming the same
+index and the tie broken by row id. One more column in the same
+`is_builtin = 1` update, and a test that stands in for an older install by
+deleting the three groups and packing the survivors into the indices they
+would have held.
+
+**The spec's own §13.5 table was a phase behind before this started.** It
+listed seven groups; `prose_formatting` had shipped in phase 164 and never
+reached it. Fixed in passing, which is the tracker reconciliation from the
+commit before this one arriving at its own conclusion: the table drifted
+because nothing forces a phase to update the document that describes what it
+just shipped.

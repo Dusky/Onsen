@@ -2,16 +2,24 @@
 
 A short, honest list. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 157, plus an unnumbered UI colour/layout review (three colour
-roles, rail auto-collapse, Settings moved to the header — see the PR that
-merged it). 1515 tests across 113 files, typecheck clean. Feature complete
-against `SPEC.md` §20 apart from the deferred phase 42.
+**State:** phase 175. 1761 tests across 127 files, typecheck clean. Feature
+complete against `SPEC.md` §20 apart from the deferred phase 42.
 
-This file had gone stale: it still listed ChatScreen extraction (done phase
-149) and self-responses (done phase 155) as open. Caught when the user asked
-"what's left" and pushed back on the ChatScreen item — a reminder that this
-queue is only as good as the last time someone reconciled it against
-`PHASES.md`, per the evidence rule below.
+This file has now gone stale twice, and the second time was worse. It said
+phase 157 and 1515 tests while the repository stood at 174 and 1754 — a
+seventeen-phase drift covering two whole batches (158–164's audit work,
+165–169's settings parity, 170–174's structural UI), and `SPEC.md` §20 and
+`GAPS.md` had drifted with it. Caught the same way as last time: somebody
+asked what was next and the answer had to be re-derived from `PHASES.md`
+by hand.
+
+Worth naming why, because the rule was already written. Step 5 below says
+§20, `PHASES.md`, `GAPS.md` and the README move *in the same commit*, and
+the phases that drifted updated `PHASES.md` and the README only — the two
+documents a phase is writing about itself, not the two that tell the next
+person where they are. A queue is only as good as the last reconciliation,
+and a reconciliation nobody is forced to do is one that happens seventeen
+phases late.
 
 ## The queue
 
@@ -25,15 +33,44 @@ that gate the rest. Each line is a todo; check one off by closing its phase in
    `client/lib/generation.ts` — **only if** streaming judders on a phone.
    Reproduce the judder first; this is a conditional, not a default.
 
+2. **Tabletop** (§20 phase 40) — **as an extension, not core.** The decisions
+   this was gated on are made: it is called Tabletop, after §20 phase 40's own
+   name and the `mode` option already called that, and it ships through §15's
+   extension host rather than into the app. The first slice is the one SPEC
+   already prescribes: **rolls and checks as recorded events**, stats and
+   inventory only if the checks actually get used.
+
+   Nothing needs building to make the seam work — `server/extensions/api.ts`
+   already hands an extension per-scene `state` and app-wide `globalState`
+   (key/value, pre-bound to its name), `inject()` with a
+   `render({ db, sceneId })` that returns prompt text at a chosen position,
+   depth and role, `on(event)` handlers for `message.created` /
+   `generation.complete` / `tracker.updated`, `action()` for a manual button,
+   and `task()` for a background pass. One constraint to design around: a task
+   is **post-generation only** (§154), so anything that must happen *before* a
+   turn is an injection or an event handler, not a task.
+
+   And §21's "don't roll dice in the model" is already satisfied —
+   `rollDice()` in `server/prompt/macros.ts` rolls server-side off an
+   injectable RNG, which is the half that clause was protecting. A roll should
+   reach the model as settled fact it narrates, never as a number it invents.
+
+   The prompt for this was ST's *Multihog D&D Framework*
+   (`MultihogAurelius/SillyTavern-MultihogDnDFramework`), and it is a
+   reference for **what capability is worth having, never a source of code or
+   text**: it is GPL-3.0 and this repository ships no licence at all, so
+   absorbing any of it would decide our licensing for us. The same rule item 5
+   already followed — "generic capability, not a port". Worth taking as an
+   *idea*: its split between a pre-rolled value injected cheaply, and a
+   tool-call path where the model must commit to a difficulty before it sees
+   the result. Onsen has tool calling on every provider since phase 48, so
+   both are expressible; the pre-rolled one is the cheaper default.
+
 ### Gated on a decision
 
-2. **Web search.** Needs a provider/backend decision. Build as an **extension**
+3. **Web search.** Needs a provider/backend decision. Build as an **extension**
    (not core), per the earlier product note. **Deferred by the user: not wanted
    until we run out of better things.**
-
-3. **Tabletop module** (§20 phase 40). SPEC's own note splits it: rolls and
-   checks as recorded events first (server-side, deterministic — `{{roll}}`
-   already does), stats only if the checks actually get used.
 
 4. **Chub import / community browsing** (§20 phase 42, deferred). Gated on the
    app's stance toward third-party services.
@@ -46,12 +83,16 @@ that gate the rest. Each line is a todo; check one off by closing its phase in
 
 ### Carried forward from the phase-108 queue
 
-5. **Story Config + tracker cards under a reply.** ~~The Blocks (tracker cards
-   under a reply)~~ — **done, phase 163**, and natively: a tracker row is
-   already anchored to the turn that produced it, so the card renders the
-   app's own structured state rather than parsing markup out of a reply.
-   Story Config dropdowns (genre, POV, friction, pace → scene prompt options)
-   are still not built.
+5. ~~**Story Config + tracker cards under a reply.**~~ — **done**, both
+   halves. ~~The Blocks (tracker cards under a reply)~~ — **phase 163**, and
+   natively: a tracker row is already anchored to the turn that produced it,
+   so the card renders the app's own structured state rather than parsing
+   markup out of a reply. ~~Story Config dropdowns (genre, POV, friction,
+   pace → scene prompt options)~~ — **phase 175**, and mostly already built:
+   point of view had shipped since §13.5's first pass and the option
+   machinery generalises, so it came to three groups of words (genre, pace,
+   friction) rather than a feature. Each ships with a silent default, so no
+   scene that predates them reads differently.
 
    Worth restating what this entry was: it named a *preset* somebody uses, and
    the interesting thing about reading that preset was that its formatting and
@@ -61,9 +102,11 @@ that gate the rest. Each line is a todo; check one off by closing its phase in
    built. Generic capability, not a port: nothing preset-specific is in the
    codebase, and a preset that brings its own scripts simply works.
 
-6. **Multihog** — the RPG engine. State Tracker first, then the RNG, then
-   World Progression and Map Evolution. Still not built as of phase 157 — no
-   hits in `PHASES.md`.
+The RPG-engine entry that used to sit here is gone, folded into item 2. It
+carried another project's name for a job this queue already had: §20 phase 40
+has described a tabletop module since the spec was written, and the queue was
+tracking the same work twice under two names because one of them arrived from
+a link. One job, one name, one entry.
 
 ## How to pick up
 
