@@ -383,6 +383,16 @@ export const strings = {
     opTools: "Tools",
     opToolsCheckpoints: "Checkpoints",
     opToolsStats: "Stats",
+    opToolsBranchMap: "Branch map",
+
+    /** The branch map (§20 phase 172): every branch and checkpoint, at once. */
+    branchMap: "Branch map",
+    branchMapLoading: "Mapping the tree…",
+    branchMapEmpty: "Nothing branches here yet.",
+    branchMapCount: (n: number) => `${n} ${n === 1 ? "point" : "points"}`,
+    branchMapTurns: (n: number) => `${n} ${n === 1 ? "turn" : "turns"}`,
+    branchMapHere: "You are here",
+    barBranchMap: "Map",
     opContinue: "Continue",
     opContinueUnavailable: "This provider cannot continue a finished message.",
     /** Quick replies (SPEC §7, §20 phase 65). A saved nudge, one tap away. */

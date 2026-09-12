@@ -83,6 +83,7 @@ export const COMMANDS: readonly Command[] = [
   { id: "guides", title: c.opGuides, scope: "scene", group: "scene", keywords: ["context", "state", "tracker"] },
   { id: "attach", title: m.attach, scope: "scene", group: "scene", hint: "picture", keywords: ["image", "upload", "show"] },
   { id: "marks", title: c.checkpoints, scope: "scene", group: "scene", keywords: ["checkpoints", "bookmarks", "places"] },
+  { id: "branch-map", title: c.branchMap, scope: "scene", group: "scene", keywords: ["tree", "branches", "graph", "swipes", "history"] },
   { id: "setup", title: c.setup, scope: "scene", group: "scene", keywords: ["scene", "settings", "cast", "options"] },
 
   /* ---------------- go to ---------------- */

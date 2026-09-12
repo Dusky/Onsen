@@ -16,6 +16,8 @@ import type {
   MessageSegmentDto,
   SceneDto,
   SceneMemberDto,
+  SceneTreeDto,
+  TreeNodeDto,
 } from "../../../shared/types.ts";
 import { parseBeat, spliceSegment, type ParsedSegment } from "../../generation/segments.ts";
 import { annotationsOf, toAnnotationDto } from "./annotations.ts";
@@ -389,14 +391,18 @@ export function toCheckpointDto(
   };
 }
 
+/** One line of prose, flattened and cut to a label's length. */
+function excerptOf(content: string): string {
+  const flat = content.replace(/\s+/g, " ").trim();
+  return flat.length <= 80 ? flat : `${flat.slice(0, 79)}…`;
+}
+
 /** One line of a message, for a list that has to tell two of them apart. */
 export function excerptOfMessage(db: Database, messageId: number): string | null {
   const row = db.query("SELECT content FROM messages WHERE id = $id").get({ id: messageId }) as
     | { content: string }
     | null;
-  if (row === null) return null;
-  const flat = row.content.replace(/\s+/g, " ").trim();
-  return flat.length <= 80 ? flat : `${flat.slice(0, 79)}…`;
+  return row === null ? null : excerptOf(row.content);
 }
 
 /* ------------------------------------------------------------------ */
@@ -1265,6 +1271,47 @@ export function activePathDtos(db: Database, scene: SceneRow, limit?: number): M
       ),
     ),
   );
+}
+
+/**
+ * A scene's whole tree, flattened for the branch map (§20 phase 172).
+ *
+ * Every message, everywhere — not just the active path — because the map's
+ * whole point is showing the branches a reader swiped away from. Deliberately
+ * thin: no content, segments or media, so this stays cheap regardless of how
+ * long the scene has run, the same reasoning phase 62 gave the windowed log.
+ */
+export function sceneTree(db: Database, scene: SceneRow): SceneTreeDto {
+  const rows = db
+    .query("SELECT * FROM messages WHERE scene_id = $scene_id ORDER BY id")
+    .all({ scene_id: scene.id }) as MessageRow[];
+  const speakers = speakerLookup(db);
+  const colourById = new Map(
+    (db.query("SELECT id, colour FROM characters").all() as { id: number; colour: string | null }[]).map(
+      (row) => [row.id, row.colour],
+    ),
+  );
+  const ulidById = new Map(rows.map((row) => [row.id, row.ulid]));
+  const onActivePath = new Set(activePath(db, scene.id).map((row) => row.id));
+  const checkpointed = new Set(listCheckpoints(db, scene.id).map((row) => row.message_id));
+
+  const nodes: TreeNodeDto[] = rows.map((row) => ({
+    id: row.ulid,
+    parentId: row.parent_id === null ? null : (ulidById.get(row.parent_id) ?? null),
+    kind: row.kind,
+    authorType: row.author_type,
+    speakerName: row.character_id === null ? null : (speakers.nameById.get(row.character_id) ?? null),
+    speakerColour: row.character_id === null ? null : (colourById.get(row.character_id) ?? null),
+    preview: excerptOf(row.content),
+    createdAt: row.created_at,
+    isCheckpoint: checkpointed.has(row.id),
+    isOnActivePath: onActivePath.has(row.id),
+  }));
+
+  return {
+    nodes,
+    activeLeafId: scene.active_leaf_id === null ? null : (ulidById.get(scene.active_leaf_id) ?? null),
+  };
 }
 
 export function messageDto(db: Database, row: MessageRow, sceneUlid: string): MessageDto {

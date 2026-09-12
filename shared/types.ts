@@ -1517,6 +1517,35 @@ export interface CheckpointDto {
   createdAt: number;
 }
 
+/**
+ * One message as a node in the branch map (§20 phase 172).
+ *
+ * Deliberately thin — no `content`, no segments, no media — so reading a
+ * whole scene's shape costs nothing close to reading its prose. `preview` is
+ * the one piece of text, already flattened and cut server-side the same way
+ * a checkpoint's `excerpt` is.
+ */
+export interface TreeNodeDto {
+  id: string;
+  parentId: string | null;
+  kind: MessageKind;
+  authorType: MessageAuthorType;
+  speakerName: string | null;
+  /** The speaking character's colour (§20 phase 162), for tinting the node. */
+  speakerColour: string | null;
+  preview: string;
+  createdAt: number;
+  isCheckpoint: boolean;
+  /** Whether this node lies on the scene's current active path. */
+  isOnActivePath: boolean;
+}
+
+/** A scene's whole message tree, flattened (§20 phase 172). */
+export interface SceneTreeDto {
+  nodes: TreeNodeDto[];
+  activeLeafId: string | null;
+}
+
 export interface CreateSceneRequest {
   title?: string;
   presetId?: string | null;

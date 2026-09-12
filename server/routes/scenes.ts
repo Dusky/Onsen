@@ -35,6 +35,7 @@ import {
   updateScene,
   excerptOfMessage,
   saveDraft,
+  sceneTree,
   type MessageRow,
   type SceneRow,
 } from "../db/queries/history.ts";
@@ -824,6 +825,19 @@ export function sceneRoutes(
   /* -------------------------------------------------------------- */
   /* Messages                                                        */
   /* -------------------------------------------------------------- */
+
+  /**
+   * The scene's whole tree, flattened, for the branch map (§20 phase 172).
+   *
+   * Every message the scene has, not just the active path — the map's point
+   * is showing branches a reader swiped away from, which the windowed log and
+   * `activePathDtos` both deliberately omit.
+   */
+  app.get("/:sceneId/tree", (c) => {
+    const row = scene(c.req.param("sceneId"));
+    if (row === null) return c.json(notFound("scene"), 404);
+    return c.json(sceneTree(ctx.db, row));
+  });
 
   app.get("/:sceneId/messages", (c) => {
     const row = scene(c.req.param("sceneId"));

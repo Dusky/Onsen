@@ -87,6 +87,7 @@ import type {
   SceneDto,
   TurnScope,
   SceneWithHistoryDto,
+  SceneTreeDto,
   SetActiveLeafRequest,
   DossierDto,
   DossierProposalDto,
@@ -870,6 +871,21 @@ export function useDeleteCheckpoint(sceneId: string) {
   return useCheckpointMutation(sceneId, (checkpointId: string) =>
     api.delete<void>(`/scenes/${sceneId}/checkpoints/${checkpointId}`),
   );
+}
+
+/**
+ * The scene's whole tree, for the branch map (§20 phase 172).
+ *
+ * Gated on `enabled` — the map is the one screen that wants every branch a
+ * scene has ever grown, not just the active path, and there is no reason to
+ * carry that home on every visit to the chat screen that opens no map.
+ */
+export function useSceneTree(sceneId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["scenes", sceneId, "tree"],
+    queryFn: () => api.get<SceneTreeDto>(`/scenes/${sceneId}/tree`),
+    enabled,
+  });
 }
 
 /* ------------------------------------------------------------------ */

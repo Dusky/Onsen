@@ -7917,3 +7917,67 @@ form — and it predates this batch: these screens' own internal sizing is
 unchanged, only what wraps them is different. Left as found rather than
 chased, since fixing it would mean auditing internal height chains in two
 screens this batch never needed to touch.
+
+## Phase 172 — The branch map
+
+The third of four structural UI ideas. The message tree has been real since
+the schema's first version — `parent_id`, `scenes.active_leaf_id` — and
+nothing before this showed it as one. A swipe carousel answers "what else did
+this turn say"; a checkpoint list answers "what did I bookmark." Neither
+answers "what does the whole shape of this roleplay look like," which is what
+a branch or an old detour actually wants: a map, not another list.
+
+`GET /scenes/:sceneId/tree` (`server/db/queries/history.ts`'s `sceneTree`)
+reads every message the scene has, not just the active path — the map's whole
+point is showing branches a reader swiped away from — as a flat, deliberately
+thin `TreeNodeDto` list: no content, no segments, no media, so this stays
+cheap regardless of how long a scene has run, the same reasoning phase 62 gave
+the windowed log. `activePath()` and `listCheckpoints()` already existed and
+answer exactly the two questions the map needs (what's current, what's
+marked); this is their first caller outside the log itself.
+
+`client/components/BranchMap.tsx` draws it hand-rolled, per this session's own
+house style: no graph library, a plain SVG line and a positioned button
+already do the job. A node earns a dot only for a real reason — it is a root,
+has siblings (a fork), is a checkpoint, is a dead end, or is the scene's
+current leaf — and every run of ordinary single-parent, single-child messages
+between two such points collapses to one line carrying a turn count, so a
+long unbranched stretch draws as one segment rather than one dot per message.
+Clicking any node calls the same `PUT /scenes/:id/leaf` that swipe, rewind,
+and checkpoint restore already share, landing exactly on the node clicked
+rather than descending into whatever a branch went on to say — a dot on this
+map is a specific point, the same contract a checkpoint restore already
+keeps.
+
+Reachable three ways, as the plan asked: the palette (`branch-map`, scoped to
+an open scene), the `⋯ Tools` sheet beside Checkpoints and Stats, and a direct
+`Map` handle on the status bar. One click from any of them opens the same
+sheet.
+
+On a phone the diagram is the same SVG, not a simplified one — most scenes
+collapse to only a handful of significant points regardless of how long they
+run, so the common case fits without scrolling, and the rest scrolls
+horizontally inside the sheet rather than shrinking to illegibility.
+
+**Verified** in Chromium at 1600×950 and 390×844, in both themes, on a scene
+with a real fork and a named checkpoint: the fork, the checkpoint, and the
+current leaf each render as visually distinct dots (a checkpoint's amber ring
+independent of any speaker-colour fill, the active leaf a filled ring with its
+own `aria-label`); the collapsed run between them shows a turn-count badge
+that does not collide with either row's own label; clicking a past node moves
+the active leaf and the log reflects it on return; all three entry points
+open the same sheet; no console errors. Guard: `test/branchmap.test.ts`
+(18 tests). Full suite 1721 pass.
+
+### Surprises
+
+**The first badge placement collided with the very labels it sat between.**
+The turn-count label started life as plain text in the same column as the
+row labels, sized for a full sentence ("12 turns") in a gutter only 26px
+wide — nowhere near enough room, and the first screenshot showed it plainly
+overlapping the branch point's own description above it. Fixed by shrinking
+it to a compact `×N` badge on its own background, centred on the vertical
+midpoint between the two rows it joins — the one location neither row's own
+label band ever reaches — with the full sentence kept as a hover title rather
+than dropped. Caught by looking at the actual render, not by re-reading the
+layout math, which had looked fine on paper both times.

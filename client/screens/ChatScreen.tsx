@@ -493,6 +493,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       "guides": () => setGuidesOpen(true),
       "attach": () => document.querySelector<HTMLInputElement>('input[type="file"][accept="image/*"]')?.click(),
       "marks": () => setMarksOpen(true),
+      "branch-map": () => setBranchMapOpen(true),
       "setup": () => navigate({ name: "setup", sceneId }),
 
       /* go to */
@@ -510,6 +511,8 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const checkpoints = useCheckpoints(sceneId);
   const stats = useSceneStats(sceneId);
   const [statsOpen, setStatsOpen] = useState(false);
+  /** The branch map (§20 phase 172): every branch and checkpoint, at once. */
+  const [branchMapOpen, setBranchMapOpen] = useState(false);
   const illustrate = useIllustrate(sceneId);
   const speak = useSpeak(sceneId);
   const attach = useAttachImage(sceneId);
@@ -840,6 +843,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           tokens={scene.data?.scene.lastPromptTokens ?? null}
           contextSize={scene.data?.scene.contextSize ?? null}
           generating={isGenerating}
+          onOpenBranchMap={() => setBranchMapOpen(true)}
           onOpenPrompt={() => {
             preview.mutate({
               ...(nextSpeaker === null ? {} : { characterId: nextSpeaker.characterId }),
@@ -1058,6 +1062,12 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           setToolsOpen(false);
           setStatsOpen(true);
         }}
+        branchMapOpen={branchMapOpen}
+        onOpenBranchMap={() => {
+          setToolsOpen(false);
+          setBranchMapOpen(true);
+        }}
+        onCloseBranchMap={() => setBranchMapOpen(false)}
         guidesOpen={guidesOpen}
         contextTab={contextTab}
         onContextTab={setContextTab}
