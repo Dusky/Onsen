@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { BookMarked, Contact, Feather, ListChecks, Sigma, SlidersHorizontal, Users } from "lucide-react";
+import {
+  BookMarked,
+  Contact,
+  Feather,
+  ListChecks,
+  MessageSquareOff,
+  Sigma,
+  SlidersHorizontal,
+  Users,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type {
   AuthorDto,
@@ -48,16 +57,19 @@ import { EditorField } from "./EditorField.tsx";
 import { CastEditPane } from "./CastEditPane.tsx";
 
 /**
- * The seven panels the two rails can host, and the registry that makes any of
+ * The eight panels the two rails can host, and the registry that makes any of
  * them dockable to either side (§20 phase 173).
  *
  * Six of these were already pure functions of a scene id, written before this
  * batch existed — `PromptPanel` through `AuthorPane` below are relocated from
  * `LeftRail.tsx` and `RightRail.tsx` verbatim, not rewritten, because a panel
- * being movable does not change what it draws. The seventh, `scene`, is not a
- * component of its own: it is a slot, `ChatScreen` fills it with the scene's
- * own Context/Cast/You panes via `sceneInspector`, and `ScenePanel` here is
- * just that slot read back, wherever the reader has docked it.
+ * being movable does not change what it draws.
+ *
+ * The other two are not components of their own but slots `ChatScreen` fills
+ * with live scene state, read back here wherever the reader has docked them:
+ * `scene` with the Context/Cast/You panes, and `ooc` with the off-script
+ * exchange (§20 phase 177), which had been a modal until the report that a
+ * conversation held *while* reading does not belong over the log.
  */
 
 interface PanelMeta {
@@ -67,6 +79,15 @@ interface PanelMeta {
   /** The left rail's own header bar, when this panel is open there. */
   titleLabel: string;
   Component: (props: { sceneId: string | null }) => ReactNode;
+  /**
+   * This panel manages its own height, scrolling and padding, so the rail
+   * hands it the space and stays out of the way (§20 phase 177).
+   *
+   * Every other panel is a column of content the rail scrolls for it. `ooc` is
+   * the first that cannot be: its composer is pinned under a scrolling log, and
+   * a rail-level scroll container would scroll the composer off the bottom.
+   */
+  fills?: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -711,6 +732,24 @@ export function ScenePanel() {
 }
 
 /* ------------------------------------------------------------------ */
+/* Off script — the other slot ChatScreen fills                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The off-script exchange, wherever the reader has docked it (§20 phase 177).
+ *
+ * The same slot arrangement `scene` uses, and for the same reason: the channel
+ * needs the scene's live messages and the answer currently streaming, which
+ * only `ChatScreen` has. It was a modal before this — a bottom sheet at every
+ * width, then briefly a centred dialog — and neither was right for a
+ * conversation you hold *while* reading. A rail panel is.
+ */
+export function OocPanel() {
+  const oocPanel = useUiStore((state) => state.oocPanel);
+  return oocPanel ?? <p className="explain px-[16px] py-[14px]">{strings.ooc.noScene}</p>;
+}
+
+/* ------------------------------------------------------------------ */
 /* Characters — the library                                            */
 /* ------------------------------------------------------------------ */
 
@@ -1107,5 +1146,14 @@ export const PANEL_META: Record<DockPanel, PanelMeta> = {
     label: strings.rightRail.authors,
     titleLabel: strings.rightRail.authors,
     Component: AuthorPane,
+  },
+  ooc: {
+    // The same glyph the composer's own Off script op carries, so the op and
+    // the panel it now opens are visibly the same thing.
+    Icon: MessageSquareOff,
+    label: strings.ooc.title,
+    titleLabel: strings.ooc.title,
+    Component: OocPanel,
+    fills: true,
   },
 };

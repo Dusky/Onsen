@@ -24,6 +24,7 @@ import {
 } from "../lib/queries.ts";
 import { useGeneration } from "../lib/generation.ts";
 import { Composer } from "../components/Composer.tsx";
+import { OocExchange } from "../components/OocChannel.tsx";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
 import { StatusBar } from "../components/StatusBar.tsx";
 import { Deck } from "../components/Deck.tsx";
@@ -61,6 +62,7 @@ import {
   useAuthors,
   useUpdateScene,
   useConnectionProfiles,
+  useDock,
   useLayout,
   useInspector,
   usePreviewPrompt,
@@ -210,7 +212,13 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   // else about this screen is the same components at a different width.
   const isDesktop = useIsDesktop();
   const setSceneInspector = useUiStore((state) => state.setSceneInspector);
+  const setOocPanel = useUiStore((state) => state.setOocPanel);
   const setRightActive = useUiStore((state) => state.setRightActive);
+  const setLeftActive = useUiStore((state) => state.setLeftActive);
+  const setRightRailOpen = useUiStore((state) => state.setRightRailOpen);
+  const setLeftRailOpen = useUiStore((state) => state.setLeftRailOpen);
+  const vanished = useUiStore((state) => state.vanished);
+  const dock = useDock();
   // §5's held view. While another device has moved the head somewhere this one
   // is not, the log keeps showing what the reader was reading — the whole point
   // of the prompt is that the scene does not change under them, and a client
@@ -332,6 +340,50 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     if (oocAsked && !isGenerating) setOocAsked(false);
   }, [oocAsked, isGenerating]);
 
+  /**
+   * The one way into the off-script channel (§20 phase 177).
+   *
+   * On a desktop it is a rail panel, so opening it means selecting it in
+   * whichever rail hosts it and making sure that rail is open — the exchange
+   * sits beside the log instead of over it, which is what a conversation held
+   * *while* reading needs. Everywhere else it is still the sheet: a phone has
+   * no rails, vanish mode has deliberately hidden them, and a reader who has
+   * undocked the panel from both sides still has to be able to get in. A way
+   * in that depends on a preference is not a way in.
+   */
+  const openOoc = () => {
+    if (isDesktop && !vanished) {
+      if (dock.right.includes("ooc")) {
+        setRightActive("ooc");
+        setRightRailOpen(true);
+        return;
+      }
+      if (dock.left.includes("ooc")) {
+        setLeftActive("ooc");
+        setLeftRailOpen(true);
+        return;
+      }
+    }
+    setOocOpen(true);
+  };
+
+  /**
+   * Ask the author something out of character.
+   *
+   * Hoisted out of the sheet's props, because the rail panel and the sheet are
+   * two ways into the same exchange and a question asked through either has to
+   * start the same generation.
+   */
+  const startOoc = (question: string) => {
+    setOocAsked(true);
+    void generation.start({
+      sceneId,
+      sceneTitle: scene.data?.scene.title ?? "",
+      speaker: authorName,
+      ooc: { question },
+    });
+  };
+
   // Autopilot (SPEC §6). The loop outlives any one generation this client
   // watched, so its row is what says another turn is coming — and the turn it
   // starts is adopted into the same streaming row a locally-started one uses.
@@ -432,7 +484,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     setPaletteSeed,
     setToolsOpen,
     setGuidesOpen,
-    setOocOpen,
+    openOoc,
   });
 
   /**
@@ -488,7 +540,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       "steer": () => setOpsPanel("steer"),
       "impersonate": () => setOpsPanel("impersonate"),
       "guided-swipe": () => setOpsPanel("guided_swipe"),
-      "ooc": () => setOocOpen(true),
+      "ooc": openOoc,
       "no-reply": () => void generation.start(nextTurn()).then(() => setCued(null)),
       "guides": () => setGuidesOpen(true),
       "attach": () => document.querySelector<HTMLInputElement>('input[type="file"][accept="image/*"]')?.click(),
@@ -655,7 +707,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           onSelect={(id) => setSelectedId(id)}
           onRevert={(note) => revert.mutate(note.id)}
           runCommand={runCommand}
-          onOpenOoc={() => setOocOpen(true)}
+          onOpenOoc={openOoc}
           active={active}
           recastInFlight={recastInFlight}
           oocInFlight={oocInFlight}
@@ -891,12 +943,28 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     />
   );
 
-  // The scene panes render in the shell's global right rail, not here (§20
-  // phase 87). The node is refreshed every render so it always carries the
-  // live scene state, and cleared when the chat unmounts.
+  // The scene panes and the off-script exchange both render in the shell's
+  // rails, not here (§20 phases 87, 177). The nodes are refreshed every render
+  // so they always carry the live scene state — the streaming answer included,
+  // which is the whole reason the channel has to be a slot rather than a
+  // panel that fetches for itself — and cleared when the chat unmounts.
   useLayoutEffect(() => {
     setSceneInspector(isDesktop ? scenePane : null);
-    return () => setSceneInspector(null);
+    setOocPanel(
+      isDesktop ? (
+        <OocExchange
+          messages={messages.filter((message) => message.kind === "ooc")}
+          authorName={scene.data?.scene.authorName ?? null}
+          personaName={strings.ooc.reader}
+          pending={isGenerating && oocInFlight ? (active?.text ?? "") : null}
+          onSend={startOoc}
+        />
+      ) : null,
+    );
+    return () => {
+      setSceneInspector(null);
+      setOocPanel(null);
+    };
   });
 
   return (
@@ -1120,15 +1188,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         }}
         oocOpen={oocOpen}
         onCloseOoc={() => setOocOpen(false)}
-        onStartOoc={(question) => {
-          setOocAsked(true);
-          void generation.start({
-            sceneId,
-            sceneTitle: scene.data?.scene.title ?? "",
-            speaker: authorName,
-            ooc: { question },
-          });
-        }}
+        onStartOoc={startOoc}
         versionsFor={versionsFor}
         siblings={siblings.data ?? []}
         onSetLeaf={(messageId) => setLeaf.mutate({ messageId })}

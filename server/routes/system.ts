@@ -154,6 +154,7 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
     return readDock({
       left: parseList(getSetting(ctx.db, "dock_left")),
       right: parseList(getSetting(ctx.db, "dock_right")),
+      hidden: parseList(getSetting(ctx.db, "dock_hidden")),
       leftWidth: Number(getSetting(ctx.db, "dock_left_width") ?? DOCK_DEFAULTS.leftWidth),
       rightWidth: Number(getSetting(ctx.db, "dock_right_width") ?? DOCK_DEFAULTS.rightWidth),
     });
@@ -279,6 +280,7 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
     const next = readDock({ ...dock(), ...(value as Record<string, unknown>) });
     setSetting(ctx.db, "dock_left", JSON.stringify(next.left));
     setSetting(ctx.db, "dock_right", JSON.stringify(next.right));
+    setSetting(ctx.db, "dock_hidden", JSON.stringify(next.hidden));
     setSetting(ctx.db, "dock_left_width", String(next.leftWidth));
     setSetting(ctx.db, "dock_right_width", String(next.rightWidth));
     return true;

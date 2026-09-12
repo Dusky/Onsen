@@ -8246,3 +8246,103 @@ to copy the shape, which is the one nobody will write a test for.
 doc comment explaining what `OocChannel` used to contain — which quoted the
 classes — read as a use. The comment is written around the guard now and says
 so, because the alternative is a guard that cannot tell a mention from a use.
+
+## Phase 177 — Off script belongs beside the log, not over it
+
+The third shape this one window has taken in four phases, and the sequence is
+the lesson. It shipped as a bottom sheet at every width. Phase 174 fixed
+`Sheet` app-wide and this channel — having hand-rolled its own overlay — kept
+the bottom dock anyway. Phase 176 brought it through the shared shell, so it
+became a centred dialog. The report on that was that a dialog was not what was
+wanted either: *"the off-script chat should live in a side rail on desktop."*
+
+Which is right, and reading it makes the earlier two attempts look like the
+same mistake twice. The off-script exchange is a conversation held *while*
+reading — asking the author what it meant, without leaving the scene. A modal
+is the one shape that cannot do that, because a modal's whole job is to be the
+only thing you can attend to. Both previous fixes improved *where the modal
+sat*. Neither asked whether it should be one.
+
+**So it is a dock panel now**, the eighth, and phase 173's rail dock rework had
+already made that possible without knowing it: nothing in either rail
+special-cases `ooc`, so it can be moved to the other side, reordered, or
+hidden like any other panel.
+
+Three pieces, and only the first is about off script:
+
+- **`PanelMeta.fills`.** Every other panel is a column the rail scrolls for it.
+  This one pins a composer under a scrolling log, so a rail-level scroll
+  container would carry the composer off the bottom edge. `fills` tells the
+  rail to hand over the space and stay out of the way — no scroll wrapper, no
+  gutter.
+- **`OocExchange`**, split from `OocChannel`. The exchange is the part that has
+  never changed through any of this; what kept changing was the chrome around
+  it. The rail hosts the exchange directly, the phone's sheet wraps the same
+  component, so the two ways in cannot drift.
+- **A second slot**, `oocPanel`, beside `sceneInspector`. The exchange needs
+  the scene's live messages and the answer currently streaming, which only
+  `ChatScreen` has, so the rail reads a node the chat screen fills — exactly
+  the arrangement `scene` has used since phase 87.
+
+**One way in that always works.** `openOoc` selects the panel in whichever rail
+hosts it and opens that rail; everywhere there is no rail to use — a phone,
+vanish mode, or a reader who hid the panel from both sides — it falls back to
+the sheet. A way in that stops working because of a preference is not a way in.
+
+**Verified** by measuring, in Chromium at 1600×950 and 390×844, both themes,
+across eight arrangements: shipped default (right rail, composer on screen at
+847–893 of 950, still on screen after asking); the 260px width floor (composer
+227px, wraps under the log with Send beneath it); docked to the left rail
+instead; hidden from both rails (sheet); vanish mode (no rails at all, sheet);
+light theme; and a phone (sheet, bottom at 844 of 844, 16px top radius, one
+2px top border). A question asked in the rail posts and appears inline in the
+log. No page errors in any pass. 1791 tests, typecheck clean.
+
+### Surprises
+
+**A new panel could not reach anyone who had ever touched the dock.** The rail
+rendered three tabs against a `DOCK_DEFAULTS` naming four, because hiding was
+an *absence* — a panel named on neither side — and a stored preference
+therefore could not tell "the reader hid this" from "this did not exist yet".
+Every install that had ever saved a dock arrangement had a stored pair of lists
+that did not name `ooc`, so the new panel was indistinguishable from one that
+had been hidden on purpose.
+
+`DockDto` gains an explicit `hidden` list. A panel in none of the three lists
+is new to this reader and lands where the defaults put it; a panel in `hidden`
+stays hidden forever. It also matches the editor, which has offered Left /
+Right / Hidden as three equal choices since phase 173 — Hidden was always a
+decision, and now it is recorded. The cost is paid once: a reader who hid a
+panel before there was anywhere to write it down gets it back, and hiding it
+again sticks.
+
+This is the same class of bug as phase 175's `selectedOptions`, found the same
+way — by booting against the real `data/onsen.db` rather than by reasoning. The
+tests passed and the browser showed three tabs.
+
+**A guard claiming "one way in" passed while three existed.** `test/ooc-rail.
+test.ts` first asserted the two entry points it knew about, the palette command
+and the inline "open channel" link, and went green. The composer's own Off
+script op — the way almost everyone actually opens it — was still wired
+straight to the sheet in `useOps.tsx`. So the rail was built, shipped in the
+default, rendered its tab, and clicking the op raised the bottom sheet.
+
+Naming call sites could not have caught it, because the one that was wrong was
+the one nobody thought to name. Counting them can: the whole client may contain
+exactly one `setOocOpen(true)`, and it is the fallback inside `openOoc`. That
+is the second sweep-instead-of-assertion guard in two phases, for the same
+reason both times.
+
+**The right rail's tab row could never have held four tabs.** Three fit 352px;
+a fourth overflowed, and the dock editor has let a reader put all eight panels
+on one side since phase 173 — so this was already broken for an arrangement the
+app permitted. The row scrolls sideways now, and the selected tab scrolls
+itself into view, which matters because `openOoc` selects a tab *for* the
+reader: at a narrow width they would otherwise press a button and see nothing
+move.
+
+**Measuring found the geometry; only the screenshot found the colour.** Every
+box was right while the rail panel sat on the rail's own ground rather than the
+blue one — and the file's own doc comment states the rule it was breaking
+("everything in it is the author speaking as itself"). The blue is painted by
+`OocExchange` now, so whichever chrome hosts it, the rule holds.

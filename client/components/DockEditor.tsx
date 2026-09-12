@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { DOCK_DEFAULTS, DOCK_PANELS, DOCK_WIDTH_BOUNDS } from "@shared/types.ts";
+import { DOCK_DEFAULTS, DOCK_WIDTH_BOUNDS } from "@shared/types.ts";
 import type { DockDto, DockPanel } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { useDock, useSetPreferences } from "../lib/queries.ts";
@@ -64,9 +64,14 @@ function DockEditorSheet({ onClose }: { onClose(): void }) {
   function setSide(panel: DockPanel, next: Side) {
     const left = dock.left.filter((id) => id !== panel);
     const right = dock.right.filter((id) => id !== panel);
+    const hidden = dock.hidden.filter((id) => id !== panel);
     if (next === "left") left.push(panel);
     if (next === "right") right.push(panel);
-    set({ left, right });
+    // Hiding is written down rather than left as an absence (§20 phase 177):
+    // an absence cannot tell a panel the reader hid from one that shipped
+    // after they last opened this editor.
+    if (next === "hidden") hidden.push(panel);
+    set({ left, right, hidden });
   }
 
   function move(side: "left" | "right", panel: DockPanel, by: number) {
@@ -89,10 +94,7 @@ function DockEditorSheet({ onClose }: { onClose(): void }) {
     <Sheet title={strings.settings.dockTitle} onClose={onClose}>
       <div className="pt-[6px] pb-[14px]">
         {sections.map(({ side, label }) => {
-          const panels =
-            side === "hidden"
-              ? DOCK_PANELS.filter((id) => sideOf(dock, id) === "hidden")
-              : dock[side];
+          const panels = dock[side];
           return (
             <div key={side} className="mb-[18px]">
               <p className="section-label mb-[6px]">{label}</p>

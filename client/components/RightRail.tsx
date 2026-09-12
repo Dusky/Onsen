@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useRoute } from "../lib/router.ts";
 import { useDock } from "../lib/queries.ts";
 import { useUiStore } from "../state/ui.ts";
@@ -10,7 +11,7 @@ import { PANEL_META } from "./DockPanels.tsx";
  *
  * This file used to own three hardcoded tabs — In this scene, Characters,
  * Authors — and their icons. It now owns none of that: `useDock()` names
- * which of the seven panels live here, in what order, and how wide the panel
+ * which of the eight panels live here, in what order, and how wide the panel
  * is, and `PANEL_META` (`DockPanels.tsx`) supplies each one's icon, label and
  * body. What is left here is the rail's own chrome — the collapsed icon
  * strip, the open panel's tab row and close chevron — parameterised by
@@ -24,6 +25,21 @@ export function RightRail() {
   const storedActive = useUiStore((state) => state.rightActive);
   const setRightActive = useUiStore((state) => state.setRightActive);
   const sceneId = route.name === "chat" ? route.sceneId : null;
+  const activeTab = useRef<HTMLButtonElement | null>(null);
+
+  /*
+   * Keep the selected tab in view when something else selects it.
+   *
+   * The tab row scrolls sideways now, and a panel can be selected without
+   * being clicked — the composer's Off script op does exactly that, and at a
+   * narrow rail width the tab it selects can be off the right edge. The
+   * reader would press a button and see nothing move.
+   *
+   * `block: "nearest"` so this never scrolls the page itself, only the row.
+   */
+  useEffect(() => {
+    activeTab.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [storedActive]);
 
   const panels = dock.right;
   // A reader moved every panel to the left, or hid them all — no hollow
@@ -64,19 +80,27 @@ export function RightRail() {
     );
   }
 
-  const Active = PANEL_META[active].Component;
+  const meta = PANEL_META[active];
+  const Active = meta.Component;
 
   return (
     <aside className="flex flex-none flex-col border-l border-rule bg-bg-sunken" style={{ width: `${dock.rightWidth}px` }}>
       <div className="hairline flex flex-none items-center justify-between pr-[8px]">
-        <div className="flex min-w-0 items-stretch">
+        {/* The tab row scrolls sideways rather than wrapping or clipping. Three
+            tabs fit the shipped width; a fourth arrived with Off script in
+            phase 177, and the dock editor has allowed all eight on one side
+            since phase 173 — so this had to hold more than it was drawn for
+            either way. `shrink-0` on the tabs is what makes it scroll instead
+            of squeezing every label to nothing. */}
+        <div className="flex min-w-0 items-stretch overflow-x-auto">
           {panels.map((id) => (
             <button
               key={id}
               type="button"
+              ref={active === id ? activeTab : null}
               onClick={() => setRightActive(id)}
               aria-current={active === id ? "true" : undefined}
-              className="chrome flex min-h-[44px] items-center px-[12px] text-[12.5px]"
+              className="chrome flex min-h-[44px] shrink-0 items-center px-[12px] text-[12.5px] whitespace-nowrap"
               style={{
                 color: active === id ? "var(--onsen-color-text)" : "var(--onsen-color-text-dim)",
                 borderBottom: `2px solid ${active === id ? "var(--onsen-color-blue)" : "transparent"}`,
@@ -96,7 +120,10 @@ export function RightRail() {
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      {/* A panel that manages its own height gets the space and no scroll
+          container: `ooc`'s composer is pinned under a scrolling log, and a
+          rail-level scroll would carry the composer off the bottom edge. */}
+      <div className={meta.fills ? "min-h-0 flex-1" : "min-h-0 flex-1 overflow-y-auto"}>
         <Active sceneId={sceneId} />
       </div>
     </aside>

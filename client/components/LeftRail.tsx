@@ -10,7 +10,7 @@ import { PANEL_META } from "./DockPanels.tsx";
  *
  * This file used to own four hardcoded panels — Prompt, Preset, Lore,
  * Guides — and their icon strip. It now owns none of that: `useDock()` names
- * which of the seven panels (`shared/types.ts`'s `DockPanel`) live here, in
+ * which of the eight panels (`shared/types.ts`'s `DockPanel`) live here, in
  * what order, and how wide the panel is, and `PANEL_META` (`DockPanels.tsx`)
  * supplies each one's icon, label and body. What is left here is the rail's
  * own chrome — the collapsed icon strip, the open panel's header and close
@@ -86,7 +86,8 @@ export function LeftRail() {
     );
   }
 
-  const Active = PANEL_META[active].Component;
+  const meta = PANEL_META[active];
+  const Active = meta.Component;
 
   return (
     <nav className="flex flex-none border-r border-rule bg-bg-sunken">
@@ -145,7 +146,15 @@ export function LeftRail() {
             {"‹"}
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-[14px] pb-[16px]">
+        {/* A panel that manages its own height gets the space, no scroll
+            container and no gutter: `ooc`'s composer is pinned under a
+            scrolling log, and a rail-level scroll would carry it off the
+            bottom edge. */}
+        <div
+          className={
+            meta.fills ? "min-h-0 flex-1" : "min-h-0 flex-1 overflow-y-auto px-[14px] pb-[16px]"
+          }
+        >
           <Active sceneId={sceneId} />
         </div>
       </div>

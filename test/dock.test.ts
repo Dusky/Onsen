@@ -7,6 +7,7 @@ import {
   DOCK_WIDTH_BOUNDS,
   readDock,
 } from "@shared/types.ts";
+import type { DockPanel } from "@shared/types.ts";
 import {
   LEFT_PANEL_MIN_WIDTH,
   RIGHT_RAIL_MIN_WIDTH,
@@ -14,7 +15,7 @@ import {
 } from "../client/lib/breakpoint.ts";
 
 /**
- * The rail dock (§20 phase 173): any of the seven panels, on either rail, in
+ * The rail dock (§20 phase 173): any of the eight panels, on either rail, in
  * any order, at a width the reader sets.
  *
  * Mostly structural like the rest of this project's UI guards, but not
@@ -36,9 +37,18 @@ const EDITOR = readFileSync(join(ROOT, "client", "components", "DockEditor.tsx")
 const UI_STATE = readFileSync(join(ROOT, "client", "state", "ui.ts"), "utf8");
 
 describe("the default is what the app already was", () => {
-  test("today's exact arrangement, so nothing moves until somebody moves it", () => {
+  test("the arrangement the rails used to hardcode, plus off script", () => {
     expect(DOCK_DEFAULTS.left).toEqual(["prompt", "preset", "lore", "guides"]);
-    expect(DOCK_DEFAULTS.right).toEqual(["scene", "characters", "authors"]);
+    /*
+     * `ooc` is the one panel this default has ever gained, in phase 177, and
+     * the reason it is a default change rather than something a reader opts
+     * into: the shape it replaced was wrong, not merely customisable. The
+     * off-script channel was a modal docked to the bottom of the window at
+     * every width, and a conversation held *while* reading belongs beside the
+     * log. It joins the right rail because that is where the scene-scoped live
+     * panels already are, and a tab costs nothing until it is selected.
+     */
+    expect(DOCK_DEFAULTS.right).toEqual(["scene", "characters", "authors", "ooc"]);
     // The two widths the rails used to hardcode.
     expect(DOCK_DEFAULTS.leftWidth).toBe(326);
     expect(DOCK_DEFAULTS.rightWidth).toBe(352);
@@ -46,30 +56,82 @@ describe("the default is what the app already was", () => {
 
   test("every panel in the union has a registry entry to render", () => {
     // The union and the registry falling out of step would be a panel that
-    // can be docked and cannot be drawn.
+    // can be docked and cannot be drawn. Counted against the registry rather
+    // than a literal, so adding a panel cannot leave this test behind.
     for (const id of DOCK_PANELS) expect(PANELS).toContain(`  ${id}: {`);
-    expect(DOCK_PANELS.length).toBe(7);
+    const entries = [...PANELS.matchAll(/^  (\w+): \{$/gm)].map((match) => match[1]!);
+    expect(entries.sort()).toEqual([...DOCK_PANELS].sort());
+  });
+
+  test("every default is a panel the union actually names", () => {
+    // The other direction: a typo in a default list would hide a rail rather
+    // than fail anywhere, since `readDock` drops what it does not recognise.
+    for (const id of [...DOCK_DEFAULTS.left, ...DOCK_DEFAULTS.right]) {
+      expect(DOCK_PANELS).toContain(id);
+    }
   });
 });
 
 describe("readDock falls back per field rather than refusing the lot", () => {
+  /** Every panel accounted for, which is what the editor always writes. */
+  const complete = (left: DockPanel[], right: DockPanel[]) => ({
+    left,
+    right,
+    hidden: DOCK_PANELS.filter((id) => !left.includes(id) && !right.includes(id)),
+  });
+
   test("a panel named on both sides lands on exactly one", () => {
-    const dock = readDock({ left: ["prompt", "scene"], right: ["scene", "characters"] });
+    const dock = readDock(complete(["prompt", "scene"], ["scene", "characters"]));
+    // The right side wins it, so the left drops it — never drawn twice.
     expect(dock.left).toEqual(["prompt"]);
     expect(dock.right).toEqual(["scene", "characters"]);
+    expect(dock.left.filter((id) => dock.right.includes(id))).toEqual([]);
+  });
+
+  test("a panel on a side is never also hidden", () => {
+    // The same contradiction in the other pair of lists, resolved the less
+    // destructive way: a visible panel stays visible.
+    const dock = readDock({ left: ["prompt"], right: ["scene"], hidden: ["prompt", "authors"] });
+    expect(dock.left).toContain("prompt");
+    expect(dock.hidden).not.toContain("prompt");
+    expect(dock.hidden).toContain("authors");
   });
 
   test("an empty side stays empty — moving everything off a rail is a choice", () => {
     // The bug this pins: treating `[]` as "nothing was sent" and helpfully
     // restoring the default would make a deliberately emptied rail keep
-    // coming back.
-    expect(readDock({ left: [], right: ["scene"] }).left).toEqual([]);
+    // coming back. Stated with every panel accounted for, which is what the
+    // editor writes — an unaccounted panel is a different case, below.
+    const dock = readDock(complete([], ["scene"]));
+    expect(dock.left).toEqual([]);
+    expect(dock.right).toEqual(["scene"]);
   });
 
-  test("a panel named nowhere is hidden, not an error", () => {
-    const dock = readDock({ left: ["prompt"], right: ["scene"] });
-    const placed = [...dock.left, ...dock.right];
-    expect(placed).not.toContain("authors");
+  test("a panel hidden on purpose stays hidden", () => {
+    const dock = readDock(complete(["prompt"], ["scene"]));
+    expect([...dock.left, ...dock.right]).not.toContain("authors");
+    expect(dock.hidden).toContain("authors");
+  });
+
+  test("a panel accounted for nowhere is new, and lands where it belongs", () => {
+    /*
+     * The upgrade path, and the bug that made it worth a field (§20 phase
+     * 177). Hiding used to be an absence, so a stored preference could not
+     * tell "the reader hid this" from "this did not exist yet" — and when
+     * `ooc` shipped in `DOCK_DEFAULTS`, every install that had ever saved a
+     * dock preference had a stored pair of lists that did not name it. The
+     * rail rendered three tabs and the new panel reached nobody.
+     *
+     * Found by booting against the real database rather than by reasoning:
+     * the tests passed and the browser showed three tabs.
+     */
+    const dock = readDock({ left: ["prompt"], right: ["scene"], hidden: ["authors"] });
+    expect(dock.right).toContain("ooc");
+    expect(dock.left).toContain("preset");
+    expect(dock.hidden).toEqual(["authors"]);
+    // Everything is somewhere, which is the invariant that makes this work.
+    const placed = [...dock.left, ...dock.right, ...dock.hidden];
+    expect(placed.sort()).toEqual([...DOCK_PANELS].sort());
   });
 
   test("nonsense falls back to the default instead of throwing", () => {
