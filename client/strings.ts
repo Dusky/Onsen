@@ -1771,6 +1771,7 @@ export const strings = {
     back: "Back to scene",
     thinking: "Answering\u2026",
     reader: "You",
+    noScene: "Open a roleplay to ask its author something.",
   },
 
   dossiers: {

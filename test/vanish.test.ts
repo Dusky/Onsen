@@ -62,7 +62,28 @@ describe("what disappears", () => {
 
   test("nothing here gates the composer — vanish removes navigation chrome, not the ability to act", () => {
     expect(COMPOSER).not.toContain("vanished");
-    expect(CHAT_SCREEN).not.toContain("vanished");
+    /*
+     * The chat screen reads `vanished` in exactly one place, and it is the
+     * opposite of gating: phase 177 moved the off-script channel into a rail
+     * panel, so `openOoc` falls back to the sheet when the rails are gone —
+     * vanished, or on a phone, or undocked from both sides. A way in that
+     * stops working in a reading posture is not a way in.
+     *
+     * Asserted as a shape rather than an absence, because an absence stopped
+     * being true and the rule behind it did not: nothing this screen renders
+     * may take `vanished` as a prop or a disabled condition.
+     */
+    expect(CHAT_SCREEN).toContain("if (isDesktop && !vanished) {");
+    // Two lines: the store read, and that one condition. Counted by line
+    // rather than by occurrence, since the read names it twice.
+    const lines = CHAT_SCREEN.split("\n").filter((line) => /\bvanished\b/.test(line));
+    expect(lines).toHaveLength(2);
+    expect(CHAT_SCREEN).not.toMatch(/vanished\s*(\?|&&|\|\|)[^\n]*disabled/);
+    expect(CHAT_SCREEN).not.toMatch(/disabled[^\n]*\bvanished\b/);
+    // And the composer's own JSX names it nowhere.
+    const composerJsx = CHAT_SCREEN.match(/<Composer[\s\S]*?\n {6}\/>/);
+    expect(composerJsx).not.toBeNull();
+    expect(composerJsx![0]).not.toContain("vanished");
   });
 });
 

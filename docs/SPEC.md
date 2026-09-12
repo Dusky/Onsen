@@ -4012,6 +4012,16 @@ Each phase ends in a working, usable application.
     hid was the one nobody thought to name. See §7,
     `client/components/Sheet.tsx`.
 
+177. **Off script becomes a rail panel** — and the two fixes before it were the
+    same mistake twice: both improved where the modal sat, neither asked
+    whether it should be one. The off-script exchange is held *while* reading,
+    which is the one thing a modal cannot allow, so it is the eighth dock panel
+    — movable, reorderable and hideable like the rest — with the sheet kept as
+    the way in wherever there is no rail to use. `DockDto` gains an explicit
+    `hidden` list, because hiding as an absence meant a newly shipped panel
+    could not reach any install that had ever saved an arrangement. See §7,
+    §16, `client/components/OocChannel.tsx`.
+
 Settled while building phase 15.
 
 - **The desktop layout is phase 19, not a polish item.** The design is explicit

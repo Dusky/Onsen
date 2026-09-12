@@ -97,7 +97,15 @@ describe("the round trip", () => {
       reading: { scale: 1.2, measure: 860 },
       reader: { send: "modEnter", timestamps: true, media: "grid", notices: "bottomRight" },
       completionChime: true,
-      dock: { left: ["prompt", "scene"], right: ["characters"], leftWidth: 300 },
+      // Every panel accounted for, which is what the editor writes and what
+      // makes the round trip exact: an unaccounted panel is treated as new on
+      // the way back in and lands at its default (§20 phase 177).
+      dock: {
+        left: ["prompt", "scene"],
+        right: ["characters"],
+        hidden: ["preset", "lore", "guides", "authors", "ooc"],
+        leftWidth: 300,
+      },
     });
     const file = await exported(t);
 
@@ -124,10 +132,13 @@ describe("the round trip", () => {
     expect(after.reader.media).toBe("grid");
     expect(after.reader.notices).toBe("bottomRight");
     expect(after.completionChime).toBe(true);
-    // Including the panel that was moved, the one that was hidden by being
-    // named nowhere, and the width.
+    // Including the panel that was moved, the ones that were hidden, and the
+    // width.
     expect(after.dock.left).toEqual(["prompt", "scene"]);
     expect(after.dock.right).toEqual(["characters"]);
+    expect(after.dock.hidden.sort()).toEqual(
+      ["authors", "guides", "lore", "ooc", "preset"],
+    );
     expect(after.dock.leftWidth).toBe(300);
   });
 

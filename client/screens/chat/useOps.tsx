@@ -57,7 +57,9 @@ export interface OpsDeps {
   setPaletteSeed(seed: string): void;
   setToolsOpen(open: boolean): void;
   setGuidesOpen(open: boolean): void;
-  setOocOpen(open: boolean): void;
+  /** The one way into the off-script channel — a rail panel on a desktop,
+   *  the sheet everywhere else. `ChatScreen`'s `openOoc` decides which. */
+  openOoc(): void;
 }
 
 export function useOps(deps: OpsDeps) {
@@ -93,7 +95,7 @@ export function useOps(deps: OpsDeps) {
     setPaletteSeed,
     setToolsOpen,
     setGuidesOpen,
-    setOocOpen,
+    openOoc,
   } = deps;
 
   const [opWorking, setOpWorking] = useState(false);
@@ -290,7 +292,7 @@ export function useOps(deps: OpsDeps) {
       tone: "blue",
       onPress: () => {
         setOpsPanel(null);
-        setOocOpen(true);
+        openOoc();
       },
     },
     {

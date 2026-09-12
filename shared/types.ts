@@ -2113,11 +2113,19 @@ export function presetOf(layout: Omit<LayoutDto, "preset">): LayoutDto["preset"]
  * A panel either rail can host.
  *
  * Six of these are pure functions of a scene id, self-explaining with no
- * roleplay open. `scene` is the seventh — not a component of its own, a slot
- * `ChatScreen` fills with the scene's own Context/Cast/You panes — and it
- * docks the same as the rest.
+ * roleplay open. The other two are slots `ChatScreen` fills with live scene
+ * state — `scene` with the Context/Cast/You panes, `ooc` with the off-script
+ * exchange (§20 phase 177) — and both dock the same as the rest.
  */
-export type DockPanel = "prompt" | "preset" | "lore" | "guides" | "scene" | "characters" | "authors";
+export type DockPanel =
+  | "prompt"
+  | "preset"
+  | "lore"
+  | "guides"
+  | "scene"
+  | "characters"
+  | "authors"
+  | "ooc";
 
 export const DOCK_PANELS: readonly DockPanel[] = [
   "prompt",
@@ -2127,6 +2135,7 @@ export const DOCK_PANELS: readonly DockPanel[] = [
   "scene",
   "characters",
   "authors",
+  "ooc",
 ];
 
 /**
@@ -2142,13 +2151,37 @@ export const DOCK_PANELS: readonly DockPanel[] = [
 export interface DockDto {
   left: DockPanel[];
   right: DockPanel[];
+  /**
+   * Panels the reader has actually chosen to hide (§20 phase 177).
+   *
+   * Hiding used to be an *absence* — a panel named on neither side. That read
+   * correctly and upgraded wrongly: when `ooc` shipped, every install that had
+   * ever saved a dock preference had a stored pair of lists that did not name
+   * it, so a panel added to `DOCK_DEFAULTS` reached fresh installs only. The
+   * stored preference could not tell "the reader hid this" from "this did not
+   * exist yet", because absence meant both.
+   *
+   * Writing the decision down separates them: a panel in none of the three
+   * lists is new to this reader and lands wherever `DOCK_DEFAULTS` puts it.
+   * It also matches the editor, which has offered Left / Right / Hidden as
+   * three equal choices since phase 173 — Hidden was always a decision, and
+   * this is it recorded.
+   */
+  hidden: DockPanel[];
   leftWidth: number;
   rightWidth: number;
 }
 
 export const DOCK_DEFAULTS: DockDto = {
   left: ["prompt", "preset", "lore", "guides"],
-  right: ["scene", "characters", "authors"],
+  // Off script joins the right rail as a fourth tab (§20 phase 177). It is the
+  // one default this preference has ever changed, and the reason is that the
+  // shape it replaced was wrong rather than merely customisable: the channel
+  // was a modal docked to the bottom of the window. The right rail is where
+  // the scene-scoped live panels already are, and a tab costs nothing until
+  // it is the selected one.
+  right: ["scene", "characters", "authors", "ooc"],
+  hidden: [],
   leftWidth: 326,
   rightWidth: 352,
 };
@@ -2167,8 +2200,15 @@ export const DOCK_WIDTH_BOUNDS: readonly [number, number] = [260, 480];
  *
  * A panel named on both sides is a contradiction, not a feature: the right
  * side wins and the left drops it, so the result is never a panel drawn
- * twice. A panel that appears nowhere is simply hidden, which is a valid and
- * expected state, not an error to correct.
+ * twice. A panel named on a side is not hidden, whatever `hidden` says — a
+ * visible panel is the less destructive reading of a contradiction.
+ *
+ * A panel named in none of the three lists is one this reader has never had a
+ * say about, so it lands where `DOCK_DEFAULTS` puts it (§20 phase 177). That
+ * is what makes shipping a new panel reach an existing install at all; the
+ * cost is paid once, when `hidden` is introduced, by a reader who had hidden
+ * something before there was anywhere to record it — it comes back, and goes
+ * away again for good on the next hide.
  */
 export function readDock(input: Partial<Record<keyof DockDto, unknown>>): DockDto {
   // Empty is a valid list — a reader may move every panel off one side —
@@ -2179,6 +2219,17 @@ export function readDock(input: Partial<Record<keyof DockDto, unknown>>): DockDt
   const rawLeft = isPanelList(input.left) ? [...new Set(input.left)] : DOCK_DEFAULTS.left;
   const right = isPanelList(input.right) ? [...new Set(input.right)] : DOCK_DEFAULTS.right;
   const left = rawLeft.filter((panel) => !right.includes(panel));
+  const rawHidden = isPanelList(input.hidden) ? [...new Set(input.hidden)] : DOCK_DEFAULTS.hidden;
+  const hidden = rawHidden.filter((panel) => !left.includes(panel) && !right.includes(panel));
+
+  // Panels this reader has never placed: new since they last touched the dock,
+  // so they arrive where the app intends rather than silently nowhere.
+  for (const panel of DOCK_PANELS) {
+    if (left.includes(panel) || right.includes(panel) || hidden.includes(panel)) continue;
+    if (DOCK_DEFAULTS.left.includes(panel)) left.push(panel);
+    else if (DOCK_DEFAULTS.right.includes(panel)) right.push(panel);
+    else hidden.push(panel);
+  }
 
   const clampWidth = (value: unknown, fallback: number): number => {
     const raw = typeof value === "number" && Number.isFinite(value) ? value : fallback;
@@ -2189,6 +2240,7 @@ export function readDock(input: Partial<Record<keyof DockDto, unknown>>): DockDt
   return {
     left,
     right,
+    hidden,
     leftWidth: clampWidth(input.leftWidth, DOCK_DEFAULTS.leftWidth),
     rightWidth: clampWidth(input.rightWidth, DOCK_DEFAULTS.rightWidth),
   };

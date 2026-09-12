@@ -28,6 +28,15 @@ interface UiState {
   /** The chat's scene-scoped panes, set while a scene is open. */
   sceneInspector: ReactNode | null;
   /**
+   * The off-script exchange, set while a scene is open (§20 phase 177).
+   *
+   * A second slot rather than a component, for `sceneInspector`'s own reason:
+   * the channel needs the scene's live messages and the streaming answer, and
+   * the rail lives at the shell level on every page. On a phone it stays the
+   * bottom sheet and this is null.
+   */
+  oocPanel: ReactNode | null;
+  /**
    * Vanish mode (§20 phase 170): both rails and the header/top bar gone,
    * down to bare log. A reading posture, not a preference — it resets on
    * reload the same way the rails' own open/closed state already does,
@@ -44,6 +53,7 @@ interface UiState {
   setLeftActive(panel: DockPanel): void;
   setRightActive(panel: DockPanel): void;
   setSceneInspector(node: ReactNode | null): void;
+  setOocPanel(node: ReactNode | null): void;
   toggleVanished(): void;
 }
 
@@ -53,6 +63,7 @@ export const useUiStore = create<UiState>((set) => ({
   leftActive: "prompt",
   rightActive: "scene",
   sceneInspector: null,
+  oocPanel: null,
   vanished: false,
   toggleLeftRail: () => set((state) => ({ leftRailOpen: !state.leftRailOpen })),
   toggleRightRail: () => set((state) => ({ rightRailOpen: !state.rightRailOpen })),
@@ -61,5 +72,6 @@ export const useUiStore = create<UiState>((set) => ({
   setLeftActive: (panel) => set({ leftActive: panel }),
   setRightActive: (panel) => set({ rightActive: panel }),
   setSceneInspector: (node) => set({ sceneInspector: node }),
+  setOocPanel: (node) => set({ oocPanel: node }),
   toggleVanished: () => set((state) => ({ vanished: !state.vanished })),
 }));
