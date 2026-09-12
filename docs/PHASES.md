@@ -8071,3 +8071,45 @@ inside that gutter instead of flush to the rail edge. Cosmetic, only
 reachable by customising, and fixing it properly means auditing six panels'
 internal padding — left as found and named here rather than quietly shipped.
 
+
+## Phase 174 — A sheet is a dialog on a desktop
+
+Not planned. It came from someone using phase 172's branch map on a desktop
+and saying so: *"the popups that come from the bottom? Awful on desktop. I
+hate them."* `Sheet` — the app's one modal primitive, 56 usages across 32
+files plus every `useConfirm()` question — shipped bottom-anchored at every
+width. A bottom sheet is the right gesture where a thumb is doing the
+reaching, and a phone shape stretched across a 1600px screen, sliding up
+from the edge furthest from where a mouse-and-keyboard reader is looking, is
+not.
+
+Fixed in `Sheet` itself rather than per caller, which is why Checkpoints,
+Stats, the versions list, every confirmation and the new dock editor are all
+fixed by it too. On a desktop it renders top-anchored and horizontally
+centred with a plain square border and no radius — which is what
+`CommandPalette`, the app's other modal, already does, so this is the second
+caller of an existing treatment rather than a third treatment. The phone
+keeps the bottom sheet, its rounded top corners and its safe-area
+allowance.
+
+**Verified** in Chromium by measuring the dialog rather than trusting the
+screenshot: at 1600×950 it sits at top 64, centred (left 440 of a 720 column
+in a 1600 viewport), square (radius 0), bordered on all four sides, and as
+tall as its content (138px for the branch map, 213px for Checkpoints). At
+390×844 it is unchanged — top 608, flush to the bottom edge, full width,
+16px top corners, one top border. Guard: three cases in
+`test/dock.test.ts`.
+
+### Surprises
+
+**Two real bugs, both found by measuring and neither visible in the first
+screenshot.** The desktop dialog ran the full height of the window: a row
+flex stretches its children on the cross axis by default, so the dialog was
+886px tall and glued to the bottom edge — the exact complaint, in a
+different way. `items-start` fixed it. And its top border was missing:
+React writes a style key whose value is `undefined` as an empty string,
+which *removes* that longhand, so pairing `border` with `borderTop:
+undefined` expanded the shorthand and then cleared the top edge. The dialog
+had three borders and an open top, at 1px, in a dim theme — invisible until
+`getComputedStyle` said `borderTopWidth: 0px`. Fixed by spreading a
+per-branch object so the key is absent rather than undefined.
