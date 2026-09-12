@@ -72,6 +72,7 @@ import selfResponses from "./0071_self_responses.sql" with { type: "text" };
 import characterColour from "./0072_character_colour.sql" with { type: "text" };
 import sceneDraft from "./0073_scene_draft.sql" with { type: "text" };
 import promptPrecedence from "./0074_prompt_precedence.sql" with { type: "text" };
+import characterGroups from "./0075_character_groups.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -161,4 +162,5 @@ export const migrations: readonly Migration[] = [
   { version: 72, name: "character_colour", sql: characterColour },
   { version: 73, name: "scene_draft", sql: sceneDraft },
   { version: 74, name: "prompt_behaviour", sql: promptPrecedence },
+  { version: 75, name: "character_groups", sql: characterGroups },
 ];

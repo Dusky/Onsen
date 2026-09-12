@@ -4022,6 +4022,14 @@ Each phase ends in a working, usable application.
     could not reach any install that had ever saved an arrangement. See §7,
     §16, `client/components/OocChannel.tsx`.
 
+178. **Character groups** — a recurring cast as a thing you can name, so
+    starting a roleplay with it is one tap instead of a picker session. A
+    group is a roster of characters plus an optional lorebook; the library
+    gets a Cast groups sheet to organise them, and Start turns the roster
+    into a scene — the cast in display order, the lorebook bound at scene
+    scope, the first member's greeting opening it. See §9,
+    `server/routes/groups.ts`, `client/components/GroupsSheet.tsx`.
+
 Settled while building phase 15.
 
 - **The desktop layout is phase 19, not a polish item.** The design is explicit

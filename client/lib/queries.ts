@@ -72,6 +72,7 @@ import type {
   UpdateProviderRequest,
   UpdateTaskRequest,
   CharacterDto,
+  CharacterGroupDto,
   PersonaDto,
   SceneSetupRequest,
   UpdateAuthorRequest,
@@ -124,6 +125,7 @@ export const keys = {
     ["scenes", sceneId, "messages", messageId, "siblings"] as const,
   autopilot: (sceneId: string) => ["scenes", sceneId, "autopilot"] as const,
   update: ["update"] as const,
+  groups: ["character-groups"] as const,
 };
 
 /** The connection profiles, for anything that routes an operation (§6, §13). */
@@ -3049,5 +3051,70 @@ export function useAttachImage(sceneId: string) {
       return { asset: body.asset!, captionError: body.captionError ?? null };
     },
     onSuccess: () => void client.invalidateQueries({ queryKey: keys.scene(sceneId) }),
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Character groups (SPEC §9, §20 phase 158)                           */
+/* ------------------------------------------------------------------ */
+
+export function useCharacterGroups() {
+  return useQuery({
+    queryKey: keys.groups,
+    queryFn: () => api.get<CharacterGroupDto[]>("/character-groups"),
+  });
+}
+
+function useGroupsMutation<TArgs, TResult>(
+  mutationFn: (args: TArgs) => Promise<TResult>,
+) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn,
+    onSuccess: () => void client.invalidateQueries({ queryKey: keys.groups }),
+  });
+}
+
+export function useCreateCharacterGroup() {
+  return useGroupsMutation((body: { name: string; lorebookId?: string | null }) =>
+    api.post<CharacterGroupDto>("/character-groups", body),
+  );
+}
+
+export function useUpdateCharacterGroup() {
+  return useGroupsMutation(
+    (args: { id: string; name?: string; lorebookId?: string | null }) =>
+      api.patch<CharacterGroupDto>(`/character-groups/${args.id}`, args),
+  );
+}
+
+export function useDeleteCharacterGroup() {
+  return useGroupsMutation((id: string) =>
+    api.delete<{ ok: boolean }>(`/character-groups/${id}`),
+  );
+}
+
+export function useAddGroupMember() {
+  return useGroupsMutation(
+    (args: { id: string; characterId: string }) =>
+      api.put<CharacterGroupDto>(`/character-groups/${args.id}/characters/${args.characterId}`),
+  );
+}
+
+export function useRemoveGroupMember() {
+  return useGroupsMutation(
+    (args: { id: string; characterId: string }) =>
+      api.delete<CharacterGroupDto>(`/character-groups/${args.id}/characters/${args.characterId}`),
+  );
+}
+
+export function useStartRoleplayFromGroup() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post<SceneDto>(`/character-groups/${id}/start`),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: keys.scenes });
+      void client.invalidateQueries({ queryKey: keys.groups });
+    },
   });
 }

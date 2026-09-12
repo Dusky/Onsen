@@ -8346,3 +8346,55 @@ box was right while the rail panel sat on the rail's own ground rather than the
 blue one — and the file's own doc comment states the rule it was breaking
 ("everything in it is the author speaking as itself"). The blue is painted by
 `OocExchange` now, so whichever chrome hosts it, the rule holds.
+
+## Phase 178 — Character groups
+
+A recurring cast is a thing worth naming. The reader who plays the same five
+characters across a dozen roleplays was re-picking them every time — five taps
+through a character picker, then the lorebook in setup. The app had folders for
+the library and tags for the roleplays, and nothing that said "these go
+together."
+
+**A group is a roster plus a setting.** `character_groups` holds a name and an
+optional lorebook; `character_group_members` holds the ordered membership. Two
+tables rather than a JSON column because membership is what both the editor and
+the roleplay-starter walk, so it earns a table.
+
+Three pieces:
+
+- **The schema** (migration 0075). A group survives a character being deleted —
+  membership cascades off, the roster itself stays. The lorebook reference is
+  `SET NULL` for the same reason: losing a book should not lose the roster.
+- **The endpoints** (`server/routes/groups.ts`). List, create, rename, set the
+  lorebook, add and remove members — and `start`, which turns the roster into a
+  scene in one request: insert the scene under the group's name, add the cast
+  in display order, seed the first member's greeting, and bind the lorebook at
+  scene scope. The whole point of the feature is that last route.
+- **The sheet** (`client/components/GroupsSheet.tsx`), opened from the Cast
+  library header. The list is the organisation half; each row's Start button is
+  the quick-creation half. The editor renames, picks a lorebook, and adds or
+  removes members through a searchable library picker.
+
+**Start goes to the chat, not the setup.** The scene opens on the first member's
+greeting — a whole roleplay is already there to read — so the reader lands in
+it, and setup is one tap away if they want it.
+
+**Verified** by the group API tests — create, rename, membership, the lorebook
+round-trip, and the start route producing a scene whose cast order matches the
+roster and whose lorebook is bound at scene scope. The empty-roster start is
+refused rather than making a scene that cannot open. 1795 tests, typecheck
+clean.
+
+### Surprises
+
+**The voice guard caught the feature explaining itself.** The first draft put a
+"Start turns the roster into a roleplay…" hint at the bottom of the list, and
+`test/voice.test.ts` — which caps explanatory strings at 45 and demands each
+earn its place — failed. The hint was the wrong fix for the ambiguity it was
+answering: the row already shows the member count and the lorebook, and the
+button says Start. The hint is gone; the sheet is no worse for it.
+
+**`SceneDto` already carried everything `start` needed.** The cast, the title,
+the greeting — no new mapper, just `insertScene` + `addSceneMember` +
+`seedGreeting` + `bind`, all of which the cast-picker route already composed for
+a scene that exists. The new work was a roster the picker could reuse.

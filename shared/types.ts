@@ -2920,6 +2920,35 @@ export interface CardTokenCosts {
   estimated: boolean;
 }
 
+/**
+ * A member of a character group (§20 phase 158).
+ *
+ * The compact view a group row and the editor both render: enough to name and
+ * picture the member, not the whole card — a group is a roster, not a library.
+ */
+export interface CharacterGroupMemberDto {
+  characterId: string;
+  name: string;
+  hasAvatar: boolean;
+}
+
+/**
+ * A named cast for quick roleplay creation (SPEC §9, §20 phase 158).
+ *
+ * Characters, and optionally the lorebook their scenes open into. "Start"
+ * turns the whole thing into a scene: the cast in display order plus the book
+ * bound at scene scope.
+ */
+export interface CharacterGroupDto {
+  id: string;
+  name: string;
+  lorebookId: string | null;
+  lorebookName: string | null;
+  members: CharacterGroupMemberDto[];
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface CharacterDto {
   id: string;
   name: string;
