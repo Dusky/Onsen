@@ -2026,6 +2026,9 @@ export const strings = {
     authors: "Authors",
     lorebooks: "Lorebooks",
     backgrounds: "Backdrops",
+    /** Not a TopBar destination — reached from scene setup — but still named,
+     * for the overlay's accessible label (§20 phase 171). */
+    personas: "Personas",
     /** The overflow menu for destinations that do not fit a phone's bar. */
     more: "More",
     /** A roleplay in the recent list that is generating right now (§5). */

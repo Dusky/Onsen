@@ -14,7 +14,7 @@ import { LoreScreen } from "./screens/LoreScreen.tsx";
 import { BackgroundsScreen } from "./screens/BackgroundsScreen.tsx";
 import { api } from "./lib/api.ts";
 import { strings } from "./strings.ts";
-import { useRoute } from "./lib/router.ts";
+import { navigate, useShellRoute, type Route } from "./lib/router.ts";
 import { useAutoCollapseRails, useIsDesktop } from "./lib/breakpoint.ts";
 import { LeftRail } from "./components/LeftRail.tsx";
 import { TopBar } from "./components/TopBar.tsx";
@@ -25,6 +25,7 @@ import { setChimeWanted, unlockAudio } from "./lib/chime.ts";
 import { usePreferences, useReader, useReading } from "./lib/queries.ts";
 import { useMotionPreference, useReadingVariables, useViewportHeight } from "./lib/viewport.ts";
 import { NoticeRegion } from "./components/NoticeRegion.tsx";
+import { RouteOverlay } from "./components/RouteOverlay.tsx";
 import { useUiStore } from "./state/ui.ts";
 import type { BootstrapDto } from "@shared/types.ts";
 
@@ -198,6 +199,9 @@ function Shell() {
   // showing, on both layouts: a reader who wandered off gets one way back
   // wherever they wandered to (SPEC §5, design §403). It lives in the top bar
   // now, beside the destinations (§20 phase 80).
+  const { base, overlay } = useShellRoute();
+  const overlayLabel = overlay === null ? "" : overlayLabelFor(overlay);
+
   if (!isDesktop) {
     return (
       <div className="relative screen-height">
@@ -207,8 +211,27 @@ function Shell() {
               top bar's ~44px, which is worth having and not worth special-
               casing away just because it is the smaller half of the win. */}
           {vanished ? null : <TopBar />}
-          <div className="flex min-h-0 flex-1 flex-col">
-            <Routed />
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            {/* `hidden`, not unmounted — `MessageBlock.tsx`'s own convention
+                for the same shape: kept alive underneath, just not painted.
+                Needed for more than the obvious reason. This app's surface
+                tokens (`bg-bg` included) are deliberately translucent, so the
+                shared `<Background/>` artwork shows through every screen —
+                fine when only one screen is ever in the stack. Stacked on
+                top of a *second*, fully rendered screen instead of just that
+                artwork, the same translucency let the base screen's own text
+                bleed through legibly behind the overlay. Hiding it rather
+                than fighting the theme's opacity is also the more honest fix:
+                it holds for every theme, translucent or not, without this
+                needing to know which. */}
+            <div hidden={overlay !== null}>
+              <Routed route={base} />
+            </div>
+            {overlay === null ? null : (
+              <RouteOverlay label={overlayLabel} onClose={() => navigate(base)}>
+                <Routed route={overlay} />
+              </RouteOverlay>
+            )}
           </div>
         </div>
         {/* Above every screen on both layouts, mounted once: the live regions
@@ -225,8 +248,20 @@ function Shell() {
         {vanished ? null : <LeftRail />}
         <div className="flex min-w-0 flex-1 flex-col">
           {vanished ? null : <Header />}
-          <div className="flex min-h-0 flex-1 flex-col">
-            <Routed />
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            {/* `hidden`, not unmounted — see the same wrapper on the phone
+                branch for why: this app's surface tokens are deliberately
+                translucent for the shared `<Background/>` artwork, and left
+                visible the base screen's own text bled through legibly
+                behind an opaque-looking overlay stacked on top of it. */}
+            <div hidden={overlay !== null}>
+              <Routed route={base} />
+            </div>
+            {overlay === null ? null : (
+              <RouteOverlay label={overlayLabel} onClose={() => navigate(base)}>
+                <Routed route={overlay} />
+              </RouteOverlay>
+            )}
           </div>
         </div>
         {vanished ? null : <RightRail />}
@@ -235,6 +270,43 @@ function Shell() {
       {vanished ? <VanishHandle onRestore={toggleVanished} /> : null}
     </div>
   );
+}
+
+/**
+ * The dialog's accessible name (§20 phase 171).
+ *
+ * Each overlay screen already renders its own visible heading, but a
+ * `role="dialog"` should still name itself for anyone not reading that
+ * heading visually. Reuses `strings.nav`'s existing destination labels rather
+ * than inventing a second set of names for the same screens.
+ */
+function overlayLabelFor(route: Route): string {
+  switch (route.name) {
+    case "characters":
+    case "character":
+      return strings.nav.characters;
+    case "authors":
+    case "author":
+      return strings.nav.authors;
+    case "personas":
+      return strings.nav.personas;
+    case "setup":
+      return strings.sceneSetup.kicker;
+    case "settings":
+      return strings.nav.settings;
+    case "lorebooks":
+    case "lorebook":
+      return strings.nav.lorebooks;
+    case "backgrounds":
+      return strings.nav.backgrounds;
+    case "scenes":
+    case "chat":
+    case "unknown":
+      // Never reached — these are the base routes `RouteOverlay` is never
+      // rendered for — but exhaustive rather than a default that could
+      // silently swallow a route added here later without a label.
+      return "";
+  }
 }
 
 /**
@@ -268,8 +340,15 @@ function VanishHandle({ onRestore }: { onRestore(): void }) {
   );
 }
 
-function Routed() {
-  const route = useRoute();
+/**
+ * One screen for one route (§20 phase 171).
+ *
+ * Took `route` as a parameter rather than reading `useRoute()` itself once
+ * `Shell` needed to call this twice in the same render — once for the
+ * persistent base, once for whatever is layered on top of it as an overlay.
+ * The switch itself is unchanged; only where the route comes from moved.
+ */
+function Routed({ route }: { route: Route }) {
   switch (route.name) {
     case "chat":
       return <ChatScreen sceneId={route.sceneId} />;

@@ -7850,3 +7850,70 @@ something else. A single isolated floating button has no row to spend it on:
 measured in a browser, `.tap` by itself rendered it a 6px × 24px sliver rather
 than a square. An explicit 44px fixed it; screenshots alone would not have
 caught this either — the button was there, just barely there.
+
+## Phase 171 — Settings lives over the chat, not instead of it
+
+The second of four structural UI ideas from the same conversation as vanish
+mode. `Routed()` was a flat switch: navigating to Settings — or Characters, or
+a lorebook, or scene setup — fully unmounted whatever was showing. Nothing
+about that was inherent. The rails and header already stay mounted across
+every navigation; only the routed content itself was ever torn down.
+
+Two screens are the base a reader actually lives in: the scene list and an
+open scene. Everything else is a destination you visit *from* one of those and
+mean to come back to. `useShellRoute()` (`client/lib/router.ts`) renders that
+split without touching `Route` itself — parsing, `pathFor`, every existing
+`navigate()` call site are untouched, because only *rendering* changes. The
+base renders unconditionally; whatever is not one of the two base names
+layers on top of it via a new `RouteOverlay`, which reuses `Sheet`'s own
+keyboard obligations (`useModalFocus`: focus in, Tab trapped, Escape closing
+only the topmost, focus back on close) at content-area size rather than
+`Sheet`'s bottom-anchored, full-viewport shape.
+
+It fills exactly the box `<Routed/>` normally occupies — `absolute inset-0`
+against the shell's own wrapper, not `fixed inset-0` — so the rails and header
+stay visible and reachable at every edge the whole time an overlay is open.
+Back/forward composes for free: `navigate()` still does a plain `pushState`,
+so Back from a character editor lands on the characters list, Back again
+lands on the base scene, an ordinary browsable stack with nothing rewritten.
+
+**Verified** in Chromium at 1600×950 and 390×844, in both themes: a composer
+draft and scroll position survive opening and closing Settings; navigating
+between two different overlay routes (Settings → Characters) swaps the one
+overlay rather than stacking a second; Escape returns to the correct base;
+a fresh deep-link straight to `/settings` falls back to the scene list
+underneath rather than crashing; every other overlay screen (Authors, a
+character editor, scene setup, lorebooks, backdrops, personas) measured its
+own height correctly against its container rather than the viewport. Guard:
+`test/overlay.test.ts`. Full suite 1703 pass.
+
+### Surprises
+
+**This app's surface tokens are deliberately translucent, and that became a
+real bug the instant two screens stacked.** `--onsen-color-bg` and its
+siblings let the shared `<Background/>` artwork bleed through every screen —
+by design, and harmless while only one screen was ever in the paint order.
+Stacked on top of a *second*, fully rendered screen instead of just that
+artwork, the same translucency made the base screen's own text legible behind
+an overlay that looked, from the source, like it should have been opaque.
+Found by looking at a screenshot, not by reading the CSS. Fixed by hiding the
+base screen (`hidden`, the same convention `MessageBlock.tsx` already uses for
+a still-mounted element that should not paint) rather than by hunting for an
+opaque override — the fix holds for every theme, translucent or not, without
+needing to know which.
+
+**Selecting the whole store from `Shell` had already taught this lesson once,
+this phase.** No new instance of it here, but the `RouteOverlay` component
+itself takes no store subscription at all — `onClose` is a plain closure over
+`base`, passed down rather than read from a hook inside the overlay — precisely
+because phase 170 had just shown what an ancestor-of-`ChatScreen` subscribing
+to shared state can close into a loop.
+
+**A pre-existing ~38px scroll allowance surfaced on two screens** (the
+character editor, scene setup) once they were measured against their real
+container instead of assumed. Not a visible defect — no content is cut off,
+it is 38px of harmless extra scroll room at the very end of an already-long
+form — and it predates this batch: these screens' own internal sizing is
+unchanged, only what wraps them is different. Left as found rather than
+chased, since fixing it would mean auditing internal height chains in two
+screens this batch never needed to touch.
