@@ -3321,6 +3321,13 @@ Each phase ends in a working, usable application.
     is the part the "don't roll dice in the model" rule was protecting. If this
     is picked up later, split it: rolls and checks as recorded events first,
     stats only if the checks get used.
+
+    **Settled since: it lands as an extension, not as core** — §15's host
+    gained everything it needs after this line was written (per-scene state,
+    a prompt injection that renders from that state, in-process event
+    handlers, actions, background tasks), so the mode nothing else depends on
+    does not have to sit in the app to exist. The split above stands, and the
+    name is *Tabletop*.
 41. TTS, image generation, captioning. See §12.
 42. Chub import, community asset browsing. **Deferred** — the only phase that
     reaches a third party's service, which is a decision about what the app is
