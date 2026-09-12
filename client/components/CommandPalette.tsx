@@ -68,7 +68,12 @@ export function CommandPalette({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex justify-center px-[16px] pt-[64px]"
+      // `items-start` for the same reason `SheetShell` needs it: a row flex
+      // stretches its children on the cross axis, so the panel's `max-h-[70vh]`
+      // was acting as a fixed height — filtered down to one command, the
+      // palette still measured 665px of a 950px window, almost all of it
+      // empty. It hugs its rows now.
+      className="fixed inset-0 z-50 flex items-start justify-center px-[16px] pt-[64px]"
       style={{ background: "rgba(12, 10, 8, 0.62)" }}
       onClick={onClose}
     >
