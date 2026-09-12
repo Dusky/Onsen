@@ -38,6 +38,8 @@ export const strings = {
     /** The default answer, where a caller has no better verb to name. */
     confirm: "Yes, do it",
     working: "Working…",
+    /** The always-present way back from vanish mode (§20 phase 170). */
+    showChrome: "Show the rails and header",
   },
 
   setup: {

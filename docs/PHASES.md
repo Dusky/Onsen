@@ -7794,3 +7794,59 @@ and a turn that is both too short and uses a banned phrase is rerolled for
 being short, which is the more basic complaint, and the one already legible
 from the turn and the token count beside it. So only the ban reason is
 recorded: *which phrase* is the part nothing else on screen can tell you.
+
+## Phase 170 — Vanish mode
+
+The first of four structural UI ideas, not settings parity with SillyTavern —
+this batch started from the reader's own examples: separate the rails from the
+chat so they're customizable, and let the chat live under the chrome so a menu
+overlays it rather than replacing it. Four candidates came out of that
+conversation; all four were picked. This is the smallest, built first to prove
+nothing else in the batch depends on it.
+
+One key (`z`, unmodified, ignored while a field has focus) drops both rails
+and the header/top bar down to bare log; the same key, or an always-present
+restore handle, brings them back. The composer stays — vanish removes
+navigation and settings chrome, not the ability to act, so a mid-scene
+correction never requires breaking out of the mode first.
+
+In memory only, like the rest of `useUiStore`: a reading posture, not a
+preference, and resetting on reload is the same behaviour the rails' own
+open/closed state already has.
+
+**Verified** in Chromium at 1600×950 and 390×844, in both themes: `z` removes
+exactly the app's own chrome (measured by counting `<header>` elements before
+and after — 7 → 6 on desktop, 7 → 6 on phone — rather than trusting a
+screenshot), the composer stays reachable and typing a literal "z" into it is
+not eaten, the restore handle brings everything back, and the key works again
+afterward. Guard: `test/vanish.test.ts`. Full suite 1691 pass.
+
+### Surprises
+
+**Selecting the whole store from `Shell` closed a render loop that had never
+existed.** `ChatScreen` writes `sceneInspector` into `useUiStore` on *every*
+render of its own, by a deliberately dependency-less layout effect — its own
+comment says "refreshed every render." That was always safe only because
+nothing between `Shell` and `ChatScreen` subscribed to the store: `LeftRail`
+and `RightRail` do, but they're `ChatScreen`'s siblings, not its ancestors, so
+their re-renders never reached back down into it. Adding
+`const { vanished, toggleVanished } = useUiStore()` to `Shell` — an actual
+ancestor of `ChatScreen` — subscribed it to *every* field, `sceneInspector`
+included, and closed the loop: `Shell` re-renders on the write → `ChatScreen`
+re-renders as its descendant → the effect fires again → writes the store again
+→ `Shell` re-renders again. React's own "Maximum update depth exceeded" is
+what that turns into, and it only showed up once the browser drive actually
+opened a scene — nothing in the type system or the existing test suite could
+have caught it. Fixed with per-field selectors (`useUiStore((s) => s.vanished)`
+and the same for the setter) instead of the whole-store destructure the rest
+of this file's components use safely only because none of them sit above a
+component that writes back into it.
+
+**`.tap` alone made the restore handle nearly unusable with a mouse.** That
+class exists for a *row* of controls that can afford to shrink under a fine
+pointer — `@media (pointer: fine)` relaxes its floor to nothing, on the theory
+that a dense row of controls under a mouse can spend the saved space on
+something else. A single isolated floating button has no row to spend it on:
+measured in a browser, `.tap` by itself rendered it a 6px × 24px sliver rather
+than a square. An explicit 44px fixed it; screenshots alone would not have
+caught this either — the button was there, just barely there.

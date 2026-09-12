@@ -20,6 +20,13 @@ interface UiState {
   rightTab: "scene" | "characters" | "authors";
   /** The chat's scene-scoped panes, set while a scene is open. */
   sceneInspector: ReactNode | null;
+  /**
+   * Vanish mode (§20 phase 170): both rails and the header/top bar gone,
+   * down to bare log. A reading posture, not a preference — it resets on
+   * reload the same way the rails' own open/closed state already does,
+   * rather than becoming the one thing in this store that persists.
+   */
+  vanished: boolean;
   toggleLeftRail(): void;
   toggleRightRail(): void;
   /** Set directly rather than toggled — the auto-collapse bands (breakpoint.ts,
@@ -30,6 +37,7 @@ interface UiState {
   setLeftSection(section: UiState["leftSection"]): void;
   setRightTab(tab: UiState["rightTab"]): void;
   setSceneInspector(node: ReactNode | null): void;
+  toggleVanished(): void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -38,6 +46,7 @@ export const useUiStore = create<UiState>((set) => ({
   leftSection: "prompt",
   rightTab: "scene",
   sceneInspector: null,
+  vanished: false,
   toggleLeftRail: () => set((state) => ({ leftRailOpen: !state.leftRailOpen })),
   toggleRightRail: () => set((state) => ({ rightRailOpen: !state.rightRailOpen })),
   setLeftRailOpen: (open) => set({ leftRailOpen: open }),
@@ -45,4 +54,5 @@ export const useUiStore = create<UiState>((set) => ({
   setLeftSection: (section) => set({ leftSection: section }),
   setRightTab: (tab) => set({ rightTab: tab }),
   setSceneInspector: (node) => set({ sceneInspector: node }),
+  toggleVanished: () => set((state) => ({ vanished: !state.vanished })),
 }));
