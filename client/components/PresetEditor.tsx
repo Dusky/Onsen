@@ -153,7 +153,14 @@ export function PromptManager({ preset }: { preset: PresetDto }) {
                 onClick={() =>
                   save(order.map((e, i) => (i === index ? { ...e, enabled: !e.enabled } : e)))
                 }
-                className="flex h-[22px] w-[16px] flex-none items-center"
+                /*
+                 * A 24×24 target around a 7px dot (§20 phase 195). WCAG 2.5.8
+                 * sizes the *target*, not the mark inside it, and the dot is
+                 * deliberate — twenty-six of them down a list is the whole
+                 * reason it is a dot and not a word. The negative margins give
+                 * the box back the 16×22 it occupied, so nothing moves.
+                 */
+                className="-mx-[4px] -my-[1px] flex h-[24px] w-[24px] flex-none items-center justify-center"
               >
                 {/* A dot, not the word: the app's on/off pair was drawn for one
                     toggle in a form, and twenty-five of them down a list is a
@@ -189,7 +196,7 @@ export function PromptManager({ preset }: { preset: PresetDto }) {
                 type="button"
                 aria-label={`${strings.settings.blockUp} ${name}`}
                 onClick={() => move(index, -1)}
-                className="chrome h-[26px] w-[22px] flex-none text-ink-dim hover:text-ink-label"
+                className="chrome -mx-[1px] h-[26px] w-[24px] flex-none text-ink-dim hover:text-ink-label"
               >
                 ↑
               </button>
@@ -197,7 +204,7 @@ export function PromptManager({ preset }: { preset: PresetDto }) {
                 type="button"
                 aria-label={`${strings.settings.blockDown} ${name}`}
                 onClick={() => move(index, 1)}
-                className="chrome h-[26px] w-[22px] flex-none text-ink-dim hover:text-ink-label"
+                className="chrome -mx-[1px] h-[26px] w-[24px] flex-none text-ink-dim hover:text-ink-label"
               >
                 ↓
               </button>

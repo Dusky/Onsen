@@ -56,14 +56,22 @@
 /*
  * A background is showing (§20 phase 108): the chrome surfaces go translucent
  * so the picture reads through the rails and the log. The opacity of the
- * picture itself is the reader's; these percentages are fixed so text stays
- * readable on the quietest ground.
+ * picture itself is the reader's.
+ *
+ * These percentages were suspected in §20 phase 195, when rail metadata
+ * measured 4.15:1 dark and 2.63:1 light on a real screen. They were innocent.
+ * The ink was stale: a builtin theme's palette is stored in the database and
+ * was seeded once, so a ramp corrected in `builtin.ts` never reached an
+ * existing install. See `seedBuiltinThemes` for the fix. Left here because
+ * "the translucency must be the problem" is the obvious guess and it cost an
+ * afternoon; the ratio to check first is the theme's own flat one.
  */
 :root[data-background="1"] {
   --color-bg: color-mix(in srgb, var(--onsen-color-bg) 60%, transparent);
   --color-bg-sunken: color-mix(in srgb, var(--onsen-color-bg-sunken) 66%, transparent);
   --color-bg-raised: color-mix(in srgb, var(--onsen-color-bg-raised) 58%, transparent);
   --color-bg-inset: color-mix(in srgb, var(--onsen-color-bg-inset) 50%, transparent);
+
 }
 
 @layer base {

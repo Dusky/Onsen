@@ -51,8 +51,13 @@ const BUDGET = {
   controlHeights: 27,
   /** 14 at phase 193, including 3px, 5px, 7px and 9px off any grid. */
   gaps: 14,
-  /** WCAG 2.5.8: 24px minimum for a pointer target. Phase 195 brings this down. */
-  smallTargets: 676,
+  /**
+   * WCAG 2.5.8: 24px minimum for a pointer target. 676 at phase 193; 208 once
+   * phase 195 widened the prompt-list toggle and its two reorder arrows, which
+   * were 182 of them between them. The rest are smaller clusters, and each one
+   * that comes down should bring this number with it.
+   */
+  smallTargets: 208,
   /** Content clipped with overflow visible and no ellipsis — genuinely unhandled. */
   overflowing: 38,
 };
@@ -66,11 +71,14 @@ const BUDGET = {
  * enforced at the full 4.5:1, and makes the fix a deletion: remove the entry
  * and the floor applies.
  *
- * Both are the same defect — metadata text on a translucent rail over a
- * photograph — and the light theme is the bad one at 2.63:1, below even the
- * 3:1 large-text floor.
+ * It is empty as of §20 phase 195, which is the shape a list like this should
+ * spend most of its life in. It held two entries for exactly one phase: rail
+ * metadata at 4.15:1 dark and 2.63:1 light, both fixed by reconciling stale
+ * builtin theme palettes and giving the light ramps headroom. They came off
+ * the list because the guard refused to let them stay — a known failure that
+ * starts passing is itself a failure here.
  */
-const KNOWN_CONTRAST: readonly string[] = ["dark / rail metadata", "light / rail metadata"];
+const KNOWN_CONTRAST: readonly string[] = [];
 
 /** Regions whose text must be legible, sampled from the composited image. */
 const SAMPLES: { name: string; x: number; y: number; w: number; h: number }[] = [

@@ -9429,3 +9429,89 @@ components were migrated and the job looked done; the CSS rule that still
 hardcoded the same value was invisible to a grep for `text-[12.5px]` and
 invisible to reading the diff. It showed up only because changing the token was
 *measured* rather than assumed to work.
+
+## Phase 195 — Targets and contrast, against what renders
+
+The use review measured rail metadata at **4.15:1 dark and 2.63:1 light** while
+`test/surfaces.test.ts` — which has measured every builtin theme against WCAG AA
+since phase 49 — passed. Phase 193 built a guard that reproduces those figures
+from real pixels. This phase found out why.
+
+### The translucency was innocent
+
+The obvious suspect was `app.css`: every chrome surface drops to 50–66% opacity
+when a background is showing, and its comment claimed "these percentages are
+fixed so text stays readable on the quietest ground". Raising them would have
+worked, and would have flattened the artwork, which is the entire feature.
+
+It was the wrong suspect. The dark figure gave it away: 4.15:1 *composited* over
+a dark photograph, against **4.05:1 on the theme's own flat `bg-raised`** — the
+composite was *better* than the token pair. Translucency was not the problem.
+The ink was simply below the floor, flat, with nothing on top of it.
+
+### A shipped palette that never shipped
+
+`builtin.ts` has Midnight's `text-dim` at `#808891` — a clean **5.04:1**. The
+database had `#6f7883` — **4.05:1**.
+
+A phase raised the builtin ramps to clear AA. `surfaces.test.ts` read
+`builtin.ts`, measured the corrected values, and passed. The app reads the
+`themes` table, and `seedBuiltinThemes` was insert-and-skip by name:
+
+> *"Put the shipped themes in, once."*
+
+So source and database agreed exactly once — on a fresh install — and diverged
+from the next correction onward. Every database seeded before that fix kept
+rendering the pre-fix ramp, permanently, with a green test suite over it.
+
+This is the same sentence as phases 182, 189 and 193, in its purest form yet:
+**the check read a different copy of the data than the app did.** Not a
+different question this time — the same question, asked of the wrong copy.
+
+Builtin palettes are reconciled on every boot now. That is `seedBuiltins`'
+argument for option groups, transplanted: words a reader may have rewritten are
+kept, but structure is not a preference and stale structure is a correctness
+bug. A builtin theme's palette is the shipped artefact — editing one in the app
+forks it to a custom theme — so `is_builtin = 1` is the line. Custom themes are
+untouched, and so is `custom_css` even on a builtin, because that is text a
+reader wrote.
+
+### Headroom, because AA on a token is not AA on a screen
+
+Reconciling fixed dark outright (**4.15 → 5.17:1**) and took light from 2.63 to
+**4.49:1** — a hundredth short. The light ramps were *correct but marginal*:
+4.58:1 flat, which the app's own 58% panels erode below the floor. Bone and
+Slate's two quiet tiers were re-spaced with room to lose, keeping the ramp's
+1.12× separation. Light now renders at **5.06:1**.
+
+`KNOWN_CONTRAST` in the phase 193 guard is empty, and it emptied itself: the
+guard fails when a known entry starts passing, so both came off the list because
+it refused to let them stay.
+
+### Targets
+
+WCAG 2.5.8 sizes the *target*, not the mark inside it. The prompt list's toggle
+was a 16×22 box around a 7px dot — the dot is deliberate, since twenty-six
+words down a list is a column of shouting — and its reorder arrows were 22×26.
+Both are 24px now, with negative margins giving back the space they occupied,
+so not a pixel of the row moved. **676 sub-24px targets to 208**, from three
+class changes.
+
+**Verified** with the phase 193 guard before and after, and by breaking the
+reconcile: restoring insert-and-skip fails the new test. 1929 tests across 141
+files, typecheck clean.
+
+### Surprises
+
+**An afternoon went into the wrong suspect.** The first fix lifted the two quiet
+ink tiers under `[data-background="1"]` and changed nothing at all, because
+`.meta` reads `--onsen-color-text-dim` directly while the override landed on the
+`--color-ink-dim` Tailwind alias — two names for one value, and the class used
+the other one. The note in `app.css` now says the ratio to check first is the
+theme's own flat one.
+
+**`color-bg-inset` is a known edge.** It is the most translucent surface (50%)
+and every shipped theme sits at 4.55–4.60:1 on it. The new headroom test covers
+the grounds the rails paint on and leaves inset to plain AA, named in the test
+rather than silently excluded: re-tuning eight palettes' inset wells is a design
+pass, not a contrast fix.

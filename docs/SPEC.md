@@ -4207,6 +4207,21 @@ Each phase ends in a working, usable application.
     and buttons. Not one rendered pixel moved, which the phase 193 guard
     confirms. See §16, `client/styles/tokens.css`.
 
+195. **Targets and contrast, against what renders** — rail metadata measured
+    4.15:1 dark and 2.63:1 light on a real screen while `surfaces.test.ts`
+    passed, and the translucency was innocent: a builtin theme's palette lives
+    in the `themes` table and `seedBuiltinThemes` inserted-and-skipped by name,
+    so a ramp corrected in `builtin.ts` never reached an install that already
+    existed. Midnight shipped 5.04:1 and every older database kept rendering
+    4.05:1 indefinitely. Builtin palettes are reconciled on boot now — the
+    argument `seedBuiltins` already makes for option groups — while custom
+    themes and a reader's own CSS are untouched, and the light ramps gained
+    headroom for the app's own 58% panels. Every sampled region clears AA with
+    no exemptions. Separately, the prompt list's toggle and its reorder arrows
+    grew from 16×22 and 22×26 to WCAG 2.5.8's 24px, with negative margins
+    keeping the row where it was: 676 sub-24px targets to 208.
+    See §16, `server/db/queries/themes.ts`.
+
 Settled while building phase 15.
 
 - **The desktop layout is phase 19, not a polish item.** The design is explicit
