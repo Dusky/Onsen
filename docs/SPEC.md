@@ -4180,6 +4180,20 @@ Each phase ends in a working, usable application.
     composer before, 15 by way of the skip link, 1 by key.
     See §16, `client/components/Composer.tsx`.
 
+193. **A guard that measures the rendered screen** — every visual guard in the
+    repo compares tokens to tokens. `test/surfaces.test.ts` measures
+    `contrastRatio(tokens[tier], tokens[ground])`, two flat hex values, while
+    the rails it certifies are translucent panels over a photograph; it passes
+    at a rendered 2.63:1. `scripts/rendered-guard.ts` drives a real browser at
+    both widths in both themes and asserts on composited pixels, plus the
+    distinct counts of font sizes, control heights and gaps, sub-24px pointer
+    targets, and genuinely unhandled overflow. Budgets record what the app
+    measures today so they can only ratchet down, and the two real contrast
+    failures are listed as known so the command passes while they are
+    scheduled. Deliberately outside `bun test`: the suite stays hermetic and
+    structural. Run it with `bun run guard:rendered`.
+    See §16, `scripts/rendered-guard.ts`.
+
 Settled while building phase 15.
 
 - **The desktop layout is phase 19, not a polish item.** The design is explicit

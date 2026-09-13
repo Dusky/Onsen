@@ -9276,3 +9276,81 @@ can move, not always the document start; from a fresh load with the log
 scrolled to its bottom, the first Tab lands in the right rail and the skip link
 is reached on the wrap. It is still the first element in the DOM, which is what
 the guard asserts — the alternative would be asserting a browser heuristic.
+
+## Phase 193 — A guard that measures the rendered screen
+
+Three phases in a row have now found the same shape of defect:
+
+- **182** — the Test button resolved a different URL and body than a turn, so
+  it passed while every Anthropic generation 404'd.
+- **189** — the scene count measured every row in the tree while the log
+  rendered one path, so the header said "11 turns" over six.
+- **here** — `test/surfaces.test.ts` measures
+  `contrastRatio(tokens[tier], tokens[ground])`: one flat hex against another.
+  The rails it certifies are *translucent panels over a photograph*. Its own
+  doc comment says as much — `color-mix()` values and gradients "are not
+  colours this module can read, and callers filter them out". It passes while
+  the light theme renders rail metadata at **2.63:1**, below AA and below even
+  the 3:1 large-text floor.
+
+One sentence covers all three: **a check that asks a different question than
+the real thing can pass while the app is broken.**
+
+This repo's guards are unusually good at protecting the *design system*. None
+of them could see a *screen*. That is the gap.
+
+### What it does
+
+`scripts/rendered-guard.ts` boots a browser against a running dev server, walks
+the routes at 1600×950 and 390×844 in both themes, and measures the composited
+result: text contrast sampled from real pixels of a real screenshot, the
+distinct counts of font sizes, control heights and flex gaps, interactive
+elements under WCAG 2.5.8's 24px pointer minimum, and content clipped with no
+scroll container.
+
+It reuses `contrastRatio` from `shared/contrast.ts` — the maths was never
+wrong, only its inputs.
+
+### Two decisions worth stating
+
+**It is not part of `bun test`.** The suite is 1916 hermetic tests in three
+minutes, and the house doctrine is structural, source-as-text, zero DOM
+rendering. That doctrine is right and this does not overturn it; a browser test
+in the middle of it would be the slowest and flakiest thing in the file tree.
+This is the pass you run before shipping a visual change, and it exits non-zero
+so it can be wired to CI the day there is one. A small structural test
+(`test/rendered-guard.test.ts`) keeps it from being deleted or hollowed out
+unnoticed.
+
+**The budgets record today, not an ideal.** Each number is what the app
+measured when this was written, so it can only come down. A guard that asserts
+an aspiration fails on the day it lands and gets a `|| true` appended within a
+week. The two genuine contrast failures are named in `KNOWN_CONTRAST` — visible
+in the output, exempt from the floor, and phase 195 deletes the entries rather
+than adjusting a threshold. The guard also fails if a known entry *starts*
+passing, so the list cannot become a place defects go to be forgotten.
+
+**Baseline at phase 193:** 14 font sizes, 27 control heights, 14 gaps, 676
+sub-24px targets, 38 unhandled overflows, and rail metadata at 4.15:1 dark and
+2.63:1 light.
+
+**Verified** by breaking it: one careless `text-[10.5px]` in the header takes
+distinct font sizes from 14 to 15 and the command exits non-zero. And the
+contrast figures it produces independently reproduce the ones the use review
+measured by hand, which is the cross-check that matters — two different methods
+arriving at 2.63:1.
+
+### Surprises
+
+**The first overflow metric counted 58 defects that were not defects.** It
+flagged any element whose content exceeded its box without a scroll container —
+which is exactly what `truncate` does on purpose, with `overflow: hidden` and
+an ellipsis. Narrowed to `overflow-x: visible` without an ellipsis, the honest
+count is 38. A metric that cannot tell deliberate truncation from accidental
+clipping produces a number nobody can act on.
+
+**`playwright` was never a dependency.** Every browser drive in this work ran
+on a copy resolved from the environment's global cache, which would have failed
+on anyone else's machine. `playwright-core` is a devDependency now — the light
+variant, no browser download, with the executable path supplied — and the
+structural test asserts it never moves into `dependencies`.

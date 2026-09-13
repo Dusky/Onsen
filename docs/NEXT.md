@@ -2,7 +2,7 @@
 
 A short, honest list. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 191. 1909 tests across 138 files, typecheck clean. Feature
+**State:** phase 193. 1916 tests across 139 files, typecheck clean. Feature
 complete against `SPEC.md` §20 apart from the deferred phase 42.
 
 This file has now gone stale twice, and the second time was worse. It said
