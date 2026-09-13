@@ -2017,12 +2017,37 @@ export function useRebuildTrackers(sceneId: string) {
 }
 
 /** §16's provider test button: one round trip, reported with its latency. */
+export interface ProviderTestResult {
+  ok: boolean;
+  latencyMs: number;
+  detail: string | null;
+}
+
 export function useTestProvider(providerId: string) {
   return useMutation({
     mutationFn: () =>
-      api.post<{ ok: boolean; latencyMs: number; detail: string | null }>(
-        `/connections/providers/${providerId}/test`,
-      ),
+      api.post<ProviderTestResult>(`/connections/providers/${providerId}/test`),
+  });
+}
+
+/**
+ * Test values still in the form (§20 phase 178).
+ *
+ * `useTestProvider` needs a saved row, so a provider could only be tested
+ * after it was committed — save, reopen, test, fix, save again, and the reader
+ * learned whether the key worked only once it was stored. This takes what the
+ * form has. `providerId` lets a stored key stand in for one the reader left
+ * blank, the same fallback the model list uses.
+ */
+export function useTestConnection() {
+  return useMutation({
+    mutationFn: (body: {
+      kind: string;
+      baseUrl: string;
+      apiKey?: string;
+      model?: string;
+      providerId?: string;
+    }) => api.post<ProviderTestResult>("/connections/providers/test", body),
   });
 }
 

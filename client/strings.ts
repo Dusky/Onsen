@@ -1240,6 +1240,17 @@ export const strings = {
   },
 
   /** The right rail's three tabs (§20 phase 90). */
+  /** The Models rail panel (§20 phase 178). */
+  models: {
+    title: "Models",
+    /** What the scene being read is talking to, and how to point it elsewhere. */
+    inUse: "This roleplay",
+    switchTo: "Point it at",
+    noScene: "Open a roleplay to choose what answers it.",
+    addProvider: "Add a provider",
+    addProfile: "Add a profile",
+  },
+
   rightRail: {
     inThisScene: "In this scene",
     characters: "Characters",

@@ -39,8 +39,11 @@ const PANELS = readFileSync(
 );
 
 describe("the left side is an icon rail, not a sidebar", () => {
-  test("four sections, and the default says which four", () => {
-    expect(DOCK_DEFAULTS.left).toEqual(["prompt", "preset", "lore", "guides"]);
+  test("the sections are whatever the default says, and nothing is hardcoded", () => {
+    // Four until phase 178 added Models. The point of this test was never the
+    // number: it is that the old sidebar cannot come back as a hardcoded list,
+    // which is why it reads the default rather than counting glyphs.
+    expect(DOCK_DEFAULTS.left).toEqual(["prompt", "preset", "models", "lore", "guides"]);
     // Each one is a real entry in the registry the rail renders from, not a
     // name the arrangement mentions and nothing answers to.
     for (const id of DOCK_DEFAULTS.left) expect(PANELS).toContain(`  ${id}: {`);

@@ -4022,6 +4022,16 @@ Each phase ends in a working, usable application.
     could not reach any install that had ever saved an arrangement. See §7,
     §16, `client/components/OocChannel.tsx`.
 
+178. **Models is a rail activity** — providers lived only in Settings, a
+    full-screen overlay, so pointing a roleplay at a different model meant
+    leaving what you were reading. The ninth dock panel switches the scene's
+    profile in one click and edits providers and profiles in place, with the
+    credential forms lifted to `ConnectionFields.tsx` so the settings screen
+    and the rail render the same two components. Three defects fixed while in
+    there: Save sat below the fold, the prefill and instruct controls wrote
+    before Save was pressed, and a provider could not be tested until it had
+    been saved. See §16, `client/components/ModelsPanel.tsx`.
+
 Settled while building phase 15.
 
 - **The desktop layout is phase 19, not a polish item.** The design is explicit

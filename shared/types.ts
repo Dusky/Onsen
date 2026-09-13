@@ -2112,7 +2112,7 @@ export function presetOf(layout: Omit<LayoutDto, "preset">): LayoutDto["preset"]
 /**
  * A panel either rail can host.
  *
- * Six of these are pure functions of a scene id, self-explaining with no
+ * Seven of these are pure functions of a scene id, self-explaining with no
  * roleplay open. The other two are slots `ChatScreen` fills with live scene
  * state — `scene` with the Context/Cast/You panes, `ooc` with the off-script
  * exchange (§20 phase 177) — and both dock the same as the rest.
@@ -2125,7 +2125,8 @@ export type DockPanel =
   | "scene"
   | "characters"
   | "authors"
-  | "ooc";
+  | "ooc"
+  | "models";
 
 export const DOCK_PANELS: readonly DockPanel[] = [
   "prompt",
@@ -2136,6 +2137,7 @@ export const DOCK_PANELS: readonly DockPanel[] = [
   "characters",
   "authors",
   "ooc",
+  "models",
 ];
 
 /**
@@ -2173,7 +2175,9 @@ export interface DockDto {
 }
 
 export const DOCK_DEFAULTS: DockDto = {
-  left: ["prompt", "preset", "lore", "guides"],
+  // `models` sits next to `preset` because they answer the same question from
+  // two sides — which model, and how it is sampled (§20 phase 178).
+  left: ["prompt", "preset", "models", "lore", "guides"],
   // Off script joins the right rail as a fourth tab (§20 phase 177). It is the
   // one default this preference has ever changed, and the reason is that the
   // shape it replaced was wrong rather than merely customisable: the channel

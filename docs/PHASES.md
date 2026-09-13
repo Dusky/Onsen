@@ -8346,3 +8346,102 @@ box was right while the rail panel sat on the rail's own ground rather than the
 blue one — and the file's own doc comment states the rule it was breaking
 ("everything in it is the author speaking as itself"). The blue is painted by
 `OocExchange` now, so whichever chrome hosts it, the rule holds.
+
+## Phase 178 — Models is a rail activity
+
+The report: *"managing/changing/editing providers needs to happen easier/faster.
+it should be a sidebar activity. while were in there editing, check for ways to
+improve this too."*
+
+Providers lived in one place — Settings, which is a full-screen overlay. So
+pointing a roleplay at a different model meant leaving what you were reading,
+finding the Models category, expanding a row, and scrolling. Three verbs in
+that sentence, so the panel does three things: the scene's own selection
+switched in one click, provider and profile rows expanded in place, and adding
+or removing either.
+
+`models` is the ninth dock panel and sits on the **left** rail next to
+`preset` — they answer the same question from opposite ends, which model and
+how it is sampled, and the left rail is where this app keeps machinery. It also
+scales: the left rail is a vertical icon column, while the right rail's tab row
+already overflowed at four in phase 177.
+
+Unlike `scene` and `ooc` it needs no slot. Everything in it is server state the
+panel can fetch for itself, so it is a plain function of the scene id like the
+other six.
+
+**Settings keeps its Models category.** A phone has no rails, so removing it
+would strand every phone reader — and the point of the extraction below is that
+having two doors costs nothing.
+
+### What "check for ways to improve this" turned up
+
+Three real defects, all found by measuring rather than reading:
+
+**Save was below the fold.** The provider form is 606px tall, and in a 950px
+window its bottom sat at 998px — the commit button had to be scrolled to,
+before a 326px rail made it narrower and taller. One sticky `ActionRow`, shared
+by both forms. Measured after: at the rail's 260px floor the form is 726px and
+Save sits at 889–933 of 950. A form whose Save has to be hunted for is a form
+people abandon half-filled.
+
+**Save saved half the form.** Name, address, model and key waited for the
+submit; the prefill choice and the instruct template wrote to the server the
+instant they were clicked. So "Save" meant *some* of this, and closing without
+saving had already stored part of the edit. Both are form state now and go with
+the submit.
+
+**A provider could not be tested until it was saved.** `Test` needed a row id,
+so adding one was a loop: save, reopen, test, fix, save again — and the reader
+found out whether the key worked only after committing it. The server's test is
+now a `probeProvider` helper behind two doors, `POST /providers/:id/test` and
+`POST /providers/test`, the second taking the values from the form with a
+stored key standing in for one left blank. That is exactly the shape
+`POST /providers/models` has used for unsaved credentials since §16, so it
+introduces no new exposure: a key crossing transiently for one call, never
+stored. Verified in the browser that testing an unsaved provider reports the
+failure *and* leaves the provider count at 1.
+
+**And the switcher now says which model.** The sheet it replaces listed profile
+*names* only, with no mark on the one in force — while the question being
+answered is "which model". Each row carries provider · model, the one in use
+takes a filled dot and is disabled, because a click that does nothing should
+not look like a click that does something.
+
+### The extraction
+
+`ProviderFields` and `ProfileFields` moved to `client/components/
+ConnectionFields.tsx`. A credential form is the last thing that should exist
+twice, and they now have three hosts: the settings screen's inline expansion,
+its phone sheet, and the rail panel's rows. The same move `Segmented` made in
+phase 166, for the same reason. `SettingsScreen.tsx` went from 2471 lines to
+1981.
+
+**Verified** in Chromium at 1600×950 and 390×844, both themes. Models is the
+fifth glyph in the left rail; the panel lists profiles with the active one
+marked; clicking another switched the scene's `connectionProfileId` (checked
+through the API, before and after) and the composer's own chip followed;
+expanding a provider put Save on screen at every width including the 260px
+floor; testing an unsaved provider returned a failure without creating it;
+Settings' Models category still renders both lists with the sticky row and the
+Test button; a phone has no left rail and reaches all of it through Settings.
+No page errors. 1805 tests, typecheck clean.
+
+### Surprises
+
+**The extraction left ten dead imports behind.** Moving 489 lines out took
+seven query hooks (`useCreateProvider`, `useUpdateProvider`, `useTestProvider`,
+`useCreateProfile`, `useUpdateProfile`, `useDeleteProvider`, `useDeleteProfile`)
+and three components (`ModelPicker`, `InstructPicker`, `useConfirm`) plus
+`PROVIDER_KINDS` with them — and every import stayed, typechecking cleanly
+because an unused import is not an error. Caught by writing the guard, not by
+the compiler. `test/models-panel.test.ts` now asserts their absence by name.
+
+**The first version of that guard was wrong.** It swept for `name="apiKey"` and
+asserted exactly two files could hold one. Three did, and the two extra were
+both legitimate: media services and the embeddings provider each have their own
+key field. A key field is not the thing that may only exist once — *writing a
+chat provider* is, so the sweep counts `useCreateProvider`/`useUpdateProvider`
+instead and expects exactly one file. Worth recording because the sweep-rather-
+than-name lesson from phases 176 and 177 held, and the first swing at it still
+picked the wrong needle.
