@@ -241,9 +241,9 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const moved = channel.movedTo !== null;
   if (!moved) held.current = fetched;
   const messages = moved ? held.current : fetched;
-  // An aside renders inline in the log by default; a reader who would rather
-  // the channel be its only home switches that off per scene (§7).
-  const showInlineOoc = scene.data?.scene.oocInline ?? true;
+  // An aside renders inline in the log only when the scene asks for it; the
+  // channel is the home (§7, §188).
+  const showInlineOoc = scene.data?.scene.oocInline ?? false;
   const logMessages = showInlineOoc ? messages : messages.filter((m) => m.kind !== "ooc");
   // How long the active path is, of which `messages` is the newest window
   // (§20 phase 62). Declared here rather than beside the control that reads it

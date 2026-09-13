@@ -76,6 +76,7 @@ import characterGroups from "./0075_character_groups.sql" with { type: "text" };
 import sceneModel from "./0076_scene_model.sql" with { type: "text" };
 import sceneProvider from "./0077_scene_provider.sql" with { type: "text" };
 import profileContext from "./0078_profile_context.sql" with { type: "text" };
+import oocSidebar from "./0079_ooc_sidebar.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -169,4 +170,5 @@ export const migrations: readonly Migration[] = [
   { version: 76, name: "scene_model", sql: sceneModel },
   { version: 77, name: "scene_provider", sql: sceneProvider },
   { version: 78, name: "profile_context", sql: profileContext },
+  { version: 79, name: "ooc_sidebar", sql: oocSidebar },
 ];

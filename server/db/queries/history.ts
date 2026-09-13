@@ -431,8 +431,8 @@ export function insertScene(db: Database, input: NewScene): SceneRow {
   const now = Date.now();
   return db
     .query(
-      `INSERT INTO scenes (ulid, title, preset_id, connection_profile_id, created_at, updated_at)
-       VALUES ($ulid, $title, $preset_id, $connection_profile_id, $now, $now)
+      `INSERT INTO scenes (ulid, title, preset_id, connection_profile_id, ooc_inline, created_at, updated_at)
+       VALUES ($ulid, $title, $preset_id, $connection_profile_id, 0, $now, $now)
        RETURNING *`,
     )
     .get({

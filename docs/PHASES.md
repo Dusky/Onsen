@@ -8982,3 +8982,27 @@ so a browser zoom does not dismiss the thing being looked at.
 
 The same `dangerouslySetInnerHTML`-free rule holds: the picture is an `<img>`
 with the URL the masthead already used, nothing more.
+
+## Phase 188 — OOC lives in the sidebar
+
+Off-script conversation had two homes: the channel — a rail panel beside the
+log, or a sheet on a phone — and the log itself, where an OOC message rendered
+inline as a blue aside. Two homes for the same thing is the shape that reads as
+"the story talking about itself": a line of dialogue, then a margin note about
+how to write that line, in the same column.
+
+**The log is no longer one of them, by default.** New scenes insert with
+`ooc_inline = 0`, migration 0079 flips the scenes that already existed, and the
+channel is the single place off-script conversation happens. The per-scene
+inline toggle stays for a reader who wants an aside inline — the column is
+still read and written, so nothing went dead — but the default is gone.
+
+The channel panel also names who the conversation is with. The author is the
+whole point of going off script, and a rail has no other place to say it; the
+exchange now opens with "With {author}" in the blue pencil above the bubbles.
+
+The third ask — that OOC context reach the author's prompt — was already true,
+and is already pinned: `renderHistory` labels an OOC turn `"{author} (out of
+character)"` and the reader's question as the reader, and
+`test/prompt-builder.test.ts` asserts both. Nothing here changed it, because
+there was nothing to change; the work was verifying it and saying so.

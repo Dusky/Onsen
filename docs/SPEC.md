@@ -4127,6 +4127,14 @@ Each phase ends in a working, usable application.
     `client/components/ImageLightbox.tsx`,
     `client/components/MessageBlock.tsx`.
 
+188. **OOC lives in the sidebar** — off-script conversation rendered inline
+    in the log as well as in the channel, and it read as the story talking
+    about itself. It now defaults to the channel alone: new scenes insert with
+    `ooc_inline = 0`, existing ones are flipped by migration, and the per-scene
+    inline toggle stays for a reader who wants it. The channel panel names who
+    it is with. See §7, `client/components/OocChannel.tsx`,
+    `server/db/migrations/0079_ooc_sidebar.sql`.
+
 Settled while building phase 15.
 
 - **The desktop layout is phase 19, not a polish item.** The design is explicit

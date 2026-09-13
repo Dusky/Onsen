@@ -1817,6 +1817,7 @@ export const strings = {
   ooc: {
     /** The bottom sheet an exchange is promoted to (design 2a). */
     title: "Off script",
+    withAuthor: (name: string) => `With ${name}`,
     hint: "Speaking to the author, not to anyone in the scene. Nothing here is part of the story.",
     empty: "Nothing off script yet. Ask the author something.",
     placeholder: "Ask the author\u2026",

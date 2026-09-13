@@ -77,6 +77,17 @@ export function OocExchange({ messages, authorName, personaName, pending, onSend
       className="flex h-full min-h-0 flex-col"
       style={{ background: "var(--onsen-color-blue-bg-sheet)" }}
     >
+      {/* Who this conversation is with, said once at the top: the author is the
+          whole point of going off script, and a rail has no other place to
+          name it (§188). */}
+      {authorName === null ? null : (
+        <div className="flex-none px-[16px] pt-[10px] pb-[4px]">
+          <span className="section-label" style={{ color: "var(--onsen-color-blue-text-muted)" }}>
+            {strings.ooc.withAuthor(authorName)}
+          </span>
+        </div>
+      )}
+
       <div className="min-h-0 flex-1 overflow-y-auto px-[16px] py-[12px]">
         {messages.length === 0 && pending === null ? (
           <p
