@@ -22,6 +22,57 @@ It gets its own section at the end.
 
 ---
 
+## Corrections, after acting on this (phases 189–192)
+
+Six of the findings below did not survive being implemented. They are struck
+through in place rather than deleted, because a review that quietly edits out
+its mistakes teaches nothing, and because the reasons are the useful part: in
+every case the code had a better answer than the observation that prompted it.
+
+**Withdrawn — I measured the wrong thing:**
+
+- **§6 "Accessible names run together."** Read from `textContent`, which
+  concatenates without separators. The accessibility tree computes something
+  else entirely: the header chip's real name is `"Back to The Last Inn"` from
+  its `aria-label`, and where no label exists the browser inserts separators
+  anyway (`"System prompt preset · prefix · system 9 tok"`). Nothing was wrong.
+- **§11 "Settings tabs clipped with no affordance."** There is one, and it is
+  good: `client/components/Scroller.tsx` puts a measured `mask-image` fade at
+  whichever edge still has content past it. Verified present at both widths
+  (`maskImage` is set, 209px hidden on desktop and 774px on a phone). I judged
+  it from a static screenshot, where a fade over a dark ground is invisible.
+
+**Withdrawn — deliberate, with a better rationale than my objection:**
+
+- **§9 "The left rail shows a live prompt editor with no scene open."** Phase
+  100 decided the prompt's *structure* — its blocks, their order, their
+  switches — belongs to the preset rather than to a scene, so it is editable
+  anywhere. The right rail differs because a cast genuinely does belong to a
+  scene. Documented at the branch in `DockPanels.tsx`.
+- **§10 "An empty scene offers two competing text boxes."** Phase 157, and the
+  doc comment says why: *"The composer stays below, so 'or just write your
+  turn' is never taken away."* The assisted path and the manual path, both
+  offered.
+- **§12, the bare `2`.** `showing(shown, total)` returns a plain number when
+  they are equal, because "2 of 2" is noise; it is shared by every list in the
+  app so they all count the same way, and the word "Roleplays" is beside it.
+- **§12, "sort controls outweigh their content."** True as an observation, but
+  they use the shared `btn flex-1` segmented pattern — the same one as "One
+  voice / The room". Shrinking this one row would buy visual hierarchy at the
+  cost of consistency with every other segmented control.
+
+**What that leaves.** Tier 1 held entirely and was the serious part. Tier 2
+held apart from §6. Tier 3's one real finding was the composer being
+unreachable by keyboard, which held and is fixed. Tier 4 is measurement rather
+than judgement and is still open.
+
+The pattern worth naming: **the findings that held were the ones backed by a
+number or a reproduction; the ones that dissolved were the ones backed by
+looking at a screenshot.** Tier 3 was the eyeball tier and four of its five
+items were wrong.
+
+---
+
 ## Tier 1 — the one that actually loses work
 
 ### 1. An off-script question can hijack the story, invisibly
@@ -154,7 +205,7 @@ They do have `aria-label` and `title`, so they are not inaccessible — they jus
 look broken. (Credit where due: the 9-glyph "Direct:" bar that I expected to be
 mystery meat *is* fully labelled and tooltipped. I was wrong about that one.)
 
-### 6. Accessible names run together
+### ~~6. Accessible names run together~~ — withdrawn, see Corrections
 
 `"·The Last Inn11 turns"`, `"Elira VossElira does not laugh"`,
 `"DuskyCuedSuggested — has not spoken yet"`,
@@ -189,7 +240,7 @@ There is no shortcut standing in for it either: `useCommandKeys.ts` binds ⌘K
 For an app whose primary verb is "write your turn", this is the clearest
 structural version of "clumsy".
 
-### 9. The left rail shows a live prompt editor on screens with no scene
+### ~~9. The left rail shows a live prompt editor on screens with no scene~~ — withdrawn
 
 On the Roleplays list, on Characters, on Settings — the left rail renders all
 26 prompt blocks with working reorder arrows and toggles. The right rail, on
@@ -198,20 +249,20 @@ the same screens, correctly says *"Open a roleplay to see its cast here."*
 One rail knows there is no scene; the other offers you a prompt to reorder for
 nothing in particular.
 
-### 10. An empty scene offers two competing text boxes
+### ~~10. An empty scene offers two competing text boxes~~ — withdrawn
 
 "Describe the scene / What happens, and where? / **Set it up**" in the middle,
 and "Write your turn, or send nothing and let the scene run…" at the bottom —
 both visible, the lower one fully live. Nothing indicates which comes first.
 
-### 11. Settings tabs are clipped with no affordance
+### ~~11. Settings tabs are clipped with no affordance~~ — withdrawn, there is one
 
 At 1600px, the tab strip is 1040px of content in 831px — **209px hidden**. It
 scrolls (`overflow-x: auto`) but there is no fade, arrow, or shadow, and the
 last visible tab is cut mid-word as "Connections ou". At the widest layout the
 app supports, a top-level navigation is truncated silently.
 
-### 12. Sort controls outweigh the content they sort
+### ~~12. Sort controls outweigh the content they sort~~ — withdrawn
 
 On the Roleplays list, Recent / Title / Longest are three 273×42 buttons
 spanning the full column — the loudest element on the page, louder than the
