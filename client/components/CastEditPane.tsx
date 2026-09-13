@@ -31,7 +31,7 @@ export function CastEditPane({
   if (character === undefined) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center">
-        <p className="chrome text-[12.5px] text-ink-dim">{strings.common.working}</p>
+        <p className="chrome text-ui text-ink-dim">{strings.common.working}</p>
       </div>
     );
   }

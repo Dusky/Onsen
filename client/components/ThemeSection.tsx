@@ -138,7 +138,7 @@ function Row({
       <span className="chrome min-w-0 flex-1 text-[12px] text-ink">
         {label}
         {hint !== undefined ? (
-          <span className="block text-[13.5px] text-ink-dim">{hint}</span>
+          <span className="block text-ui-loose text-ink-dim">{hint}</span>
         ) : null}
       </span>
       <input
@@ -172,10 +172,10 @@ function PendingCss({ theme }: { theme: ThemeDto }) {
   if (theme.pendingCss.trim() === "") return null;
   return (
     <div className="mt-[14px] border border-red-border bg-red-bg p-[13px]">
-      <p className="chrome mb-[7px] text-[12.5px] text-red-text">
+      <p className="chrome mb-[7px] text-ui text-red-text">
         {strings.settings.themeCssPending}
       </p>
-      <pre className="chrome mt-[8px] mb-[11px] max-h-[160px] overflow-auto text-[12.5px]
+      <pre className="chrome mt-[8px] mb-[11px] max-h-[160px] overflow-auto text-ui
                       leading-[1.6] whitespace-pre-wrap text-ink-muted">
         {theme.pendingCss}
       </pre>
@@ -304,7 +304,7 @@ export function ThemeSection() {
         <p className="explain explain-alert mb-[12px]">{notice}</p>
       ) : null}
       {report !== null ? (
-        <p className="chrome mb-[12px] text-[13.5px] leading-[1.6] text-ink-muted">
+        <p className="chrome mb-[12px] text-ui-loose leading-[1.6] text-ink-muted">
           {strings.settings.themeImported(report.theme.name)}
           {report.droppedTokens.length > 0
             ? ` ${strings.settings.themeDropped(report.droppedTokens.length)}`
@@ -325,7 +325,7 @@ export function ThemeSection() {
 
           {GROUPS.map((group) => (
             <div key={group.label} className="mb-[16px]">
-              <p className="chrome mb-[5px] text-[12.5px] font-medium text-ink-muted">{group.label}</p>
+              <p className="chrome mb-[5px] text-ui font-medium text-ink-muted">{group.label}</p>
               {group.rows.map((row) => (
                 <Row
                   key={row.token}
@@ -341,7 +341,7 @@ export function ThemeSection() {
           ))}
 
           <div className="mb-[16px]">
-            <p className="chrome mb-[5px] text-[12.5px] font-medium text-ink-muted">
+            <p className="chrome mb-[5px] text-ui font-medium text-ink-muted">
               {strings.settings.themeDepth}
             </p>
             {DEPTH_ROWS.map((row) => (
@@ -359,7 +359,7 @@ export function ThemeSection() {
           </div>
 
           <div className="mb-[8px]">
-            <p className="chrome mb-[5px] text-[12.5px] font-medium text-ink-muted">
+            <p className="chrome mb-[5px] text-ui font-medium text-ink-muted">
               {strings.settings.themeCss}
             </p>
             <textarea

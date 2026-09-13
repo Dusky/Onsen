@@ -181,7 +181,7 @@ export function PromptPanel({ sceneId }: { sceneId: string | null }) {
         <span className="flex items-center gap-[12px]">
           <button
             type="button"
-            className="chrome text-[12.5px]"
+            className="chrome text-ui"
             aria-pressed={rawOpen}
             style={{ color: rawOpen ? "var(--onsen-color-amber)" : "var(--onsen-color-blue-text)" }}
             onClick={() => setRawOpen(!rawOpen)}
@@ -190,7 +190,7 @@ export function PromptPanel({ sceneId }: { sceneId: string | null }) {
           </button>
           <button
             type="button"
-            className="chrome text-[12.5px]"
+            className="chrome text-ui"
             style={{ color: "var(--onsen-color-blue-text)" }}
             onClick={() => preview.mutate({}, { onSuccess: (dto) => setDebug(dto.debug) })}
           >
@@ -200,7 +200,7 @@ export function PromptPanel({ sceneId }: { sceneId: string | null }) {
       </div>
 
       {rawOpen ? (
-        <pre className="chrome mt-[10px] max-h-[360px] overflow-auto border border-rule bg-bg-sunken px-[10px] py-[8px] text-[12.5px] leading-[1.6] whitespace-pre-wrap">
+        <pre className="chrome mt-[10px] max-h-[360px] overflow-auto border border-rule bg-bg-sunken px-[10px] py-[8px] text-ui leading-[1.6] whitespace-pre-wrap">
           {debug.blocks.map((block) => block.content).join("\n\n")}
         </pre>
       ) : (
@@ -220,16 +220,16 @@ export function PromptPanel({ sceneId }: { sceneId: string | null }) {
                   key={`${item.blockId}-${index}`}
                   className="flex items-baseline gap-[9px] border-b border-rule py-[8px]"
                 >
-                  <span className="chrome min-w-0 flex-1 truncate text-[12.5px] text-ink-dim">
+                  <span className="chrome min-w-0 flex-1 truncate text-ui text-ink-dim">
                     {item.label}
                   </span>
                   <span
-                    className="chrome flex-none text-[12.5px]"
+                    className="chrome flex-none text-ui"
                     style={{ color: "var(--onsen-color-red)" }}
                   >
                     {strings.chat.inspectorEviction[item.reason]}
                   </span>
-                  <span className="chrome flex-none text-[12.5px] text-ink-muted">
+                  <span className="chrome flex-none text-ui text-ink-muted">
                     {strings.chat.inspectorTokens(item.tokens)}
                   </span>
                 </div>
@@ -256,11 +256,11 @@ export function PromptPanel({ sceneId }: { sceneId: string | null }) {
                           : "var(--onsen-color-rule-strong)",
                     }}
                   />
-                  <span className="chrome min-w-0 flex-1 truncate text-[12.5px] text-ink-dim">
+                  <span className="chrome min-w-0 flex-1 truncate text-ui text-ink-dim">
                     {entry.title}
                   </span>
                   <span
-                    className="chrome flex-none text-[12.5px]"
+                    className="chrome flex-none text-ui"
                     style={{
                       color: entry.skipped === null ? undefined : "var(--onsen-color-text-dim)",
                     }}
@@ -277,12 +277,12 @@ export function PromptPanel({ sceneId }: { sceneId: string | null }) {
           ) : null}
 
           {debug.unresolvedOutlets.length > 0 ? (
-            <p className="chrome mt-[14px] text-[12.5px] leading-[1.5] text-ink-dim">
+            <p className="chrome mt-[14px] text-ui leading-[1.5] text-ink-dim">
               {strings.chat.inspectorOutlets(debug.unresolvedOutlets.join(", "))}
             </p>
           ) : null}
           {debug.unknownMacros.length > 0 ? (
-            <p className="chrome mt-[8px] text-[12.5px] leading-[1.5] text-ink-dim">
+            <p className="chrome mt-[8px] text-ui leading-[1.5] text-ink-dim">
               {strings.chat.inspectorMacros(debug.unknownMacros.join(", "))}
             </p>
           ) : null}
@@ -340,12 +340,12 @@ function BlockList({ debug }: { debug: PromptDebugInfo }) {
                     .join(" · ")}
                 </span>
               </span>
-              <span className="chrome flex-none text-[12.5px] text-ink-muted">
+              <span className="chrome flex-none text-ui text-ink-muted">
                 {strings.chat.inspectorTokens(block.tokens)}
               </span>
             </button>
             {isOpen && block.content !== "" ? (
-              <pre className="chrome mt-[8px] max-h-[240px] overflow-y-auto border border-rule bg-bg-sunken px-[10px] py-[8px] text-[12.5px] leading-[1.6] whitespace-pre-wrap">
+              <pre className="chrome mt-[8px] max-h-[240px] overflow-y-auto border border-rule bg-bg-sunken px-[10px] py-[8px] text-ui leading-[1.6] whitespace-pre-wrap">
                 {block.content}
               </pre>
             ) : null}
@@ -396,7 +396,7 @@ export function PresetPanel({ sceneId }: { sceneId: string | null }) {
             className="flex w-full items-baseline gap-[8px] border-b border-rule py-[7px] text-left"
           >
             <span
-              className="min-w-0 flex-1 truncate text-[13.5px] font-medium"
+              className="min-w-0 flex-1 truncate text-ui-loose font-medium"
               style={{ color: on ? "var(--onsen-color-text)" : "var(--onsen-color-text-muted)" }}
             >
               {row.name}
@@ -451,7 +451,7 @@ export function PresetPanel({ sceneId }: { sceneId: string | null }) {
 
       {/* The model this preset answers with, when the scene names none (§20
           phase 105). */}
-      <label className="chrome mb-[6px] block text-[12.5px] text-ink-muted">
+      <label className="chrome mb-[6px] block text-ui text-ink-muted">
         {strings.leftRail.presetModel}
       </label>
       <select
@@ -546,7 +546,7 @@ function BanList({ sceneId }: { sceneId: string }) {
           </span>
           <button
             type="button"
-            className="chrome flex-none text-[12.5px]"
+            className="chrome flex-none text-ui"
             style={{ color: "var(--onsen-color-green)" }}
             onClick={() => update.mutate({ banId: phrase.id, accept: true })}
           >
@@ -625,12 +625,12 @@ function LoreRow({ entry }: { entry: LoreActivationDto }) {
         style={{ background: fired ? "var(--onsen-color-green)" : "var(--onsen-color-rule-strong)" }}
       />
       <span
-        className="chrome min-w-0 flex-1 truncate text-[12.5px]"
+        className="chrome min-w-0 flex-1 truncate text-ui"
         style={{ color: fired ? "var(--onsen-color-text)" : "var(--onsen-color-text-dim)" }}
       >
         {entry.title}
       </span>
-      <span className="chrome flex-none text-[12.5px] text-ink-muted">
+      <span className="chrome flex-none text-ui text-ink-muted">
         {fired
           ? entry.matchedKey === null
             ? strings.chat.inspectorLoreConstant
@@ -925,7 +925,7 @@ function CharacterRow({
               : { background: "var(--onsen-stripe)" }
           }
         />
-        <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">{character.name}</span>
+        <span className="min-w-0 flex-1 truncate text-ui-loose font-medium">{character.name}</span>
         {badge === undefined ? null : (
           <span
             className="chrome flex-none text-[11px]"
@@ -1010,7 +1010,7 @@ export function AuthorPane({ sceneId }: { sceneId: string | null }) {
               <button
                 type="button"
                 onClick={() => setEditingId(candidate.id)}
-                className="min-w-0 flex-1 truncate text-left text-[13.5px] font-medium"
+                className="min-w-0 flex-1 truncate text-left text-ui-loose font-medium"
               >
                 {candidate.name}
               </button>
@@ -1055,7 +1055,7 @@ function AuthorEdit({
   const update = useUpdateAuthor(author.id);
   return (
     <div className="px-[16px] py-[14px]">
-      <button type="button" className="chrome mb-[10px] text-[12.5px] text-ink-muted" onClick={onClose}>
+      <button type="button" className="chrome mb-[10px] text-ui text-ink-muted" onClick={onClose}>
         {strings.chat.back}
       </button>
 
@@ -1104,7 +1104,7 @@ function AuthorEdit({
         <p className="section-label mb-[8px]">{strings.authors.sampleVoice}</p>
         <div className="pl-[18px]" style={{ borderLeft: "2px solid var(--onsen-color-blue)" }}>
           <p
-            className="chrome mb-[6px] text-[12.5px]"
+            className="chrome mb-[6px] text-ui"
             style={{ color: "var(--onsen-color-blue)" }}
           >
             {author.name} · OOC
@@ -1118,7 +1118,7 @@ function AuthorEdit({
             }}
           >
             <p
-              className="chrome text-[12.5px] leading-[1.55]"
+              className="chrome text-ui leading-[1.55]"
               style={{ color: "var(--onsen-color-blue-text)" }}
             >
               {author.oocVoice ?? strings.authors.sampleVoiceEmpty}

@@ -52,7 +52,7 @@ export function StatusBar({
   const gauge =
     tokens === null || contextSize === null || contextSize <= 0 ? null : (
       <>
-        <span className="chrome text-[12.5px] text-ink-dim">{strings.chat.ctxLabel}</span>
+        <span className="chrome text-ui text-ink-dim">{strings.chat.ctxLabel}</span>
         <span
           className="hidden h-[3px] w-[64px] flex-none sm:inline-block"
           style={{ background: "var(--onsen-color-rule)" }}
@@ -68,7 +68,7 @@ export function StatusBar({
             }}
           />
         </span>
-        <span className="chrome text-[12.5px] text-ink-dim tabular-nums">
+        <span className="chrome text-ui text-ink-dim tabular-nums">
           {strings.chat.ctxOf(tokens, contextSize)}
         </span>
       </>
@@ -99,7 +99,7 @@ export function StatusBar({
           onClick={onOpenBranchMap}
           title={strings.chat.branchMap}
           aria-label={strings.chat.branchMap}
-          className="chrome tap text-[12.5px] text-ink-dim"
+          className="chrome tap text-ui text-ink-dim"
         >
           {strings.chat.barBranchMap}
         </button>
@@ -108,7 +108,7 @@ export function StatusBar({
       {onOpenPrompt === undefined ? (
         gauge === null ? (
           tokens === null ? null : (
-            <span className="chrome text-[12.5px] text-ink-dim">
+            <span className="chrome text-ui text-ink-dim">
               {strings.chat.barTokens(tokens)}
             </span>
           )
@@ -124,7 +124,7 @@ export function StatusBar({
           className="chrome tap flex min-w-0 items-center gap-[7px] text-left"
         >
           {gauge === null ? (
-            <span className="chrome text-[12.5px]" style={{ color: "var(--onsen-color-blue-text)" }}>
+            <span className="chrome text-ui" style={{ color: "var(--onsen-color-blue-text)" }}>
               {strings.chat.promptPreview}
             </span>
           ) : (

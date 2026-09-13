@@ -255,7 +255,7 @@ export function PromptManager({ preset }: { preset: PresetDto }) {
 
                 <button
                   type="button"
-                  className="chrome text-[12.5px]"
+                  className="chrome text-ui"
                   style={{ color: "var(--onsen-color-red)" }}
                   onClick={() =>
                     confirm(
@@ -769,7 +769,7 @@ function Whole({
           if (next !== value) onCommit(next);
         }}
       />
-      <span className="chrome mt-[5px] block text-[12.5px] text-ink-dim">
+      <span className="chrome mt-[5px] block text-ui text-ink-dim">
         {unit}
       </span>
     </label>

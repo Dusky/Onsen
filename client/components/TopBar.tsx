@@ -164,7 +164,7 @@ export function TopBar() {
                   setMoreOpen(false);
                   navigate(item.route);
                 }}
-                className="chrome flex w-full items-center border-b border-rule py-[15px] text-left text-[13.5px]"
+                className="chrome flex w-full items-center border-b border-rule py-[15px] text-left text-ui-loose"
                 style={{
                   color:
                     item.key === activeKey

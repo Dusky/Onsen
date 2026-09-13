@@ -91,7 +91,7 @@ export function OocExchange({ messages, authorName, personaName, pending, onSend
       <div className="min-h-0 flex-1 overflow-y-auto px-[16px] py-[12px]">
         {messages.length === 0 && pending === null ? (
           <p
-            className="chrome text-[13.5px] leading-[1.6]"
+            className="chrome text-ui-loose leading-[1.6]"
             style={{ color: "var(--onsen-color-blue-text-muted)" }}
           >
             {strings.ooc.empty}
@@ -131,7 +131,7 @@ export function OocExchange({ messages, authorName, personaName, pending, onSend
               send();
             }
           }}
-          className="chrome max-h-[120px] min-h-[44px] w-full flex-1 basis-[160px] resize-none px-[12px] py-[12px] text-[12.5px] leading-[1.55]"
+          className="chrome max-h-[120px] min-h-[44px] w-full flex-1 basis-[160px] resize-none px-[12px] py-[12px] text-ui leading-[1.55]"
           style={{
             background: "var(--onsen-color-blue-bg)",
             border: "1px solid var(--onsen-color-blue-border-strong)",
@@ -150,7 +150,7 @@ export function OocExchange({ messages, authorName, personaName, pending, onSend
       </div>
 
       <p
-        className="chrome flex-none px-[16px] pt-[8px] pb-[12px] text-[12.5px] leading-[1.5]"
+        className="chrome flex-none px-[16px] pt-[8px] pb-[12px] text-ui leading-[1.5]"
         style={{ color: "var(--onsen-color-blue-text-muted)" }}
       >
         {strings.ooc.hint}
@@ -187,7 +187,7 @@ export function OocChannel({ onClose, ...exchange }: OocProps & { onClose(): voi
         <button
           type="button"
           onClick={onClose}
-          className="chrome text-[12.5px]"
+          className="chrome text-ui"
           style={{ color: "var(--onsen-color-blue-text-muted)" }}
         >
           {strings.ooc.back}
@@ -219,7 +219,7 @@ function Bubble({
         </span>
       )}
       <div
-        className="chrome max-w-[85%] px-[12px] py-[9px] text-[12.5px] leading-[1.55] whitespace-pre-wrap"
+        className="chrome max-w-[85%] px-[12px] py-[9px] text-ui leading-[1.55] whitespace-pre-wrap"
         style={
           fromReader
             ? {

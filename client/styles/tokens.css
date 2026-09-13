@@ -196,9 +196,34 @@
    * two were set identically and a screen of twelve groups read as one list of
    * two hundred labels.
    */
-  --onsen-text-group-heading: 13.5px;
-  --onsen-text-button: 12.5px;
+  --onsen-text-group-heading: var(--onsen-text-ui-loose);
+  --onsen-text-button: var(--onsen-text-ui);
   --onsen-text-token-count: 11px;
+
+  /*
+   * The two sizes the app's chrome is actually set in (§20 phase 194).
+   *
+   * These existed already — as `--onsen-text-button` (12.5px) and
+   * `--onsen-text-group-heading` (13.5px) — and the values were considered.
+   * What had happened is that components copied the *numbers* instead of
+   * referencing the tokens: 151 `text-[12.5px]` literals and 52
+   * `text-[13.5px]`, against tokens that only `.btn` and one heading rule
+   * actually read. So the tokens looked load-bearing and were not. Changing
+   * `--onsen-text-button` would have moved the buttons and left two hundred
+   * elements sitting at the old size.
+   *
+   * Named for what they are rather than for one role that happens to use
+   * them, because the literals span many roles: a tag chip, an off-script
+   * bubble, a preset row and a button are all chrome at the same size, and
+   * calling that size "button" in two hundred places would be a name that
+   * lies. `ui-loose` is the step used where chrome is *read* rather than
+   * scanned — a hint, a description — which is why it is a size apart.
+   *
+   * Fixed, not scaled: chrome is scanned, and only prose follows the reader's
+   * size control (see the block above).
+   */
+  --onsen-text-ui: 12.5px;
+  --onsen-text-ui-loose: 13.5px;
 
   /*
    * One tracking value, and it is none (§20 phase 53).

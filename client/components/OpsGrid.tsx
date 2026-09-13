@@ -74,7 +74,7 @@ export function OpsRow({ ops, hint }: { ops: Op[]; hint?: string | undefined }) 
             // The glyph is the icon; the label and the reason live in the
             // tooltip, so nine ops fit one row (§149).
             title={why === undefined ? op.label : `${op.label} — ${why}`}
-            className="chrome flex h-[34px] min-w-[34px] items-center justify-center border border-border-quiet px-[8px] text-[13.5px] leading-none disabled:opacity-40"
+            className="chrome flex h-[34px] min-w-[34px] items-center justify-center border border-border-quiet px-[8px] text-ui-loose leading-none disabled:opacity-40"
             style={blue === undefined ? undefined : { borderColor: blue.border, color: blue.glyph }}
           >
             {op.glyph}
@@ -97,7 +97,7 @@ export function OpsGrid({ ops, cue }: { ops: Op[]; cue?: string | undefined }) {
       {/* The cast strip collapses to make room for the grid, so who is cued has
           to be said in one line instead (design handoff). */}
       {cue === undefined ? null : (
-        <p className="chrome mb-[9px] text-[12.5px] text-ink-dim">{cue}</p>
+        <p className="chrome mb-[9px] text-ui text-ink-dim">{cue}</p>
       )}
 
       <div className="grid grid-cols-3 gap-[6px]">
@@ -272,7 +272,7 @@ export function SteerOp({
             className="field"
             onChange={(event) => setDepth(Math.max(0, Number(event.target.value) || 0))}
           />
-          <span className="chrome mt-[4px] block text-[12.5px] text-ink-dim">
+          <span className="chrome mt-[4px] block text-ui text-ink-dim">
             {strings.chat.steerDepthUnit}
           </span>
         </label>
@@ -287,7 +287,7 @@ export function SteerOp({
             className="field"
             onChange={(event) => setInterval(Math.max(1, Number(event.target.value) || 1))}
           />
-          <span className="chrome mt-[4px] block text-[12.5px] text-ink-dim">
+          <span className="chrome mt-[4px] block text-ui text-ink-dim">
             {strings.chat.steerIntervalUnit}
           </span>
         </label>

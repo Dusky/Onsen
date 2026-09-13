@@ -42,7 +42,7 @@ export function LorePane() {
       <div>
         <button
           type="button"
-          className="chrome mb-[10px] text-[12.5px] text-ink-muted"
+          className="chrome mb-[10px] text-ui text-ink-muted"
           onClick={() => setBookId(null)}
         >
           {strings.chat.back} {strings.lore.books}
@@ -56,7 +56,7 @@ export function LorePane() {
             className="row flex w-full items-baseline gap-[10px] text-left"
           >
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[13.5px]">
+              <span className="block truncate text-ui-loose">
                 {row.title === "" ? strings.lore.untitled : row.title}
               </span>
               <span className="meta mt-[2px] block truncate">
@@ -98,7 +98,7 @@ function BookRow({ book, onOpen }: { book: LorebookDto; onOpen(): void }) {
         type="button"
         onClick={() => update.mutate({ enabled: !book.enabled })}
         aria-pressed={book.enabled}
-        className="chrome flex-none text-[12.5px]"
+        className="chrome flex-none text-ui"
         style={{ color: book.enabled ? "var(--onsen-color-blue)" : "var(--onsen-color-text-dim)" }}
       >
         {book.enabled ? strings.lore.on : strings.lore.off}
@@ -114,7 +114,7 @@ function EntryEdit({ entry, onClose }: { entry: LoreEntryDto; onClose(): void })
     <div>
       <button
         type="button"
-        className="chrome mb-[10px] text-[12.5px] text-ink-muted"
+        className="chrome mb-[10px] text-ui text-ink-muted"
         onClick={onClose}
       >
         {strings.chat.back}

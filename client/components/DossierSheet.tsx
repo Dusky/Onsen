@@ -217,7 +217,7 @@ export function DossierSheet({
 
           <div className="flex gap-[8px]">
             {open_.promoted ? (
-              <p className="chrome flex-1 py-[12px] text-[12.5px] text-ink-dim">
+              <p className="chrome flex-1 py-[12px] text-ui text-ink-dim">
                 {strings.dossiers.promoted}
               </p>
             ) : (

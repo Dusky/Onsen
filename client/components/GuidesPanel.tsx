@@ -121,7 +121,7 @@ export function GuidesBody({
                 className="chrome flex min-h-[44px] w-full items-center justify-between gap-[10px] py-[12px] text-left disabled:opacity-100"
               >
                 <span
-                  className="text-[13.5px]"
+                  className="text-ui-loose"
                   style={{
                     color:
                       guide === null
@@ -137,7 +137,7 @@ export function GuidesBody({
                   ) : null}
                 </span>
                 <span
-                  className="flex items-center gap-[8px] text-[12.5px]"
+                  className="flex items-center gap-[8px] text-ui"
                   style={{ color: "var(--onsen-color-blue-text-muted)" }}
                 >
                   {working === kind
@@ -192,7 +192,7 @@ export function GuidesBody({
                   ) : (
                     <>
                       <p
-                        className="mb-[12px] font-prose text-[13.5px] leading-[1.62] whitespace-pre-wrap"
+                        className="mb-[12px] font-prose text-ui-loose leading-[1.62] whitespace-pre-wrap"
                         style={{ color: "var(--onsen-color-blue-prose)" }}
                       >
                         {guide.content}
@@ -250,7 +250,7 @@ export function GuidesBody({
                       question is scene setup. Saying so is the whole row. */}
                   {unavailable ? (
                     <p
-                      className="chrome text-[12.5px] leading-[1.5]"
+                      className="chrome text-ui leading-[1.5]"
                       style={{ color: "var(--onsen-color-blue-text-muted)" }}
                     >
                       {strings.chat.guidesCustomHint}

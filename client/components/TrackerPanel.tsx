@@ -45,7 +45,7 @@ function TrackerBlock({ tracker, sceneId }: { tracker: TrackerDto; sceneId: stri
   return (
     <div className="border-b border-rule py-[8px]">
       <div className="flex items-baseline gap-[8px]">
-        <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium">
+        <span className="min-w-0 flex-1 truncate text-ui font-medium">
           {title}
         </span>
         <span className="chrome flex-none text-[12px] text-ink-muted">
@@ -74,7 +74,7 @@ function TrackerBlock({ tracker, sceneId }: { tracker: TrackerDto; sceneId: stri
 
       {editing ? (
         <textarea
-          className="field chrome mt-[6px] min-h-[80px] resize-y text-[12.5px] leading-[1.5]"
+          className="field chrome mt-[6px] min-h-[80px] resize-y text-ui leading-[1.5]"
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           onBlur={() => {
@@ -106,7 +106,7 @@ export function TrackerFields({ content }: { content: string }) {
     // §8's rule, one layer up: a malformed tracker is shown as what it is
     // rather than hidden, because a state nobody can see is a state nobody
     // can fix.
-    return <p className="chrome mt-[4px] text-[13.5px] text-ink-dim">{content}</p>;
+    return <p className="chrome mt-[4px] text-ui-loose text-ink-dim">{content}</p>;
   }
   return (
     <div className="mt-[4px] space-y-[2px]">
@@ -115,10 +115,10 @@ export function TrackerFields({ content }: { content: string }) {
           <div key={key} className="space-y-[1px]">
             {(value as Record<string, unknown>[]).map((member, index) => (
               <div key={index} className="pl-[8px]">
-                <span className="chrome text-[13.5px] text-ink-label">
+                <span className="chrome text-ui-loose text-ink-label">
                   {String(member["name"] ?? `#${index + 1}`)}
                 </span>
-                <span className="chrome text-[13.5px] text-ink-dim">
+                <span className="chrome text-ui-loose text-ink-dim">
                   {` · ${[member["mood"], member["position"], member["notable_state"]]
                     .filter((part) => typeof part === "string" && part !== "")
                     .join(" · ")}`}
@@ -199,14 +199,14 @@ export function TrackerPanel({ sceneId }: { sceneId: string }) {
           onClick={() => setOpen(!open)}
           className="flex w-full items-baseline gap-[8px] py-[2px] text-left"
         >
-          <span className="chrome text-[12.5px] text-ink-label">
+          <span className="chrome text-ui text-ink-label">
             {strings.chat.trackers}
           </span>
           <span className="chrome flex-none text-[12px] text-ink-muted">
             {strings.chat.guidesTotal(total)}
           </span>
           <span className="flex-1" />
-          <span className="chrome text-[13.5px] text-ink-muted">{open ? "▾" : "▸"}</span>
+          <span className="chrome text-ui-loose text-ink-muted">{open ? "▾" : "▸"}</span>
         </button>
 
         {open ? (

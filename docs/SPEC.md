@@ -4194,6 +4194,19 @@ Each phase ends in a working, usable application.
     structural. Run it with `bun run guard:rendered`.
     See §16, `scripts/rendered-guard.ts`.
 
+194. **The chrome type sizes have one owner each** — `tokens.css` named its
+    sizes and components copied the numbers instead of referencing them: 151
+    `text-[12.5px]` literals and 52 `text-[13.5px]`, against tokens only `.btn`
+    and one heading rule actually read, so changing `--onsen-text-button` would
+    have moved the buttons and left two hundred elements behind. The two sizes
+    the chrome is set in are declared once as `--onsen-text-ui` and
+    `--onsen-text-ui-loose`, the role tokens reference them, `@theme` exposes
+    them as utilities the way it already did for colours, and every literal now
+    says the size it means. Named for what they are rather than for one role
+    that happens to use them, because the call sites span chips, bubbles, rows
+    and buttons. Not one rendered pixel moved, which the phase 193 guard
+    confirms. See §16, `client/styles/tokens.css`.
+
 Settled while building phase 15.
 
 - **The desktop layout is phase 19, not a polish item.** The design is explicit

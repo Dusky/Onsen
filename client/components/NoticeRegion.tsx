@@ -114,7 +114,7 @@ function Strip({
       type="button"
       onClick={onDismiss}
       aria-label={`${text} — ${strings.notices.dismiss}`}
-      className={`tap pointer-events-auto chrome border px-[11px] py-[9px] text-left text-[13.5px] leading-[1.5] ${
+      className={`tap pointer-events-auto chrome border px-[11px] py-[9px] text-left text-ui-loose leading-[1.5] ${
         failed === true
           ? "border-red-border bg-red-bg text-red-text"
           : "border-rule bg-bg-raised text-ink-label"

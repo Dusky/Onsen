@@ -777,7 +777,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             onClick={() => setOpsPanel("steer")}
             className="flex-none border-t border-rule bg-bg-raised px-[16px] py-[8px] text-left"
           >
-            <span className="chrome mx-auto flex w-full max-w-[var(--onsen-prose-measure)] gap-[8px] text-[12.5px] leading-[1.5]">
+            <span className="chrome mx-auto flex w-full max-w-[var(--onsen-prose-measure)] gap-[8px] text-ui leading-[1.5]">
               <span style={{ color: "var(--onsen-color-amber)" }}>{strings.chat.steerActive}</span>
               <span className="min-w-0 flex-1 truncate text-ink-dim">{steer}</span>
             </span>
@@ -1027,7 +1027,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         <button
           type="button"
           onClick={() => navigate({ name: "setup", sceneId })}
-          className="chrome tap flex flex-none items-center self-center border border-border-quiet px-[9px] text-[12.5px] text-ink-muted"
+          className="chrome tap flex flex-none items-center self-center border border-border-quiet px-[9px] text-ui text-ink-muted"
         >
           {strings.chat.setup}
         </button>

@@ -126,7 +126,7 @@ export function CastStrip({
               />
 
               <span
-                className="chrome mt-[4px] block truncate text-[12.5px]"
+                className="chrome mt-[4px] block truncate text-ui"
                 style={{
                   width: cued ? "82px" : "70px",
                   color: cued
@@ -153,7 +153,7 @@ export function CastStrip({
               type="button"
               onClick={() => onScope(option)}
               aria-pressed={scope === option}
-              className="chrome flex-1 border py-[8px] text-[12.5px]"
+              className="chrome flex-1 border py-[8px] text-ui"
               style={{
                 borderColor:
                   scope === option ? "var(--onsen-color-blue)" : "var(--onsen-color-border-quiet)",
@@ -179,7 +179,7 @@ export function CastStrip({
         type="button"
         onClick={() => onToggleAutopilot(!autopilotOn)}
         aria-pressed={autopilotOn}
-        className="chrome mt-[6px] w-full border py-[8px] text-[12.5px]"
+        className="chrome mt-[6px] w-full border py-[8px] text-ui"
         style={{
           borderColor: autopilotOn
             ? "var(--onsen-color-amber)"

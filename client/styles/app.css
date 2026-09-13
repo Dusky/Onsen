@@ -7,6 +7,11 @@
  * so a theme switch on :root re-colours the whole app with no rebuild.
  */
 @theme {
+  /* The chrome type sizes, so a component can say the size it means (§20
+     phase 194) instead of copying the number out of `tokens.css`. */
+  --text-ui: var(--onsen-text-ui);
+  --text-ui-loose: var(--onsen-text-ui-loose);
+
   --color-bg: var(--onsen-color-bg);
   --color-bg-sunken: var(--onsen-color-bg-sunken);
   --color-bg-raised: var(--onsen-color-bg-raised);
@@ -293,7 +298,7 @@
 
   .screen-kicker {
     font-family: var(--onsen-font-sans);
-    font-size: 12.5px;
+    font-size: var(--onsen-text-ui);
     letter-spacing: var(--onsen-tracking-label);
     color: var(--onsen-color-text-dim);
   }

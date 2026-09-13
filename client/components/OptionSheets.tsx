@@ -51,7 +51,7 @@ export function OptionGroupSheet({
             className="flex w-full items-baseline gap-[10px] border-b border-rule py-[13px] text-left"
           >
             <span
-              className="chrome mt-[1px] w-[9px] flex-none text-[12.5px] leading-none"
+              className="chrome mt-[1px] w-[9px] flex-none text-ui leading-none"
               style={{ color: "var(--onsen-color-blue)" }}
               aria-hidden
             >
@@ -70,7 +70,7 @@ export function OptionGroupSheet({
               </span>
               {/* The words themselves, because a rule you cannot read is a
                   rule you cannot judge. */}
-              <span className="chrome mt-[4px] block text-[12.5px] leading-[1.55] text-ink-dim">
+              <span className="chrome mt-[4px] block text-ui leading-[1.55] text-ink-dim">
                 {option.fragment.trim() === ""
                   ? strings.sceneSetup.optionsEmpty
                   : option.fragment}
@@ -227,7 +227,7 @@ function BanRow({
     return (
       <div className="border-b border-rule py-[11px]">
         <div className="flex items-baseline gap-[10px]">
-          <span className="min-w-0 flex-1 text-[13.5px]">{row.phrase}</span>
+          <span className="min-w-0 flex-1 text-ui-loose">{row.phrase}</span>
           <span className="chrome flex-none text-[12px] text-ink-dim">
             {strings.sceneSetup.bansHits(row.hits)}
           </span>
@@ -263,7 +263,7 @@ function BanRow({
         className="flex min-h-[40px] min-w-0 flex-1 items-baseline gap-[8px] py-[10px] text-left"
       >
         <span
-          className="min-w-0 flex-1 truncate text-[13.5px]"
+          className="min-w-0 flex-1 truncate text-ui-loose"
           style={{
             color: row.enabled ? "var(--onsen-color-text)" : "var(--onsen-color-text-dim)",
           }}

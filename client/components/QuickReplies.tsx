@@ -157,7 +157,7 @@ export function QuickReplySheet({ onClose }: { onClose(): void }) {
                   onClick={() => setEditing(reply)}
                   className="min-w-0 flex-1 text-left"
                 >
-                  <span className="chrome block truncate text-[12.5px] text-ink-label">
+                  <span className="chrome block truncate text-ui text-ink-label">
                     {reply.label}
                   </span>
                   <span className="meta block truncate">{reply.prompt}</span>

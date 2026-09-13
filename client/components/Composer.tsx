@@ -287,7 +287,7 @@ export function Composer({
           // The label follows the state: a button that says "close" to the eye
           // and "ops" to a screen reader is two different buttons.
           aria-label={opsOpen ? strings.chat.opsClose : strings.chat.ops}
-          className="chrome flex h-[46px] w-[46px] flex-none items-center justify-center border text-[12.5px]"
+          className="chrome flex h-[46px] w-[46px] flex-none items-center justify-center border text-ui"
           style={{
             borderColor: opsOpen ? "var(--onsen-color-blue)" : "var(--onsen-color-border-quiet)",
             color: opsOpen ? "var(--onsen-color-blue)" : "var(--onsen-color-text-muted)",

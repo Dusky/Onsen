@@ -9354,3 +9354,78 @@ on a copy resolved from the environment's global cache, which would have failed
 on anyone else's machine. `playwright-core` is a devDependency now — the light
 variant, no browser download, with the executable path supplied — and the
 structural test asserts it never moves into `dependencies`.
+
+## Phase 194 — The chrome type sizes have one owner each
+
+The use review counted fourteen distinct font sizes and called the spread
+unconsidered. That was the wrong diagnosis, and finding out why produced a
+better one.
+
+`tokens.css` is not careless. It has a documented two-part system — prose sizes
+that follow the reader's size control, chrome sizes that do not — with a phase
+number and a rationale on each. `--onsen-text-button` is 12.5px deliberately.
+
+What had actually happened is that components copied the **numbers** out of it
+rather than referencing the tokens: **151 `text-[12.5px]` literals** and **52
+`text-[13.5px]`**, against tokens that only `.btn` and one heading rule ever
+read. So the tokens *looked* load-bearing and were not. Changing
+`--onsen-text-button` would have moved the buttons and left two hundred other
+elements sitting at the old size — a design system that silently does nothing.
+
+Fourteen sizes with one owner each is a design. Fourteen sizes with two hundred
+owners is a coincidence.
+
+### What changed
+
+The two sizes the chrome is actually set in are declared once —
+`--onsen-text-ui: 12.5px` and `--onsen-text-ui-loose: 13.5px` — the role tokens
+(`--onsen-text-button`, `--onsen-text-group-heading`) reference them, and
+`@theme` exposes them as Tailwind utilities exactly as it already did for every
+colour. Every literal became `text-ui` or `text-ui-loose`.
+
+**Named for what they are, not for one role that uses them.** The call sites are
+a tag chip, an off-script bubble, a preset row, a hint paragraph and a button —
+all chrome at the same size. Calling that size "button" in two hundred places
+would be a name that lies, which is its own kind of mess and arguably worse than
+a literal. `ui-loose` is the step for chrome that is *read* rather than scanned.
+
+**Not one rendered pixel moved.** Phase 193's guard produced byte-identical
+output before and after: the same fourteen sizes, the same gaps, the same
+contrast figures. That was the point of doing 193 first.
+
+### Proving a token is load-bearing
+
+The test is not that the code references it — it is that changing it works.
+Setting `--onsen-text-ui` to 12.9px and re-running the guard:
+
+```
+before:  … 12px, 12.5px, 13px …
+after:   … 12px, 12.9px, 13px …     (12.5px gone entirely)
+```
+
+The first attempt at this did **not** produce that. `12.5px` stayed in the list
+alongside `12.9px`, because `.screen-kicker` in `app.css` hardcoded the value
+too — one rule, one layer up, doing exactly what the two hundred components had
+been doing. It reads the token now. A token you cannot move is not a token, and
+the only way to know is to move it.
+
+### What was deliberately not done
+
+The original plan was to *round* the half-pixels — 12.5→13, 13.5→14 — on the
+stated grounds that fractional sizes render soft. Both halves of that were
+wrong. Fractional font sizes render fine, and rounding these two would have
+pulled two hundred elements away from `.btn` and `.explain`, which keep the
+token values: the app would have become measurably less consistent while the
+distinct-size count went down. The count was a proxy for the real property, and
+optimising the proxy would have damaged the thing it stood for.
+
+**Verified** with the phase 193 guard, before and after, plus the one-line token
+move above. 1923 tests across 140 files, typecheck clean.
+
+### Surprises
+
+**The guard found the incomplete migration, not the review.** Two hundred
+components were migrated and the job looked done; the CSS rule that still
+hardcoded the same value was invisible to a grep for `text-[12.5px]` and
+invisible to reading the diff. It showed up only because changing the token was
+*measured* rather than assumed to work.

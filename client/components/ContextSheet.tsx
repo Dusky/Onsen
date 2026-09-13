@@ -139,7 +139,7 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className="chrome flex-1 border px-[10px] py-[9px] text-[12.5px]"
+      className="chrome flex-1 border px-[10px] py-[9px] text-ui"
       style={{
         borderColor: active
           ? "var(--onsen-color-blue-border-strong)"

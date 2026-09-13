@@ -43,7 +43,7 @@ export function ExtensionActionsSheet({ sceneId, onClose }: { sceneId: string; o
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[15px] font-medium">{action.label}</span>
                 {action.description === null || action.description === "" ? null : (
-                  <span className="chrome block truncate text-[12.5px] text-ink-dim">
+                  <span className="chrome block truncate text-ui text-ink-dim">
                     {action.description}
                   </span>
                 )}
@@ -55,7 +55,7 @@ export function ExtensionActionsSheet({ sceneId, onClose }: { sceneId: string; o
           ))
         )}
         {result === null ? null : (
-          <p className="chrome mt-[12px] whitespace-pre-wrap border-t border-rule pt-[12px] text-[12.5px] leading-[1.6] text-ink-dim">
+          <p className="chrome mt-[12px] whitespace-pre-wrap border-t border-rule pt-[12px] text-ui leading-[1.6] text-ink-dim">
             {result}
           </p>
         )}

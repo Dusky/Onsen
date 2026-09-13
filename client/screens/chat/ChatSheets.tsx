@@ -329,7 +329,7 @@ export function ChatSheets({
               onClick={() => onRecast(recasting, segment.ordinal, segment.speakerName)}
               className="row w-full text-left disabled:opacity-40"
             >
-              <span className="chrome text-[12.5px] text-ink-label">
+              <span className="chrome text-ui text-ink-label">
                 {segment.speakerName ?? strings.chat.narrationPart}
               </span>
               <p className="mt-[5px] line-clamp-2 text-[length:var(--onsen-text-prose-excerpt)] leading-[1.5] text-ink-prose-muted">
@@ -413,7 +413,7 @@ export function ChatSheets({
                 }}
                 className="min-w-0 flex-1 py-[12px] text-left"
               >
-                <span className="chrome text-[12.5px] text-ink-dim">
+                <span className="chrome text-ui text-ink-dim">
                   {sibling.siblingIndex + 1} / {sibling.siblingCount}
                 </span>
                 <p className="mt-[6px] line-clamp-3 text-[length:var(--onsen-text-prose-excerpt)] leading-[1.5] text-ink-prose-muted">

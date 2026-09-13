@@ -84,7 +84,7 @@ export function ScenePane({
         <div className="flex-none px-[16px] pt-[12px]">
           <button
             type="button"
-            className="chrome text-[12.5px] text-ink-muted"
+            className="chrome text-ui text-ink-muted"
             onClick={onClosePersona}
           >
             {strings.chat.back}
@@ -131,10 +131,10 @@ export function ScenePane({
           >
             {strings.rightRail.you}
           </span>
-          <span className="min-w-0 flex-1 truncate text-[12.5px]">{personaName}</span>
+          <span className="min-w-0 flex-1 truncate text-ui">{personaName}</span>
           <button
             type="button"
-            className="chrome text-[12.5px]"
+            className="chrome text-ui"
             style={{ color: "var(--onsen-color-blue-text)" }}
             onClick={onEditPersona}
           >
@@ -148,13 +148,13 @@ export function ScenePane({
           >
             {strings.rightRail.author}
           </span>
-          <span className="min-w-0 flex-1 truncate text-[12.5px]">{authorName}</span>
+          <span className="min-w-0 flex-1 truncate text-ui">{authorName}</span>
           {authorTokens === null ? null : (
             <span className="meta flex-none">{strings.characters.tokens(authorTokens)}</span>
           )}
           <button
             type="button"
-            className="chrome text-[12.5px]"
+            className="chrome text-ui"
             style={{ color: "var(--onsen-color-blue-text)" }}
             onClick={onEditAuthor}
           >

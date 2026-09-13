@@ -185,7 +185,7 @@ export function CastRail({
                 />
                 <span className="min-w-0 flex-1">
                   <span className="flex items-baseline gap-[6px]">
-                    <span className="min-w-0 flex-1 truncate text-[13.5px]">{member.name}</span>
+                    <span className="min-w-0 flex-1 truncate text-ui-loose">{member.name}</span>
                     {status === null ? null : (
                       <span
                         className="chrome flex-none text-[11.5px]"
@@ -212,7 +212,7 @@ export function CastRail({
                   {/* What they last said. Spectral italic, because it is the
                       story speaking rather than the app. */}
                   {lastLine.has(member.characterId) ? (
-                    <span className="mt-[5px] block text-[13.5px] leading-[1.45] text-ink-muted italic">
+                    <span className="mt-[5px] block text-ui-loose leading-[1.45] text-ink-muted italic">
                       {excerpt(lastLine.get(member.characterId)!)}
                     </span>
                   ) : null}
@@ -236,19 +236,19 @@ export function CastRail({
       >
         <span className="flex items-baseline gap-[8px]">
           <span
-            className="chrome min-w-0 flex-1 text-[12.5px]"
+            className="chrome min-w-0 flex-1 text-ui"
             style={blueText}
           >
             {strings.chat.guides}
           </span>
           <span
-            className="chrome flex-none text-[12.5px]"
+            className="chrome flex-none text-ui"
             style={blueMuted}
           >
             {strings.chat.guidesTotal(guidesCost)}
           </span>
         </span>
-        <span className="mt-[6px] block text-[13.5px] leading-[1.5]" style={blueMuted}>
+        <span className="mt-[6px] block text-ui-loose leading-[1.5]" style={blueMuted}>
           {guides.length === 0
             ? strings.chat.guidesEmpty
             : excerpt(guides[0]!.content, 120)}

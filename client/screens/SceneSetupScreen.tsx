@@ -117,7 +117,7 @@ function NumberField({
           if (next !== value) onCommit(next);
         }}
       />
-      <span className="chrome mt-[5px] block text-[12.5px] text-ink-dim">
+      <span className="chrome mt-[5px] block text-ui text-ink-dim">
         {unit}
       </span>
     </label>
@@ -207,7 +207,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
   if (scene === undefined) {
     return (
       <div className="flex screen-height items-center justify-center">
-        <p className="chrome text-[12.5px] text-ink-dim">
+        <p className="chrome text-ui text-ink-dim">
           {strings.common.working}
         </p>
       </div>
@@ -391,7 +391,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                       <div key={run.id} className="border-b border-rule py-[9px]">
                         <div className="flex items-baseline gap-[8px]">
                           <span
-                            className="chrome text-[12.5px]"
+                            className="chrome text-ui"
                             style={{
                               color:
                                 run.status === "ok"
@@ -401,10 +401,10 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                           >
                             {strings.sceneSetup.directorRunStatus(run.status)}
                           </span>
-                          <span className="chrome flex-1 truncate text-[12.5px] text-ink-dim">
+                          <span className="chrome flex-1 truncate text-ui text-ink-dim">
                             {run.model ?? ""}
                           </span>
-                          <span className="chrome text-[12.5px] text-ink-dim">
+                          <span className="chrome text-ui text-ink-dim">
                             {strings.sceneSetup.directorRunTiming(run.durationMs)}
                           </span>
                         </div>
@@ -494,7 +494,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                   <span className="chrome block text-[13px] text-ink-muted">
                     {group.name}
                   </span>
-                  <span className="mt-[4px] block truncate text-[13.5px]">
+                  <span className="mt-[4px] block truncate text-ui-loose">
                     {chosen.length === 0
                       ? strings.sceneSetup.optionsNone
                       : chosen.map((option) => option.name).join(" · ")}
@@ -520,7 +520,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               <span className="chrome block text-[13px] text-ink-muted">
                 {strings.sceneSetup.bans}
               </span>
-              <span className="mt-[4px] block truncate text-[13.5px]">
+              <span className="mt-[4px] block truncate text-ui-loose">
                 {bans.data === undefined
                   ? "—"
                   : strings.sceneSetup.bansCount(
@@ -548,7 +548,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               <span className="chrome block text-[13px] text-ink-muted">
                 {strings.lore.sceneRow}
               </span>
-              <span className="mt-[4px] block truncate text-[13.5px]">
+              <span className="mt-[4px] block truncate text-ui-loose">
                 {(() => {
                   // Only the books that reach this roleplay: the row is the
                   // scene's answer, not the library's.
@@ -939,7 +939,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                       : { background: "var(--onsen-stripe)" }
                   }
                 />
-                <p className="chrome mt-[5px] truncate text-[12.5px] text-ink-label">
+                <p className="chrome mt-[5px] truncate text-ui text-ink-label">
                   {member.name}
                 </p>
                 <button
@@ -1003,7 +1003,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               <span className="chrome block text-[13px] text-ink-muted">
                 {strings.dossiers.open}
               </span>
-              <span className="mt-[4px] block truncate text-[13.5px]">
+              <span className="mt-[4px] block truncate text-ui-loose">
                 {(dossiers.data ?? []).map((row) => row.name).join(" · ") || strings.common.none}
               </span>
             </span>
@@ -1188,7 +1188,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
           </div>
           {loreProposals.map((proposal, index) => (
             <div key={index} className="border-b border-rule py-[10px]">
-              <p className="text-[13.5px] font-medium">{proposal.title}</p>
+              <p className="text-ui-loose font-medium">{proposal.title}</p>
               <p className="explain mt-[4px]">
                 {proposal.content}
               </p>
@@ -1205,19 +1205,19 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
         <Sheet title={strings.characters.documents} onClose={() => setDocumentsOpen(false)}>
           <div className="pt-[8px] pb-[12px]">
             {(documents.data ?? []).length === 0 ? (
-              <p className="chrome mb-[10px] text-[12.5px] text-ink-dim">
+              <p className="chrome mb-[10px] text-ui text-ink-dim">
                 {strings.characters.noDocuments}
               </p>
             ) : (
               (documents.data ?? []).map((document) => (
                 <div key={document.id} className="flex items-baseline gap-[8px] border-b border-rule py-[9px]">
-                  <span className="min-w-0 flex-1 truncate text-[13.5px]">{document.title}</span>
-                  <span className="chrome flex-none text-[12.5px] text-ink-muted">
+                  <span className="min-w-0 flex-1 truncate text-ui-loose">{document.title}</span>
+                  <span className="chrome flex-none text-ui text-ink-muted">
                     {document.chunkCount}
                   </span>
                   <button
                     type="button"
-                    className="chrome flex-none text-[12.5px]"
+                    className="chrome flex-none text-ui"
                     style={{ color: "var(--onsen-color-red)" }}
                     onClick={() => removeDocument.mutate(document.id)}
                   >

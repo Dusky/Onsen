@@ -260,7 +260,7 @@ export function BranchMapSheet({
                 setLeaf.mutate({ messageId: node.id, descend: false }, { onSuccess: onClose })
               }
               disabled={setLeaf.isPending}
-              className="chrome absolute flex items-center truncate text-left text-[12.5px] disabled:opacity-40"
+              className="chrome absolute flex items-center truncate text-left text-ui disabled:opacity-40"
               style={{
                 left: xOf(depth) + LABEL_GAP,
                 top: yOf(order) - ROW_H / 2,

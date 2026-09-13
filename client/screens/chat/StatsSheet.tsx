@@ -28,7 +28,7 @@ export function StatsSheet({ stats, onClose }: { stats: SceneStatsDto | null; on
                   key={row.name}
                   className="flex items-baseline gap-[10px] border-b border-rule py-[9px]"
                 >
-                  <span className="min-w-0 flex-1 truncate text-[13.5px]">{row.name}</span>
+                  <span className="min-w-0 flex-1 truncate text-ui-loose">{row.name}</span>
                   <span className="meta flex-none">
                     {strings.chat.statsCharacterLine(row.messages, row.words)}
                   </span>

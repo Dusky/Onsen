@@ -40,7 +40,7 @@ export function InstallPackSheet({
     <Sheet title={plan.manifest.name} meta={plan.manifest.version} onClose={onClose}>
       <div className="pt-[8px] pb-[14px]">
         {plan.manifest.author !== "" ? (
-          <p className="chrome mb-[8px] text-[13.5px] text-ink-dim">
+          <p className="chrome mb-[8px] text-ui-loose text-ink-dim">
             {strings.settings.packBy(plan.manifest.author)}
           </p>
         ) : null}
@@ -106,7 +106,7 @@ export function InstallPackSheet({
           </>
         ) : (
           <>
-            <p className="chrome mb-[10px] text-[12.5px] leading-[1.6] text-ink-dim">
+            <p className="chrome mb-[10px] text-ui leading-[1.6] text-ink-dim">
               {strings.settings.packInstalled(result.added, result.skipped)}
             </p>
             {result.warnings.map((warning) => (
@@ -258,7 +258,7 @@ export function ExportPackSheet({ onClose }: { onClose(): void }) {
         {lists.map((list) =>
           list.rows.length === 0 ? null : (
             <div key={list.kind} className="mb-[16px]">
-              <p className="chrome mb-[6px] text-[12.5px] text-ink-dim">
+              <p className="chrome mb-[6px] text-ui text-ink-dim">
                 {strings.settings.packKind[list.kind] ?? list.kind}
               </p>
               {list.rows.map((row) => (
