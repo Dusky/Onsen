@@ -4074,6 +4074,14 @@ Each phase ends in a working, usable application.
     because a shipped model id goes stale and Fetch cannot.
     See §16, `server/adapters/errors.ts`.
 
+183. **Add and remove cast from the right rail** — the roleplay's roster was
+    only editable in scene setup, a whole screen away. The Characters panel
+    already split the library into "in this scene" and the rest; it now acts
+    on that split: someone in the scene carries a Remove, everyone else an
+    Add, both one tap and straight to the existing cast endpoints. Removing
+    keeps every line the character has written. See §16,
+    `client/components/DockPanels.tsx`.
+
 Settled while building phase 15.
 
 - **The desktop layout is phase 19, not a polish item.** The design is explicit

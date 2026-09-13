@@ -1275,6 +1275,8 @@ export const strings = {
     nextTurn: "Next turn",
     inScene: "in scene",
     inUse: "in use",
+    add: "Add",
+    remove: "Remove",
   },
 
   /** The desktop header (§20 phase 91). */

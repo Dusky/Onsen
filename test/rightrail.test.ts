@@ -90,6 +90,15 @@ describe("the global right rail", () => {
     expect(PANELS).toContain("strings.rightRail.inUse");
   });
 
+  test("the characters panel adds and removes cast members", () => {
+    // The library panel is where a roleplay's roster is managed: someone in
+    // the scene gets a remove, everyone else gets an add (§20 phase 183).
+    expect(PANELS).toContain("useAddToCast");
+    expect(PANELS).toContain("useRemoveFromCast");
+    expect(PANELS).toContain("strings.rightRail.add");
+    expect(PANELS).toContain("strings.rightRail.remove");
+  });
+
   test("the author editor samples the aside voice", () => {
     expect(PANELS).toContain("strings.authors.sampleVoice");
   });

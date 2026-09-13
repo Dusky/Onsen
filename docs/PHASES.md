@@ -8800,3 +8800,40 @@ this project has hit it (the first was `test/sheet-dialog.test.ts` on a doc
 comment quoting Tailwind classes). Fixed the same way both times — make the
 assertion mean what it says, with a `codeOf()` that strips comments first, not
 by deleting the comment.
+
+## Phase 183 — Add and remove cast from the right rail
+
+A roleplay's roster had exactly one place to be changed: scene setup, a screen
+you navigate away to. Reading the cast rail in the right rail, noticing someone
+is missing, and being able to do nothing about it there was the gap.
+
+The Characters panel was already the right place and half the answer. It lists
+the library split into two — "in this scene" and the rest — but the split was
+display only: tapping a row opened the card editor, and the only buttons on the
+whole panel were create and import. So the panel *named* who was in the scene
+and could not change it.
+
+**The split now acts.** Someone in the scene carries a Remove, everyone else an
+Add — one tap, straight to the cast endpoints that already existed (`PUT` /
+`DELETE /scenes/:id/cast/:characterId`), which scene setup had been the only
+caller of. No new endpoint, no new state: the panel just stopped being a
+read-only view of a list it was already showing.
+
+Two deliberate shapes:
+
+- **Remove is not confirmed and not destructive.** Removing a member keeps
+  every line they have written — it is a roster edit, not a deletion — and the
+  route is one tap away from undone (Add puts them straight back). The setup
+  screen's own remove is unconfirmed for the same reason, and the rail matches
+  it rather than inventing a second opinion.
+- **No add/remove outside a roleplay.** The split only exists while a scene is
+  open; with none, the panel is the plain library it has always been, and there
+  is no roster to edit.
+
+The row needed a second action, so the card row's one big `<button>` became a
+row with the open button and the add/remove button beside it — the same shape
+the Authors panel's "use" button already has.
+
+**Verified** by the right-rail guard, extended with one assertion rather than a
+new file: the panel wires both cast hooks and names both actions. Typecheck
+clean.

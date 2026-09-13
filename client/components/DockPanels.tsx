@@ -24,6 +24,7 @@ import { GUIDE_KINDS } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import {
   useAddBan,
+  useAddToCast,
   useAnalyseBans,
   useAuthors,
   useBans,
@@ -40,6 +41,7 @@ import {
   usePresets,
   usePreviewPrompt,
   useRebuildGuides,
+  useRemoveFromCast,
   useScene,
   useScenes,
   useTasks,
@@ -762,6 +764,8 @@ export function CharacterPane({ sceneId }: { sceneId: string | null }) {
   const scenes = useScenes();
   const create = useCreateCharacter();
   const importCharacter = useImportCharacter();
+  const addToCast = useAddToCast(sceneId ?? "");
+  const removeFromCast = useRemoveFromCast(sceneId ?? "");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [needle, setNeedle] = useState("");
 
@@ -851,6 +855,15 @@ export function CharacterPane({ sceneId }: { sceneId: string | null }) {
                   character={character}
                   badge={strings.rightRail.inScene}
                   onOpen={() => setEditingId(character.id)}
+                  action={
+                    sceneId === null
+                      ? undefined
+                      : {
+                          label: strings.rightRail.remove,
+                          color: "var(--onsen-color-red)",
+                          onClick: () => removeFromCast.mutate(character.id),
+                        }
+                  }
                 />
               ))}
           </>
@@ -865,6 +878,15 @@ export function CharacterPane({ sceneId }: { sceneId: string | null }) {
                   key={character.id}
                   character={character}
                   onOpen={() => setEditingId(character.id)}
+                  action={
+                    sceneId === null
+                      ? undefined
+                      : {
+                          label: strings.rightRail.add,
+                          color: "var(--onsen-color-blue-text)",
+                          onClick: () => addToCast.mutate(character.id),
+                        }
+                  }
                 />
               ))}
           </>
@@ -878,39 +900,53 @@ function CharacterRow({
   character,
   badge,
   onOpen,
+  action,
 }: {
   character: { id: string; name: string; hasAvatar: boolean; tokens: { total: number } };
   badge?: string;
   onOpen(): void;
+  action?: { label: string; color: string; onClick(): void } | undefined;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="row flex w-full items-center gap-[10px] text-left"
-    >
-      {/* The card's own picture, small — a list of cards should look like cards
-          (§20 phase 112). */}
-      <span
-        aria-hidden="true"
-        className="h-[36px] w-[28px] flex-none border border-rule bg-cover bg-center"
-        style={
-          character.hasAvatar
-            ? { backgroundImage: `url(/api/characters/${character.id}/avatar)` }
-            : { background: "var(--onsen-stripe)" }
-        }
-      />
-      <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">{character.name}</span>
-      {badge === undefined ? null : (
+    <div className="row flex w-full items-center gap-[10px]">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex min-w-0 flex-1 items-center gap-[10px] text-left"
+      >
+        {/* The card's own picture, small — a list of cards should look like cards
+            (§20 phase 112). */}
         <span
-          className="chrome flex-none text-[11px]"
-          style={{ color: "var(--onsen-color-amber)" }}
+          aria-hidden="true"
+          className="h-[36px] w-[28px] flex-none border border-rule bg-cover bg-center"
+          style={
+            character.hasAvatar
+              ? { backgroundImage: `url(/api/characters/${character.id}/avatar)` }
+              : { background: "var(--onsen-stripe)" }
+          }
+        />
+        <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">{character.name}</span>
+        {badge === undefined ? null : (
+          <span
+            className="chrome flex-none text-[11px]"
+            style={{ color: "var(--onsen-color-amber)" }}
+          >
+            {badge}
+          </span>
+        )}
+        <span className="meta flex-none">{strings.characters.tokens(character.tokens.total)}</span>
+      </button>
+      {action === undefined ? null : (
+        <button
+          type="button"
+          onClick={action.onClick}
+          className="chrome flex-none text-[12px]"
+          style={{ color: action.color }}
         >
-          {badge}
-        </span>
+          {action.label}
+        </button>
       )}
-      <span className="meta flex-none">{strings.characters.tokens(character.tokens.total)}</span>
-    </button>
+    </div>
   );
 }
 
