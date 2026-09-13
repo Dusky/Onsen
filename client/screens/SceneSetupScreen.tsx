@@ -501,7 +501,9 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                   </span>
                 </span>
                 <span className="meta flex-none">
-                  {chosen.reduce((sum, option) => sum + option.tokenCount, 0)} TOK
+                  {strings.chat.inspectorTokens(
+                    chosen.reduce((sum, option) => sum + option.tokenCount, 0),
+                  )}
                 </span>
               </button>
             );
@@ -530,7 +532,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               </span>
             </span>
             <span className="meta flex-none">
-              {bans.data === undefined ? "" : `${bans.data.tokenCount} TOK`}
+              {bans.data === undefined ? "" : strings.chat.inspectorTokens(bans.data.tokenCount)}
             </span>
           </button>
 

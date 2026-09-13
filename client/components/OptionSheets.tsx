@@ -77,7 +77,7 @@ export function OptionGroupSheet({
               </span>
             </span>
             <span className="meta flex-none">
-              {option.tokenCount === 0 ? "—" : `${option.tokenCount} TOK`}
+              {option.tokenCount === 0 ? "—" : strings.chat.inspectorTokens(option.tokenCount)}
             </span>
           </button>
         ))}
@@ -126,7 +126,7 @@ export function BanListSheet({
   return (
     <Sheet
       title={strings.sceneSetup.bans}
-      meta={state === undefined ? undefined : `${state.tokenCount} TOK`}
+      meta={state === undefined ? undefined : strings.chat.inspectorTokens(state.tokenCount)}
       onClose={onClose}
     >
       <div className="pt-[6px] pb-[14px]">

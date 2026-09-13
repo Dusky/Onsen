@@ -4150,6 +4150,24 @@ Each phase ends in a working, usable application.
     off-script row says how many turns are further on and offers one press
     back. See §7, §23, `server/db/queries/history.ts`.
 
+190. **The app speaks English everywhere a reader can see** — three leaks with
+    one cause between them: a value belonging to the database, the wire format
+    or a developer's shorthand reaching the screen unchanged. `blockNames` was
+    cast `as Record<string, string>`, so `dialogue_colour` arrived in phase 185
+    with no label, nothing failed to build, and the prompt-order editor printed
+    the column value between "Depth prompts" and "Options"; the map is checked
+    against `PromptBlockId` now, and the looseness the cast existed for — a
+    preset's own blocks arrive as `custom:` prefixed ids outside the union —
+    moved to a reader that returns null rather than the id. The token unit
+    shipped as both `tok` and `TOK` on one screen: six factories by reading,
+    five more hardcoded literals by sweeping. One spelling now, with the
+    all-caps chrome that came with it returned to sentence case. The header's
+    rail toggles were Unicode half-blocks, labelled and tooltipped and still
+    reading as a font fault; they are icons. And the cast-less spotlight was
+    named "Assistant", the chat format's role rather than a word anyone chose,
+    which reached the prompt as well as the screen.
+    See §16, `client/strings.ts`.
+
 Settled while building phase 15.
 
 - **The desktop layout is phase 19, not a polish item.** The design is explicit

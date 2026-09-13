@@ -49,7 +49,8 @@ function TrackerBlock({ tracker, sceneId }: { tracker: TrackerDto; sceneId: stri
           {title}
         </span>
         <span className="chrome flex-none text-[12px] text-ink-muted">
-          {tracker.tokenCount} TOK{tracker.isPinned ? " · PINNED" : ""}
+          {strings.chat.inspectorTokens(tracker.tokenCount)}
+          {tracker.isPinned ? ` · ${strings.chat.trackerPinned}` : ""}
         </span>
         <button
           type="button"

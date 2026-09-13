@@ -245,7 +245,7 @@ export function CastRail({
             className="chrome flex-none text-[12.5px]"
             style={blueMuted}
           >
-            {guidesCost} TOK
+            {strings.chat.guidesTotal(guidesCost)}
           </span>
         </span>
         <span className="mt-[6px] block text-[13.5px] leading-[1.5]" style={blueMuted}>

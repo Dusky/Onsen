@@ -1,3 +1,4 @@
+import { PanelLeft, PanelRight } from "lucide-react";
 import { strings } from "../strings.ts";
 import { navigate, useShellRoute } from "../lib/router.ts";
 import { useGeneration } from "../lib/generation.ts";
@@ -195,27 +196,43 @@ export function Header() {
         })}
       </div>
 
-      {/* The two panel toggles, mirroring the rail glyphs. */}
+      {/*
+        The two panel toggles (§20 phase 190).
+
+        These were the Unicode half-blocks ▎ and ▕ — "mirroring the rail
+        glyphs", which they did, but every neighbour in this bar is a word
+        ("Dark", "Light", "Settings") or a letter ("A", "A"), so two block
+        drawing characters read as a font-rendering fault rather than as
+        controls. They were labelled and tooltipped the whole time; they just
+        looked broken. Real icons, in the size and weight the rails already
+        use (`LeftRail.tsx`).
+      */}
       <div className="flex items-center gap-[2px] border-l border-rule px-[10px]">
         <button
           type="button"
           title={strings.header.leftPanel}
           aria-label={strings.header.leftPanel}
           onClick={toggleLeftRail}
-          className="chrome flex h-[24px] w-[24px] items-center justify-center text-[12px]"
-          style={{ color: "var(--onsen-color-text-muted)" }}
+          className="chrome flex h-[24px] w-[24px] items-center justify-center"
         >
-          {"\u258e"}
+          <PanelLeft
+            size={16}
+            strokeWidth={1.75}
+            style={{ color: "var(--onsen-color-text-muted)" }}
+          />
         </button>
         <button
           type="button"
           title={strings.header.rightPanel}
           aria-label={strings.header.rightPanel}
           onClick={toggleRightRail}
-          className="chrome flex h-[24px] w-[24px] items-center justify-center text-[12px]"
-          style={{ color: "var(--onsen-color-text-muted)" }}
+          className="chrome flex h-[24px] w-[24px] items-center justify-center"
         >
-          {"\u2595"}
+          <PanelRight
+            size={16}
+            strokeWidth={1.75}
+            style={{ color: "var(--onsen-color-text-muted)" }}
+          />
         </button>
       </div>
 

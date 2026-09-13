@@ -9100,3 +9100,92 @@ defect sitting in plain sight with a tick beside it.
 **"1 turns".** The count was almost never 1 before, because it counted every
 row in the scene; making it honest made 1 reachable, and the header had no
 plural. Found in the first browser drive, one line from the fix that caused it.
+
+## Phase 190 — The app speaks English everywhere a reader can see
+
+Four small things from the use review, with one cause between them: somewhere a
+value belonging to the database, the wire format, or a developer's shorthand
+reached the screen unchanged. Each is a few characters. Together they are most
+of what the review called "amateurish", because they are the places a reader
+notices the seam.
+
+### A raw database key, and the cast that hid it
+
+The prompt-order editor rendered **`dialogue_colour`** between "Depth prompts"
+and "Options" — every neighbour written for a person, this one a column value.
+
+The cause is exact and worth keeping: `blockNames` was declared
+`as Record<string, string>`. `PromptBlockId` has 27 members and the map had 26.
+Because the map was typed by `string` rather than by the union, the compiler
+could not notice, the lookup returned `undefined`, and the fallback chain ended
+at the raw id. The block *has* a proper label — `blocks.ts` passes
+`"Dialogue colour"` — but that one travels with assembled prompt debug data,
+and the order editor lists *configured* entries, not assembled blocks. Two
+lists, two sources, one of them silently empty.
+
+`satisfies Record<PromptBlockId, string>` makes the omission a build error. The
+cast was not arbitrary, though, and that is the interesting part: a preset's own
+blocks arrive as `custom:`-prefixed ids that are not in the union at all, so a
+strict map cannot be *indexed* by what the caller has. The looseness moved to a
+reader — `blockNameFor(id: string): string | null` — which returns null rather
+than the id, so a caller decides what an unknown block looks like instead of
+leaking a column value by default. A strict declaration and a loose reader get
+both properties; the cast had neither.
+
+### One unit, two spellings, on the same screen
+
+The chat screen showed `9 tok` and `172 tok` in the left rail and `0 TOK` and
+`95 TOK` in the right. Reading the files found six string factories saying
+`TOK` and five saying `tok`. **Sweeping the client found five more hardcoded
+literals** — in `OptionSheets`, `TrackerPanel` and `SceneSetupScreen` — that
+nobody had thought to open. That is the whole argument for sweeping rather than
+listing, and it is the third phase in a row where the sweep found more than the
+reading did.
+
+All of it is lowercase now and routed through one factory, and the all-caps
+chrome that came with it — `% OF CTX`, `BOOK TOTAL`, `ENTRY/ENTRIES`, `PINNED`
+— is sentence case.
+
+### Two buttons that looked like a font fault
+
+The header's rail toggles were `▎` and `▕`, half-block drawing characters, in a
+bar where every neighbour is a word ("Dark", "Light", "Settings") or a letter
+("A", "A"). They had `title` and `aria-label` the whole time — they were never
+inaccessible, they just looked broken. Now `PanelLeft` / `PanelRight` from the
+icon set the rails already use, at the size and stroke weight `LeftRail` sets.
+
+### A wire-format role with no cast to hide behind
+
+A scene with no characters showed "Spotlight · **Assistant**". The placeholder
+is deliberate and its doc comment defends being plain rather than a fake
+character card — but "Assistant" is the chat format's role name, not a plain
+word anyone chose, and it reaches the *prompt* as well as the screen, where
+naming the speaker "Assistant" primes precisely the helpful-chatbot register a
+roleplay is trying not to be in. It is "Narrator" now, which is the word the
+comment was already using one line above.
+
+**Verified** in Chromium at 1600×950 and 390×844, both themes. The order list
+reads "Depth prompts / Dialogue colour / Options"; no string matching
+`[a-z]+_[a-z_]+` appears anywhere in the rendered body; no `TOK` appears on any
+screen; the toggles draw as icons. 1902 tests across 137 files, typecheck clean.
+Each guard was confirmed to fail against the restored defect before being kept,
+including the `satisfies` clause, which reproduces phase 185's exact omission as
+a build error.
+
+### Surprises
+
+**One of the review's findings was wrong, and the browser said so.** It reported
+"run-together accessible names" — `"·The Last Inn11 turns"`,
+`"Elira VossElira does not laugh"` — from reading `textContent`. The
+accessibility tree computes something different: the real name is
+`"Back to The Last Inn"` from the `aria-label`, and where no label exists the
+browser inserts separators anyway, giving `"System prompt preset · prefix ·
+system 9 tok"`. Nothing to fix. `textContent` is not the accessible name, and a
+review that conflates them invents defects.
+
+**The first glyph guard caught the streaming cursor.** Swept across the whole
+client, "no box-drawing characters" flagged `▌` in `MessageBlock.tsx` —
+which is an `aria-hidden` half-block used as a text caret, exactly what that
+character is for. The guard is scoped to a button's visible content now. A
+guard that cannot tell a caret from a mislabelled control is one that gets
+weakened the first time it is inconvenient.

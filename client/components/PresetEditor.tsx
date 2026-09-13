@@ -142,7 +142,7 @@ export function PromptManager({ preset }: { preset: PresetDto }) {
       {order.map((entry, index) => {
         const own = blocks.get(entry.id);
         const name =
-          own?.label ?? strings.settings.blockNames[entry.id] ?? entry.id;
+          own?.label ?? strings.settings.blockNameFor(entry.id) ?? entry.id;
         return (
           <div key={entry.id}>
             <div className="row flex items-baseline gap-[8px]">

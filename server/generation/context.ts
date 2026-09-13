@@ -60,10 +60,17 @@ import type { MemoryRecallTrace } from "../../shared/types.ts";
  *
  * It is deliberately plain rather than a fake character card: a placeholder that
  * looked like a real one would invite code to depend on it.
+ *
+ * The name was "Assistant" until §20 phase 190, which is the wire format's
+ * role rather than a word anyone chose. It reached the screen — a scene with
+ * no cast showed "Spotlight · Assistant" in the prompt panel — and, worse, it
+ * reached the *prompt*, where naming the speaker "Assistant" primes exactly the
+ * helpful-chatbot register a roleplay is trying not to be in. "Narrator" is the
+ * word this comment was already using one line up.
  */
 export const PLACEHOLDER_SPOTLIGHT: PromptCharacter = {
   id: "placeholder",
-  name: "Assistant",
+  name: "Narrator",
   description: null,
   personality: null,
   scenario: null,
