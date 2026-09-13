@@ -8,18 +8,28 @@ import type { ProviderKind } from "./types.ts";
  * rather than recalled, because a base URL that is *nearly* right fails at the
  * first generation with a 404 and looks like a broken app. Where a provider
  * serves several shapes, the one chosen is the one whose path Onsen's adapter
- * appends to: `${baseUrl}/chat/completions` for an OpenAI-compatible endpoint,
- * `${baseUrl}/messages` for Anthropic's, `${baseUrl}/completions` for text
- * completion (`server/routes/connections.ts`).
+ * appends to — `chatPathFor` in `server/adapters/errors.ts` is the authority.
+ * The consequence worth stating, because getting it backwards is a 404 on
+ * every turn: an OpenAI-compatible or text-completion address **carries its
+ * own `/v1`**, and an Anthropic one **does not**, because that adapter
+ * appends `v1/messages`.
  *
  * A preset fills the form and nothing more. It is a starting point, not a
  * promise: every field stays editable, and the reader can Test before saving
  * (§20 phase 179). No preset carries a key — those never travel.
  *
- * `models` is only populated where the ids are known from the provider's own
- * current documentation. Everywhere else it is empty on purpose, because the
- * form's Fetch button asks the endpoint what it actually serves, and a stale
- * guessed model id is worse than an empty field.
+ * **No preset names a model, and that is the point (§20 phase 182).** The
+ * first version shipped ids for the two providers whose documentation seemed
+ * clearest, and DeepSeek's were wrong within days of writing them — a reader
+ * picked the preset, kept the prefilled model, and got a 400 from an endpoint
+ * their key was perfectly good for. The form's Fetch button asks the provider
+ * what it serves right now, which is the only answer that cannot go stale, and
+ * a blank field costs one click where a wrong one costs a confusing failure at
+ * the first generation.
+ *
+ * The asymmetry is the whole argument: a blank model is a small, obvious,
+ * one-click gap. A wrong model is invisible until a turn fails, and the
+ * failure names something the reader never typed.
  */
 export interface ProviderPreset {
   /** Stable id, used by the picker and by the guards. */
@@ -32,8 +42,6 @@ export interface ProviderPreset {
    * key; `local` is yours and usually does not.
    */
   where: "hosted" | "local";
-  /** Offered before Fetch runs. Empty where the ids are not known for certain. */
-  models?: string[];
   /** One short line, only where something would otherwise surprise. */
   note?: string;
 }
@@ -43,9 +51,11 @@ export const PROVIDER_PRESETS: readonly ProviderPreset[] = [
     key: "anthropic",
     name: "Anthropic",
     kind: "anthropic",
-    baseUrl: "https://api.anthropic.com/v1",
+    // No `/v1`: the Anthropic adapter appends `v1/messages` itself
+    // (`chatPathFor`, `server/adapters/errors.ts`). Every other kind's
+    // address carries its own `/v1`, because theirs do not.
+    baseUrl: "https://api.anthropic.com",
     where: "hosted",
-    models: ["claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5"],
   },
   {
     key: "openai",
@@ -60,7 +70,6 @@ export const PROVIDER_PRESETS: readonly ProviderPreset[] = [
     kind: "openai_compatible",
     baseUrl: "https://api.deepseek.com/v1",
     where: "hosted",
-    models: ["deepseek-flash", "deepseek-v4-pro"],
   },
   {
     key: "nanogpt",

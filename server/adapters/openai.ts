@@ -1,6 +1,7 @@
 import type { SamplerSettings } from "../../shared/types.ts";
 import type { BuiltPrompt, ProviderCapabilities } from "../prompt/index.ts";
 import { parseSseStream } from "./sse.ts";
+import { chatPathFor, joinUrl, readErrorBody } from "./errors.ts";
 import {
   AdapterError,
   type Adapter,
@@ -109,10 +110,6 @@ function normaliseFinish(value: string): FinishReason {
   }
 }
 
-function joinUrl(baseUrl: string, path: string): string {
-  return `${baseUrl.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`;
-}
-
 /**
  * Map internal sampler settings onto request fields. Only the samplers the
  * capabilities declare are sent, so a provider never receives a knob the prompt
@@ -137,23 +134,6 @@ function samplerFields(settings: SamplerSettings): Record<string, unknown> {
   put("xtc_probability", settings.xtc_probability);
 
   return fields;
-}
-
-async function readErrorBody(response: Response): Promise<string | null> {
-  try {
-    const text = await response.text();
-    if (text === "") return null;
-    try {
-      const parsed = JSON.parse(text) as { error?: { message?: string } | string };
-      if (typeof parsed.error === "string") return parsed.error;
-      if (parsed.error?.message !== undefined) return parsed.error.message;
-    } catch {
-      /* Not JSON; the raw body is still the most useful thing to show. */
-    }
-    return text.slice(0, 500);
-  } catch {
-    return null;
-  }
 }
 
 export function createOpenAiAdapter(config: AdapterConfig): Adapter {
@@ -225,7 +205,7 @@ export function createOpenAiAdapter(config: AdapterConfig): Adapter {
 
       let response: Response;
       try {
-        response = await doFetch(joinUrl(config.baseUrl, "chat/completions"), {
+        response = await doFetch(joinUrl(config.baseUrl, chatPathFor("openai_compatible")), {
           method: "POST",
           headers: headers(),
           // Passing the signal to fetch is what actually stops inference
