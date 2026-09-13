@@ -15,7 +15,7 @@ import {
 } from "../client/lib/breakpoint.ts";
 
 /**
- * The rail dock (§20 phase 173): any of the eight panels, on either rail, in
+ * The rail dock (§20 phase 173): any of the nine panels, on either rail, in
  * any order, at a width the reader sets.
  *
  * Mostly structural like the rest of this project's UI guards, but not
@@ -37,8 +37,12 @@ const EDITOR = readFileSync(join(ROOT, "client", "components", "DockEditor.tsx")
 const UI_STATE = readFileSync(join(ROOT, "client", "state", "ui.ts"), "utf8");
 
 describe("the default is what the app already was", () => {
-  test("the arrangement the rails used to hardcode, plus off script", () => {
-    expect(DOCK_DEFAULTS.left).toEqual(["prompt", "preset", "lore", "guides"]);
+  test("the arrangement the rails used to hardcode, plus what use has added", () => {
+    // `models` joined the left side in phase 179, next to `preset`: the two
+    // answer the same question from opposite ends — which model, and how it is
+    // sampled — and providers had lived only in Settings, a full-screen
+    // overlay, which is what made changing one slow.
+    expect(DOCK_DEFAULTS.left).toEqual(["prompt", "preset", "models", "lore", "guides"]);
     /*
      * `ooc` is the one panel this default has ever gained, in phase 177, and
      * the reason it is a default change rather than something a reader opts

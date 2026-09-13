@@ -5,6 +5,7 @@ import {
   Feather,
   ListChecks,
   MessageSquareOff,
+  Plug,
   Sigma,
   SlidersHorizontal,
   Users,
@@ -55,15 +56,18 @@ import { TextField } from "./TextField.tsx";
 import { LorePane } from "./LorePane.tsx";
 import { EditorField } from "./EditorField.tsx";
 import { CastEditPane } from "./CastEditPane.tsx";
+import { ModelsPanel } from "./ModelsPanel.tsx";
 
 /**
- * The eight panels the two rails can host, and the registry that makes any of
+ * The nine panels the two rails can host, and the registry that makes any of
  * them dockable to either side (§20 phase 173).
  *
  * Six of these were already pure functions of a scene id, written before this
  * batch existed — `PromptPanel` through `AuthorPane` below are relocated from
  * `LeftRail.tsx` and `RightRail.tsx` verbatim, not rewritten, because a panel
- * being movable does not change what it draws.
+ * being movable does not change what it draws. `models` is a seventh of that
+ * kind, added by phase 179 and living in its own file because the credential
+ * forms it renders are shared with the settings screen.
  *
  * The other two are not components of their own but slots `ChatScreen` fills
  * with live scene state, read back here wherever the reader has docked them:
@@ -1146,6 +1150,13 @@ export const PANEL_META: Record<DockPanel, PanelMeta> = {
     label: strings.rightRail.authors,
     titleLabel: strings.rightRail.authors,
     Component: AuthorPane,
+  },
+  models: {
+    // A plug: this panel is where the app is wired to something else.
+    Icon: Plug,
+    label: strings.models.title,
+    titleLabel: strings.models.title,
+    Component: ModelsPanel,
   },
   ooc: {
     // The same glyph the composer's own Off script op carries, so the op and

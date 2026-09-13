@@ -103,7 +103,7 @@ describe("the round trip", () => {
       dock: {
         left: ["prompt", "scene"],
         right: ["characters"],
-        hidden: ["preset", "lore", "guides", "authors", "ooc"],
+        hidden: ["preset", "models", "lore", "guides", "authors", "ooc"],
         leftWidth: 300,
       },
     });
@@ -137,7 +137,7 @@ describe("the round trip", () => {
     expect(after.dock.left).toEqual(["prompt", "scene"]);
     expect(after.dock.right).toEqual(["characters"]);
     expect(after.dock.hidden.sort()).toEqual(
-      ["authors", "guides", "lore", "ooc", "preset"],
+      ["authors", "guides", "lore", "models", "ooc", "preset"],
     );
     expect(after.dock.leftWidth).toBe(300);
   });

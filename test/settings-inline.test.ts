@@ -24,6 +24,11 @@ const PRESET = readFileSync(
   "utf8",
 );
 
+const CONNECTIONS = readFileSync(
+  join(import.meta.dir, "..", "client", "components", "ConnectionFields.tsx"),
+  "utf8",
+);
+
 describe("op controls are one component", () => {
   test("OpFields is shared by the sheet and the inline row", () => {
     expect(SETTINGS).toContain("function OpFields");
@@ -40,16 +45,23 @@ describe("op controls are one component", () => {
 });
 
 describe("providers and profiles follow the same pattern", () => {
-  test("ProviderFields is shared by the sheet and the inline row", () => {
-    expect(SETTINGS).toContain("function ProviderFields");
+  /*
+   * The forms moved to `ConnectionFields.tsx` in phase 179, which gave them a
+   * third host: the settings screen's inline expansion, its phone sheet, and
+   * the rail panel's rows. The assertions moved with them rather than
+   * weakening — what they pin is that there is one editor, and a third host is
+   * a stronger reason for that, not a weaker one.
+   */
+  test("ProviderFields is shared by every host", () => {
+    expect(CONNECTIONS).toContain("export function ProviderFields");
     // The phone's sheet, and the desktop's inline expansion.
-    expect(SETTINGS).toContain("<ProviderFields provider={provider} onClose={onClose} />");
+    expect(CONNECTIONS).toContain("<ProviderFields provider={provider} onClose={onClose} />");
     expect(SETTINGS).toContain("onClose={() => setEditingProviderId(undefined)}");
   });
 
-  test("ProfileFields is shared by the sheet and the inline row", () => {
-    expect(SETTINGS).toContain("function ProfileFields");
-    expect(SETTINGS).toContain(
+  test("ProfileFields is shared by every host", () => {
+    expect(CONNECTIONS).toContain("export function ProfileFields");
+    expect(CONNECTIONS).toContain(
       "<ProfileFields profile={profile} providers={providers} onClose={onClose} />",
     );
     expect(SETTINGS).toContain("onClose={() => setEditingProfile(undefined)}");

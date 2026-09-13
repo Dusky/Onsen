@@ -654,32 +654,33 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
    * The §16 test button: one tiny round trip to the endpoint, so a bad key or
    * a mistyped host reads as a timed call, not a failed first generation.
    */
-  app.post("/providers/:id/test", async (c) => {
-    const row = findProviderByUlid(ctx.db, c.req.param("id"));
-    if (row === null) return c.json(notFound("provider"), 404);
-    if (row.base_url === null) {
-      return c.json(badRequest("This provider has no address to test."), 400);
-    }
-
-    const baseUrl = row.base_url.replace(/\/+$/, "");
-    const apiKey =
-      row.api_key_encrypted === null ? null : decryptSecret(ctx.keyring, row.api_key_encrypted);
+  /**
+   * One tiny round trip to an endpoint, so a bad key or a mistyped host reads
+   * as a timed call rather than a failed first generation (§16).
+   *
+   * Takes the values rather than a row, because phase 179 gave it a second
+   * door: a provider can now be tested *before* it is saved. The shape is
+   * `POST /providers/models`'s, which has accepted unsaved credentials since
+   * §16 — a key crossing transiently for one call, never stored.
+   */
+  async function probeProvider(input: {
+    kind: string;
+    baseUrl: string;
+    apiKey: string | null;
+    model: string | null;
+  }): Promise<{ ok: boolean; latencyMs: number; detail: string | null }> {
+    const baseUrl = input.baseUrl.replace(/\/+$/, "");
     const headers = {
       "Content-Type": "application/json",
-      ...(apiKey === null ? {} : { Authorization: `Bearer ${apiKey}` }),
+      ...(input.apiKey === null || input.apiKey === ""
+        ? {}
+        : { Authorization: `Bearer ${input.apiKey}` }),
     };
 
     // One token is the whole test: the request shape is the provider's own.
     let body: string;
     let path = "/chat/completions";
-    switch (row.kind) {
-      case "openai_compatible":
-        body = JSON.stringify({
-          model: row.model ?? "",
-          messages: [{ role: "user", content: "ping" }],
-          max_tokens: 1,
-        });
-        break;
+    switch (input.kind) {
       case "text_completion":
         path = "/completions";
         body = JSON.stringify({ prompt: "ping", max_tokens: 1 });
@@ -687,9 +688,16 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
       case "anthropic":
         path = "/messages";
         body = JSON.stringify({
-          model: row.model ?? "",
+          model: input.model ?? "",
           max_tokens: 1,
           messages: [{ role: "user", content: "ping" }],
+        });
+        break;
+      default:
+        body = JSON.stringify({
+          model: input.model ?? "",
+          messages: [{ role: "user", content: "ping" }],
+          max_tokens: 1,
         });
         break;
     }
@@ -704,13 +712,64 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
       });
       if (!response.ok) {
         const detail = (await response.text()).slice(0, 200);
-        return c.json({ ok: false, latencyMs: Date.now() - started, detail: `HTTP ${response.status}: ${detail}` });
+        return {
+          ok: false,
+          latencyMs: Date.now() - started,
+          detail: `HTTP ${response.status}: ${detail}`,
+        };
       }
-      return c.json({ ok: true, latencyMs: Date.now() - started, detail: null });
+      return { ok: true, latencyMs: Date.now() - started, detail: null };
     } catch (caught) {
       const detail = caught instanceof Error ? caught.message : "Unreachable.";
-      return c.json({ ok: false, latencyMs: Date.now() - started, detail });
+      return { ok: false, latencyMs: Date.now() - started, detail };
     }
+  }
+
+  /** Test a saved provider, by id. */
+  app.post("/providers/:id/test", async (c) => {
+    const row = findProviderByUlid(ctx.db, c.req.param("id"));
+    if (row === null) return c.json(notFound("provider"), 404);
+    if (row.base_url === null) {
+      return c.json(badRequest("This provider has no address to test."), 400);
+    }
+    return c.json(
+      await probeProvider({
+        kind: row.kind,
+        baseUrl: row.base_url,
+        apiKey:
+          row.api_key_encrypted === null
+            ? null
+            : decryptSecret(ctx.keyring, row.api_key_encrypted),
+        model: row.model,
+      }),
+    );
+  });
+
+  /**
+   * Test values that are still in a form (§20 phase 179).
+   *
+   * Test used to need a saved row, so adding a provider meant save, reopen,
+   * test, fix, save again — and the reader found out whether the key worked
+   * only after committing it. The form's key wins; a stored one stands in for
+   * an existing provider, exactly as the model list already does.
+   */
+  app.post("/providers/test", async (c) => {
+    const body = await readJson(c);
+    if (body === null) return c.json(badRequest("Expected a JSON body."), 400);
+    const baseUrl = requiredText(body["baseUrl"], 500);
+    if (baseUrl === null) return c.json(badRequest("A provider address is required."), 400);
+    const kind = requiredText(body["kind"], 40) ?? "openai_compatible";
+
+    let apiKey = requiredText(body["apiKey"], 400);
+    if ((apiKey === null || apiKey === "") && typeof body["providerId"] === "string") {
+      const row = findProviderByUlid(ctx.db, body["providerId"]);
+      apiKey =
+        row?.api_key_encrypted == null ? null : decryptSecret(ctx.keyring, row.api_key_encrypted);
+    }
+
+    return c.json(
+      await probeProvider({ kind, baseUrl, apiKey, model: requiredText(body["model"], 200) }),
+    );
   });
 
   app.delete("/providers/:id", (c) => {
