@@ -336,6 +336,8 @@ export class AutopilotRunner {
       sceneId: scene.id,
       profileId: null,
       fallbackProfileId: scene.connection_profile_id,
+      sceneProviderId: scene.provider_id,
+      sceneModel: scene.model,
       prompt: buildAddressedPrompt(
         {
           persona,

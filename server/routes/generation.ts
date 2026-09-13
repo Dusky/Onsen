@@ -436,6 +436,8 @@ export function sceneGenerationRoutes(
       kind: taskKind(IMPERSONATE)!,
       sceneId: scene.id,
       fallbackProfileId: scene.connection_profile_id,
+      sceneProviderId: scene.provider_id,
+      sceneModel: scene.model,
       prompt: buildImpersonatePrompt(
         {
           persona,
@@ -798,9 +800,10 @@ export function sceneGenerationRoutes(
     try {
       route = resolveRoute(ctx.db, ctx.keyring, {
         profileId: scene.connection_profile_id,
-        // The scene's own model, so a preview names what the turn will use
-        // rather than what the profile alone would (§20 phase 180).
+        // The scene's own model and provider, so a preview names what the
+        // turn will use rather than what the profile alone would (§§180, 181).
         model: scene.model,
+        providerId: scene.provider_id,
       });
     } catch (caught) {
       if (caught instanceof RouteError) {

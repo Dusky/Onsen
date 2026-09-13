@@ -55,6 +55,17 @@ export interface TaskRequest {
   profileId?: number | null;
   /** The scene's profile, used when nothing above it is set. */
   fallbackProfileId: number | null;
+  /**
+   * The scene's own provider and model overrides (§§180, 181).
+   *
+   * Applied **only** when this task falls through to the scene's profile. An
+   * op with a profile of its own is a deliberate routing choice (§7), and
+   * dragging the scene's provider onto it would quietly undo that; an op with
+   * no profile of its own is running "wherever this roleplay runs", and that
+   * is what the overrides mean.
+   */
+  sceneProviderId?: number | null;
+  sceneModel?: string | null;
   /** Aborting the turn aborts its side calls. */
   signal?: AbortSignal;
 }
@@ -110,11 +121,17 @@ export class TaskRunner {
 
     let route: ResolvedRoute;
     try {
+      // A scene's own override wins; then this task's configured profile; then
+      // whatever the scene generates prose on.
+      const chosen = request.profileId ?? config.connection_profile_id ?? null;
+      const usingScenes = chosen === null;
       route = resolveRoute(this.db, this.keyring, {
-        // A scene's own override wins; then this task's configured model; then
-        // whatever the scene generates prose on.
-        profileId:
-          request.profileId ?? config.connection_profile_id ?? request.fallbackProfileId,
+        profileId: chosen ?? request.fallbackProfileId,
+        // Only when falling through to the scene's own profile — see
+        // `sceneProviderId` above.
+        ...(usingScenes
+          ? { providerId: request.sceneProviderId ?? null, model: request.sceneModel ?? null }
+          : {}),
       });
     } catch (caught) {
       const detail = caught instanceof Error ? caught.message : "No model to run this on.";

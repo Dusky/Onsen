@@ -1,0 +1,13 @@
+-- A provider chosen for one roleplay (SPEC §16, §20 phase 181).
+--
+-- The sibling of phase 180's `scenes.model`, and it should have shipped with
+-- it. A roleplay could already reach a different provider, but only by
+-- switching to a connection *profile* that pointed at one — so pointing this
+-- roleplay at a provider you had no profile for meant making a profile first,
+-- which is bookkeeping in service of a two-click change.
+--
+-- Null is the ordinary state and means "whatever the profile says", so every
+-- existing roleplay resolves exactly as it did. ON DELETE SET NULL rather than
+-- CASCADE: removing a provider must not remove the roleplays pointed at it,
+-- it must hand them back to their profile.
+ALTER TABLE scenes ADD COLUMN provider_id INTEGER REFERENCES providers(id) ON DELETE SET NULL;

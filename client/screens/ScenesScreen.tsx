@@ -250,7 +250,9 @@ function SceneRow({
             {[
               strings.scenes.counts(scene.messageCount),
               scene.summaryCount > 0 ? strings.scenes.summariesCount(scene.summaryCount) : null,
-              scene.connectionProfileName === null ? null : scene.connectionProfileName,
+              // Where it runs, not which profile it is filed under (§181):
+              // the third readout that had been naming the profile.
+              scene.runsOn === null ? null : scene.runsOn.providerName,
             ]
               .filter((part) => part !== null)
               .join(" · ")}

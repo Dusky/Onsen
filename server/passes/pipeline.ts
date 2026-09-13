@@ -151,6 +151,8 @@ export class PassPipeline {
       prompt,
       profileId: row.connection_profile_id,
       fallbackProfileId: scene.connection_profile_id,
+      sceneProviderId: scene.provider_id,
+      sceneModel: scene.model,
     };
   }
 

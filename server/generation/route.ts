@@ -50,6 +50,11 @@ export interface RouteRequest {
    * Null or absent means the profile decides, which is the ordinary case.
    */
   model?: string | null;
+  /**
+   * A provider this one scene has chosen, beating the profile's (§20 phase
+   * 181). Null or absent means the profile's provider, as ever.
+   */
+  providerId?: number | null;
 }
 
 export function resolveRoute(
@@ -64,20 +69,34 @@ export function resolveRoute(
     );
   }
 
+  /*
+   * The profile and the provider are fetched separately rather than joined,
+   * because a scene can now override the provider (§20 phase 181) and the
+   * join hardcoded "the profile's". The profile still supplies the preset and
+   * its own model; which provider serves the turn is a separate question.
+   */
+  const profile = db
+    .query("SELECT model AS profile_model, preset_id, provider_id FROM connection_profiles WHERE id = $id")
+    .get({ id: request.profileId }) as
+    | { profile_model: string | null; preset_id: number | null; provider_id: number }
+    | null;
+
+  if (profile === null) {
+    throw new RouteError("no_connection", "That connection profile no longer exists.");
+  }
+
+  /** The scene's own provider if it named one, else the profile's. */
+  const overridden = request.providerId != null && request.providerId !== profile.provider_id;
+  const providerId = overridden ? request.providerId! : profile.provider_id;
+
   const row = db
     .query(
-      `SELECT cp.model AS profile_model, cp.preset_id,
-              p.name AS provider_name, p.kind, p.base_url, p.api_key_encrypted,
-              p.model AS provider_model, p.enabled, p.supports_prefill,
-              p.instruct_template
-         FROM connection_profiles cp
-         JOIN providers p ON p.id = cp.provider_id
-        WHERE cp.id = $id`,
+      `SELECT name AS provider_name, kind, base_url, api_key_encrypted,
+              model AS provider_model, enabled, supports_prefill, instruct_template
+         FROM providers WHERE id = $id`,
     )
-    .get({ id: request.profileId }) as
+    .get({ id: providerId }) as
     | {
-        profile_model: string | null;
-        preset_id: number | null;
         provider_name: string;
         kind: ProviderKind;
         base_url: string | null;
@@ -90,15 +109,23 @@ export function resolveRoute(
     | null;
 
   if (row === null) {
-    throw new RouteError("no_connection", "That connection profile no longer exists.");
+    // A provider removed under a scene that had chosen it. `ON DELETE SET
+    // NULL` makes this unreachable through the app, but a hand-edited
+    // database should say what is wrong rather than crash.
+    throw new RouteError("no_connection", "That provider no longer exists.");
   }
   if (row.enabled !== 1) {
     throw new RouteError("provider_disabled", `${row.provider_name} is disabled.`);
   }
 
-  // Narrowest wins: the scene's own choice, then the profile's, then the
-  // provider's default. Each step is a deliberate narrowing by somebody.
-  const model = request.model ?? row.profile_model ?? row.provider_model;
+  /*
+   * Narrowest wins: the scene's own choice, then the profile's, then the
+   * provider's default — except that a scene which overrode the *provider*
+   * skips the profile's model. A model id belongs to the provider that serves
+   * it, so carrying `gpt-4o` across to Anthropic because the profile happened
+   * to name it would fail the turn with a model nobody chose.
+   */
+  const model = request.model ?? (overridden ? row.provider_model : (profile.profile_model ?? row.provider_model));
   if (model === null) {
     throw new RouteError("no_model", `No model is set for ${row.provider_name}.`);
   }
@@ -124,7 +151,7 @@ export function resolveRoute(
     baseUrl: row.base_url,
     apiKey,
     model,
-    presetId: row.preset_id,
+    presetId: profile.preset_id,
     supportsPrefill: row.supports_prefill === null ? null : row.supports_prefill === 1,
     instructTemplateId: row.instruct_template,
   };
