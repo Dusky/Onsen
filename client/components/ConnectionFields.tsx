@@ -18,9 +18,9 @@ import { ModelPicker } from "./ModelPicker.tsx";
 import { Sheet } from "./Sheet.tsx";
 
 /**
- * The provider and connection-profile forms (§16, §20 phases 72, 178).
+ * The provider and connection-profile forms (§16, §20 phases 72, 179).
  *
- * Lifted out of `SettingsScreen.tsx` by phase 178, which put the same two
+ * Lifted out of `SettingsScreen.tsx` by phase 179, which put the same two
  * lists in a rail panel: a credential form is the last thing that should exist
  * twice, and the settings screen was 2471 lines with these 480 inside it. The
  * same move `Segmented` made in phase 166, for the same reason — a second host
@@ -62,7 +62,7 @@ export function statusDot(ok: boolean) {
 }
 
 /**
- * Save, and Remove where there is something to remove (§20 phase 178).
+ * Save, and Remove where there is something to remove (§20 phase 179).
  *
  * Sticky, and the reason is a measurement: the provider form is 606px tall,
  * and in a 950px window its bottom sat at 998px — Save was below the fold on
@@ -147,7 +147,7 @@ export function ProviderFields({
    * Prefill and the instruct template used to write to the server the moment
    * they were clicked, while every other field waited for Save — so Save meant
    * "save some of this", and a reader who set both and then closed without
-   * saving had stored half their edit (§20 phase 178). They are form state now
+   * saving had stored half their edit (§20 phase 179). They are form state now
    * and go with the submit. Held as state rather than in the form because both
    * are button groups rather than inputs.
    */
@@ -316,7 +316,7 @@ export function ProviderFields({
 
         {/* §16: one round trip, so a bad key reads here rather than on the
             first generation — and on the values in the form, so a new provider
-            can be tested before it is committed (§20 phase 178). It used to
+            can be tested before it is committed (§20 phase 179). It used to
             need a saved row, which made adding one a loop of save, reopen,
             test, fix, save. */}
         <div className="mb-[10px] flex items-center gap-[8px]">

@@ -29,6 +29,7 @@ import {
 } from "../lib/queries.ts";
 import { Notice } from "../components/Notice.tsx";
 import { Sheet, SheetAction } from "../components/Sheet.tsx";
+import { GroupsSheet } from "../components/GroupsSheet.tsx";
 
 /**
  * The character library (SPEC §9, phase 26).
@@ -152,6 +153,7 @@ export function CharactersScreen() {
 
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [groupsOpen, setGroupsOpen] = useState(false);
   const [menuFor, setMenuFor] = useState<CharacterDto | null>(null);
   /** The in-app prompt: which field is being asked for, and its draft. */
   const [promptOpen, setPromptOpen] = useState<null | "tag" | "folder" | "filter">(null);
@@ -256,6 +258,9 @@ export function CharactersScreen() {
         <p className="screen-kicker">{strings.characters.kicker}</p>
         <div className="mt-[6px] flex items-center gap-[8px]">
           <h1 className="screen-title flex-1">{strings.characters.title}</h1>
+          <button type="button" className="btn" onClick={() => setGroupsOpen(true)}>
+            {strings.characters.groups}
+          </button>
           <button
             type="button"
             className="btn"
@@ -710,6 +715,7 @@ export function CharactersScreen() {
       ) : null}
 
       {confirmNode}
+      {groupsOpen ? <GroupsSheet onClose={() => setGroupsOpen(false)} /> : null}
     </div>
   );
 }

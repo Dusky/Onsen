@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { DOCK_DEFAULTS, DOCK_PANELS } from "@shared/types.ts";
 
 /**
- * Models is a rail activity (§20 phase 178).
+ * Models is a rail activity (§20 phase 179).
  *
  * Providers lived only in Settings, which is a full-screen overlay: pointing a
  * roleplay at a different model meant leaving what you were reading, finding

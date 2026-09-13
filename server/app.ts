@@ -43,6 +43,7 @@ import { memoryRoutes } from "./routes/memory.ts";
 import { mediaRoutes } from "./routes/media.ts";
 import { brandingRoutes } from "./routes/branding.ts";
 import { backgroundRoutes } from "./routes/backgrounds.ts";
+import { groupRoutes } from "./routes/groups.ts";
 import { createRateLimiter } from "./middleware/rate-limit.ts";
 import { hashToken } from "./db/queries/api-keys.ts";
 import { WebhookSender } from "./webhooks/sender.ts";
@@ -234,6 +235,7 @@ export function createServer(ctx: AppContext, options: CreateAppOptions = {}): C
   api.route("/media", mediaRoutes(ctx, media));
   api.route("/branding", brandingRoutes(ctx));
   api.route("/backgrounds", backgroundRoutes(ctx, media));
+  api.route("/character-groups", groupRoutes(ctx));
   api.route("/lorebooks", loreRoutes(ctx));
   api.route("/dossiers", dossierRoutes(ctx));
 

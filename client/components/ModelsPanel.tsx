@@ -16,7 +16,7 @@ import {
 } from "./ConnectionFields.tsx";
 
 /**
- * Models, in a rail (§20 phase 178).
+ * Models, in a rail (§20 phase 179).
  *
  * Providers lived only in Settings, which is a full-screen overlay: changing
  * what a roleplay talks to meant leaving the thing you were reading, finding

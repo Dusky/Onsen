@@ -658,7 +658,7 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
    * One tiny round trip to an endpoint, so a bad key or a mistyped host reads
    * as a timed call rather than a failed first generation (§16).
    *
-   * Takes the values rather than a row, because phase 178 gave it a second
+   * Takes the values rather than a row, because phase 179 gave it a second
    * door: a provider can now be tested *before* it is saved. The shape is
    * `POST /providers/models`'s, which has accepted unsaved credentials since
    * §16 — a key crossing transiently for one call, never stored.
@@ -746,7 +746,7 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
   });
 
   /**
-   * Test values that are still in a form (§20 phase 178).
+   * Test values that are still in a form (§20 phase 179).
    *
    * Test used to need a saved row, so adding a provider meant save, reopen,
    * test, fix, save again — and the reader found out whether the key worked

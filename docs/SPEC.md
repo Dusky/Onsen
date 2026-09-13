@@ -4022,7 +4022,15 @@ Each phase ends in a working, usable application.
     could not reach any install that had ever saved an arrangement. See §7,
     §16, `client/components/OocChannel.tsx`.
 
-178. **Models is a rail activity** — providers lived only in Settings, a
+178. **Character groups** — a recurring cast as a thing you can name, so
+    starting a roleplay with it is one tap instead of a picker session. A
+    group is a roster of characters plus an optional lorebook; the library
+    gets a Cast groups sheet to organise them, and Start turns the roster
+    into a scene — the cast in display order, the lorebook bound at scene
+    scope, the first member's greeting opening it. See §9,
+    `server/routes/groups.ts`, `client/components/GroupsSheet.tsx`.
+
+179. **Models is a rail activity** — providers lived only in Settings, a
     full-screen overlay, so pointing a roleplay at a different model meant
     leaving what you were reading. The ninth dock panel switches the scene's
     profile in one click and edits providers and profiles in place, with the

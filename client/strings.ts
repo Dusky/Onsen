@@ -1240,7 +1240,7 @@ export const strings = {
   },
 
   /** The right rail's three tabs (§20 phase 90). */
-  /** The Models rail panel (§20 phase 178). */
+  /** The Models rail panel (§20 phase 179). */
   models: {
     title: "Models",
     /** What the scene being read is talking to, and how to point it elsewhere. */
@@ -1436,6 +1436,27 @@ export const strings = {
     deleteCharacter: "Delete character",
     deleteConfirm: (name: string) => `Delete ${name}? The card file is not touched.`,
     saved: "Saved",
+
+    /** Character groups (SPEC §9, §20 phase 158). */
+    groups: "Cast groups",
+    groupsEmpty: "No groups yet.",
+    groupsNew: "New group",
+    groupsNewName: "New group",
+    groupsEdit: "Edit group",
+    groupsName: "Name",
+    groupsLorebook: "Lorebook",
+    groupsLorebookNone: "No lorebook",
+    groupsMembers: (n: number) => `${n} character${n === 1 ? "" : "s"}`,
+    groupsMembersTitle: "Members",
+    groupsNoMembers: "Nobody in this group yet.",
+    groupsStart: "Start",
+    groupsAddCharacters: "Add characters",
+    groupsAddSearch: "Search the library…",
+    groupsAdd: "Add",
+    groupsInGroup: "In group",
+    groupsRemove: "Remove",
+    groupsDelete: "Delete group",
+    groupsDeleteConfirm: (name: string) => `Delete the group ${name}? The characters are not touched.`,
   },
 
   /* Pictures, voices and captions (SPEC §20 phase 41). */

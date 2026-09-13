@@ -38,7 +38,7 @@ const UI_STATE = readFileSync(join(ROOT, "client", "state", "ui.ts"), "utf8");
 
 describe("the default is what the app already was", () => {
   test("the arrangement the rails used to hardcode, plus what use has added", () => {
-    // `models` joined the left side in phase 178, next to `preset`: the two
+    // `models` joined the left side in phase 179, next to `preset`: the two
     // answer the same question from opposite ends — which model, and how it is
     // sampled — and providers had lived only in Settings, a full-screen
     // overlay, which is what made changing one slow.

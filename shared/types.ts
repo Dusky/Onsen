@@ -2176,7 +2176,7 @@ export interface DockDto {
 
 export const DOCK_DEFAULTS: DockDto = {
   // `models` sits next to `preset` because they answer the same question from
-  // two sides — which model, and how it is sampled (§20 phase 178).
+  // two sides — which model, and how it is sampled (§20 phase 179).
   left: ["prompt", "preset", "models", "lore", "guides"],
   // Off script joins the right rail as a fourth tab (§20 phase 177). It is the
   // one default this preference has ever changed, and the reason is that the
@@ -2922,6 +2922,35 @@ export interface CardTokenCosts {
   total: number;
   /** True while only the estimator ships (§3). */
   estimated: boolean;
+}
+
+/**
+ * A member of a character group (§20 phase 158).
+ *
+ * The compact view a group row and the editor both render: enough to name and
+ * picture the member, not the whole card — a group is a roster, not a library.
+ */
+export interface CharacterGroupMemberDto {
+  characterId: string;
+  name: string;
+  hasAvatar: boolean;
+}
+
+/**
+ * A named cast for quick roleplay creation (SPEC §9, §20 phase 158).
+ *
+ * Characters, and optionally the lorebook their scenes open into. "Start"
+ * turns the whole thing into a scene: the cast in display order plus the book
+ * bound at scene scope.
+ */
+export interface CharacterGroupDto {
+  id: string;
+  name: string;
+  lorebookId: string | null;
+  lorebookName: string | null;
+  members: CharacterGroupMemberDto[];
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface CharacterDto {

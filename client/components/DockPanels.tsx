@@ -66,7 +66,7 @@ import { ModelsPanel } from "./ModelsPanel.tsx";
  * batch existed — `PromptPanel` through `AuthorPane` below are relocated from
  * `LeftRail.tsx` and `RightRail.tsx` verbatim, not rewritten, because a panel
  * being movable does not change what it draws. `models` is a seventh of that
- * kind, added by phase 178 and living in its own file because the credential
+ * kind, added by phase 179 and living in its own file because the credential
  * forms it renders are shared with the settings screen.
  *
  * The other two are not components of their own but slots `ChatScreen` fills
