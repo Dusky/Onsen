@@ -506,6 +506,30 @@ export function sceneRoutes(
         model: model === null || model.trim() === "" ? null : model.trim(),
       });
     }
+    /*
+     * A provider for this roleplay alone (§20 phase 181).
+     *
+     * Null hands the decision back to the connection profile, the same way the
+     * model override above does. Choosing one **clears the model override**:
+     * a model id belongs to the provider that serves it, so keeping `gpt-4o`
+     * while moving the roleplay to Anthropic would fail the next turn with a
+     * model nobody chose. The reader picks the model again, from a list this
+     * provider actually answers with.
+     */
+    if ("providerId" in input) {
+      const provider = resolveRef(input.providerId, "providers");
+      if (provider === INVALID) return c.json(badRequest("No such provider."), 400);
+      const current = ctx.db
+        .query("SELECT provider_id FROM scenes WHERE id = $id")
+        .get({ id: row.id }) as { provider_id: number | null };
+      ctx.db.query("UPDATE scenes SET provider_id = $provider WHERE id = $id").run({
+        id: row.id,
+        provider: provider,
+      });
+      if (provider !== current.provider_id) {
+        ctx.db.query("UPDATE scenes SET model = NULL WHERE id = $id").run({ id: row.id });
+      }
+    }
     // Whether a finished turn gets read by the passes without being asked
     // (SPEC §7.5). Which passes take part is the per-op switch.
     if ("autoPasses" in input) {
@@ -1304,7 +1328,7 @@ export function sceneRoutes(
    */
   function resolveRef(
     value: unknown,
-    table: "presets" | "connection_profiles" | "authors" | "personas",
+    table: "presets" | "connection_profiles" | "authors" | "personas" | "providers",
   ): number | null | typeof INVALID {
     if (value === undefined || value === null) return null;
     if (typeof value !== "string") return INVALID;

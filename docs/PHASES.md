@@ -8609,3 +8609,94 @@ the same two steps the server does.
 version asserted the presets carry no key by checking a couple of field names;
 it now serialises the whole catalogue and greps it, which is the version that
 would actually catch somebody pasting a working key into a "starting point".
+
+## Phase 181 — A provider per roleplay, and the sweep that should have come with it
+
+*"should be able to change roleplays provider too -_- that seemed obvious to
+me"*
+
+It was obvious, and phase 180 built the model override without its sibling. A
+roleplay could already reach a different provider — but only by switching to a
+connection *profile* that pointed at one, so pointing it at a provider you had
+no profile for meant making a profile first: bookkeeping in service of a
+two-click change.
+
+`scenes.provider_id` (migration `0077`) is the override, and the panel's "This
+roleplay" gains a provider select above the model box. `ON DELETE SET NULL`
+rather than cascade: removing a provider must hand its roleplays back to their
+profile, not remove them.
+
+**The chain grew a skip, and the skip is the interesting part.** Resolution was
+scene → profile → provider for the model. A roleplay that overrides the
+*provider* must not inherit the profile's model, because a model id belongs to
+whoever serves it — carrying `claude-3-5-sonnet` across to a local llama
+because the profile happened to name it would fail the turn with a model nobody
+chose. So the profile's model is skipped when the provider was overridden, and
+choosing a provider clears any stale scene model in the same PATCH.
+
+`resolveRoute` also stopped joining the profile to its provider, because that
+join hardcoded the thing a scene can now override. The profile still supplies
+the preset and its own model; which provider serves the turn is a separate
+question now.
+
+**Background tasks follow the roleplay only when they have no profile of their
+own.** An op with its own profile is a deliberate routing choice (§7), and
+dragging the scene's provider onto it would quietly undo that; an op with none
+is running "wherever this roleplay runs", which is exactly what the overrides
+mean.
+
+### The sweep
+
+Asked whether anything else had the same problems, and there were two classes,
+each with one more instance — plus a better fix than patching instances.
+
+**Readouts that re-derive what will run.** The composer's chip had been
+corrected twice already (phase 180, then again here when naming the *profile*
+became wrong even though the model was right). A sweep found the status bar and
+the roleplay list doing the same re-derivation. Three clients each
+reimplementing `resolveRoute` is three chances to disagree with the turn, so
+the server resolves it once into **`SceneDto.runsOn`** and all three read that.
+It is deliberately a second implementation of the chain — `resolveRoute`
+decrypts a key and throws on every unroutable state, neither of which a list of
+roleplays wants — so a test walks five combinations and asserts the two agree
+rather than trusting a comment.
+
+**Scoping to the current route where the base route is meant.** Phase 180 fixed
+the header and both rails; the sweep found `Background.tsx` doing it too, so a
+roleplay's artwork dropped the moment any overlay opened and came back on
+close. Visible rather than theoretical — `App.tsx` keeps the background mounted
+precisely because the overlay is translucent enough for the base to show
+through. `TopBar` also reads the current route and is *correct* to: it is
+naming the screen you are on, which is a different question.
+
+**Verified** in Chromium at 1600×950, both themes, against a provider
+deliberately given no profile — the case switching profiles could not reach.
+Moving the roleplay to it set `provider_id`, cleared the stale model, re-seeded
+the box to the new provider's own default, and left the sibling roleplay
+untouched; the prompt preview still resolved (200, prompt built, and one
+provider-capability block correctly absent for the new provider); handing it
+back restored everything. All four readouts agreed at every step — select,
+model box, source line ("From the provider" when overridden, "From the profile"
+when not) and composer chip (`Local llama · local-default` versus
+`Anthropic · claude-3-5-sonnet-20241022`). Deleting the provider while a
+roleplay pointed at it nulled the column rather than leaving a dangling id, and
+the roleplay still resolved on its profile. The background check was rerun with
+a real scene background after the first probe proved nothing — the scene had
+none, so the default and the scene's own were indistinguishable. 1843 tests
+across 131 files, typecheck clean, no page errors.
+
+### Surprises
+
+**The first background probe proved nothing and looked like it passed.** It
+compared the layer's `src` with and without an overlay and got the same answer
+both times — because the scene had no background of its own, so both readings
+were the app default. A green result from a test that cannot fail is worse than
+a red one. Re-run after uploading a real background, the src stays
+`/api/scenes/…/background` across the overlay, which is the actual claim.
+
+**`ON DELETE SET NULL` is only true if foreign keys are on.** SQLite enforces
+them per connection, and this app sets `PRAGMA foreign_keys = ON` at open
+(`server/db/index.ts`) — but a migration that says `ON DELETE SET NULL` reads
+as a guarantee whether or not anything switches it on. The test asserts the
+*column* is null after a delete, not merely that the DTO's ulid lookup missed;
+those look identical through the API and are not the same thing.

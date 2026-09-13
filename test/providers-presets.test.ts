@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { PROVIDER_PRESETS } from "@shared/providers.ts";
 import { PROVIDER_KINDS } from "@shared/types.ts";
-import type { ConnectionProfileDto, SceneDto } from "@shared/types.ts";
+import type { ConnectionProfileDto, ProviderDto, SceneDto } from "@shared/types.ts";
 import { completeSetup, createHarness, type TestHarness } from "./helpers.ts";
 import { resolveRoute } from "../server/generation/route.ts";
 
@@ -126,8 +126,45 @@ describe("the way back to the roleplay", () => {
 
 describe("a model for one roleplay", () => {
   test("the narrowest choice wins, and the server says so in one place", () => {
-    expect(ROUTE).toContain("const model = request.model ?? row.profile_model ?? row.provider_model;");
     expect(ROUTE).toContain("model?: string | null;");
+    expect(ROUTE).toContain("providerId?: number | null;");
+    // The scene's choice first; then the profile's, unless the scene moved the
+    // provider, in which case the profile's model does not apply.
+    expect(ROUTE).toContain("const model = request.model ?? (overridden ?");
+  });
+
+  test("a scene that moves provider does not inherit the profile's model", () => {
+    /*
+     * A model id belongs to the provider that serves it. Carrying `gpt-4o`
+     * across to Anthropic because the profile happened to name it would fail
+     * the turn with a model nobody chose — so the chain skips a step, on the
+     * server and in the panel alike.
+     */
+    expect(ROUTE).toContain("overridden ? row.provider_model : (profile.profile_model ?? row.provider_model)");
+    expect(PANEL).toContain("sceneProviderId === null");
+    // And changing the provider clears the stale model rather than keeping it.
+    expect(SCENES).toContain('if ("providerId" in input) {');
+    expect(SCENES).toContain("UPDATE scenes SET model = NULL WHERE id = $id");
+  });
+
+  test("the provider and the profile are fetched apart, not joined", () => {
+    // The join hardcoded "the profile's provider", which is the thing a scene
+    // can now override.
+    expect(ROUTE).not.toContain("JOIN providers p ON p.id = cp.provider_id");
+    expect(ROUTE).toContain("FROM providers WHERE id = $id");
+  });
+
+  test("a background task follows the roleplay only when it has no profile of its own", () => {
+    /*
+     * An op with its own profile is a deliberate routing choice (§7); dragging
+     * the scene's provider onto it would quietly undo that. An op with none is
+     * running "wherever this roleplay runs", which is exactly what the
+     * overrides mean.
+     */
+    const runner = read("server", "tasks", "runner.ts");
+    expect(runner).toContain("const usingScenes = chosen === null;");
+    expect(runner).toContain("...(usingScenes");
+    expect(runner).toContain("sceneProviderId?: number | null;");
   });
 
   test("the turn and the preview resolve the same way", () => {
@@ -149,10 +186,30 @@ describe("a model for one roleplay", () => {
     expect(PANEL).toContain("strings.models.modelClear");
   });
 
-  test("the composer chip names what the turn will use, not the profile", () => {
-    // A status readout that disagrees with the turn is worse than none.
+  test("every readout reads one resolved answer instead of re-deriving it", () => {
+    /*
+     * The composer's chip had to be corrected twice — once when a roleplay
+     * could choose its own model (§180), again when it could choose its own
+     * provider (§181) — and a sweep then found two more doing the same
+     * re-derivation: the status bar and the roleplay list. Three clients each
+     * reimplementing `resolveRoute` is three chances to disagree with the
+     * turn, so the server resolves it once into `SceneDto.runsOn` and they all
+     * read that.
+     */
     const chat = read("client", "screens", "ChatScreen.tsx");
-    expect(chat).toContain("scene.data?.scene.model ?? sceneProfile.model");
+    expect(chat).toContain("const runsOn = scene.data?.scene.runsOn ?? null;");
+    expect(chat).toContain("`${runsOn.providerName}${runsOn.model === null");
+    expect(chat).toContain("profileName={runsOn === null ? null : runsOn.providerName}");
+    expect(read("client", "screens", "ScenesScreen.tsx")).toContain("scene.runsOn.providerName");
+    // And nothing re-derives it from the profile any more.
+    expect(chat).not.toContain("sceneProfile.model");
+  });
+
+  test("and the panel says which step a model came from, accurately", () => {
+    // "From the profile" about a value that came from an overridden provider
+    // is the same lie in a quieter place.
+    expect(PANEL).toContain("strings.models.modelFromProvider");
+    expect(PANEL).toContain("sceneProviderId === null\n                  ? strings.models.modelFromProfile");
   });
 
   test("the rails read the base route, so an overlay does not blank them", () => {
@@ -268,6 +325,191 @@ describe("the override does what it says, against a real database", () => {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ model: 42 }),
+    });
+    expect(response.status).toBe(400);
+  });
+
+  test("a roleplay can be pointed at a provider it has no profile for", async () => {
+    /*
+     * The whole point of the override, and the thing switching profiles could
+     * not do: reaching a second provider used to mean making a profile for it
+     * first, which is bookkeeping in service of a two-click change.
+     */
+    const t = await signedIn();
+    const second = await body<ProviderDto>(t, "POST", "/api/connections/providers", {
+      name: "Second",
+      kind: "openai_compatible",
+      baseUrl: "http://127.0.0.1:9/v1",
+      model: "second-default",
+    });
+    // Deliberately no profile for it.
+    const profiles = await body<ConnectionProfileDto[]>(t, "GET", "/api/connections/profiles");
+    expect(profiles.some((profile) => profile.providerId === second.id)).toBe(false);
+
+    const scene = await body<SceneDto>(t, "POST", "/api/scenes", {
+      title: "Moved",
+      connectionProfileId: profiles[0]!.id,
+    });
+    expect(scene.providerId).toBeNull();
+
+    await body(t, "PATCH", `/api/scenes/${scene.id}`, { providerId: second.id });
+    const after = await body<{ scene: SceneDto }>(t, "GET", `/api/scenes/${scene.id}`);
+    expect(after.scene.providerId).toBe(second.id);
+    // Still on the same profile: the provider moved, the preset did not.
+    expect(after.scene.connectionProfileId).toBe(profiles[0]!.id);
+
+    // And the turn would actually run there.
+    const row = t.ctx.db.query("SELECT id, provider_id FROM scenes WHERE ulid = $u").get({
+      u: scene.id,
+    }) as { id: number; provider_id: number };
+    const profileRow = t.ctx.db
+      .query("SELECT id FROM connection_profiles LIMIT 1")
+      .get() as { id: number };
+    const route = resolveRoute(t.ctx.db, t.ctx.keyring, {
+      profileId: profileRow.id,
+      providerId: row.provider_id,
+      model: null,
+    });
+    expect(route.providerName).toBe("Second");
+    // The profile's model did not come across — it belongs to the old
+    // provider. The new provider's own default is what serves.
+    expect(route.model).toBe("second-default");
+  });
+
+  test("moving the provider clears a model that belonged to the old one", async () => {
+    const t = await signedIn();
+    const profiles = await body<ConnectionProfileDto[]>(t, "GET", "/api/connections/profiles");
+    const scene = await body<SceneDto>(t, "POST", "/api/scenes", {
+      title: "Stale",
+      connectionProfileId: profiles[0]!.id,
+    });
+    await body(t, "PATCH", `/api/scenes/${scene.id}`, { model: "belongs-to-the-old-one" });
+    expect((await body<{ scene: SceneDto }>(t, "GET", `/api/scenes/${scene.id}`)).scene.model).toBe(
+      "belongs-to-the-old-one",
+    );
+
+    const target = await body<ProviderDto>(t, "POST", "/api/connections/providers", {
+      name: "Elsewhere",
+      kind: "openai_compatible",
+      baseUrl: "http://127.0.0.1:9/v1",
+      model: "elsewhere-default",
+    });
+    await body(t, "PATCH", `/api/scenes/${scene.id}`, { providerId: target.id });
+
+    const after = await body<{ scene: SceneDto }>(t, "GET", `/api/scenes/${scene.id}`);
+    expect(after.scene.providerId).toBe(target.id);
+    // Cleared, so the next turn asks the new provider rather than failing on a
+    // model it has never heard of.
+    expect(after.scene.model).toBeNull();
+  });
+
+  test("deleting a provider hands its roleplays back rather than stranding them", async () => {
+    /*
+     * `ON DELETE SET NULL`, and worth an executed test rather than a reading of
+     * the migration: SQLite only enforces a foreign key when
+     * `PRAGMA foreign_keys = ON`, which this app sets at open
+     * (`server/db/index.ts`). Without it the column would keep a dangling id
+     * and every turn on that roleplay would fail with "that provider no longer
+     * exists" — a deletion elsewhere breaking a roleplay that still had a
+     * perfectly good profile.
+     */
+    const t = await signedIn();
+    const profiles = await body<ConnectionProfileDto[]>(t, "GET", "/api/connections/profiles");
+    const doomed = await body<ProviderDto>(t, "POST", "/api/connections/providers", {
+      name: "Doomed",
+      kind: "openai_compatible",
+      baseUrl: "http://127.0.0.1:9/v1",
+      model: "doomed-default",
+    });
+    const scene = await body<SceneDto>(t, "POST", "/api/scenes", {
+      title: "Orphan",
+      connectionProfileId: profiles[0]!.id,
+    });
+    await body(t, "PATCH", `/api/scenes/${scene.id}`, { providerId: doomed.id });
+    expect((await body<{ scene: SceneDto }>(t, "GET", `/api/scenes/${scene.id}`)).scene.providerId).toBe(
+      doomed.id,
+    );
+
+    await t.fetch(`/api/connections/providers/${doomed.id}`, { method: "DELETE" });
+
+    // Null in the column itself, not merely null in the DTO because the ulid
+    // lookup missed — those look identical from the API and are not the same.
+    const row = t.ctx.db.query("SELECT provider_id FROM scenes WHERE ulid = $u").get({
+      u: scene.id,
+    }) as { provider_id: number | null };
+    expect(row.provider_id).toBeNull();
+
+    // And the roleplay still runs, on its profile.
+    const profileRow = t.ctx.db.query("SELECT id FROM connection_profiles LIMIT 1").get() as {
+      id: number;
+    };
+    expect(() =>
+      resolveRoute(t.ctx.db, t.ctx.keyring, { profileId: profileRow.id, providerId: null }),
+    ).not.toThrow();
+  });
+
+  test("runsOn and resolveRoute agree, across every combination", async () => {
+    /*
+     * `SceneDto.runsOn` exists so three readouts stop re-deriving the chain,
+     * and it is a *second* implementation of it — kept separate because
+     * `resolveRoute` decrypts a key and throws on every unroutable state,
+     * neither of which a list of roleplays wants. What it must not do is
+     * disagree, so this walks the combinations rather than trusting a comment.
+     */
+    const t = await signedIn();
+    const profiles = await body<ConnectionProfileDto[]>(t, "GET", "/api/connections/profiles");
+    const second = await body<ProviderDto>(t, "POST", "/api/connections/providers", {
+      name: "Agreeing",
+      kind: "openai_compatible",
+      baseUrl: "http://127.0.0.1:9/v1",
+      model: "agreeing-default",
+    });
+    const scene = await body<SceneDto>(t, "POST", "/api/scenes", {
+      title: "Agreement",
+      connectionProfileId: profiles[0]!.id,
+    });
+    const profileRow = t.ctx.db.query("SELECT id FROM connection_profiles LIMIT 1").get() as {
+      id: number;
+    };
+
+    for (const patch of [
+      {},
+      { model: "picked-by-hand" },
+      { providerId: second.id },
+      // A provider *and* a model, the narrowest case.
+      { providerId: second.id, model: "picked-on-the-new-one" },
+      // And all the way back.
+      { providerId: null, model: null },
+    ]) {
+      await body(t, "PATCH", `/api/scenes/${scene.id}`, patch);
+      const dto = (await body<{ scene: SceneDto }>(t, "GET", `/api/scenes/${scene.id}`)).scene;
+      const row = t.ctx.db
+        .query("SELECT provider_id, model FROM scenes WHERE ulid = $u")
+        .get({ u: scene.id }) as { provider_id: number | null; model: string | null };
+      const route = resolveRoute(t.ctx.db, t.ctx.keyring, {
+        profileId: profileRow.id,
+        providerId: row.provider_id,
+        model: row.model,
+      });
+      expect(dto.runsOn).not.toBeNull();
+      expect({ providerName: dto.runsOn!.providerName, model: dto.runsOn!.model }).toEqual({
+        providerName: route.providerName,
+        model: route.model,
+      });
+    }
+  });
+
+  test("and a provider that does not exist is refused", async () => {
+    const t = await signedIn();
+    const profiles = await body<ConnectionProfileDto[]>(t, "GET", "/api/connections/profiles");
+    const scene = await body<SceneDto>(t, "POST", "/api/scenes", {
+      title: "Bad ref",
+      connectionProfileId: profiles[0]!.id,
+    });
+    const response = await t.fetch(`/api/scenes/${scene.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ providerId: "01ZZZZZZZZZZZZZZZZZZZZZZZZ" }),
     });
     expect(response.status).toBe(400);
   });

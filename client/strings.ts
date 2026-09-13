@@ -1250,9 +1250,13 @@ export const strings = {
     /** What the scene being read is talking to, and how to point it elsewhere. */
     inUse: "This roleplay",
     switchTo: "Point it at",
+    /** The per-scene provider override (§20 phase 181). */
+    providerLabel: "Provider for this roleplay",
+    providerFromProfile: (name: string) => `From the profile · ${name}`,
     /** The per-scene model override (§20 phase 180). */
     modelLabel: "Model for this roleplay",
     modelFromProfile: (model: string) => `From the profile · ${model}`,
+    modelFromProvider: (model: string) => `From the provider · ${model}`,
     modelClear: "Use the profile's",
     modelNoAddress: "This profile's provider has no address to ask.",
     noScene: "Open a roleplay to choose what answers it.",

@@ -4051,6 +4051,16 @@ Each phase ends in a working, usable application.
     no longer means one connection profile per model. See §16,
     `shared/providers.ts`, `client/components/ModelsPanel.tsx`.
 
+181. **A provider per roleplay** — phase 180's missing sibling. `scenes.
+    provider_id` overrides the profile's provider, so pointing a roleplay at
+    one you have no profile for is two clicks rather than bookkeeping. The
+    model chain skips the profile's model when the provider was overridden,
+    because a model id belongs to whoever serves it. The sweep that came with
+    it resolved a recurring class: three readouts had each re-derived where a
+    turn runs, and now read one server-resolved `SceneDto.runsOn`; and
+    `Background.tsx` joined the header and the rails in reading the base route
+    rather than the current one. See §16, `server/generation/route.ts`.
+
 Settled while building phase 15.
 
 - **The desktop layout is phase 19, not a polish item.** The design is explicit

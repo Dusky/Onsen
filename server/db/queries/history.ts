@@ -106,6 +106,8 @@ export interface SceneRow {
   /** A model chosen for this roleplay alone (§20 phase 180). Null is "ask the
    *  profile", which is the ordinary state. */
   model: string | null;
+  /** A provider chosen for this roleplay alone (§20 phase 181). Same rule. */
+  provider_id: number | null;
   /** Rolling summarisation, all of §11's knobs, per scene. */
   summarise: number;
   summarise_every_messages: number;
@@ -296,6 +298,10 @@ function toSceneDto(
   row: SceneRow,
   extras: {
     presetUlid: string | null;
+    /** The roleplay's own provider, when it overrides its profile's (§181). */
+    providerUlid: string | null;
+    /** Where the next turn will run, resolved once (§181). */
+    runsOn: SceneDto["runsOn"];
     profileUlid: string | null;
     profileName: string | null;
     turnStrategy: SceneDto["turnStrategy"];
@@ -336,6 +342,8 @@ function toSceneDto(
     scenarioOverride: row.scenario_override,
     draft: row.draft,
     model: row.model,
+    providerId: extras.providerUlid,
+    runsOn: extras.runsOn,
     summarise: row.summarise === 1,
     summariseEveryMessages: row.summarise_every_messages,
     summariseEveryWords: row.summarise_every_words,
@@ -1088,7 +1096,7 @@ export function deleteCheckpoint(db: Database, id: number): void {
 /* Composition into DTOs                                               */
 /* ------------------------------------------------------------------ */
 
-function ulidOf(db: Database, table: "presets" | "connection_profiles" | "messages", id: number | null): string | null {
+function ulidOf(db: Database, table: "presets" | "connection_profiles" | "messages" | "providers", id: number | null): string | null {
   if (id === null) return null;
   const row = db.query(`SELECT ulid FROM ${table} WHERE id = $id`).get({ id }) as
     | { ulid: string }
@@ -1137,11 +1145,48 @@ function named(
   return { ulid: row?.ulid ?? null, name: row?.name ?? null };
 }
 
+/**
+ * Where this roleplay's next turn will run (§20 phase 181).
+ *
+ * The same chain `server/generation/route.ts` resolves — the scene's provider
+ * over the profile's, the scene's model over the profile's, and the profile's
+ * model skipped entirely when the scene moved provider, because a model id
+ * belongs to whoever serves it. Kept here rather than imported from there
+ * because that function also decrypts a key and throws on every unroutable
+ * state, neither of which a list of roleplays wants; what it must not do is
+ * *disagree*, which is why `test/providers-presets.test.ts` checks the two
+ * against each other.
+ */
+function runsOn(db: Database, row: SceneRow): SceneDto["runsOn"] {
+  if (row.connection_profile_id === null) return null;
+  const profile = db
+    .query("SELECT model, provider_id FROM connection_profiles WHERE id = $id")
+    .get({ id: row.connection_profile_id }) as
+    | { model: string | null; provider_id: number }
+    | null;
+  if (profile === null) return null;
+
+  const overridden = row.provider_id !== null && row.provider_id !== profile.provider_id;
+  const provider = db
+    .query("SELECT name, model FROM providers WHERE id = $id")
+    .get({ id: overridden ? row.provider_id : profile.provider_id }) as
+    | { name: string; model: string | null }
+    | null;
+  if (provider === null) return null;
+
+  return {
+    providerName: provider.name,
+    model: row.model ?? (overridden ? provider.model : (profile.model ?? provider.model)),
+  };
+}
+
 export function sceneDto(db: Database, row: SceneRow): SceneDto {
   const author = named(db, "authors", row.author_id);
   const persona = named(db, "personas", row.persona_id);
   return toSceneDto(row, {
     presetUlid: ulidOf(db, "presets", row.preset_id),
+    providerUlid: ulidOf(db, "providers", row.provider_id),
+    runsOn: runsOn(db, row),
     profileUlid: ulidOf(db, "connection_profiles", row.connection_profile_id),
     profileName:
       row.connection_profile_id === null

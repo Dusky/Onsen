@@ -66,10 +66,23 @@ export function ModelsPanel({ sceneId }: { sceneId: string | null }) {
    * used the scene's would be worse than no picker.
    */
   const activeProfile = profileList.find((profile) => profile.id === activeId) ?? null;
-  const activeProvider =
+  const profileProvider =
     activeProfile === null ? null : (byId.get(activeProfile.providerId) ?? null);
-  const inherited = activeProfile?.model ?? activeProvider?.model ?? null;
+  const sceneProviderId = scene.data?.scene.providerId ?? null;
+  /** What actually serves this roleplay: its own choice, else the profile's. */
+  const activeProvider =
+    sceneProviderId === null ? profileProvider : (byId.get(sceneProviderId) ?? profileProvider);
   const sceneModel = scene.data?.scene.model ?? null;
+  /*
+   * What the model box falls back to when the scene has no model of its own.
+   * A scene that overrode the *provider* skips the profile's model, because a
+   * model id belongs to the provider that serves it — the same skip
+   * `resolveRoute` makes on the server.
+   */
+  const inherited =
+    sceneProviderId === null
+      ? (activeProfile?.model ?? activeProvider?.model ?? null)
+      : (activeProvider?.model ?? null);
   const modelRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -121,11 +134,36 @@ export function ModelsPanel({ sceneId }: { sceneId: string | null }) {
         </div>
       )}
 
-      {/* Changing the model, not only reading it. Editing the profile would
-          change every roleplay pointed at it; this belongs to one. */}
+      {/* Provider and model for this roleplay, not only readouts of them.
+          Editing the profile would change every roleplay pointed at it, and
+          switching profiles only reaches a provider you already made a profile
+          for; these belong to one roleplay. */}
       {sceneId === null || activeProfile === null ? null : (
         <div className="mb-[18px]">
-          <p className="section-label mb-[6px]">{strings.models.modelLabel}</p>
+          <p className="section-label mb-[6px]">{strings.models.providerLabel}</p>
+          <select
+            className="field mb-[6px]"
+            aria-label={strings.models.providerLabel}
+            value={sceneProviderId ?? ""}
+            onChange={(event) =>
+              updateScene.mutate({
+                providerId: event.target.value === "" ? null : event.target.value,
+              })
+            }
+          >
+            <option value="">
+              {profileProvider === null
+                ? strings.models.modelClear
+                : strings.models.providerFromProfile(profileProvider.name)}
+            </option>
+            {providerList.map((provider) => (
+              <option key={provider.id} value={provider.id}>
+                {provider.name}
+              </option>
+            ))}
+          </select>
+
+          <p className="section-label mt-[14px] mb-[6px]">{strings.models.modelLabel}</p>
           <ModelPicker
             request={() => ({
               // Spread rather than an undefined-valued key: the project runs
@@ -156,12 +194,18 @@ export function ModelsPanel({ sceneId }: { sceneId: string | null }) {
               }}
             />
           </ModelPicker>
+          {/* Which of the three steps this value came from, said accurately:
+              a roleplay that moved provider is not inheriting from its
+              profile, and saying so would be the same class of lie the
+              composer's chip used to tell. */}
           <p className="explain mt-[6px]">
-            {sceneModel === null
-              ? inherited === null
+            {sceneModel !== null
+              ? ""
+              : inherited === null
                 ? strings.models.modelNoAddress
-                : strings.models.modelFromProfile(inherited)
-              : ""}
+                : sceneProviderId === null
+                  ? strings.models.modelFromProfile(inherited)
+                  : strings.models.modelFromProvider(inherited)}
           </p>
           {sceneModel === null ? null : (
             <button

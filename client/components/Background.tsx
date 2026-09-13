@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useBackgrounds, useScenes } from "../lib/queries.ts";
-import { useRoute } from "../lib/router.ts";
+import { useShellRoute } from "../lib/router.ts";
 
 /**
  * The backdrop behind everything (SPEC §12, §20 phase 108).
@@ -12,11 +12,20 @@ import { useRoute } from "../lib/router.ts";
  * colour-mix — so the picture reads through the rails without drowning them.
  */
 export function Background() {
-  const route = useRoute();
+  const { base } = useShellRoute();
   const scenes = useScenes();
   const backgrounds = useBackgrounds();
 
-  const sceneId = route.name === "chat" ? route.sceneId : null;
+  /*
+   * The *base* route's scene (§20 phase 181).
+   *
+   * This read the current route, so opening Settings — an overlay over a
+   * still-mounted chat since phase 171 — dropped the roleplay's artwork and
+   * put it back on close. Visible rather than theoretical: `App.tsx` keeps the
+   * background mounted precisely because the overlay is translucent enough for
+   * the base to show through.
+   */
+  const sceneId = base.name === "chat" ? base.sceneId : null;
   const scene = (scenes.data ?? []).find((candidate) => candidate.id === sceneId) ?? null;
   const defaultId = backgrounds.data?.defaultId ?? null;
   const opacity = backgrounds.data?.opacity ?? 0.8;

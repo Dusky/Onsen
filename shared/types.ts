@@ -1371,6 +1371,29 @@ export interface SceneDto {
    * was to change the model for *this* one.
    */
   model: string | null;
+  /**
+   * A provider for this roleplay alone (§20 phase 181), the sibling of `model`
+   * and settled the same way: null means "whatever the connection profile
+   * says". Overriding it does *not* carry the profile's model across — a model
+   * id belongs to the provider that serves it, so the chain skips a step. See
+   * `server/generation/route.ts`.
+   */
+  providerId: string | null;
+  /**
+   * Where this roleplay will actually run, resolved once on the server
+   * (§20 phase 181).
+   *
+   * Three readouts had each re-derived this from the profile — the composer's
+   * chip, the status bar and the roleplay list — and each was wrong in its own
+   * way once a roleplay could choose its own model and provider. A readout
+   * that disagrees with the turn is worse than none, and three clients
+   * reimplementing `resolveRoute` is three chances to disagree, so the server
+   * resolves it and hands over the answer.
+   *
+   * Null when nothing is chosen or the chain cannot complete — the same state
+   * the chips already drew in red.
+   */
+  runsOn: { providerName: string; model: string | null } | null;
   /** Organisation (§20 phase 59), shaped like the character library's. */
   tags: string[];
   folder: string | null;
@@ -3440,6 +3463,8 @@ export interface SceneSetupRequest {
   /** A model for this roleplay alone; null or empty hands it back to the
    *  connection profile (§20 phase 180). */
   model?: string | null;
+  /** A provider for this roleplay alone; null hands it back (§20 phase 181). */
+  providerId?: string | null;
   summarise?: boolean;
   summariseEveryMessages?: number;
   summariseEveryWords?: number;

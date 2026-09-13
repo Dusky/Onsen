@@ -74,6 +74,7 @@ import sceneDraft from "./0073_scene_draft.sql" with { type: "text" };
 import promptPrecedence from "./0074_prompt_precedence.sql" with { type: "text" };
 import characterGroups from "./0075_character_groups.sql" with { type: "text" };
 import sceneModel from "./0076_scene_model.sql" with { type: "text" };
+import sceneProvider from "./0077_scene_provider.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -165,4 +166,5 @@ export const migrations: readonly Migration[] = [
   { version: 74, name: "prompt_behaviour", sql: promptPrecedence },
   { version: 75, name: "character_groups", sql: characterGroups },
   { version: 76, name: "scene_model", sql: sceneModel },
+  { version: 77, name: "scene_provider", sql: sceneProvider },
 ];

@@ -131,6 +131,16 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     (modelProfiles.data ?? []).find(
       (candidate) => candidate.id === scene.data?.scene.connectionProfileId,
     ) ?? null;
+  /*
+   * Where the next turn will run, as the server resolved it (§20 phase 181).
+   *
+   * This was a re-derivation from the profile, and it had to be corrected
+   * twice — once when a roleplay could choose its own model, once when it
+   * could choose its own provider. Three readouts were each doing their own
+   * version of `resolveRoute`, which is three chances to disagree with the
+   * turn, so the server resolves it and this reads the answer.
+   */
+  const runsOn = scene.data?.scene.runsOn ?? null;
   // Per-op configuration (SPEC §7): a hidden button is not a disabled op, so
   // this only decides what the grid shows.
   const tasks = useTasks();
@@ -857,12 +867,10 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
              * server resolves — the scene's, then the profile's.
              */
             label:
-              sceneProfile === null
+              runsOn === null
                 ? strings.header.noModel
-                : (scene.data?.scene.model ?? sceneProfile.model) === null
-                  ? sceneProfile.name
-                  : `${sceneProfile.name} \u00b7 ${scene.data?.scene.model ?? sceneProfile.model}`,
-            hasModel: sceneProfile !== null,
+                : `${runsOn.providerName}${runsOn.model === null ? "" : ` \u00b7 ${runsOn.model}`}`,
+            hasModel: runsOn !== null,
           }}
           draft={draft}
           onDraftChange={handleDraftChange}
@@ -899,8 +907,11 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         {/* §20 phase 43: what is true right now, in one line. On a phone its
             right-hand control is the only way to the inspector — the same panel
             the desktop shows beside the log, laid down rather than stood up. */}
+        {/* `profileName` is where it runs, not which profile it is filed
+            under: the status bar had the same re-derivation problem as the
+            composer's chip. */}
         <StatusBar
-          profileName={scene.data?.scene.connectionProfileName ?? null}
+          profileName={runsOn === null ? null : runsOn.providerName}
           tokens={scene.data?.scene.lastPromptTokens ?? null}
           contextSize={scene.data?.scene.contextSize ?? null}
           generating={isGenerating}

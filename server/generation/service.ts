@@ -1134,6 +1134,8 @@ export class GenerationService {
         "You set up a roleplay scene from the reader's premise.",
       ),
       fallbackProfileId: scene.connection_profile_id,
+      sceneProviderId: scene.provider_id,
+      sceneModel: scene.model,
     });
     if (!outcome.ok) return { ok: false, error: "The model could not be reached." };
 
@@ -1215,6 +1217,8 @@ export class GenerationService {
       sceneId,
       prompt: buildSideCallPrompt(question, "You are a background assistant answering a task."),
       fallbackProfileId: scene.connection_profile_id,
+      sceneProviderId: scene.provider_id,
+      sceneModel: scene.model,
     });
     if (!outcome.ok) return null;
     if (call.apply !== undefined) {
@@ -1252,6 +1256,8 @@ export class GenerationService {
         sceneId,
         prompt: buildSideCallPrompt(question, "You decide one thing about a story in progress, and answer in one word."),
         fallbackProfileId: scene.connection_profile_id,
+        sceneProviderId: scene.provider_id,
+        sceneModel: scene.model,
       });
       if (!outcome.ok || !/^\s*yes\b/i.test(outcome.text)) return;
 
@@ -1420,6 +1426,8 @@ export class GenerationService {
       sceneId: scene.id,
       profileId: scene.director_profile_id,
       fallbackProfileId: scene.connection_profile_id,
+      sceneProviderId: scene.provider_id,
+      sceneModel: scene.model,
       signal: generation.abort.signal,
     };
 
@@ -2183,6 +2191,7 @@ export class GenerationService {
       return resolveRoute(this.db, this.keyring, {
         profileId: overrideProfileId ?? scene.connection_profile_id,
         model: scene.model,
+        providerId: scene.provider_id,
       });
     } catch (caught) {
       // The generation path speaks in GenerationErrors, which routes map onto
