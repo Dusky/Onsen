@@ -42,6 +42,13 @@ describe("the mid-scene edit pane", () => {
     expect(SHEETS).toContain("strings.chat.editCard");
     expect(CHAT).toContain("setEditingCastId(characterId)");
   });
+
+  test("the cast member sheet can remove someone from the scene", () => {
+    // Right-click / long-press on a cast card opens the member sheet; remove
+    // is the roster edit there (§20 phase 183). Their lines stay.
+    expect(SHEETS).toContain("strings.chat.removeFromCast");
+    expect(CHAT).toContain("useRemoveFromCast");
+  });
 });
 
 describe("the persona pane", () => {

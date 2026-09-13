@@ -106,6 +106,7 @@ export function ChatSheets({
   castActing,
   onCloseCastActing,
   onBench,
+  onRemoveFromCast,
   onEditCard,
   // ooc
   oocOpen,
@@ -185,6 +186,7 @@ export function ChatSheets({
   castActing: SceneMemberDto | null;
   onCloseCastActing(): void;
   onBench(patch: { characterId: string; isMuted?: boolean; isActive?: boolean }): void;
+  onRemoveFromCast(characterId: string): void;
   onEditCard(characterId: string): void;
   oocOpen: boolean;
   onCloseOoc(): void;
@@ -364,6 +366,14 @@ export function ChatSheets({
           <SheetAction
             label={strings.chat.viewCard}
             onClick={() => navigate({ name: "character", characterId: castActing.characterId })}
+          />
+          <SheetAction
+            label={strings.chat.removeFromCast}
+            destructive
+            onClick={() => {
+              onRemoveFromCast(castActing.characterId);
+              onCloseCastActing();
+            }}
           />
         </Sheet>
       ) : null}

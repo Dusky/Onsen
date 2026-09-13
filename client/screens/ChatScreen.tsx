@@ -69,6 +69,7 @@ import {
   useTranslateMessage,
   useTrackers,
   useTrackerHistory,
+  useRemoveFromCast,
 } from "../lib/queries.ts";
 import type {
   GuideKind,
@@ -108,6 +109,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
   const generation = useGeneration();
 
   const bench = useBenchMember(sceneId);
+  const removeFromCast = useRemoveFromCast(sceneId);
   const split = useSplitBeat(sceneId);
   const setup = useSceneSetup(sceneId);
   // Autopilot (SPEC §6): the row that says whether the scene is writing
@@ -1198,6 +1200,10 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         castActing={castActing}
         onCloseCastActing={() => setCastActing(null)}
         onBench={(patch) => bench.mutate(patch)}
+        onRemoveFromCast={(characterId) => {
+          removeFromCast.mutate(characterId);
+          setCastActing(null);
+        }}
         onEditCard={(characterId) => {
           if (isDesktop) {
             setEditingCastId(characterId);

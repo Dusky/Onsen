@@ -8837,3 +8837,8 @@ the Authors panel's "use" button already has.
 **Verified** by the right-rail guard, extended with one assertion rather than a
 new file: the panel wires both cast hooks and names both actions. Typecheck
 clean.
+
+A second surface in the same phase: the cast rail's member sheet (opened by
+right-clicking a card) gains "Remove from cast", so removing someone does not
+require leaving the roster view. The sheet already had mute/bench/edit/view;
+remove was the one roster action it lacked.

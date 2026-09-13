@@ -4078,9 +4078,12 @@ Each phase ends in a working, usable application.
     only editable in scene setup, a whole screen away. The Characters panel
     already split the library into "in this scene" and the rest; it now acts
     on that split: someone in the scene carries a Remove, everyone else an
-    Add, both one tap and straight to the existing cast endpoints. Removing
-    keeps every line the character has written. See §16,
-    `client/components/DockPanels.tsx`.
+    Add, both one tap and straight to the existing cast endpoints. The cast
+    rail's member sheet (right-click a card) gains "Remove from cast" too, so
+    a reader looking at the roster can cut someone without visiting the
+    library panel. Removing keeps every line the character has written. See
+    §16, `client/components/DockPanels.tsx`,
+    `client/screens/chat/ChatSheets.tsx`.
 
 Settled while building phase 15.
 

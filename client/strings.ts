@@ -556,6 +556,7 @@ export const strings = {
     statusMuted: "Muted",
     editCard: "Edit card",
     viewCard: "View card",
+    removeFromCast: "Remove from cast",
     castMember: "Cast member",
 
     /** Provisional: the AI has no character until characters land. */
