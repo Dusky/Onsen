@@ -4135,6 +4135,21 @@ Each phase ends in a working, usable application.
     it is with. See §7, `client/components/OocChannel.tsx`,
     `server/db/migrations/0079_ooc_sidebar.sql`.
 
+189. **The story is always reachable, and the count says what the log shows** —
+    a reported scene held eleven messages and rendered one turn, under a header
+    reading "11 turns". Two causes, neither of them rendering. `descendToLeaf`
+    followed the most recently inserted child at every level, and an off-script
+    branch is always newer than the story beside it, so rewinding walked into
+    the side conversation and stopped; it now prefers a non-`ooc` child, newest
+    first within each group, so off-script keeps every property phase 188 gave
+    it but can no longer shadow the story. And the scene count was
+    `count(*) WHERE scene_id` — every branch, every swipe alternate, every
+    hidden note — where the log renders one path; it is now the readable turns
+    on that path, under a name that says so. The list preview stops quoting an
+    aside as the scene's last line, and a scene already stranded on an
+    off-script row says how many turns are further on and offers one press
+    back. See §7, §23, `server/db/queries/history.ts`.
+
 Settled while building phase 15.
 
 - **The desktop layout is phase 19, not a polish item.** The design is explicit

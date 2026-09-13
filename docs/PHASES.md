@@ -9006,3 +9006,97 @@ and is already pinned: `renderHistory` labels an OOC turn `"{author} (out of
 character)"` and the reader's question as the reader, and
 `test/prompt-builder.test.ts` asserts both. Nothing here changed it, because
 there was nothing to change; the work was verifying it and saying so.
+
+## Phase 189 — The story is always reachable
+
+The report was a use review of the whole app (`docs/UX-REVIEW.md`), and the
+worst thing in it was one scene: **eleven messages stored, one turn rendered,
+and a header above it reading "11 turns".**
+
+Neither half was a rendering bug.
+
+### Rewinding preferred the newest branch, and off-script is always newest
+
+`descendToLeaf` was `ORDER BY id DESC LIMIT 1` — follow the most recently
+inserted child, at every level, until a node has none. That is right for
+swiping: it is what makes leaving a sibling and coming back restore *that*
+sibling's own continuation rather than truncating it.
+
+It is wrong the moment a branch exists that is newer but is not the story. An
+off-script exchange always is. So a reader who rewound to reread an earlier
+turn — or who asked a question from anywhere but the tip — walked into the side
+conversation and stopped there, and since phase 188 stopped rendering asides in
+the log, the symptom was a transcript that silently got shorter. Nothing was
+deleted. Nothing led back either: rewinding again landed in the same place,
+because the ooc chain was still the newest child of that ancestor.
+
+`ORDER BY (kind = 'ooc'), id DESC` fixes it at the root, and it is the whole
+change. Off-script keeps everything it was given — it stays in the tree, stays
+on the path while you are actually in that conversation, `oocDueFor` still
+counts asides along the path, and an aside still vanishes when you reroll the
+turn it came out of. It simply cannot shadow the story any more.
+
+**The fix that was not made, and why.** The obvious reading is that
+`appendMessage` should stop moving `active_leaf_id` for `ooc` rows. That is a
+one-line change and it breaks six things: the off-script panel reads the active
+path and would empty, `oocDueFor` would never find an aside and would fire the
+invitation every turn, the aside's disappear-on-reroll contract is *built* on
+path residency, ooc answers would classify as `"swipe"`, cross-device
+convergence would lose them, and `oocInline` would stop meaning anything.
+Off-script rows being on the path is load-bearing. The branch *ordering* was
+the defect.
+
+### The count measured a different set than the log
+
+`countMessages` was `SELECT count(*) WHERE scene_id = ?`. Every branch, every
+alternate nobody chose, every hidden note, every aside. The log renders one
+path and hides the asides — so the header said "11 turns" over six, the
+roleplay list said "11 replies" over the same six, and every swipe pushed the
+number further from the thing it labelled.
+
+`activePathLength` — the function that answers this, with a doc comment
+explaining why it exists — sat 280 lines below in the same file, wired to a
+different DTO field. It stays as it is: it measures the reading *window*, which
+legitimately counts everything on the path. The scene count is now the readable
+turns on the active path, named `turnCount` so the unit is in the name, and the
+list says "turns" too — it had said "replies", which was wrong twice over,
+since the count includes the reader's own turns and the header beside it called
+the same figure something else.
+
+### Two smaller things the same thread pulled up
+
+The roleplay list previewed "The Last Inn" as **`ooc: who built this inn?`** —
+`lastLine` read whatever row the leaf pointed at, so a side conversation stood
+in for the story on the one screen meant to tell scenes apart. It now walks up
+to the nearest turn the log would have shown.
+
+And the fix prevents new damage but does not heal a scene that already has it:
+the stored pointer is still on an off-script row. Rather than rewrite readers'
+databases, a scene in that state now says **"5 turns are further on, past this
+aside"** with **Back to the story** — the same shape as the existing
+moved-elsewhere prompt, and for the same reason. Deliberately narrow: only when
+the leaf is an off-script row and the story continues past it. Swiping to a
+shorter alternate is a choice, and nagging about it would be noise.
+
+**Verified** in Chromium at 1600×950 and 390×844, both themes, against the
+reported database. Before: header "1 turn", one article rendered, list preview
+the aside. Pressing **Back to the story**: header "6 turns", six articles,
+banner gone. The guard is executed against a real database rather than read as
+source — these are SQL orderings and a recursive count, where the failure mode
+is a query that is subtly wrong and no amount of reading the call site catches
+it. Both halves were confirmed to *fail* against the old code before being
+kept: the rewind test against the old `ORDER BY`, and three of the five count
+shapes against the old `count(*)`. 1894 tests across 136 files, typecheck clean.
+
+### Surprises
+
+**A test in the suite had the bug written into it as an expectation.**
+`test/scenes-api.test.ts` asserted `messageCount` was 4 on a scene whose line
+immediately above proved the reader could see two turns. It passed for as long
+as the count was wrong, and the rename is the only reason anyone looked at it.
+A count assertion next to a path assertion that disagree with each other is a
+defect sitting in plain sight with a tick beside it.
+
+**"1 turns".** The count was almost never 1 before, because it counted every
+row in the scene; making it honest made 1 reachable, and the header had no
+plural. Found in the first browser drive, one line from the fix that caused it.

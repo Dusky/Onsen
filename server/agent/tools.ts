@@ -220,7 +220,7 @@ export const TOOLS: Record<string, Tool> = {
         return {
           id: dto.id,
           title: dto.title,
-          messages: dto.messageCount,
+          messages: dto.turnCount,
           cast: dto.cast.map((member) => member.name),
           updatedAt: dto.updatedAt,
         };

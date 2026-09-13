@@ -1508,7 +1508,20 @@ export interface SceneDto {
   cast: SceneMemberDto[];
   /** Null while the scene is empty. */
   activeLeafId: string | null;
-  messageCount: number;
+  /**
+   * Turns the log would render on the active path — not every row in the
+   * scene (§20 phase 189). Off-script asides and hidden notes are excluded,
+   * and so is every branch the reader is not on, because the number sits
+   * beside a transcript and has to agree with it.
+   */
+  turnCount: number;
+  /**
+   * Story turns sitting on a branch the reader is not on, when the scene is
+   * parked on an off-script row (§20 phase 189). Null in the ordinary case.
+   * Present so a scene that was stranded before the fix can say so and offer
+   * the way back, rather than silently showing a shorter transcript.
+   */
+  strandedStory: { turns: number; leafId: string } | null;
   /**
    * The target language for display-only translation, or null when off
    * (§20 phase 78). The prompt keeps the author's language either way.

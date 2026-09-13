@@ -312,7 +312,8 @@ function toSceneDto(
     personaName: string | null;
     cast: SceneMemberDto[];
     activeLeafUlid: string | null;
-    messageCount: number;
+    turnCount: number;
+    strandedStory: { turns: number; leafUlid: string } | null;
     lastLine: string | null;
     lastPromptTokens: number | null;
     summaryCount: number;
@@ -365,7 +366,11 @@ function toSceneDto(
     personaName: extras.personaName,
     cast: extras.cast,
     activeLeafId: extras.activeLeafUlid,
-    messageCount: extras.messageCount,
+    turnCount: extras.turnCount,
+    strandedStory:
+      extras.strandedStory === null
+        ? null
+        : { turns: extras.strandedStory.turns, leafId: extras.strandedStory.leafUlid },
     lastLine: extras.lastLine,
     translateTo: row.translate_to,
     lastPromptTokens: extras.lastPromptTokens,
@@ -654,11 +659,44 @@ export function deleteScene(db: Database, id: number): void {
   db.query("DELETE FROM scenes WHERE id = $id").run({ id });
 }
 
-function countMessages(db: Database, sceneId: number): number {
+/**
+ * Turns a reader can actually read, on the path they are actually on
+ * (§20 phase 189).
+ *
+ * This counted `WHERE scene_id = ?` — every row in the scene, across every
+ * branch, including each swipe alternate nobody chose, every hidden note and
+ * every off-script aside. The log renders one path and hides the asides, so the
+ * header said "11 turns" over six readable ones, the roleplay list said "11
+ * replies", and every swipe pushed the number further from the thing it
+ * labelled. A count that contradicts what it sits beside is the fastest way to
+ * make software feel untrustworthy, and it was wrong on three surfaces at once.
+ *
+ * So: the active path, minus what the log does not show. `activePathLength`
+ * stays as it is and keeps counting everything on the path — it measures the
+ * reading *window*, which is a different question about a different set.
+ */
+function countTurns(db: Database, sceneId: number): number {
+  const scene = findSceneById(db, sceneId);
+  return countTurnsFrom(db, scene?.active_leaf_id ?? null);
+}
+
+/** The same count, from any leaf — so a branch can be measured before moving. */
+function countTurnsFrom(db: Database, leafId: number | null): number {
+  if (leafId === null) return 0;
   return (
-    db.query("SELECT count(*) AS n FROM messages WHERE scene_id = $scene_id").get({
-      scene_id: sceneId,
-    }) as { n: number }
+    db
+      .query(
+        `WITH RECURSIVE ancestry(id) AS (
+             SELECT id FROM messages WHERE id = $leaf
+             UNION ALL
+             SELECT m.parent_id FROM messages m JOIN ancestry ON m.id = ancestry.id
+              WHERE m.parent_id IS NOT NULL
+           )
+           SELECT count(*) AS n FROM ancestry
+             JOIN messages ON messages.id = ancestry.id
+            WHERE messages.kind != 'ooc' AND messages.is_hidden = 0`,
+      )
+      .get({ leaf: leafId }) as { n: number }
   ).n;
 }
 
@@ -854,10 +892,31 @@ export function siblingsOf(db: Database, row: MessageRow): MessageRow[] {
     .all({ scene_id: row.scene_id, parent_id: row.parent_id }) as MessageRow[];
 }
 
-/** Follow the most recent child down to a leaf. */
+/**
+ * Follow the most recent child down to a leaf, preferring the story
+ * (§20 phase 189).
+ *
+ * This was plain `ORDER BY id DESC` — the most recently inserted child, at
+ * every level — and that quietly cost a reader their scene. An off-script
+ * exchange is a branch like any other, and it is always *newer* than the story
+ * turns it hangs beside, so rewinding to reread an earlier turn walked into the
+ * off-script chain and stopped there. Since phase 188 stopped rendering asides
+ * in the log, the symptom was a transcript that silently got shorter: eleven
+ * messages stored, one turn on screen, and no control that led back.
+ *
+ * Ordering non-`ooc` children first fixes it at the root. Off-script keeps
+ * every property it was given — it stays in the tree, stays on the path when
+ * you are actually in that conversation, and an aside still vanishes when you
+ * reroll the turn it came out of — but it can no longer *shadow* the story.
+ * Within each group the newest child still wins, which is what makes swiping
+ * away from a sibling and back again restore that sibling's own continuation.
+ */
 function descendToLeaf(db: Database, messageId: number): number {
   const query = db.query(
-    "SELECT id FROM messages WHERE parent_id = $parent_id ORDER BY id DESC LIMIT 1",
+    `SELECT id FROM messages
+      WHERE parent_id = $parent_id
+      ORDER BY (kind = 'ooc'), id DESC
+      LIMIT 1`,
   );
   let current = messageId;
   for (let depth = 0; depth < MAX_DEPTH; depth++) {
@@ -1204,8 +1263,9 @@ export function sceneDto(db: Database, row: SceneRow): SceneDto {
     personaName: persona.name,
     cast: castOf(db, row.id),
     activeLeafUlid: ulidOf(db, "messages", row.active_leaf_id),
-    messageCount: countMessages(db, row.id),
+    turnCount: countTurns(db, row.id),
     lastLine: lastLine(db, row.active_leaf_id),
+    strandedStory: strandedStory(db, row.active_leaf_id),
     lastPromptTokens: lastPromptTokens(db, row.id),
     summaryCount: summaryCount(db, row.id),
     contextSize: contextSize(db, row.preset_id),
@@ -1263,14 +1323,79 @@ function contextSize(db: Database, presetId: number | null): number | null {
  */
 const EXCERPT_LENGTH = 240;
 
+/**
+ * The story's last line, which is not always the leaf's (§20 phase 189).
+ *
+ * This read whatever row the leaf pointed at, so a roleplay whose reader had
+ * just asked a question previewed in the list as `ooc: who built this inn?` —
+ * the side conversation standing in for the story on the one screen that is
+ * meant to help you tell your scenes apart. Walk up to the nearest turn the log
+ * would have shown.
+ */
 function lastLine(db: Database, leafId: number | null): string | null {
   if (leafId === null) return null;
-  const row = db.query("SELECT content FROM messages WHERE id = $id").get({ id: leafId }) as
-    | { content: string }
+  const query = db.query(
+    "SELECT content, parent_id, kind, is_hidden FROM messages WHERE id = $id",
+  );
+  let at: number | null = leafId;
+  for (let depth = 0; depth < MAX_DEPTH && at !== null; depth++) {
+    const row = query.get({ id: at }) as
+      | { content: string; parent_id: number | null; kind: string; is_hidden: number }
+      | null;
+    if (row === null) return null;
+    if (row.kind !== "ooc" && row.is_hidden === 0) {
+      const text = row.content.replace(/\s+/g, " ").trim();
+      if (text !== "") return text.slice(0, EXCERPT_LENGTH);
+    }
+    at = row.parent_id;
+  }
+  return null;
+}
+
+/**
+ * Story turns waiting on a branch the reader is not on (§20 phase 189).
+ *
+ * Phase 189 stopped rewinding from walking into an off-script chain, but a
+ * scene whose leaf was *already* parked on one does not heal itself — the
+ * stored pointer is still there, and `activePath` walks up from it, so the log
+ * stays short until something moves the leaf. Rather than rewrite readers'
+ * databases on their behalf, say what happened and offer the way back.
+ *
+ * Deliberately narrow: this reports only the case that was actually broken —
+ * the leaf is an off-script row, and the story it hangs off continues past it.
+ * Ordinary swiping to a shorter alternate is a choice the reader made, and
+ * nagging about it would be noise on a screen that already has enough.
+ */
+function strandedStory(
+  db: Database,
+  leafId: number | null,
+): { turns: number; leafUlid: string } | null {
+  if (leafId === null) return null;
+  const query = db.query("SELECT id, parent_id, kind FROM messages WHERE id = $id");
+  const leaf = query.get({ id: leafId }) as
+    | { id: number; parent_id: number | null; kind: string }
     | null;
-  if (row === null) return null;
-  const text = row.content.replace(/\s+/g, " ").trim();
-  return text === "" ? null : text.slice(0, EXCERPT_LENGTH);
+  if (leaf === null || leaf.kind !== "ooc") return null;
+
+  // Up to the nearest turn the log would have shown.
+  let at: number | null = leaf.parent_id;
+  for (let depth = 0; depth < MAX_DEPTH && at !== null; depth++) {
+    const row = query.get({ id: at }) as
+      | { id: number; parent_id: number | null; kind: string }
+      | null;
+    if (row === null) return null;
+    if (row.kind !== "ooc") break;
+    at = row.parent_id;
+  }
+  if (at === null) return null;
+
+  // Descending now prefers the story, so this is where the reader belongs.
+  const storyLeaf = descendToLeaf(db, at);
+  if (storyLeaf === leafId) return null;
+  const gained = countTurnsFrom(db, storyLeaf) - countTurnsFrom(db, leafId);
+  if (gained <= 0) return null;
+  const ulid = ulidOf(db, "messages", storyLeaf);
+  return ulid === null ? null : { turns: gained, leafUlid: ulid };
 }
 
 /**

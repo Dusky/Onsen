@@ -137,7 +137,7 @@ export function Header() {
             {scene.title === "" ? strings.scenes.untitled : scene.title}
           </span>
           <span className="text-[11px]" style={{ color: "var(--onsen-color-text-dim)" }}>
-            {strings.header.turns(scene.messageCount)}
+            {strings.header.turns(scene.turnCount)}
           </span>
         </button>
       )}

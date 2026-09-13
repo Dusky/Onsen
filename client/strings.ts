@@ -111,7 +111,13 @@ export const strings = {
     manage: "Manage",
     stillWriting: (title: string) => `Still writing in ${title}`,
     open: "Open",
-    counts: (messages: number) => `${messages} ${messages === 1 ? "reply" : "replies"}`,
+    /*
+     * "Turns", matching the header, because both now read the same number
+     * (§20 phase 189). It said "replies", which was wrong twice over: the
+     * count includes the reader's own turns, and the header beside it called
+     * the same figure something else.
+     */
+    counts: (turns: number) => `${turns} ${turns === 1 ? "turn" : "turns"}`,
     noCast: "No cast",
     /* Organisation, at the scale the incumbent runs at (§20 phase 59). */
     favourite: "Favourite",
@@ -149,6 +155,15 @@ export const strings = {
      * §5's multi-device head sync. The blue pencil, not the red: this is the
      * app talking about its own machinery, not something happening in the story.
      */
+    /*
+     * A scene parked on an off-script row, with story past it (§20 phase 189).
+     * Phase 189 stopped rewinding from walking into the side conversation, but
+     * a scene already stranded there keeps its stored pointer, so it needs
+     * telling — and a way back that is one press, not a trip to the branch map.
+     */
+    strandedStory: (turns: number) =>
+      `${turns} ${turns === 1 ? "turn is" : "turns are"} further on, past this aside.`,
+    strandedShow: "Back to the story",
     movedElsewhere: "This roleplay moved on another device",
     movedShow: "Show me",
 
@@ -1288,7 +1303,13 @@ export const strings = {
     sceneMenu: "Open the roleplays",
     /** The chip that goes back to whatever roleplay is open (§20 phase 180). */
     backToScene: (title: string) => `Back to ${title}`,
-    turns: (n: number) => `${n} turns`,
+    /*
+     * Pluralised, because phase 189 made "1" reachable. The count used to be
+     * every row in the scene, so a one-turn reading rarely showed; now that it
+     * says what the log renders, "1 turns" was on screen the first time this
+     * was driven.
+     */
+    turns: (n: number) => `${n} ${n === 1 ? "turn" : "turns"}`,
     text: "Text",
     proseSmaller: "Smaller prose",
     proseLarger: "Larger prose",
