@@ -4168,6 +4168,18 @@ Each phase ends in a working, usable application.
     which reached the prompt as well as the screen.
     See §16, `client/strings.ts`.
 
+191. **Reaching the writing without a mouse** — the composer is the app's
+    primary action and nothing could focus it: its textarea ref is private and
+    the component took no ref, no id and no callback, so a use review pressed
+    Tab from the top of the chat screen past a hundred stops without arriving.
+    The Prompt rail alone is around seventy-eight of them and it precedes the
+    main content. `Composer` now exports `COMPOSER_ID` and `focusComposer()`,
+    an unmodified `c` focuses the field (safe as a bare letter because the
+    handler already ignores every key while a field has focus), and the shell
+    renders a skip link as its first tab stop. Measured: 112 presses to the
+    composer before, 15 by way of the skip link, 1 by key.
+    See §16, `client/components/Composer.tsx`.
+
 Settled while building phase 15.
 
 - **The desktop layout is phase 19, not a polish item.** The design is explicit

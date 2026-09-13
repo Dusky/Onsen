@@ -9189,3 +9189,90 @@ which is an `aria-hidden` half-block used as a text caret, exactly what that
 character is for. The guard is scoped to a button's visible content now. A
 guard that cannot tell a caret from a mislabelled control is one that gets
 weakened the first time it is inconvenient.
+
+## Phase 191 — Reaching the writing
+
+The use review pressed Tab from the top of the chat screen ninety times and
+never reached the composer. Measured properly afterwards it is **112 presses**,
+and the header — the app's navigation — is 44.
+
+The cause is ordinary and the consequence is not. The shell renders
+`LeftRail → Header → content → RightRail`, and the Prompt panel is about
+seventy-eight tab stops on its own: twenty-six blocks, each with a toggle and
+two reorder arrows. Everything the app is *for* sits behind everything the app
+is *configured with*.
+
+Worse, nothing could focus the composer even deliberately. Its textarea ref is
+private (`const field = useRef(...)`), the component takes no `ref`, no `id`,
+no `data-*` and no focus callback, and `useCommandKeys` binds ⌘K, `j`/`k` and
+Escape but nothing about focus. There was no mechanism, so there was no
+workaround either.
+
+### Two routes, because they fail differently
+
+`Composer` exports `COMPOSER_ID` and `focusComposer()`. An id rather than a
+passed ref, because two unrelated callers need it — a binding registered on the
+window and a skip link in the shell — and threading a ref through both would
+put the composer's internals into two components that know nothing else about
+it. The caret lands at the end of an existing draft, since a draft is resumed
+far more often than it is rewritten from the front.
+
+**A key.** Unmodified `c`, and unconditional — unlike the single-key
+accelerators below it in the same handler, which require a turn to be selected,
+because that requirement is what makes *them* safe. Writing is always
+available. Taking a bare letter is safe here only because of the guard at the
+top of the handler: while anything is focused for typing, none of it runs. That
+was verified rather than assumed — pressing `c` focuses the field, and then
+typing "cat" puts `cat` in the draft rather than losing the first letter.
+
+**A skip link**, hidden until focused, rendered before `<Background/>` and both
+rails so it is first in the DOM. Desktop only: the phone branch renders no
+rails, so there is nothing to skip and a link would be one more control for a
+problem that width does not have.
+
+### What the measurement actually said
+
+| Route | Presses |
+|---|---|
+| Plain tabbing, before | 112 |
+| Plain tabbing, after | 112 (unchanged — nothing was reordered) |
+| Via the skip link | 15 |
+| Via `c` | 1 |
+
+The deeper fix — moving the rails after the main content in DOM order and
+restoring their visual position — is deliberately **not** done here. The plan
+said to ship the cheap route, measure, then decide, and the measurement says a
+reader who knows one key is one press away and a reader who knows nothing is
+fifteen. Reordering a flex layout to chase the remaining case is a larger change
+with more ways to be wrong, and it can be its own phase if plain tabbing turns
+out to matter.
+
+**Verified** in Chromium at 1600×950: `c` focuses the field from a cold start
+and does not eat a literal "c"; the skip link renders on focus at the top left
+and Enter moves focus to the composer. 1909 tests across 138 files, typecheck
+clean.
+
+### Surprises
+
+**Two of the review's findings were wrong, and the code had the better answer.**
+
+*"Accessible names run together."* That came from reading `textContent`, which
+concatenates without separators. The accessibility tree computes something
+else: the header chip's real name is `"Back to The Last Inn"` from its
+`aria-label`, and where no label exists the browser inserts separators anyway
+(`"System prompt preset · prefix · system 9 tok"`). Nothing to fix. A review
+that conflates `textContent` with the accessible name invents defects.
+
+*"The left rail shows a live prompt editor with no scene open."* Also
+deliberate, and documented at the branch: phase 100 decided the prompt's
+*structure* — its blocks, their order, their switches — belongs to the preset
+rather than to a scene, so it is editable anywhere. The right rail differs
+because a cast genuinely does belong to a scene. Changing it would have undone
+a decision with a better rationale than the observation that prompted it.
+
+**Tab wraps, which is why the skip link reads as "15 presses" rather than "1".**
+Chromium's sequential focus navigation starts from a point the page's scrolling
+can move, not always the document start; from a fresh load with the log
+scrolled to its bottom, the first Tab lands in the right rail and the skip link
+is reached on the wrap. It is still the first element in the DOM, which is what
+the guard asserts — the alternative would be asserting a browser heuristic.

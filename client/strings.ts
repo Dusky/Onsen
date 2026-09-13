@@ -232,6 +232,8 @@ export const strings = {
     inspectorTokens: (n: number) => `${n} tok`,
     /** Sentence case, like every other chip; it shipped as PINNED. */
     trackerPinned: "Pinned",
+    /** The skip link, and the only keyboard route past the rails (§20 phase 191). */
+    skipToWriting: "Skip to the writing",
     inspectorEviction: {
       history_budget: "trimmed",
       hidden: "hidden",
