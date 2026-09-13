@@ -38,6 +38,7 @@ export const strings = {
     /** The default answer, where a caller has no better verb to name. */
     confirm: "Yes, do it",
     working: "Working…",
+    close: "Close",
     /** The always-present way back from vanish mode (§20 phase 170). */
     showChrome: "Show the rails and header",
   },
@@ -556,6 +557,7 @@ export const strings = {
     statusMuted: "Muted",
     editCard: "Edit card",
     viewCard: "View card",
+    viewPicture: "View picture",
     removeFromCast: "Remove from cast",
     castMember: "Cast member",
 

@@ -12,6 +12,7 @@ import { emphasis, isPlain } from "../lib/emphasis.ts";
 import { useSwipe } from "../lib/gestures.ts";
 import { strings } from "../strings.ts";
 import { MessageMedia } from "./MessageMedia.tsx";
+import { ImageLightbox } from "./ImageLightbox.tsx";
 
 /**
  * One message in the log.
@@ -603,28 +604,47 @@ function Avatar({
   shape: AvatarShape;
   personaId: string | null;
 }) {
+  const [open, setOpen] = useState(false);
   const url =
     message.characterId !== null
       ? `/api/characters/${message.characterId}/avatar`
       : personaId === null
         ? null
         : `/api/personas/${personaId}/avatar`;
+
+  // No picture, no lightbox: the initial is the whole thing and is not a
+  // doorway to anything.
+  if (url === null) {
+    return (
+      <span
+        aria-hidden="true"
+        className="flex h-[40px] w-[40px] flex-none items-center justify-center bg-bg-raised text-[16px] text-ink-dim"
+        style={{ borderRadius: shape === "circle" ? "50%" : "var(--onsen-radius)" }}
+      >
+        {speakerName.slice(0, 1)}
+      </span>
+    );
+  }
+
+  // The picture sits on the initial, so a missing file still shows the letter.
+  // Clicking opens the full-size portrait (§20 phase 187).
   return (
-    <span
-      aria-hidden="true"
-      className="flex h-[40px] w-[40px] flex-none items-center justify-center bg-bg-raised bg-cover bg-center text-[16px] text-ink-dim"
-      style={{
-        borderRadius: shape === "circle" ? "50%" : "var(--onsen-radius)",
-        ...(url === null ? {} : { backgroundImage: `url(${url})` }),
-      }}
-    >
-      {/* The initial is always rendered and the picture sits on top of it, so a
-          character with no avatar — `hasAvatar: false`, a 404 from the endpoint
-          — shows a letter rather than an empty disc. `MessageDto` does not
-          carry `hasAvatar`, and a background image that fails to load simply
-          reveals what is underneath, which is the behaviour wanted here. */}
-      {speakerName.slice(0, 1)}
-    </span>
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label={speakerName}
+        title={strings.chat.viewPicture}
+        className="chrome flex h-[40px] w-[40px] flex-none items-center justify-center bg-bg-raised bg-cover bg-center text-[16px] text-ink-dim"
+        style={{
+          borderRadius: shape === "circle" ? "50%" : "var(--onsen-radius)",
+          backgroundImage: `url(${url})`,
+        }}
+      >
+        {speakerName.slice(0, 1)}
+      </button>
+      {open ? <ImageLightbox src={url} alt={speakerName} onClose={() => setOpen(false)} /> : null}
+    </>
   );
 }
 

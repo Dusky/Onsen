@@ -8965,3 +8965,20 @@ preset's window had a field and bounds; the model's had neither. The fix was
 not to add budget logic but to expose a number the schema had effectively
 frozen. The `min()` the builder already performed is the whole feature, once
 the profile can say what the model actually holds.
+
+## Phase 187 — The portrait opens full-size
+
+The masthead portrait is a 40px thumbnail, and the moment somebody wants to see
+the face it is of, forty pixels is not it. Clicking it now opens the full
+picture — the same file the masthead draws from, shown as large as the viewport
+allows over a dimmed page.
+
+The lightbox is its own component, `ImageLightbox`, and the only change to the
+masthead is that the portrait becomes a button when there is a picture to show:
+no avatar, no button, the initial stays decorative. The close affordances are
+every other dialog's — the backdrop, an explicit close button, and Escape via
+the shared `useModalFocus` — and the picture itself stops the backdrop's click
+so a browser zoom does not dismiss the thing being looked at.
+
+The same `dangerouslySetInnerHTML`-free rule holds: the picture is an `<img>`
+with the URL the masthead already used, nothing more.

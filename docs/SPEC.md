@@ -4120,6 +4120,13 @@ Each phase ends in a working, usable application.
     `server/generation/route.ts`,
     `server/db/migrations/0078_profile_context.sql`.
 
+187. **The portrait opens full-size** — a turn's masthead portrait is a 40px
+    thumbnail, and a reader wanted the full picture. Clicking it opens a
+    lightbox over a dimmed page, the same file drawn as large as the viewport
+    allows, closed by the backdrop, the close button or Escape. See §16,
+    `client/components/ImageLightbox.tsx`,
+    `client/components/MessageBlock.tsx`.
+
 Settled while building phase 15.
 
 - **The desktop layout is phase 19, not a polish item.** The design is explicit
