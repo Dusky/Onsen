@@ -4135,6 +4135,93 @@ Each phase ends in a working, usable application.
     it is with. See §7, `client/components/OocChannel.tsx`,
     `server/db/migrations/0079_ooc_sidebar.sql`.
 
+189. **The story is always reachable, and the count says what the log shows** —
+    a reported scene held eleven messages and rendered one turn, under a header
+    reading "11 turns". Two causes, neither of them rendering. `descendToLeaf`
+    followed the most recently inserted child at every level, and an off-script
+    branch is always newer than the story beside it, so rewinding walked into
+    the side conversation and stopped; it now prefers a non-`ooc` child, newest
+    first within each group, so off-script keeps every property phase 188 gave
+    it but can no longer shadow the story. And the scene count was
+    `count(*) WHERE scene_id` — every branch, every swipe alternate, every
+    hidden note — where the log renders one path; it is now the readable turns
+    on that path, under a name that says so. The list preview stops quoting an
+    aside as the scene's last line, and a scene already stranded on an
+    off-script row says how many turns are further on and offers one press
+    back. See §7, §23, `server/db/queries/history.ts`.
+
+190. **The app speaks English everywhere a reader can see** — three leaks with
+    one cause between them: a value belonging to the database, the wire format
+    or a developer's shorthand reaching the screen unchanged. `blockNames` was
+    cast `as Record<string, string>`, so `dialogue_colour` arrived in phase 185
+    with no label, nothing failed to build, and the prompt-order editor printed
+    the column value between "Depth prompts" and "Options"; the map is checked
+    against `PromptBlockId` now, and the looseness the cast existed for — a
+    preset's own blocks arrive as `custom:` prefixed ids outside the union —
+    moved to a reader that returns null rather than the id. The token unit
+    shipped as both `tok` and `TOK` on one screen: six factories by reading,
+    five more hardcoded literals by sweeping. One spelling now, with the
+    all-caps chrome that came with it returned to sentence case. The header's
+    rail toggles were Unicode half-blocks, labelled and tooltipped and still
+    reading as a font fault; they are icons. And the cast-less spotlight was
+    named "Assistant", the chat format's role rather than a word anyone chose,
+    which reached the prompt as well as the screen.
+    See §16, `client/strings.ts`.
+
+191. **Reaching the writing without a mouse** — the composer is the app's
+    primary action and nothing could focus it: its textarea ref is private and
+    the component took no ref, no id and no callback, so a use review pressed
+    Tab from the top of the chat screen past a hundred stops without arriving.
+    The Prompt rail alone is around seventy-eight of them and it precedes the
+    main content. `Composer` now exports `COMPOSER_ID` and `focusComposer()`,
+    an unmodified `c` focuses the field (safe as a bare letter because the
+    handler already ignores every key while a field has focus), and the shell
+    renders a skip link as its first tab stop. Measured: 112 presses to the
+    composer before, 15 by way of the skip link, 1 by key.
+    See §16, `client/components/Composer.tsx`.
+
+193. **A guard that measures the rendered screen** — every visual guard in the
+    repo compares tokens to tokens. `test/surfaces.test.ts` measures
+    `contrastRatio(tokens[tier], tokens[ground])`, two flat hex values, while
+    the rails it certifies are translucent panels over a photograph; it passes
+    at a rendered 2.63:1. `scripts/rendered-guard.ts` drives a real browser at
+    both widths in both themes and asserts on composited pixels, plus the
+    distinct counts of font sizes, control heights and gaps, sub-24px pointer
+    targets, and genuinely unhandled overflow. Budgets record what the app
+    measures today so they can only ratchet down, and the two real contrast
+    failures are listed as known so the command passes while they are
+    scheduled. Deliberately outside `bun test`: the suite stays hermetic and
+    structural. Run it with `bun run guard:rendered`.
+    See §16, `scripts/rendered-guard.ts`.
+
+194. **The chrome type sizes have one owner each** — `tokens.css` named its
+    sizes and components copied the numbers instead of referencing them: 151
+    `text-[12.5px]` literals and 52 `text-[13.5px]`, against tokens only `.btn`
+    and one heading rule actually read, so changing `--onsen-text-button` would
+    have moved the buttons and left two hundred elements behind. The two sizes
+    the chrome is set in are declared once as `--onsen-text-ui` and
+    `--onsen-text-ui-loose`, the role tokens reference them, `@theme` exposes
+    them as utilities the way it already did for colours, and every literal now
+    says the size it means. Named for what they are rather than for one role
+    that happens to use them, because the call sites span chips, bubbles, rows
+    and buttons. Not one rendered pixel moved, which the phase 193 guard
+    confirms. See §16, `client/styles/tokens.css`.
+
+195. **Targets and contrast, against what renders** — rail metadata measured
+    4.15:1 dark and 2.63:1 light on a real screen while `surfaces.test.ts`
+    passed, and the translucency was innocent: a builtin theme's palette lives
+    in the `themes` table and `seedBuiltinThemes` inserted-and-skipped by name,
+    so a ramp corrected in `builtin.ts` never reached an install that already
+    existed. Midnight shipped 5.04:1 and every older database kept rendering
+    4.05:1 indefinitely. Builtin palettes are reconciled on boot now — the
+    argument `seedBuiltins` already makes for option groups — while custom
+    themes and a reader's own CSS are untouched, and the light ramps gained
+    headroom for the app's own 58% panels. Every sampled region clears AA with
+    no exemptions. Separately, the prompt list's toggle and its reorder arrows
+    grew from 16×22 and 22×26 to WCAG 2.5.8's 24px, with negative margins
+    keeping the row where it was: 676 sub-24px targets to 208.
+    See §16, `server/db/queries/themes.ts`.
+
 Settled while building phase 15.
 
 - **The desktop layout is phase 19, not a polish item.** The design is explicit

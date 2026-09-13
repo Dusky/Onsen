@@ -148,7 +148,7 @@ export function Reasoning({ text }: { text: string }) {
       </button>
       {open ? (
         <p
-          className="chrome mt-[7px] border-l pl-[11px] text-[13.5px] leading-[1.65] whitespace-pre-wrap text-ink-dim"
+          className="chrome mt-[7px] border-l pl-[11px] text-ui-loose leading-[1.65] whitespace-pre-wrap text-ink-dim"
           style={{ borderColor: "var(--onsen-color-rule)" }}
         >
           {trimmed}
@@ -182,7 +182,7 @@ export function Direction({ text }: { text: string }) {
       </button>
       {open ? (
         <p
-          className="chrome mt-[7px] border-l pl-[11px] text-[13.5px] leading-[1.65] whitespace-pre-wrap text-ink-dim"
+          className="chrome mt-[7px] border-l pl-[11px] text-ui-loose leading-[1.65] whitespace-pre-wrap text-ink-dim"
           style={{ borderColor: "var(--onsen-color-rule)" }}
         >
           {trimmed}
@@ -298,7 +298,7 @@ export function RunIn({
   return (
     <>
       <span
-        className="chrome text-[13.5px] font-semibold"
+        className="chrome text-ui-loose font-semibold"
         style={{
           color:
             colour ??
@@ -358,7 +358,7 @@ function Segment({
           only where the part's name sits — the same move the message makes. */}
       {segment.speakerName === null || runin === true ? null : (
         <p
-          className="chrome mb-[5px] text-[12.5px] text-ink-label"
+          className="chrome mb-[5px] text-ui text-ink-label"
           style={colour === undefined ? undefined : { color: colour }}
         >
           {segment.speakerName}
@@ -402,7 +402,7 @@ function Annotation({
   const failed = annotation.status === "failed";
   return (
     <p
-      className="chrome mt-[7px] flex gap-[7px] text-[12.5px] leading-[1.55]"
+      className="chrome mt-[7px] flex gap-[7px] text-ui leading-[1.55]"
       style={{
         color: flagged ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)",
         opacity: annotation.status === "ok" ? 0.7 : 1,
@@ -468,7 +468,7 @@ export function OocBlock({
     >
       <div className="mb-[7px] flex items-baseline gap-[10px]">
         <span
-          className="chrome shrink-0 text-[12.5px]"
+          className="chrome shrink-0 text-ui"
           style={{ color: "var(--onsen-color-blue-text-muted)" }}
         >
           {strings.chat.oocLabel(speakerName)}
@@ -486,7 +486,7 @@ export function OocBlock({
         )}
       </div>
       <div
-        className="chrome px-[12px] py-[9px] text-[12.5px] leading-[1.55] whitespace-pre-wrap"
+        className="chrome px-[12px] py-[9px] text-ui leading-[1.55] whitespace-pre-wrap"
         style={{
           background: "var(--onsen-color-blue-bg)",
           border: "1px solid var(--onsen-color-blue-border)",
@@ -882,7 +882,7 @@ export function MessageBlock({
             <button
               type="button"
               onClick={onOpenVersions}
-              className="chrome shrink-0 text-[12.5px] text-ink-dim"
+              className="chrome shrink-0 text-ui text-ink-dim"
             >
               {strings.chat.versionCounter(message.siblingIndex + 1, message.siblingCount)}
             </button>
@@ -903,7 +903,7 @@ export function MessageBlock({
           />
         ) : null}
         <span
-          className="chrome shrink-0 text-[13.5px] font-semibold"
+          className="chrome shrink-0 text-ui-loose font-semibold"
           style={{
             color:
               speakerColour ??
@@ -935,7 +935,7 @@ export function MessageBlock({
           <button
             type="button"
             onClick={onOpenVersions}
-            className="chrome shrink-0 text-[12.5px] text-ink-dim"
+            className="chrome shrink-0 text-ui text-ink-dim"
           >
             {strings.chat.versionCounter(message.siblingIndex + 1, message.siblingCount)}
           </button>
@@ -961,7 +961,7 @@ export function MessageBlock({
         {attribution === "inline" && segments === null ? (
           <p className="mt-0 text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)] whitespace-pre-wrap">
             <span
-              className="chrome text-[13.5px] font-semibold"
+              className="chrome text-ui-loose font-semibold"
               style={{
                 color: isUser
                   ? "var(--onsen-color-text-muted)"
@@ -970,7 +970,7 @@ export function MessageBlock({
             >
               {speakerName}
             </span>
-            <span className="chrome text-[13.5px] text-ink-dim"> &middot; </span>
+            <span className="chrome text-ui-loose text-ink-dim"> &middot; </span>
             {text}
             {streamingText === undefined ? null : (
               <span aria-hidden="true" style={{ color: "var(--onsen-color-amber)" }}>{"\u258c"}</span>
@@ -1026,7 +1026,7 @@ export function MessageBlock({
             <Annotation key={note.id} annotation={note} onRevert={onRevert} />
           ))}
         {message.passesPending ? (
-          <p className="chrome mt-[6px] text-[12.5px] leading-[1.55] text-ink-dim">
+          <p className="chrome mt-[6px] text-ui leading-[1.55] text-ink-dim">
             {strings.chat.passesPending}
           </p>
         ) : null}

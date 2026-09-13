@@ -160,18 +160,49 @@ export function activeTheme(db: Database): ThemeRow | null {
 }
 
 /**
- * Put the shipped themes in, once.
+ * Put the shipped themes in, and keep them shipped (§20 phase 195).
  *
  * Matched by name so a later release can add one without disturbing anything
  * the reader has made, and so re-running this never duplicates.
+ *
+ * **A builtin theme's tokens are reconciled on every boot**, and that is a
+ * change: this used to insert-and-skip, full stop. A phase raised the ink
+ * ramps to clear WCAG AA, `test/surfaces.test.ts` measured the corrected
+ * values in `builtin.ts` and passed — and not one existing install ever saw
+ * them. Midnight shipped `#808891` against `#14161a`, a clean 5.04:1, while
+ * every database seeded before that fix kept rendering `#6f7883` at 4.05:1,
+ * below the floor, indefinitely. The guard read the source; the app read the
+ * row.
+ *
+ * The same argument `seedBuiltins` makes for option groups in
+ * `server/db/queries/options.ts`: words somebody may have rewritten are kept,
+ * but structure is not a preference and stale structure is a correctness bug.
+ * A builtin theme's palette is the shipped artefact, not the reader's —
+ * editing one in the app forks it to a custom theme, which `is_builtin = 0`
+ * protects here. Custom themes are never touched.
+ *
+ * `custom_css` is left alone even on a builtin: that is text a reader wrote,
+ * and it is the one field on these rows that can be theirs.
  */
 export function seedBuiltinThemes(db: Database): number {
   let added = 0;
   for (const theme of BUILTIN_THEMES) {
-    const exists = db
+    const existing = db
+      .query("SELECT id, tokens FROM themes WHERE name = $name COLLATE NOCASE AND is_builtin = 1")
+      .get({ name: theme.name }) as { id: number; tokens: string } | null;
+    if (existing !== null) {
+      const shipped = JSON.stringify(theme.tokens);
+      if (existing.tokens !== shipped) {
+        db.query("UPDATE themes SET tokens = $tokens, base = $base, updated_at = $now WHERE id = $id")
+          .run({ tokens: shipped, base: theme.base, id: existing.id, now: Date.now() });
+      }
+      continue;
+    }
+    // A custom theme may have taken the name; leave it be.
+    const taken = db
       .query("SELECT 1 AS hit FROM themes WHERE name = $name COLLATE NOCASE")
       .get({ name: theme.name });
-    if (exists !== null) continue;
+    if (taken !== null) continue;
     insertTheme(db, { ...theme, isBuiltin: true });
     added += 1;
   }

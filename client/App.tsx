@@ -20,6 +20,7 @@ import { LeftRail } from "./components/LeftRail.tsx";
 import { TopBar } from "./components/TopBar.tsx";
 import { Header } from "./components/Header.tsx";
 import { Background } from "./components/Background.tsx";
+import { focusComposer } from "./components/Composer.tsx";
 import { RightRail } from "./components/RightRail.tsx";
 import { setChimeWanted, unlockAudio } from "./lib/chime.ts";
 import { usePreferences, useReader, useReading } from "./lib/queries.ts";
@@ -74,7 +75,7 @@ export function App() {
   if (phase.status === "loading") {
     return (
       <div className="flex screen-height items-center justify-center">
-        <p className="chrome text-[12.5px] text-ink-dim">
+        <p className="chrome text-ui text-ink-dim">
           {strings.common.working}
         </p>
       </div>
@@ -84,7 +85,7 @@ export function App() {
   if (phase.status === "error") {
     return (
       <div className="flex screen-height items-center justify-center px-[22px]">
-        <p className="chrome text-center text-[13.5px] text-red-text">
+        <p className="chrome text-center text-ui-loose text-red-text">
           {strings.errors.network}
         </p>
       </div>
@@ -113,6 +114,39 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <Shell />
     </QueryClientProvider>
+  );
+}
+
+/**
+ * The first tab stop on the page, and the only way past the rails (§20 phase
+ * 191).
+ *
+ * Hidden until focused, which is the conventional shape: it costs a sighted
+ * mouse user nothing and it is the first thing a keyboard user meets. It has
+ * to be first in the DOM to be first in the tab order, which is why it sits
+ * above `<Background/>` rather than inside the shell it skips.
+ *
+ * The rails come before the main content in DOM order, and the Prompt panel
+ * alone is around seventy-eight tab stops — twenty-six blocks with a toggle
+ * and two reorder arrows each. Reordering the shell so the content comes first
+ * is the deeper fix and a larger one, since the rails are laid out as flex
+ * siblings and their visual order would have to be restored. This is the part
+ * that can ship now, and it is the part a keyboard user actually needs: one
+ * press, from anywhere, to the thing the app is for.
+ *
+ * Desktop only, deliberately: the phone branch renders no rails at all, so the
+ * composer is a handful of stops away and a skip link would be one more
+ * control for a problem that width does not have.
+ */
+function SkipToWriting() {
+  return (
+    <button
+      type="button"
+      onClick={focusComposer}
+      className="chrome sr-only focus:not-sr-only focus:absolute focus:top-[8px] focus:left-[8px] focus:z-50 focus:border focus:border-blue-border focus:bg-blue-bg focus:px-[12px] focus:py-[8px] focus:text-[13px] focus:text-blue-text"
+    >
+      {strings.chat.skipToWriting}
+    </button>
   );
 }
 
@@ -243,6 +277,7 @@ function Shell() {
   }
   return (
     <div className="relative screen-height">
+      <SkipToWriting />
       <Background />
       <div className="relative z-10 flex h-full bg-bg">
         {vanished ? null : <LeftRail />}

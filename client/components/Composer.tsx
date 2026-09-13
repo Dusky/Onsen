@@ -70,6 +70,34 @@ interface ComposerProps {
   marks?: boolean;
 }
 
+/**
+ * The composer's field, addressable from outside it (§20 phase 191).
+ *
+ * The textarea's ref is private and the component takes no `ref`, no `id` and
+ * no focus callback — so nothing in the app *could* put the cursor in it. That
+ * is how the app's primary action ended up unreachable by keyboard: a use
+ * review pressed Tab ninety times from the top of the chat screen and never
+ * arrived, because the Prompt rail alone is some seventy-eight tab stops and it
+ * precedes the main content in DOM order.
+ *
+ * An id rather than a passed ref, because two unrelated callers need it — a
+ * key binding registered on the window, and the skip link in the shell — and
+ * threading a ref through both would put the composer's internals in two
+ * components that otherwise know nothing about it.
+ */
+export const COMPOSER_ID = "onsen-composer";
+
+/** Put the cursor where the writing happens. False if there is no composer. */
+export function focusComposer(): boolean {
+  const field = document.getElementById(COMPOSER_ID);
+  if (!(field instanceof HTMLTextAreaElement)) return false;
+  field.focus();
+  // The caret goes to the end, not the start: a draft is resumed far more
+  // often than it is rewritten from the front.
+  field.setSelectionRange(field.value.length, field.value.length);
+  return true;
+}
+
 export function Composer({
   onSend,
   onContinue,
@@ -149,6 +177,7 @@ export function Composer({
       <div className="flex items-end gap-[8px]">
         <textarea
           ref={field}
+          id={COMPOSER_ID}
           rows={1}
           className={`field flex-1 resize-none py-[13px] ${wide ? "min-h-[62px]" : "min-h-[46px]"}`}
           placeholder={strings.chat.composerPlaceholder}
@@ -258,7 +287,7 @@ export function Composer({
           // The label follows the state: a button that says "close" to the eye
           // and "ops" to a screen reader is two different buttons.
           aria-label={opsOpen ? strings.chat.opsClose : strings.chat.ops}
-          className="chrome flex h-[46px] w-[46px] flex-none items-center justify-center border text-[12.5px]"
+          className="chrome flex h-[46px] w-[46px] flex-none items-center justify-center border text-ui"
           style={{
             borderColor: opsOpen ? "var(--onsen-color-blue)" : "var(--onsen-color-border-quiet)",
             color: opsOpen ? "var(--onsen-color-blue)" : "var(--onsen-color-text-muted)",

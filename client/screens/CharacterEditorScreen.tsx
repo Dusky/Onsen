@@ -123,7 +123,7 @@ function GreetingList({
           />
           <button
             type="button"
-            className="chrome mt-[6px] text-[12.5px]"
+            className="chrome mt-[6px] text-ui"
             style={{ color: "var(--onsen-color-red)" }}
             onClick={() => onChange(items.filter((_, at) => at !== index))}
           >
@@ -189,7 +189,7 @@ function ColourField({
           {strings.characters.colourNone}
         </button>
         {value === null ? null : (
-          <span className="chrome text-[12.5px]" style={{ color: value }}>
+          <span className="chrome text-ui" style={{ color: value }}>
             {value}
           </span>
         )}
@@ -234,7 +234,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
   if (character === undefined) {
     return (
       <div className="flex screen-height items-center justify-center">
-        <p className="chrome text-[12.5px] text-ink-dim">
+        <p className="chrome text-ui text-ink-dim">
           {strings.common.working}
         </p>
       </div>
@@ -535,7 +535,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                     key={expression.id}
                     type="button"
                     onClick={() => removeSprite.mutate(expression.id)}
-                    className="chrome border px-[10px] py-[6px] text-[12.5px]"
+                    className="chrome border px-[10px] py-[6px] text-ui"
                     style={{ borderColor: "var(--onsen-color-border-quiet)", color: "var(--onsen-color-text-muted)" }}
                   >
                     {expression.label} ×
@@ -875,7 +875,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
         <div className="mx-auto w-full max-w-[var(--onsen-prose-measure)]">
           <div className="flex items-baseline justify-between">
             <span className="section-label">{strings.characters.cardTotal}</span>
-            <span className="chrome text-[12.5px] text-ink-label">
+            <span className="chrome text-ui text-ink-label">
               {strings.characters.shareOfContext(tokens.total, CONTEXT_WINDOW)}
             </span>
           </div>
@@ -921,7 +921,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
 
       {versionsOpen ? (
         <Sheet title={strings.characters.versions} onClose={() => setVersionsOpen(false)}>          {(versions.data ?? []).length === 0 ? (
-            <p className="chrome py-[10px] text-[12.5px] text-ink-dim">
+            <p className="chrome py-[10px] text-ui text-ink-dim">
               {strings.characters.noVersions}
             </p>
           ) : (

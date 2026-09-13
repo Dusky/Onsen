@@ -84,7 +84,7 @@ function SceneRow({
   const [expanded, setExpanded] = useState(false);
   // The condensed story, fetched only once the row is expanded (§149).
   const summaries = useSummaries(scene.id, expanded);
-  const empty = scene.messageCount === 0;
+  const empty = scene.turnCount === 0;
   const cast = castLine(scene);
   const latestSummary = [...(summaries.data?.summaries ?? [])].at(-1) ?? null;
 
@@ -121,7 +121,7 @@ function SceneRow({
                 cast ||
                 strings.scenes.noCast}
             </span>
-            <span className="flex-none">{strings.scenes.counts(scene.messageCount)}</span>
+            <span className="flex-none">{strings.scenes.counts(scene.turnCount)}</span>
           </div>
         </button>
 
@@ -248,7 +248,7 @@ function SceneRow({
 
           <p className="meta mt-[8px]">
             {[
-              strings.scenes.counts(scene.messageCount),
+              strings.scenes.counts(scene.turnCount),
               scene.summaryCount > 0 ? strings.scenes.summariesCount(scene.summaryCount) : null,
               // Where it runs, not which profile it is filed under (§181):
               // the third readout that had been naming the profile.

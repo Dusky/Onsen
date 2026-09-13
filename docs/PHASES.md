@@ -9006,3 +9006,512 @@ and is already pinned: `renderHistory` labels an OOC turn `"{author} (out of
 character)"` and the reader's question as the reader, and
 `test/prompt-builder.test.ts` asserts both. Nothing here changed it, because
 there was nothing to change; the work was verifying it and saying so.
+
+## Phase 189 — The story is always reachable
+
+The report was a use review of the whole app (`docs/UX-REVIEW.md`), and the
+worst thing in it was one scene: **eleven messages stored, one turn rendered,
+and a header above it reading "11 turns".**
+
+Neither half was a rendering bug.
+
+### Rewinding preferred the newest branch, and off-script is always newest
+
+`descendToLeaf` was `ORDER BY id DESC LIMIT 1` — follow the most recently
+inserted child, at every level, until a node has none. That is right for
+swiping: it is what makes leaving a sibling and coming back restore *that*
+sibling's own continuation rather than truncating it.
+
+It is wrong the moment a branch exists that is newer but is not the story. An
+off-script exchange always is. So a reader who rewound to reread an earlier
+turn — or who asked a question from anywhere but the tip — walked into the side
+conversation and stopped there, and since phase 188 stopped rendering asides in
+the log, the symptom was a transcript that silently got shorter. Nothing was
+deleted. Nothing led back either: rewinding again landed in the same place,
+because the ooc chain was still the newest child of that ancestor.
+
+`ORDER BY (kind = 'ooc'), id DESC` fixes it at the root, and it is the whole
+change. Off-script keeps everything it was given — it stays in the tree, stays
+on the path while you are actually in that conversation, `oocDueFor` still
+counts asides along the path, and an aside still vanishes when you reroll the
+turn it came out of. It simply cannot shadow the story any more.
+
+**The fix that was not made, and why.** The obvious reading is that
+`appendMessage` should stop moving `active_leaf_id` for `ooc` rows. That is a
+one-line change and it breaks six things: the off-script panel reads the active
+path and would empty, `oocDueFor` would never find an aside and would fire the
+invitation every turn, the aside's disappear-on-reroll contract is *built* on
+path residency, ooc answers would classify as `"swipe"`, cross-device
+convergence would lose them, and `oocInline` would stop meaning anything.
+Off-script rows being on the path is load-bearing. The branch *ordering* was
+the defect.
+
+### The count measured a different set than the log
+
+`countMessages` was `SELECT count(*) WHERE scene_id = ?`. Every branch, every
+alternate nobody chose, every hidden note, every aside. The log renders one
+path and hides the asides — so the header said "11 turns" over six, the
+roleplay list said "11 replies" over the same six, and every swipe pushed the
+number further from the thing it labelled.
+
+`activePathLength` — the function that answers this, with a doc comment
+explaining why it exists — sat 280 lines below in the same file, wired to a
+different DTO field. It stays as it is: it measures the reading *window*, which
+legitimately counts everything on the path. The scene count is now the readable
+turns on the active path, named `turnCount` so the unit is in the name, and the
+list says "turns" too — it had said "replies", which was wrong twice over,
+since the count includes the reader's own turns and the header beside it called
+the same figure something else.
+
+### Two smaller things the same thread pulled up
+
+The roleplay list previewed "The Last Inn" as **`ooc: who built this inn?`** —
+`lastLine` read whatever row the leaf pointed at, so a side conversation stood
+in for the story on the one screen meant to tell scenes apart. It now walks up
+to the nearest turn the log would have shown.
+
+And the fix prevents new damage but does not heal a scene that already has it:
+the stored pointer is still on an off-script row. Rather than rewrite readers'
+databases, a scene in that state now says **"5 turns are further on, past this
+aside"** with **Back to the story** — the same shape as the existing
+moved-elsewhere prompt, and for the same reason. Deliberately narrow: only when
+the leaf is an off-script row and the story continues past it. Swiping to a
+shorter alternate is a choice, and nagging about it would be noise.
+
+**Verified** in Chromium at 1600×950 and 390×844, both themes, against the
+reported database. Before: header "1 turn", one article rendered, list preview
+the aside. Pressing **Back to the story**: header "6 turns", six articles,
+banner gone. The guard is executed against a real database rather than read as
+source — these are SQL orderings and a recursive count, where the failure mode
+is a query that is subtly wrong and no amount of reading the call site catches
+it. Both halves were confirmed to *fail* against the old code before being
+kept: the rewind test against the old `ORDER BY`, and three of the five count
+shapes against the old `count(*)`. 1894 tests across 136 files, typecheck clean.
+
+### Surprises
+
+**A test in the suite had the bug written into it as an expectation.**
+`test/scenes-api.test.ts` asserted `messageCount` was 4 on a scene whose line
+immediately above proved the reader could see two turns. It passed for as long
+as the count was wrong, and the rename is the only reason anyone looked at it.
+A count assertion next to a path assertion that disagree with each other is a
+defect sitting in plain sight with a tick beside it.
+
+**"1 turns".** The count was almost never 1 before, because it counted every
+row in the scene; making it honest made 1 reachable, and the header had no
+plural. Found in the first browser drive, one line from the fix that caused it.
+
+## Phase 190 — The app speaks English everywhere a reader can see
+
+Four small things from the use review, with one cause between them: somewhere a
+value belonging to the database, the wire format, or a developer's shorthand
+reached the screen unchanged. Each is a few characters. Together they are most
+of what the review called "amateurish", because they are the places a reader
+notices the seam.
+
+### A raw database key, and the cast that hid it
+
+The prompt-order editor rendered **`dialogue_colour`** between "Depth prompts"
+and "Options" — every neighbour written for a person, this one a column value.
+
+The cause is exact and worth keeping: `blockNames` was declared
+`as Record<string, string>`. `PromptBlockId` has 27 members and the map had 26.
+Because the map was typed by `string` rather than by the union, the compiler
+could not notice, the lookup returned `undefined`, and the fallback chain ended
+at the raw id. The block *has* a proper label — `blocks.ts` passes
+`"Dialogue colour"` — but that one travels with assembled prompt debug data,
+and the order editor lists *configured* entries, not assembled blocks. Two
+lists, two sources, one of them silently empty.
+
+`satisfies Record<PromptBlockId, string>` makes the omission a build error. The
+cast was not arbitrary, though, and that is the interesting part: a preset's own
+blocks arrive as `custom:`-prefixed ids that are not in the union at all, so a
+strict map cannot be *indexed* by what the caller has. The looseness moved to a
+reader — `blockNameFor(id: string): string | null` — which returns null rather
+than the id, so a caller decides what an unknown block looks like instead of
+leaking a column value by default. A strict declaration and a loose reader get
+both properties; the cast had neither.
+
+### One unit, two spellings, on the same screen
+
+The chat screen showed `9 tok` and `172 tok` in the left rail and `0 TOK` and
+`95 TOK` in the right. Reading the files found six string factories saying
+`TOK` and five saying `tok`. **Sweeping the client found five more hardcoded
+literals** — in `OptionSheets`, `TrackerPanel` and `SceneSetupScreen` — that
+nobody had thought to open. That is the whole argument for sweeping rather than
+listing, and it is the third phase in a row where the sweep found more than the
+reading did.
+
+All of it is lowercase now and routed through one factory, and the all-caps
+chrome that came with it — `% OF CTX`, `BOOK TOTAL`, `ENTRY/ENTRIES`, `PINNED`
+— is sentence case.
+
+### Two buttons that looked like a font fault
+
+The header's rail toggles were `▎` and `▕`, half-block drawing characters, in a
+bar where every neighbour is a word ("Dark", "Light", "Settings") or a letter
+("A", "A"). They had `title` and `aria-label` the whole time — they were never
+inaccessible, they just looked broken. Now `PanelLeft` / `PanelRight` from the
+icon set the rails already use, at the size and stroke weight `LeftRail` sets.
+
+### A wire-format role with no cast to hide behind
+
+A scene with no characters showed "Spotlight · **Assistant**". The placeholder
+is deliberate and its doc comment defends being plain rather than a fake
+character card — but "Assistant" is the chat format's role name, not a plain
+word anyone chose, and it reaches the *prompt* as well as the screen, where
+naming the speaker "Assistant" primes precisely the helpful-chatbot register a
+roleplay is trying not to be in. It is "Narrator" now, which is the word the
+comment was already using one line above.
+
+**Verified** in Chromium at 1600×950 and 390×844, both themes. The order list
+reads "Depth prompts / Dialogue colour / Options"; no string matching
+`[a-z]+_[a-z_]+` appears anywhere in the rendered body; no `TOK` appears on any
+screen; the toggles draw as icons. 1902 tests across 137 files, typecheck clean.
+Each guard was confirmed to fail against the restored defect before being kept,
+including the `satisfies` clause, which reproduces phase 185's exact omission as
+a build error.
+
+### Surprises
+
+**One of the review's findings was wrong, and the browser said so.** It reported
+"run-together accessible names" — `"·The Last Inn11 turns"`,
+`"Elira VossElira does not laugh"` — from reading `textContent`. The
+accessibility tree computes something different: the real name is
+`"Back to The Last Inn"` from the `aria-label`, and where no label exists the
+browser inserts separators anyway, giving `"System prompt preset · prefix ·
+system 9 tok"`. Nothing to fix. `textContent` is not the accessible name, and a
+review that conflates them invents defects.
+
+**The first glyph guard caught the streaming cursor.** Swept across the whole
+client, "no box-drawing characters" flagged `▌` in `MessageBlock.tsx` —
+which is an `aria-hidden` half-block used as a text caret, exactly what that
+character is for. The guard is scoped to a button's visible content now. A
+guard that cannot tell a caret from a mislabelled control is one that gets
+weakened the first time it is inconvenient.
+
+## Phase 191 — Reaching the writing
+
+The use review pressed Tab from the top of the chat screen ninety times and
+never reached the composer. Measured properly afterwards it is **112 presses**,
+and the header — the app's navigation — is 44.
+
+The cause is ordinary and the consequence is not. The shell renders
+`LeftRail → Header → content → RightRail`, and the Prompt panel is about
+seventy-eight tab stops on its own: twenty-six blocks, each with a toggle and
+two reorder arrows. Everything the app is *for* sits behind everything the app
+is *configured with*.
+
+Worse, nothing could focus the composer even deliberately. Its textarea ref is
+private (`const field = useRef(...)`), the component takes no `ref`, no `id`,
+no `data-*` and no focus callback, and `useCommandKeys` binds ⌘K, `j`/`k` and
+Escape but nothing about focus. There was no mechanism, so there was no
+workaround either.
+
+### Two routes, because they fail differently
+
+`Composer` exports `COMPOSER_ID` and `focusComposer()`. An id rather than a
+passed ref, because two unrelated callers need it — a binding registered on the
+window and a skip link in the shell — and threading a ref through both would
+put the composer's internals into two components that know nothing else about
+it. The caret lands at the end of an existing draft, since a draft is resumed
+far more often than it is rewritten from the front.
+
+**A key.** Unmodified `c`, and unconditional — unlike the single-key
+accelerators below it in the same handler, which require a turn to be selected,
+because that requirement is what makes *them* safe. Writing is always
+available. Taking a bare letter is safe here only because of the guard at the
+top of the handler: while anything is focused for typing, none of it runs. That
+was verified rather than assumed — pressing `c` focuses the field, and then
+typing "cat" puts `cat` in the draft rather than losing the first letter.
+
+**A skip link**, hidden until focused, rendered before `<Background/>` and both
+rails so it is first in the DOM. Desktop only: the phone branch renders no
+rails, so there is nothing to skip and a link would be one more control for a
+problem that width does not have.
+
+### What the measurement actually said
+
+| Route | Presses |
+|---|---|
+| Plain tabbing, before | 112 |
+| Plain tabbing, after | 112 (unchanged — nothing was reordered) |
+| Via the skip link | 15 |
+| Via `c` | 1 |
+
+The deeper fix — moving the rails after the main content in DOM order and
+restoring their visual position — is deliberately **not** done here. The plan
+said to ship the cheap route, measure, then decide, and the measurement says a
+reader who knows one key is one press away and a reader who knows nothing is
+fifteen. Reordering a flex layout to chase the remaining case is a larger change
+with more ways to be wrong, and it can be its own phase if plain tabbing turns
+out to matter.
+
+**Verified** in Chromium at 1600×950: `c` focuses the field from a cold start
+and does not eat a literal "c"; the skip link renders on focus at the top left
+and Enter moves focus to the composer. 1909 tests across 138 files, typecheck
+clean.
+
+### Surprises
+
+**Two of the review's findings were wrong, and the code had the better answer.**
+
+*"Accessible names run together."* That came from reading `textContent`, which
+concatenates without separators. The accessibility tree computes something
+else: the header chip's real name is `"Back to The Last Inn"` from its
+`aria-label`, and where no label exists the browser inserts separators anyway
+(`"System prompt preset · prefix · system 9 tok"`). Nothing to fix. A review
+that conflates `textContent` with the accessible name invents defects.
+
+*"The left rail shows a live prompt editor with no scene open."* Also
+deliberate, and documented at the branch: phase 100 decided the prompt's
+*structure* — its blocks, their order, their switches — belongs to the preset
+rather than to a scene, so it is editable anywhere. The right rail differs
+because a cast genuinely does belong to a scene. Changing it would have undone
+a decision with a better rationale than the observation that prompted it.
+
+**Tab wraps, which is why the skip link reads as "15 presses" rather than "1".**
+Chromium's sequential focus navigation starts from a point the page's scrolling
+can move, not always the document start; from a fresh load with the log
+scrolled to its bottom, the first Tab lands in the right rail and the skip link
+is reached on the wrap. It is still the first element in the DOM, which is what
+the guard asserts — the alternative would be asserting a browser heuristic.
+
+## Phase 193 — A guard that measures the rendered screen
+
+Three phases in a row have now found the same shape of defect:
+
+- **182** — the Test button resolved a different URL and body than a turn, so
+  it passed while every Anthropic generation 404'd.
+- **189** — the scene count measured every row in the tree while the log
+  rendered one path, so the header said "11 turns" over six.
+- **here** — `test/surfaces.test.ts` measures
+  `contrastRatio(tokens[tier], tokens[ground])`: one flat hex against another.
+  The rails it certifies are *translucent panels over a photograph*. Its own
+  doc comment says as much — `color-mix()` values and gradients "are not
+  colours this module can read, and callers filter them out". It passes while
+  the light theme renders rail metadata at **2.63:1**, below AA and below even
+  the 3:1 large-text floor.
+
+One sentence covers all three: **a check that asks a different question than
+the real thing can pass while the app is broken.**
+
+This repo's guards are unusually good at protecting the *design system*. None
+of them could see a *screen*. That is the gap.
+
+### What it does
+
+`scripts/rendered-guard.ts` boots a browser against a running dev server, walks
+the routes at 1600×950 and 390×844 in both themes, and measures the composited
+result: text contrast sampled from real pixels of a real screenshot, the
+distinct counts of font sizes, control heights and flex gaps, interactive
+elements under WCAG 2.5.8's 24px pointer minimum, and content clipped with no
+scroll container.
+
+It reuses `contrastRatio` from `shared/contrast.ts` — the maths was never
+wrong, only its inputs.
+
+### Two decisions worth stating
+
+**It is not part of `bun test`.** The suite is 1916 hermetic tests in three
+minutes, and the house doctrine is structural, source-as-text, zero DOM
+rendering. That doctrine is right and this does not overturn it; a browser test
+in the middle of it would be the slowest and flakiest thing in the file tree.
+This is the pass you run before shipping a visual change, and it exits non-zero
+so it can be wired to CI the day there is one. A small structural test
+(`test/rendered-guard.test.ts`) keeps it from being deleted or hollowed out
+unnoticed.
+
+**The budgets record today, not an ideal.** Each number is what the app
+measured when this was written, so it can only come down. A guard that asserts
+an aspiration fails on the day it lands and gets a `|| true` appended within a
+week. The two genuine contrast failures are named in `KNOWN_CONTRAST` — visible
+in the output, exempt from the floor, and phase 195 deletes the entries rather
+than adjusting a threshold. The guard also fails if a known entry *starts*
+passing, so the list cannot become a place defects go to be forgotten.
+
+**Baseline at phase 193:** 14 font sizes, 27 control heights, 14 gaps, 676
+sub-24px targets, 38 unhandled overflows, and rail metadata at 4.15:1 dark and
+2.63:1 light.
+
+**Verified** by breaking it: one careless `text-[10.5px]` in the header takes
+distinct font sizes from 14 to 15 and the command exits non-zero. And the
+contrast figures it produces independently reproduce the ones the use review
+measured by hand, which is the cross-check that matters — two different methods
+arriving at 2.63:1.
+
+### Surprises
+
+**The first overflow metric counted 58 defects that were not defects.** It
+flagged any element whose content exceeded its box without a scroll container —
+which is exactly what `truncate` does on purpose, with `overflow: hidden` and
+an ellipsis. Narrowed to `overflow-x: visible` without an ellipsis, the honest
+count is 38. A metric that cannot tell deliberate truncation from accidental
+clipping produces a number nobody can act on.
+
+**`playwright` was never a dependency.** Every browser drive in this work ran
+on a copy resolved from the environment's global cache, which would have failed
+on anyone else's machine. `playwright-core` is a devDependency now — the light
+variant, no browser download, with the executable path supplied — and the
+structural test asserts it never moves into `dependencies`.
+
+## Phase 194 — The chrome type sizes have one owner each
+
+The use review counted fourteen distinct font sizes and called the spread
+unconsidered. That was the wrong diagnosis, and finding out why produced a
+better one.
+
+`tokens.css` is not careless. It has a documented two-part system — prose sizes
+that follow the reader's size control, chrome sizes that do not — with a phase
+number and a rationale on each. `--onsen-text-button` is 12.5px deliberately.
+
+What had actually happened is that components copied the **numbers** out of it
+rather than referencing the tokens: **151 `text-[12.5px]` literals** and **52
+`text-[13.5px]`**, against tokens that only `.btn` and one heading rule ever
+read. So the tokens *looked* load-bearing and were not. Changing
+`--onsen-text-button` would have moved the buttons and left two hundred other
+elements sitting at the old size — a design system that silently does nothing.
+
+Fourteen sizes with one owner each is a design. Fourteen sizes with two hundred
+owners is a coincidence.
+
+### What changed
+
+The two sizes the chrome is actually set in are declared once —
+`--onsen-text-ui: 12.5px` and `--onsen-text-ui-loose: 13.5px` — the role tokens
+(`--onsen-text-button`, `--onsen-text-group-heading`) reference them, and
+`@theme` exposes them as Tailwind utilities exactly as it already did for every
+colour. Every literal became `text-ui` or `text-ui-loose`.
+
+**Named for what they are, not for one role that uses them.** The call sites are
+a tag chip, an off-script bubble, a preset row, a hint paragraph and a button —
+all chrome at the same size. Calling that size "button" in two hundred places
+would be a name that lies, which is its own kind of mess and arguably worse than
+a literal. `ui-loose` is the step for chrome that is *read* rather than scanned.
+
+**Not one rendered pixel moved.** Phase 193's guard produced byte-identical
+output before and after: the same fourteen sizes, the same gaps, the same
+contrast figures. That was the point of doing 193 first.
+
+### Proving a token is load-bearing
+
+The test is not that the code references it — it is that changing it works.
+Setting `--onsen-text-ui` to 12.9px and re-running the guard:
+
+```
+before:  … 12px, 12.5px, 13px …
+after:   … 12px, 12.9px, 13px …     (12.5px gone entirely)
+```
+
+The first attempt at this did **not** produce that. `12.5px` stayed in the list
+alongside `12.9px`, because `.screen-kicker` in `app.css` hardcoded the value
+too — one rule, one layer up, doing exactly what the two hundred components had
+been doing. It reads the token now. A token you cannot move is not a token, and
+the only way to know is to move it.
+
+### What was deliberately not done
+
+The original plan was to *round* the half-pixels — 12.5→13, 13.5→14 — on the
+stated grounds that fractional sizes render soft. Both halves of that were
+wrong. Fractional font sizes render fine, and rounding these two would have
+pulled two hundred elements away from `.btn` and `.explain`, which keep the
+token values: the app would have become measurably less consistent while the
+distinct-size count went down. The count was a proxy for the real property, and
+optimising the proxy would have damaged the thing it stood for.
+
+**Verified** with the phase 193 guard, before and after, plus the one-line token
+move above. 1923 tests across 140 files, typecheck clean.
+
+### Surprises
+
+**The guard found the incomplete migration, not the review.** Two hundred
+components were migrated and the job looked done; the CSS rule that still
+hardcoded the same value was invisible to a grep for `text-[12.5px]` and
+invisible to reading the diff. It showed up only because changing the token was
+*measured* rather than assumed to work.
+
+## Phase 195 — Targets and contrast, against what renders
+
+The use review measured rail metadata at **4.15:1 dark and 2.63:1 light** while
+`test/surfaces.test.ts` — which has measured every builtin theme against WCAG AA
+since phase 49 — passed. Phase 193 built a guard that reproduces those figures
+from real pixels. This phase found out why.
+
+### The translucency was innocent
+
+The obvious suspect was `app.css`: every chrome surface drops to 50–66% opacity
+when a background is showing, and its comment claimed "these percentages are
+fixed so text stays readable on the quietest ground". Raising them would have
+worked, and would have flattened the artwork, which is the entire feature.
+
+It was the wrong suspect. The dark figure gave it away: 4.15:1 *composited* over
+a dark photograph, against **4.05:1 on the theme's own flat `bg-raised`** — the
+composite was *better* than the token pair. Translucency was not the problem.
+The ink was simply below the floor, flat, with nothing on top of it.
+
+### A shipped palette that never shipped
+
+`builtin.ts` has Midnight's `text-dim` at `#808891` — a clean **5.04:1**. The
+database had `#6f7883` — **4.05:1**.
+
+A phase raised the builtin ramps to clear AA. `surfaces.test.ts` read
+`builtin.ts`, measured the corrected values, and passed. The app reads the
+`themes` table, and `seedBuiltinThemes` was insert-and-skip by name:
+
+> *"Put the shipped themes in, once."*
+
+So source and database agreed exactly once — on a fresh install — and diverged
+from the next correction onward. Every database seeded before that fix kept
+rendering the pre-fix ramp, permanently, with a green test suite over it.
+
+This is the same sentence as phases 182, 189 and 193, in its purest form yet:
+**the check read a different copy of the data than the app did.** Not a
+different question this time — the same question, asked of the wrong copy.
+
+Builtin palettes are reconciled on every boot now. That is `seedBuiltins`'
+argument for option groups, transplanted: words a reader may have rewritten are
+kept, but structure is not a preference and stale structure is a correctness
+bug. A builtin theme's palette is the shipped artefact — editing one in the app
+forks it to a custom theme — so `is_builtin = 1` is the line. Custom themes are
+untouched, and so is `custom_css` even on a builtin, because that is text a
+reader wrote.
+
+### Headroom, because AA on a token is not AA on a screen
+
+Reconciling fixed dark outright (**4.15 → 5.17:1**) and took light from 2.63 to
+**4.49:1** — a hundredth short. The light ramps were *correct but marginal*:
+4.58:1 flat, which the app's own 58% panels erode below the floor. Bone and
+Slate's two quiet tiers were re-spaced with room to lose, keeping the ramp's
+1.12× separation. Light now renders at **5.06:1**.
+
+`KNOWN_CONTRAST` in the phase 193 guard is empty, and it emptied itself: the
+guard fails when a known entry starts passing, so both came off the list because
+it refused to let them stay.
+
+### Targets
+
+WCAG 2.5.8 sizes the *target*, not the mark inside it. The prompt list's toggle
+was a 16×22 box around a 7px dot — the dot is deliberate, since twenty-six
+words down a list is a column of shouting — and its reorder arrows were 22×26.
+Both are 24px now, with negative margins giving back the space they occupied,
+so not a pixel of the row moved. **676 sub-24px targets to 208**, from three
+class changes.
+
+**Verified** with the phase 193 guard before and after, and by breaking the
+reconcile: restoring insert-and-skip fails the new test. 1929 tests across 141
+files, typecheck clean.
+
+### Surprises
+
+**An afternoon went into the wrong suspect.** The first fix lifted the two quiet
+ink tiers under `[data-background="1"]` and changed nothing at all, because
+`.meta` reads `--onsen-color-text-dim` directly while the override landed on the
+`--color-ink-dim` Tailwind alias — two names for one value, and the class used
+the other one. The note in `app.css` now says the ratio to check first is the
+theme's own flat one.
+
+**`color-bg-inset` is a known edge.** It is the most translucent surface (50%)
+and every shipped theme sits at 4.55–4.60:1 on it. The new headroom test covers
+the grounds the rails paint on and leaves inset to plain AA, named in the test
+rather than silently excluded: re-tuning eight palettes' inset wells is a design
+pass, not a contrast fix.

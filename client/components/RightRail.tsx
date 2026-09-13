@@ -111,7 +111,7 @@ export function RightRail() {
               ref={active === id ? activeTab : null}
               onClick={() => setRightActive(id)}
               aria-current={active === id ? "true" : undefined}
-              className="chrome flex min-h-[44px] shrink-0 items-center px-[12px] text-[12.5px] whitespace-nowrap"
+              className="chrome flex min-h-[44px] shrink-0 items-center px-[12px] text-ui whitespace-nowrap"
               style={{
                 color: active === id ? "var(--onsen-color-text)" : "var(--onsen-color-text-dim)",
                 borderBottom: `2px solid ${active === id ? "var(--onsen-color-blue)" : "transparent"}`,

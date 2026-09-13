@@ -194,7 +194,7 @@ function MemoryEditor({
 
         {/* Said before the button that causes it: saving is what makes this
             note the reader's, and the promise is that nothing overwrites it. */}
-        <p className="chrome mb-[12px] text-[13.5px] leading-[1.6] text-blue-text">
+        <p className="chrome mb-[12px] text-ui-loose leading-[1.6] text-blue-text">
           {strings.sceneSetup.memoryYoursHint}
         </p>
 

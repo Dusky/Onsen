@@ -108,7 +108,7 @@ function DockEditorSheet({ onClose }: { onClose(): void }) {
                   <div key={id} className="border-b border-rule py-[10px]">
                     <div className="mb-[8px] flex items-center gap-[8px]">
                       <Icon size={16} strokeWidth={1.75} style={{ color: "var(--onsen-color-text-dim)" }} />
-                      <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">
+                      <span className="min-w-0 flex-1 truncate text-ui-loose font-medium">
                         {meta.label}
                       </span>
                       {side === "hidden" ? null : (

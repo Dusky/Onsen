@@ -138,7 +138,7 @@ export function CommandPalette({
 
         <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto">
           {matches.length === 0 ? (
-            <p className="chrome px-[16px] py-[18px] text-[13.5px] text-ink-dim">
+            <p className="chrome px-[16px] py-[18px] text-ui-loose text-ink-dim">
               {strings.chat.paletteEmpty}
             </p>
           ) : (
@@ -172,7 +172,7 @@ export function CommandPalette({
                       }}
                     >
                       <span
-                        className="chrome min-w-0 flex-1 truncate text-[12.5px]"
+                        className="chrome min-w-0 flex-1 truncate text-ui"
                         style={{ color: here ? "var(--onsen-color-text)" : "var(--onsen-color-text-label)" }}
                       >
                         {command.title}

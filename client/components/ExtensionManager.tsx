@@ -133,7 +133,7 @@ export function ExtensionsSection() {
           <div className="min-w-0 flex-1">
             <p className="truncate text-[14px] font-medium">{action.label}</p>
             {action.description === null || action.description === "" ? null : (
-              <p className="chrome truncate text-[12.5px] text-ink-dim">{action.description}</p>
+              <p className="chrome truncate text-ui text-ink-dim">{action.description}</p>
             )}
           </div>
           <button
@@ -172,7 +172,7 @@ export function ExtensionsSection() {
                 </span>
               </p>
               {extension.description ? (
-                <p className="chrome truncate text-[12.5px] text-ink-dim">{extension.description}</p>
+                <p className="chrome truncate text-ui text-ink-dim">{extension.description}</p>
               ) : null}
             </div>
             {extension.settingsSchema.length > 0 ? (

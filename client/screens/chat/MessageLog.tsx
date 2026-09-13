@@ -232,7 +232,7 @@ export function MessageLog({
           ) : (
             <header className="mb-[10px]">
               <div className="flex items-center gap-[10px]">
-                <span className="chrome shrink-0 text-[13.5px] font-semibold text-ink-label">
+                <span className="chrome shrink-0 text-ui-loose font-semibold text-ink-label">
                   {active.speaker}
                 </span>
                 <span className="h-px flex-1 bg-rule" />
@@ -258,7 +258,7 @@ export function MessageLog({
       {active !== null && active.sceneId === sceneId && active.status === "error" ? (
         <p
           role="alert"
-          className="chrome border border-red-border bg-red-bg px-[11px] py-[9px] text-[13.5px] text-red-text"
+          className="chrome border border-red-border bg-red-bg px-[11px] py-[9px] text-ui-loose text-red-text"
         >
           {active.error ?? strings.errors.generationFailed}
         </p>

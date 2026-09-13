@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { MessageDto } from "@shared/types.ts";
 import { COMMANDS } from "../../lib/commands.ts";
+import { focusComposer } from "../../components/Composer.tsx";
 
 /**
  * The keyboard surface of the chat screen (SPEC §20 phase 43, §149): ⌘K, j/k
@@ -63,6 +64,23 @@ export function useCommandKeys(opts: {
 
       if (event.key === "Escape") {
         opts.setSelectedId(null);
+        return;
+      }
+
+      /*
+       * `c` puts the cursor in the composer (§20 phase 191).
+       *
+       * Unconditional, unlike the accelerators below — those need a turn
+       * selected, which is what makes them safe, but writing is the one action
+       * that is always available and it had no key at all. A use review pressed
+       * Tab ninety times without reaching the composer, which is a long way to
+       * go for the thing the app is for.
+       *
+       * Safe to take a bare letter because of the field guard at the top of
+       * this handler: while anything is focused for typing, none of this runs.
+       */
+      if (event.key === "c") {
+        if (focusComposer()) event.preventDefault();
         return;
       }
 

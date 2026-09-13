@@ -69,7 +69,7 @@ function MarkerField({
       <span className="section-label mb-[4px] block">{label}</span>
       <input
         aria-label={label}
-        className="chrome w-full border border-rule-strong bg-bg-input px-[8px] py-[9px] text-[13.5px] text-ink"
+        className="chrome w-full border border-rule-strong bg-bg-input px-[8px] py-[9px] text-ui-loose text-ink"
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
@@ -246,7 +246,7 @@ function Editor({
       <p className="section-label mb-[4px]">{strings.instruct.stopSequences}</p>
       <input
         aria-label={strings.instruct.stopSequences}
-        className="chrome mb-[4px] w-full border border-rule-strong bg-bg-input px-[8px] py-[9px] text-[13.5px] text-ink"
+        className="chrome mb-[4px] w-full border border-rule-strong bg-bg-input px-[8px] py-[9px] text-ui-loose text-ink"
         value={draft.stopSequences.join(", ")}
         onChange={(event) =>
           set(
@@ -270,7 +270,7 @@ function Editor({
       >
         <span className="section-label">{strings.instruct.systemInUser}</span>
         <span
-          className="chrome flex-none text-[12.5px]"
+          className="chrome flex-none text-ui"
           style={{
             color: draft.systemInUser ? "var(--onsen-color-blue)" : "var(--onsen-color-text-dim)",
           }}

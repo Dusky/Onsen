@@ -61,7 +61,7 @@ export function MemoryPanel({
       {/* What is waiting, so the trigger is not a black box: "nothing has been
           summarised" and "eleven turns are queued behind the threshold" are
           very different things to be looking at. */}
-      <p className="chrome mb-[12px] text-[12.5px]" style={blueMuted}>
+      <p className="chrome mb-[12px] text-ui" style={blueMuted}>
         {state === undefined || state.pendingMessages === 0
           ? strings.chat.memoryPendingNone
           : strings.chat.memoryPending(state.pendingMessages, state.pendingWords)}
@@ -184,7 +184,7 @@ function SummaryRow({
       >
         <span className="min-w-0 flex-1">
           <span
-            className="block text-[12.5px]"
+            className="block text-ui"
             // A summary the prompt is not carrying is drawn quieter than one it
             // is, because that is the difference the panel exists to show.
             style={injected ? blueText : blueMuted}
@@ -193,7 +193,7 @@ function SummaryRow({
           </span>
           {open ? null : (
             <span
-              className="mt-[5px] block truncate font-prose text-[12.5px]"
+              className="mt-[5px] block truncate font-prose text-ui"
               style={injected ? blueProse : blueMuted}
             >
               {summary.content}
@@ -203,7 +203,7 @@ function SummaryRow({
         {/* Pinned to the first line, so the cost sits beside what it is the
             cost of rather than beside the preview underneath it. */}
         <span
-          className="chrome flex flex-none items-center gap-[8px] pt-[1px] text-[12.5px]"
+          className="chrome flex flex-none items-center gap-[8px] pt-[1px] text-ui"
           style={blueMuted}
         >
           {strings.chat.guidesTotal(summary.tokenCount)}
@@ -248,7 +248,7 @@ function SummaryRow({
           ) : (
             <>
               <p
-                className="mb-[12px] font-prose text-[13.5px] leading-[1.62] whitespace-pre-wrap"
+                className="mb-[12px] font-prose text-ui-loose leading-[1.62] whitespace-pre-wrap"
                 style={blueProse}
               >
                 {summary.content}

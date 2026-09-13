@@ -260,7 +260,7 @@ describe("scene setup", () => {
       `/api/scenes/${scene.id}/cast/${character.id}`,
     );
     expect(removed.cast).toHaveLength(0);
-    expect(removed.messageCount).toBe(1);
+    expect(removed.turnCount).toBe(1);
   });
 
   test("rejects an unknown author, persona or character", async () => {

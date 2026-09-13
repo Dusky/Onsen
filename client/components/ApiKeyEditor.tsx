@@ -147,7 +147,7 @@ export function ApiKeyEditor({
           apiKey.requests.map((request, index) => (
             <div key={`${request.at}-${index}`} className="border-b border-rule py-[8px]">
               <div className="flex items-baseline justify-between gap-[10px]">
-                <span className="min-w-0 flex-1 truncate font-mono text-[12.5px]">
+                <span className="min-w-0 flex-1 truncate font-mono text-ui">
                   {request.model}
                 </span>
                 <span

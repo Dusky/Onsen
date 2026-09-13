@@ -93,7 +93,7 @@ describe("scenes", () => {
     const created = await newScene(t, "The ridge station");
     expect(created.title).toBe("The ridge station");
     expect(created.activeLeafId).toBeNull();
-    expect(created.messageCount).toBe(0);
+    expect(created.turnCount).toBe(0);
 
     // §20 phase 59: the list is paged, so it answers with its totals too.
     const listed = await send<SceneListDto>(t, "GET", "/api/scenes");
@@ -257,7 +257,7 @@ describe("messages", () => {
     expect(await pathOf(t, scene)).toEqual(["one", "two"]);
     const read = await send<SceneWithHistoryDto>(t, "GET", `/api/scenes/${scene.id}`);
     expect(read.body.scene.activeLeafId).toBe(second.id);
-    expect(read.body.scene.messageCount).toBe(2);
+    expect(read.body.scene.turnCount).toBe(2);
   });
 
   test("rejects an unknown kind, author type, or non-string content", async () => {
@@ -335,7 +335,7 @@ describe("messages", () => {
     );
     expect(status).toBe(200);
     expect(body.activeLeafId).toBe(first.id);
-    expect(body.messageCount).toBe(1);
+    expect(body.turnCount).toBe(1);
     expect(await pathOf(t, scene)).toEqual(["one"]);
   });
 
@@ -416,9 +416,12 @@ describe("swiping and rewinding", () => {
     await post(t, scene, "two, differently");
     expect(await pathOf(t, scene)).toEqual(["one", "two, differently"]);
 
-    // The abandoned branch is still there to swipe back to.
+    // The abandoned branch is still there to swipe back to — but it is not
+    // *read*, so it is not counted (§20 phase 189). This asserted 4 while the
+    // line above it proved the reader could see two turns, which is the
+    // contradiction the count now avoids: four rows stored, two turns shown.
     const { body } = await send<SceneWithHistoryDto>(t, "GET", `/api/scenes/${scene.id}`);
-    expect(body.scene.messageCount).toBe(4);
+    expect(body.scene.turnCount).toBe(2);
   });
 
   test("rejects a leaf move to a message in another scene, or to nothing", async () => {
@@ -579,7 +582,7 @@ describe("start another like this", () => {
     });
 
     // The story did not.
-    expect(made.body.messageCount).toBe(0);
+    expect(made.body.turnCount).toBe(0);
     expect(made.body.activeLeafId).toBeNull();
 
     // And the original is untouched.

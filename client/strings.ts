@@ -10,6 +10,8 @@
  * Corollary: type names, database columns, and route paths take their names
  * from SPEC.md, never from the labels here.
  */
+import type { PromptBlockId } from "@shared/types.ts";
+
 export const strings = {
   app: {
     /** Provisional product name. */
@@ -111,7 +113,13 @@ export const strings = {
     manage: "Manage",
     stillWriting: (title: string) => `Still writing in ${title}`,
     open: "Open",
-    counts: (messages: number) => `${messages} ${messages === 1 ? "reply" : "replies"}`,
+    /*
+     * "Turns", matching the header, because both now read the same number
+     * (§20 phase 189). It said "replies", which was wrong twice over: the
+     * count includes the reader's own turns, and the header beside it called
+     * the same figure something else.
+     */
+    counts: (turns: number) => `${turns} ${turns === 1 ? "turn" : "turns"}`,
     noCast: "No cast",
     /* Organisation, at the scale the incumbent runs at (§20 phase 59). */
     favourite: "Favourite",
@@ -149,6 +157,15 @@ export const strings = {
      * §5's multi-device head sync. The blue pencil, not the red: this is the
      * app talking about its own machinery, not something happening in the story.
      */
+    /*
+     * A scene parked on an off-script row, with story past it (§20 phase 189).
+     * Phase 189 stopped rewinding from walking into the side conversation, but
+     * a scene already stranded there keeps its stored pointer, so it needs
+     * telling — and a way back that is one press, not a trip to the branch map.
+     */
+    strandedStory: (turns: number) =>
+      `${turns} ${turns === 1 ? "turn is" : "turns are"} further on, past this aside.`,
+    strandedShow: "Back to the story",
     movedElsewhere: "This roleplay moved on another device",
     movedShow: "Show me",
 
@@ -213,6 +230,10 @@ export const strings = {
     inspectorDepth: (depth: number) => `depth ${depth}`,
     inspectorOutlet: (name: string) => `outlet ${name}`,
     inspectorTokens: (n: number) => `${n} tok`,
+    /** Sentence case, like every other chip; it shipped as PINNED. */
+    trackerPinned: "Pinned",
+    /** The skip link, and the only keyboard route past the rails (§20 phase 191). */
+    skipToWriting: "Skip to the writing",
     inspectorEviction: {
       history_budget: "trimmed",
       hidden: "hidden",
@@ -417,7 +438,7 @@ export const strings = {
     guidesCustomHint: "Set a question in this roleplay's setup first.",
         guidesEmpty: "No guides yet. Writing one reads the scene so far and takes a note on it.",
     guidesNone: "None",
-    guidesTotal: (n: number) => `${n} TOK`,
+    guidesTotal: (n: number) => `${n} tok`,
 
     /** Why a turn never started (SPEC §5). */
     setProfile: "Set a profile",
@@ -744,6 +765,18 @@ export const strings = {
     blockTokens: (n: number) => `${n}t`,
     blockOn: "On",
     /** Sentence case, no explanation: the label is the whole story (§16 Voice). */
+    /*
+     * Every block's human name, checked against the union (§20 phase 190).
+     *
+     * This was `as Record<string, string>`, and the cast was the whole defect:
+     * `dialogue_colour` arrived in phase 185 with no label here, nothing failed
+     * to build, and the prompt-order editor rendered the raw database key on
+     * screen between "Depth prompts" and "Options". `satisfies` makes a new
+     * block with no name a build error, while `blockNameFor` below stays
+     * string-tolerant, because a preset's own blocks arrive as `custom:`
+     * prefixed ids that are not in the union at all. A loose *reader* and a
+     * strict *declaration* get both properties; the cast had neither.
+     */
     blockNames: {
       system_prompt: "System prompt",
       author_identity: "The author",
@@ -761,6 +794,7 @@ export const strings = {
       guides: "Guides",
       trackers: "Trackers",
       depth_prompts: "Depth prompts",
+      dialogue_colour: "Dialogue colour",
       prompt_option: "Options",
       ban_list: "Banned constructions",
       director_note: "Director's note",
@@ -771,7 +805,15 @@ export const strings = {
       jailbreak: "Jailbreak",
       prefill: "Prefill",
       alternation_filler: "Alternation filler",
-    } as Record<string, string>,
+    } satisfies Record<PromptBlockId, string>,
+
+    /**
+     * A block's name, for an id that may be a preset's own (§20 phase 190).
+     * Returns null rather than the id, so a caller decides what an unknown
+     * block looks like instead of leaking a column value by default.
+     */
+    blockNameFor: (id: string): string | null =>
+      (strings.settings.blockNames as Record<string, string>)[id] ?? null,
 
     contextSize: "Context window",
     contextSizeUnit: "tokens",
@@ -1288,7 +1330,13 @@ export const strings = {
     sceneMenu: "Open the roleplays",
     /** The chip that goes back to whatever roleplay is open (§20 phase 180). */
     backToScene: (title: string) => `Back to ${title}`,
-    turns: (n: number) => `${n} turns`,
+    /*
+     * Pluralised, because phase 189 made "1" reachable. The count used to be
+     * every row in the scene, so a one-turn reading rarely showed; now that it
+     * says what the log renders, "1 turns" was on screen the first time this
+     * was driven.
+     */
+    turns: (n: number) => `${n} ${n === 1 ? "turn" : "turns"}`,
     text: "Text",
     proseSmaller: "Smaller prose",
     proseLarger: "Larger prose",
@@ -1318,7 +1366,7 @@ export const strings = {
     importSkipped: "Skipped",
     importNothing: "Nothing in that folder was a character card.",
     noResults: "Nothing matches that.",
-    tokens: (n: number) => `${n} TOK`,
+    tokens: (n: number) => `${n} tok`,
 
     /** The library at scale (SPEC §9, phase 26). */
     actions: "Actions",
@@ -1412,7 +1460,7 @@ export const strings = {
     documentGlobal: "Visible in every scene",
     /** Cost is always a share of the context window (design handoff). */
     shareOfContext: (n: number, context: number) =>
-      `${n} TOK · ${((n / context) * 100).toFixed(1)}% OF CTX`,
+      `${n} tok · ${((n / context) * 100).toFixed(1)}% of context`,
 
     editorKicker: "Character",
     tabCard: "Card",
@@ -1759,7 +1807,7 @@ export const strings = {
 
     /** Prompt option groups (SPEC §13.5). */
     options: "How it writes",
-    optionsCost: (n: number) => `${n} TOK on every turn`,
+    optionsCost: (n: number) => `${n} tok on every turn`,
     optionsNone: "None",
     optionsDefaults: "Shipped defaults",
     optionsReset: "Back to defaults",
@@ -1884,7 +1932,7 @@ export const strings = {
     importing: "Reading world info\u2026",
     imported: (name: string, entries: number) =>
       `Imported ${name} \u2014 ${entries} ${entries === 1 ? "entry" : "entries"}.`,
-    entries: (n: number) => `${n} ${n === 1 ? "ENTRY" : "ENTRIES"}`,
+    entries: (n: number) => `${n} ${n === 1 ? "entry" : "entries"}`,
     entrySearch: "Search entries",
     sortPriority: "Priority",
     sortOrder: "Order",
@@ -1948,10 +1996,10 @@ export const strings = {
     activationLine: (constant: boolean, depth: number | null, bookDepth: number) =>
       `${constant ? "ALWAYS IN" : "KEY MATCH"} · DEPTH ${depth ?? bookDepth}`,
     priority: "Priority",
-    tokens: (n: number) => `${n} TOK`,
+    tokens: (n: number) => `${n} tok`,
     bookTotal: (tokens: number, entries: number) =>
-      `BOOK TOTAL · ${tokens.toLocaleString()} TOK · ${entries} ${
-        entries === 1 ? "ENTRY" : "ENTRIES"
+      `Book total · ${tokens.toLocaleString()} tok · ${entries} ${
+        entries === 1 ? "entry" : "entries"
       }`,
 
     advanced: "Advanced",

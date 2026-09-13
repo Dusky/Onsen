@@ -102,7 +102,7 @@ export function LoreSheet({
               <button
                 type="button"
                 onClick={() => onDetach(book.id, own.id)}
-                className="chrome flex-none text-[12.5px]"
+                className="chrome flex-none text-ui"
                 style={{ color: "var(--onsen-color-red)" }}
               >
                 {strings.lore.detach}
@@ -126,7 +126,7 @@ export function LoreSheet({
               <button
                 type="button"
                 onClick={() => onAttach(book.id)}
-                className="chrome flex-none text-[12.5px] text-ink-label"
+                className="chrome flex-none text-ui text-ink-label"
               >
                 {strings.lore.attach}
               </button>
@@ -148,7 +148,7 @@ export function LoreSheet({
         .map((row) => (
           <div key={row.entryId} className="flex items-baseline gap-[10px] border-b border-rule py-[9px]">
             <span
-              className="chrome w-[26px] flex-none text-[12.5px]"
+              className="chrome w-[26px] flex-none text-ui"
               // Green for fired, matching the same verdict in the left rail's
               // own lore trace and book list (LeftRail.tsx) — this was the
               // one place that had drifted onto red instead.
@@ -160,7 +160,7 @@ export function LoreSheet({
               {row.skipped === null ? strings.lore.testFired : strings.lore.testSkipped}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[13.5px]">
+              <span className="block truncate text-ui-loose">
                 {row.title === "" ? strings.lore.untitled : row.title}
               </span>
               <span className="meta mt-[3px] block truncate">

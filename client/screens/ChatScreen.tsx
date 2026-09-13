@@ -777,7 +777,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             onClick={() => setOpsPanel("steer")}
             className="flex-none border-t border-rule bg-bg-raised px-[16px] py-[8px] text-left"
           >
-            <span className="chrome mx-auto flex w-full max-w-[var(--onsen-prose-measure)] gap-[8px] text-[12.5px] leading-[1.5]">
+            <span className="chrome mx-auto flex w-full max-w-[var(--onsen-prose-measure)] gap-[8px] text-ui leading-[1.5]">
               <span style={{ color: "var(--onsen-color-amber)" }}>{strings.chat.steerActive}</span>
               <span className="min-w-0 flex-1 truncate text-ink-dim">{steer}</span>
             </span>
@@ -1027,7 +1027,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
         <button
           type="button"
           onClick={() => navigate({ name: "setup", sceneId })}
-          className="chrome tap flex flex-none items-center self-center border border-border-quiet px-[9px] text-[12.5px] text-ink-muted"
+          className="chrome tap flex flex-none items-center self-center border border-border-quiet px-[9px] text-ui text-ink-muted"
         >
           {strings.chat.setup}
         </button>
@@ -1062,6 +1062,30 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           </span>
           <span className="chrome flex-none text-[13px] text-blue-text">
             {strings.chat.movedShow}
+          </span>
+        </button>
+      ) : null}
+
+      {/* The same shape as the moved-elsewhere prompt above, and for the same
+          reason: the reader is somewhere they did not choose to be, and the fix
+          is one press rather than a hunt through the branch map (§20 phase
+          189). Only a scene stranded on an off-script row shows this. */}
+      {scene.data?.scene.strandedStory != null ? (
+        <button
+          type="button"
+          onClick={() =>
+            setLeaf.mutate({
+              messageId: scene.data!.scene.strandedStory!.leafId,
+              descend: false,
+            })
+          }
+          className="mx-[18px] mt-[10px] flex flex-none items-center justify-between gap-[10px] border border-blue-border bg-blue-bg px-[11px] py-[8px]"
+        >
+          <span className="chrome truncate text-[13px] text-blue-text">
+            {strings.chat.strandedStory(scene.data.scene.strandedStory.turns)}
+          </span>
+          <span className="chrome flex-none text-[13px] text-blue-text">
+            {strings.chat.strandedShow}
           </span>
         </button>
       ) : null}

@@ -323,7 +323,7 @@ function UpdateGroup() {
           {/* Red is attention — owed by "behind" alone, not by every state
               that is not an error. */}
           <span
-            className="chrome flex-none text-[12.5px]"
+            className="chrome flex-none text-ui"
             style={{ color: behind !== null && behind > 0 ? "var(--onsen-color-red)" : undefined }}
           >
             {state}
@@ -839,7 +839,7 @@ function ApiKeysSection() {
               >
                 {key.name}
               </span>
-              <span className="chrome block truncate text-[12.5px] text-ink-dim">
+              <span className="chrome block truncate text-ui text-ink-dim">
                 <span className="font-mono">{key.hint}…</span>
                 <span className="">
                   {[
@@ -920,7 +920,7 @@ function WebhooksSection() {
                 >
                   {webhook.name}
                 </span>
-                <span className="chrome block truncate text-[12.5px] text-ink-dim">
+                <span className="chrome block truncate text-ui text-ink-dim">
                   {/* The URL keeps its own case. Everything else in this
                       subtitle is chrome and is uppercased; a URL is not chrome,
                       and a path is case-sensitive. */}
@@ -1821,7 +1821,7 @@ export function SettingsScreen() {
                         .join(" · ")}
                     </span>
                   </span>
-                  <span className="chrome flex-none text-[12.5px] text-ink-muted">
+                  <span className="chrome flex-none text-ui text-ink-muted">
                     {routed}
                   </span>
                   <span className="chrome flex-none self-center text-[12px] text-ink-dim">

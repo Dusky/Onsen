@@ -215,7 +215,7 @@ function BookListRow({
         type="button"
         onClick={() => update.mutate({ enabled: !book.enabled })}
         aria-pressed={book.enabled}
-        className="chrome flex-none text-[12.5px]"
+        className="chrome flex-none text-ui"
         style={{ color: book.enabled ? "var(--onsen-color-blue)" : "var(--onsen-color-text-dim)" }}
       >
         {book.enabled ? strings.lore.on : strings.lore.off}
@@ -407,7 +407,7 @@ function NumberInput({
           onChange(Math.min(max, Math.max(min, next)));
         }}
       />
-      <span className="chrome mt-[5px] block text-[12.5px] text-ink-dim">
+      <span className="chrome mt-[5px] block text-ui text-ink-dim">
         {unit}
       </span>
     </label>
@@ -467,7 +467,7 @@ function Toggle({
       >
         <span className="section-label">{label}</span>
         <span
-          className="chrome flex-none text-[12.5px]"
+          className="chrome flex-none text-ui"
           style={{ color: value ? "var(--onsen-color-blue)" : "var(--onsen-color-text-dim)" }}
         >
           {value ? strings.lore.on : strings.lore.off}
@@ -519,7 +519,7 @@ function EntryEditor({
     <section className="mb-[18px] border border-blue-border bg-bg-raised">
       <div className="flex items-baseline justify-between gap-[10px] border-b border-blue-border px-[14px] py-[10px]">
         <p
-          className="chrome text-[12.5px]"
+          className="chrome text-ui"
           style={{ color: "var(--onsen-color-blue)" }}
         >
           {strings.lore.editing}
@@ -933,11 +933,11 @@ function EntryEditor({
 
       {/* The design's footer row: the activation rule, the priority, and SAVE. */}
       <div className="flex items-center gap-[10px] border-t border-red-border px-[14px] py-[10px]">
-        <span className="chrome min-w-0 flex-1 truncate text-[12.5px] text-ink-dim">
+        <span className="chrome min-w-0 flex-1 truncate text-ui text-ink-dim">
           {strings.lore.activationLine(draft.isConstant, draft.scanDepth, book.scanDepth)}
         </span>
         <label className="flex flex-none items-center gap-[6px]">
-          <span className="chrome text-[12.5px] text-ink-dim">
+          <span className="chrome text-ui text-ink-dim">
             {strings.lore.priority}
           </span>
           <input
@@ -945,7 +945,7 @@ function EntryEditor({
             inputMode="numeric"
             aria-label={strings.lore.priority}
             value={String(draft.insertionOrder)}
-            className="chrome w-[58px] border border-rule-strong bg-bg-input px-[6px] py-[8px] text-[13.5px] text-ink"
+            className="chrome w-[58px] border border-rule-strong bg-bg-input px-[6px] py-[8px] text-ui-loose text-ink"
             onChange={(event) => {
               const next = Number.parseInt(event.target.value, 10);
               if (Number.isInteger(next)) set("insertionOrder", Math.min(1000, Math.max(0, next)));
@@ -998,7 +998,7 @@ function EntryEditor({
       <div className="flex items-center gap-[10px] border-t border-rule px-[14px] py-[8px]">
         <button
           type="button"
-          className="chrome flex-1 text-[12.5px] text-ink-muted"
+          className="chrome flex-1 text-ui text-ink-muted"
           disabled={revise.isPending}
           onClick={() =>
             revise.mutate(undefined, {
@@ -1013,21 +1013,21 @@ function EntryEditor({
         <button
           type="button"
           onClick={onClose}
-          className="chrome text-[12.5px] text-ink-dim"
+          className="chrome text-ui text-ink-dim"
         >
           {strings.lore.close}
         </button>
         <button
           type="button"
           onClick={() => setTransfer("copy")}
-          className="chrome text-[12.5px] text-ink-muted"
+          className="chrome text-ui text-ink-muted"
         >
           {strings.lore.copyTo}
         </button>
         <button
           type="button"
           onClick={() => setTransfer("move")}
-          className="chrome text-[12.5px] text-ink-muted"
+          className="chrome text-ui text-ink-muted"
         >
           {strings.lore.moveTo}
         </button>
@@ -1035,7 +1035,7 @@ function EntryEditor({
           type="button"
           disabled={duplicate.isPending}
           onClick={() => duplicate.mutate(entry.id, { onSuccess: () => onClose() })}
-          className="chrome text-[12.5px] text-ink-muted"
+          className="chrome text-ui text-ink-muted"
         >
           {strings.lore.duplicate}
         </button>
@@ -1047,7 +1047,7 @@ function EntryEditor({
               confirmLabel: strings.lore.deleteEntry,
             })
           }
-          className="chrome text-[12.5px]"
+          className="chrome text-ui"
           style={{ color: "var(--onsen-color-red)" }}
         >
           {strings.lore.deleteEntry}
@@ -1082,7 +1082,7 @@ function EntryEditor({
           ) : null}
           <button
             type="button"
-            className="chrome mt-[10px] text-[12.5px] text-ink-dim"
+            className="chrome mt-[10px] text-ui text-ink-dim"
             onClick={() => setTransfer(null)}
           >
             {strings.common.cancel}
@@ -1284,7 +1284,7 @@ function Bindings({ book }: { book: LorebookDto }) {
               <button
                 type="button"
                 onClick={() => unbind.mutate({ bookId: book.id, bindingId: binding.id })}
-                className="chrome flex-none text-[12.5px]"
+                className="chrome flex-none text-ui"
                 style={{ color: "var(--onsen-color-red)" }}
               >
                 {strings.lore.detach}
@@ -1366,7 +1366,7 @@ function BookEditor({ bookId, onBack }: { bookId: string; onBack?: () => void })
   if (book === undefined) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center">
-        <p className="chrome text-[12.5px] text-ink-dim">
+        <p className="chrome text-ui text-ink-dim">
           {strings.common.working}
         </p>
       </div>
@@ -1559,7 +1559,7 @@ function BookEditor({ bookId, onBack }: { bookId: string; onBack?: () => void })
 
           <button
             type="button"
-            className="chrome mt-[18px] mb-[8px] block text-[12.5px]"
+            className="chrome mt-[18px] mb-[8px] block text-ui"
             style={{ color: "var(--onsen-color-red)" }}
             onClick={() =>
               confirmBook(
@@ -1581,7 +1581,7 @@ function BookEditor({ bookId, onBack }: { bookId: string; onBack?: () => void })
         className="flex-none border-t border-rule bg-bg-raised px-[22px] pt-[12px]"
         style={{ paddingBottom: "calc(10px + env(safe-area-inset-bottom))" }}
       >
-        <p className="chrome mx-auto w-full max-w-[var(--onsen-prose-measure)] text-[12.5px] text-ink-dim">
+        <p className="chrome mx-auto w-full max-w-[var(--onsen-prose-measure)] text-ui text-ink-dim">
           {strings.lore.bookTotal(total, entries.length)}
         </p>
       </footer>

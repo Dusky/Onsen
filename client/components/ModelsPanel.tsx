@@ -118,7 +118,7 @@ export function ModelsPanel({ sceneId }: { sceneId: string | null }) {
                   {on ? "●" : "○"}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13.5px] font-medium">{profile.name}</span>
+                  <span className="block truncate text-ui-loose font-medium">{profile.name}</span>
                   {/* The model, which the old picker never showed — the whole
                       question being answered here is "which model", and a
                       list of profile names does not answer it. */}
@@ -232,7 +232,7 @@ export function ModelsPanel({ sceneId }: { sceneId: string | null }) {
             >
               {statusDot(provider.enabled && provider.baseUrl !== null)}
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13.5px] font-medium">{provider.name}</span>
+                <span className="block truncate text-ui-loose font-medium">{provider.name}</span>
                 <span className="meta block truncate">
                   {[provider.model, kindLabel(provider.kind), provider.hasApiKey ? "keyed" : null]
                     .filter((part) => part !== null && part !== "")
@@ -280,7 +280,7 @@ export function ModelsPanel({ sceneId }: { sceneId: string | null }) {
               className="tap flex w-full items-baseline gap-[9px] text-left"
             >
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13.5px] font-medium">{profile.name}</span>
+                <span className="block truncate text-ui-loose font-medium">{profile.name}</span>
                 <span className="meta block truncate">
                   {[byId.get(profile.providerId)?.name, profile.model]
                     .filter((part) => part !== undefined && part !== null && part !== "")

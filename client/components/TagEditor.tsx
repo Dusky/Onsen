@@ -46,7 +46,7 @@ export function TagEditor({
             key={existing}
             type="button"
             onClick={() => onChange(tags.filter((tag) => tag !== existing))}
-            className="chrome border px-[10px] py-[6px] text-[12.5px]"
+            className="chrome border px-[10px] py-[6px] text-ui"
             style={{
               borderColor: "var(--onsen-color-border-quiet)",
               color: "var(--onsen-color-text-muted)",
