@@ -2082,9 +2082,11 @@ export const LAYOUT_PRESETS: Record<LayoutPreset, Omit<LayoutDto, "preset">> = {
     avatarShape: "circle",
     // Instrument is the reading layout: the story runs flat and unadorned, and
     // your own turns are set apart so the log reads as one voice interrupted
-    // rather than two columns of chat.
+    // rather than two columns of chat. The author's turns carry a portrait
+    // (§20 phase 184): a cast member is a person, and the masthead is where
+    // that shows.
     reader: { bubble: true, avatar: false },
-    author: { bubble: false, avatar: false },
+    author: { bubble: false, avatar: true },
   },
   quiet: {
     readouts: false,

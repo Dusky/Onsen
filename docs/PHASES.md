@@ -8842,3 +8842,45 @@ A second surface in the same phase: the cast rail's member sheet (opened by
 right-clicking a card) gains "Remove from cast", so removing someone does not
 require leaving the roster view. The sheet already had mute/bench/edit/view;
 remove was the one roster action it lacked.
+
+## Phase 184 — Turn mastheads
+
+The log had stopped separating its turns. What was left — a 3px spine on the
+left, a 26px gap, a name — is three things that all read as *inside* the turn,
+so on the default Midnight theme (the flat original: no card, no shadow, no
+radius) two consecutive turns read as one undifferentiated stream of prose.
+Worse, the author's portrait had shipped off by default on both sides, and at
+26px when on — a thumbnail a reader could miss entirely. "Character profiles
+don't seem to appear" was both: off by default, tiny when on.
+
+Three changes, and the ground they all sit on:
+
+- **A masthead per turn.** The stacked header becomes a masthead: a
+  portrait-sized avatar (40px), the name in the character's colour, and a
+  hairline rule under the row. The rule is the boundary the flat theme lost in
+  phase 50, when the spine replaced it — restored now, so every theme has a
+  visible divider rather than only the "cards" ones.
+- **The author's portrait is on by default** in Instrument, the shipped preset.
+  A cast member is a person, and the masthead is where that shows. The reader's
+  turns keep their bubble and no portrait, so the log still reads as one voice
+  interrupted rather than two columns of chat.
+- **A grounded turn on every theme.** The flat depth no longer names
+  `card-bg: transparent`; it inherits `tokens.css`'s new default,
+  `var(--onsen-color-bg-raised)`, with a real padding. So even a theme that
+  says nothing about depth gets a panel per turn — sharp and shadowless, but
+  with a body. Themes that already name card tokens keep their deeper look.
+
+Document and Broadsheet are deliberately untouched. Document's whole premise is
+that there are no turn boundaries, so its `background: none` override still
+holds; Broadsheet keeps its byline, where the name opens the paragraph rather
+than sitting above it. The masthead belongs to the stacked reading surface,
+which is the default.
+
+### Surprises
+
+**The "Document is Quiet's switches" invariant caught a scope slip.** Setting
+Quiet's author portrait on would have dragged Document along with it — the type
+and its guard both state that Document is Quiet with the attribution moved into
+the paragraph — and Document cannot show a portrait anyway, its header is
+hidden. The fix was to change only Instrument, the preset the complaint was
+actually about, and leave Quiet as the unadorned reading layout it names.

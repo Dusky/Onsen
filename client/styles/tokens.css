@@ -226,8 +226,12 @@
   --onsen-border-width: 1px;
   --onsen-shadow-panel: none;
   --onsen-shadow-card: none;
-  --onsen-card-bg: transparent;
-  --onsen-card-padding: 0px;
+  /* A turn is a panel even on the flat original: the raised surface rather than
+     transparent, with a real padding. Themes that name their own card tokens
+     deepen it; themes that say nothing still get a grounded turn (§20 phase
+     184). */
+  --onsen-card-bg: var(--onsen-color-bg-raised);
+  --onsen-card-padding: 12px 14px;
 
   /* Layout */
   --onsen-screen-padding: 22px;

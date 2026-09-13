@@ -39,7 +39,9 @@ const DEPTH = {
     "border-width": "1px",
     "shadow-panel": "none",
     "shadow-card": "none",
-    "card-bg": "transparent",
+    // No card-bg: the flat original now inherits `--onsen-card-bg` from
+    // tokens.css, which is `var(--onsen-color-bg-raised)` — a grounded turn
+    // rather than a transparent one, while staying sharp and shadowless.
   },
   cards: {
     radius: "9px",

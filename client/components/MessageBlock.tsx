@@ -600,7 +600,7 @@ function Avatar({
   return (
     <span
       aria-hidden="true"
-      className="flex h-[26px] w-[26px] flex-none items-center justify-center bg-bg-raised bg-cover bg-center text-[13px] text-ink-dim"
+      className="flex h-[40px] w-[40px] flex-none items-center justify-center bg-bg-raised bg-cover bg-center text-[16px] text-ink-dim"
       style={{
         borderRadius: shape === "circle" ? "50%" : "var(--onsen-radius)",
         ...(url === null ? {} : { backgroundImage: `url(${url})` }),
@@ -859,7 +859,7 @@ export function MessageBlock({
       ) : null}
 
       <header
-        className="mb-[10px] flex flex-wrap items-center gap-x-[10px] gap-y-[4px]"
+        className="mb-[12px] flex flex-wrap items-center gap-x-[10px] gap-y-[4px] border-b border-rule pb-[10px]"
         hidden={flow}
       >
         {turnStyle.avatar ? (

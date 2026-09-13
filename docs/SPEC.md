@@ -4085,6 +4085,18 @@ Each phase ends in a working, usable application.
     §16, `client/components/DockPanels.tsx`,
     `client/screens/chat/ChatSheets.tsx`.
 
+184. **Turn mastheads** — the log separated turns with only a 3px left spine
+    and a 26px gap, and on the flat default theme nothing else at all; the
+    author's portrait shipped off by default and at 26px when on. A turn now
+    opens with a masthead: a portrait-sized avatar (40px, the author's default
+    on), the name in the character's colour, and a hairline rule under the
+    row. Every turn is a grounded panel on every theme — the flat depth now
+    inherits a raised card ground from `tokens.css` rather than a transparent
+    one, while staying sharp and shadowless. Document mode still flows with no
+    boundaries, and Broadsheet keeps its byline. See §16,
+    `client/components/MessageBlock.tsx`, `client/styles/tokens.css`,
+    `shared/types.ts` (`LAYOUT_PRESETS`).
+
 Settled while building phase 15.
 
 - **The desktop layout is phase 19, not a polish item.** The design is explicit
