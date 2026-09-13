@@ -36,12 +36,25 @@ describe("which screens are the persistent base", () => {
     expect(ROUTER).toContain("export function pathFor(route: Route): string {");
   });
 
-  test("the ref is written during render, not in an effect", () => {
+  test("the base is written during render, not in an effect", () => {
     // An effect runs one render late — the first paint of a fresh load
-    // straight into an overlay route would see no base yet. Writing the ref
+    // straight into an overlay route would see no base yet. Writing it
     // inline is what makes that first paint already correct.
-    expect(ROUTER).toContain("if (isBase) baseRef.current = route;");
-    expect(ROUTER).not.toMatch(/useEffect\(\(\) => \{\s*baseRef\.current = route/);
+    expect(ROUTER).toContain("if (isBase) lastBase = route;");
+    expect(ROUTER).not.toMatch(/useEffect\(\(\) => \{\s*lastBase = route/);
+  });
+
+  test("and it is module state, so every caller agrees", () => {
+    /*
+     * It was a `useRef`, which was the same thing while `Shell` was the only
+     * caller and stopped being the same thing the moment anything else asked:
+     * a ref is per component instance, so each caller remembered only the
+     * base routes it was itself mounted for. Phase 180 had the header and both
+     * rails start asking, and the header — mounted on an overlay route —
+     * answered "no roleplay" while a chat was mounted behind it.
+     */
+    expect(ROUTER).toContain("let lastBase: Route =");
+    expect(ROUTER).not.toContain("baseRef");
   });
 });
 

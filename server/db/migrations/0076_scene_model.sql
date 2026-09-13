@@ -1,0 +1,11 @@
+-- A model chosen for one roleplay (SPEC §16, §20 phase 180).
+--
+-- The model used to come only from the connection profile, so "change the
+-- model for this roleplay" meant either editing the profile — which changes
+-- every roleplay pointed at it — or keeping one profile per model. This is the
+-- narrower thing the reader actually asked for: an override that belongs to
+-- the scene.
+--
+-- Null is the ordinary state and means "whatever the profile says", so every
+-- existing roleplay reads exactly as it did.
+ALTER TABLE scenes ADD COLUMN model TEXT;

@@ -4040,6 +4040,17 @@ Each phase ends in a working, usable application.
     before Save was pressed, and a provider could not be tested until it had
     been saved. See §16, `client/components/ModelsPanel.tsx`.
 
+180. **Known endpoints, a way back, and a model per roleplay** — three asks,
+    each naming something the app made you do the long way round. Seventeen
+    provider presets fill the address and kind from a pick rather than a URL
+    hunt, every one checked against the provider's own documentation and none
+    carrying a key. The header's scene chip goes back to the roleplay instead
+    of to the roleplay list, and survives an overlay being opened over it.
+    And `scenes.model` is a per-scene override, so `resolveRoute` resolves
+    scene, then profile, then provider — changing the model for one roleplay
+    no longer means one connection profile per model. See §16,
+    `shared/providers.ts`, `client/components/ModelsPanel.tsx`.
+
 Settled while building phase 15.
 
 - **The desktop layout is phase 19, not a polish item.** The design is explicit

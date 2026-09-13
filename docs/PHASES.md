@@ -8502,3 +8502,110 @@ chat provider* is, so the sweep counts `useCreateProvider`/`useUpdateProvider`
 instead and expects exactly one file. Worth recording because the sweep-rather-
 than-name lesson from phases 176 and 177 held, and the first swing at it still
 picked the wrong needle.
+
+## Phase 180 — Known endpoints, a way back, and a model per roleplay
+
+Three asks in one report, and the thread joining them is that each named
+something the app made you do the long way round.
+
+### Known endpoints
+
+*"lets create some preset urls and stuff for various providers, minimum is
+deepseek, claude, openai, nanogpt, z.ai, but thats the minimum. BARE
+minimum."*
+
+`shared/providers.ts` holds seventeen, in two groups — twelve hosted
+(Anthropic, OpenAI, DeepSeek, NanoGPT, Z.AI, OpenRouter, Google Gemini, xAI,
+Mistral, Groq, Together, Fireworks) and five on your own machine (Ollama, LM
+Studio, KoboldCpp, llama.cpp, Text generation web UI). Picking one fills the
+name, address, kind and, where the ids are known for certain, the model.
+
+**Every address was checked against the provider's own documentation rather
+than recalled.** A base URL that is nearly right fails at the first generation
+with a 404 and reads as a broken app, which is precisely what a preset exists
+to prevent. The one chosen per provider is the one whose path this app's
+adapters append to — `/chat/completions`, `/messages`, `/completions` — so
+Anthropic's is `https://api.anthropic.com/v1` and not the bare host. `models`
+is populated only where current documentation gives the ids (Anthropic's three,
+DeepSeek's two) and deliberately left empty everywhere else, because the form's
+Fetch button asks the endpoint what it actually serves and a stale guessed
+model id is worse than an empty field. Z.AI carries the one note in the
+catalogue: a coding plan is served from a different path.
+
+A preset fills the form and stops. Every field stays editable, Test still runs
+before anything is saved (phase 179), and no preset carries a key — a guard
+greps the serialised catalogue to keep it that way.
+
+### A way back to the roleplay
+
+*"can we also have a more clear link back to the roleplay in the top nav
+bar?"*
+
+Two defects under that. The header's scene chip **navigated to the roleplay
+list**, so the only thing in the nav bar naming the open roleplay was the one
+thing that took you away from it. And it read `route.name === "chat"`, so
+opening Settings — an overlay over a still-mounted base since phase 171 —
+emptied the header of the roleplay it was reading, leaving nothing pointing
+back at all.
+
+Two buttons now: the wordmark opens the list, the scene chip returns to the
+roleplay. While an overlay is up the chip takes a left chevron and the
+interactive blue, because then it is a way back rather than a label.
+
+### A model per roleplay
+
+*"i want to be able to change the model for the current roleplay in the
+sidebar, not jsut see what it is."*
+
+Phase 179's panel switched *profiles*, which is not the same thing: changing
+the model that way needs one profile per model. `scenes.model` is a per-scene
+override (migration `0076`), and `resolveRoute`'s chain becomes **scene, then
+profile, then provider** — narrowest wins, each step a deliberate narrowing by
+somebody. Null is the ordinary state and means "whatever the profile says", so
+every existing roleplay reads exactly as it did.
+
+The panel's picker reuses `ModelPicker`, so the list comes from the provider's
+own API rather than a typed guess, names where the current value came from
+("From the profile · …"), and offers one button back to the profile's choice.
+Empty or whitespace clears the override rather than storing blank — one state
+for "no override", not three.
+
+**Verified** in Chromium at 1600×950 and 390×844, both themes. The chip reads
+`· The Last Inn` in a roleplay and `‹ The Last Inn` with Settings open, and
+clicking it returns to the scene URL. Picking DeepSeek, Z.AI and Anthropic
+filled name, address, kind and model correctly, showed Z.AI's note, and created
+nothing. Typing a model persisted to `scene.model`, left the sibling roleplay
+at null, left the shared profile untouched, and moved the composer's chip to
+`Default · claude-haiku-4-5`; clearing put the profile's model back and the
+clear button away. 1834 tests across 131 files, typecheck clean, no page
+errors.
+
+### Surprises
+
+**The base route was a `useRef`, and that stopped being right the moment
+anything else asked.** `useShellRoute` kept "the last base route seen" in a
+ref, which was the same thing while `Shell` was its only caller and is not the
+same thing with three: a ref is per component instance, so each caller
+remembers only the base routes it was itself mounted for. Driving a cold load
+straight to `/settings` caught it — the header had mounted on an overlay route
+and answered "no roleplay" while `Shell` had a chat mounted behind it. It is
+module state now, so every caller agrees.
+
+**Both rails had the same bug, and it was worse.** They scoped to
+`useRoute()`, so opening Settings told *every docked panel* there was no
+roleplay: the Models panel's "This roleplay" went blank, the prompt panel
+stopped previewing, and all of it came back on close. The rails sit outside
+the overlay and should see what is behind it. This had been live since phase
+171 and nothing had noticed, because until phase 179 no rail panel showed
+anything a reader would miss while Settings was open.
+
+**The composer's model chip would have lied.** It built its label from the
+profile's model, which was the right answer until a roleplay could choose its
+own — after that the chip would name one model while the turn ran another. A
+status readout that disagrees with the turn is worse than none, so it resolves
+the same two steps the server does.
+
+**The first guard for the catalogue was almost a lie of its own.** An earlier
+version asserted the presets carry no key by checking a couple of field names;
+it now serialises the whole catalogue and greps it, which is the version that
+would actually catch somebody pasting a working key into a "starting point".

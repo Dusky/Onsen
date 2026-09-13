@@ -1361,6 +1361,16 @@ export interface SceneDto {
    * turned off would be storing prose nobody asked to have stored.
    */
   draft: string;
+  /**
+   * A model for this roleplay alone (§20 phase 180).
+   *
+   * Null means "whatever the connection profile says", which is how every
+   * roleplay behaved before this existed and still does until somebody picks
+   * one. It is an override rather than a setting because the alternative —
+   * editing the profile — changes every roleplay pointed at it, and the ask
+   * was to change the model for *this* one.
+   */
+  model: string | null;
   /** Organisation (§20 phase 59), shaped like the character library's. */
   tags: string[];
   folder: string | null;
@@ -3427,6 +3437,9 @@ export interface SceneSetupRequest {
   /** The question the custom guide asks (SPEC §8). */
   customGuidePrompt?: string | null;
   scenarioOverride?: string | null;
+  /** A model for this roleplay alone; null or empty hands it back to the
+   *  connection profile (§20 phase 180). */
+  model?: string | null;
   summarise?: boolean;
   summariseEveryMessages?: number;
   summariseEveryWords?: number;

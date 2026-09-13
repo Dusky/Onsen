@@ -1,6 +1,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import type { ConnectionProfileDto, ProviderDto } from "@shared/types.ts";
 import { PROVIDER_KINDS, type ProviderKind } from "@shared/types.ts";
+import { PROVIDER_PRESETS, type ProviderPreset } from "@shared/providers.ts";
 import { strings } from "../strings.ts";
 import {
   useCreateProfile,
@@ -140,6 +141,11 @@ export function ProviderFields({
   const [error, setError] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<string | null>(null);
   const modelRef = useRef<HTMLInputElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const baseUrlRef = useRef<HTMLInputElement>(null);
+  const kindRef = useRef<HTMLSelectElement>(null);
+  /** The preset last picked, for the note under the picker. */
+  const [preset, setPreset] = useState<ProviderPreset | null>(null);
   const [chosenModel, setChosenModel] = useState(provider?.model ?? "");
   const [confirmNode, confirm] = useConfirm();
   const formRef = useRef<HTMLFormElement>(null);
@@ -211,13 +217,69 @@ export function ProviderFields({
           }
         }}
       >
+        {/* Known endpoints, so this is a pick rather than a URL hunt (§20
+            phase 180). Only on a new provider: on an existing one it would
+            offer to overwrite an address that already works. It fills the
+            form and stops there — every field below stays editable, and Test
+            still runs before anything is saved. */}
+        {provider === null ? (
+          <>
+            <p className="section-label mb-[6px]">{strings.settings.providerPreset}</p>
+            <select
+              className="field mb-[6px]"
+              aria-label={strings.settings.providerPreset}
+              defaultValue=""
+              onChange={(event) => {
+                const picked = PROVIDER_PRESETS.find((row) => row.key === event.target.value);
+                setPreset(picked ?? null);
+                if (picked === undefined) return;
+                // Written to the fields rather than held as state: this form is
+                // uncontrolled, and a reader who picks a preset and then edits
+                // the address must keep their edit.
+                if (nameRef.current !== null) nameRef.current.value = picked.name;
+                if (baseUrlRef.current !== null) baseUrlRef.current.value = picked.baseUrl;
+                if (kindRef.current !== null) kindRef.current.value = picked.kind;
+                const first = picked.models?.[0] ?? "";
+                if (modelRef.current !== null) modelRef.current.value = first;
+                setChosenModel(first);
+              }}
+            >
+              <option value="">{strings.settings.providerPresetNone}</option>
+              {(["hosted", "local"] as const).map((where) => (
+                <optgroup key={where} label={strings.settings.providerPresetWhere[where]}>
+                  {PROVIDER_PRESETS.filter((row) => row.where === where).map((row) => (
+                    <option key={row.key} value={row.key}>
+                      {row.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            {/* Only a preset's own caveat, never a general explainer: the
+                fields fill visibly the moment one is picked, so a line saying
+                so is prose that has not earned its place — the bar §20's voice
+                pass set, and the ceiling `test/voice.test.ts` enforces. */}
+            {preset?.note === undefined ? (
+              <div className="mb-[14px]" />
+            ) : (
+              <p className="explain mb-[14px]">{preset.note}</p>
+            )}
+          </>
+        ) : null}
+
         <p className="section-label mb-[6px]">{strings.settings.providerName}</p>
-        <input name="name" className="field mb-[14px]" defaultValue={provider?.name ?? ""} required />
+        <input
+          ref={nameRef}
+          name="name"
+          className="field mb-[14px]"
+          defaultValue={provider?.name ?? ""}
+          required
+        />
 
         {provider === null ? (
           <>
             <p className="section-label mb-[6px]">{strings.settings.providerKind}</p>
-            <select name="kind" className="field mb-[14px]">
+            <select ref={kindRef} name="kind" className="field mb-[14px]">
               {PROVIDER_KINDS.map((kind) => (
                 <option key={kind} value={kind}>
                   {kindLabel(kind)}
@@ -229,6 +291,7 @@ export function ProviderFields({
 
         <p className="section-label mb-[6px]">{strings.settings.providerBaseUrl}</p>
         <input
+          ref={baseUrlRef}
           name="baseUrl"
           className="field mb-[14px]"
           placeholder="http://localhost:8080/v1"
@@ -409,6 +472,11 @@ export function ProfileFields({
   const [error, setError] = useState<string | null>(null);
   const [confirmNode, confirm] = useConfirm();
   const modelRef = useRef<HTMLInputElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const baseUrlRef = useRef<HTMLInputElement>(null);
+  const kindRef = useRef<HTMLSelectElement>(null);
+  /** The preset last picked, for the note under the picker. */
+  const [preset, setPreset] = useState<ProviderPreset | null>(null);
   const [chosenModel, setChosenModel] = useState(profile?.model ?? "");
   const formRef = useRef<HTMLFormElement>(null);
 

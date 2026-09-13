@@ -847,12 +847,21 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           disabled={isGenerating}
           speakerName={scope === "beat" ? null : speakerName}
           model={{
+            /*
+             * The model the turn will actually run on (§20 phase 180).
+             *
+             * This read the profile's model, which stopped being the answer
+             * when a roleplay could choose its own: the chip would name one
+             * model while `resolveRoute` used another, and a status readout
+             * that disagrees with the turn is worse than none. Same chain the
+             * server resolves — the scene's, then the profile's.
+             */
             label:
               sceneProfile === null
                 ? strings.header.noModel
-                : sceneProfile.model === null
+                : (scene.data?.scene.model ?? sceneProfile.model) === null
                   ? sceneProfile.name
-                  : `${sceneProfile.name} \u00b7 ${sceneProfile.model}`,
+                  : `${sceneProfile.name} \u00b7 ${scene.data?.scene.model ?? sceneProfile.model}`,
             hasModel: sceneProfile !== null,
           }}
           draft={draft}

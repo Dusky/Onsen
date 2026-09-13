@@ -45,6 +45,11 @@ export class RouteError extends Error {
 export interface RouteRequest {
   /** The profile to run on. Null is a real state: nothing has been chosen. */
   profileId: number | null;
+  /**
+   * A model this one scene has chosen, beating the profile's (§20 phase 180).
+   * Null or absent means the profile decides, which is the ordinary case.
+   */
+  model?: string | null;
 }
 
 export function resolveRoute(
@@ -91,7 +96,9 @@ export function resolveRoute(
     throw new RouteError("provider_disabled", `${row.provider_name} is disabled.`);
   }
 
-  const model = row.profile_model ?? row.provider_model;
+  // Narrowest wins: the scene's own choice, then the profile's, then the
+  // provider's default. Each step is a deliberate narrowing by somebody.
+  const model = request.model ?? row.profile_model ?? row.provider_model;
   if (model === null) {
     throw new RouteError("no_model", `No model is set for ${row.provider_name}.`);
   }

@@ -628,6 +628,10 @@ export const strings = {
     providerKeyHeld: (mask: string) => `Key held · ${mask}`,
     providerKeyNone: "No key",
     providerKeyKeep: "Leave blank to keep the stored key",
+    /** The known-endpoint picker (§20 phase 180). */
+    providerPreset: "Start from",
+    providerPresetNone: "Nothing — I will type it",
+    providerPresetWhere: { hosted: "Hosted", local: "On this computer" },
     providerTest: "Test",
     providerTesting: "Testing…",
     providerTestOk: "Reached",
@@ -1246,6 +1250,11 @@ export const strings = {
     /** What the scene being read is talking to, and how to point it elsewhere. */
     inUse: "This roleplay",
     switchTo: "Point it at",
+    /** The per-scene model override (§20 phase 180). */
+    modelLabel: "Model for this roleplay",
+    modelFromProfile: (model: string) => `From the profile · ${model}`,
+    modelClear: "Use the profile's",
+    modelNoAddress: "This profile's provider has no address to ask.",
     noScene: "Open a roleplay to choose what answers it.",
     addProvider: "Add a provider",
     addProfile: "Add a profile",
@@ -1267,6 +1276,8 @@ export const strings = {
   /** The desktop header (§20 phase 91). */
   header: {
     sceneMenu: "Open the roleplays",
+    /** The chip that goes back to whatever roleplay is open (§20 phase 180). */
+    backToScene: (title: string) => `Back to ${title}`,
     turns: (n: number) => `${n} turns`,
     text: "Text",
     proseSmaller: "Smaller prose",

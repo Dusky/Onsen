@@ -796,7 +796,12 @@ export function sceneGenerationRoutes(
     // which preset. A scene with nowhere to generate has no prompt to preview.
     let route;
     try {
-      route = resolveRoute(ctx.db, ctx.keyring, { profileId: scene.connection_profile_id });
+      route = resolveRoute(ctx.db, ctx.keyring, {
+        profileId: scene.connection_profile_id,
+        // The scene's own model, so a preview names what the turn will use
+        // rather than what the profile alone would (§20 phase 180).
+        model: scene.model,
+      });
     } catch (caught) {
       if (caught instanceof RouteError) {
         return c.json({ error: { code: caught.code, message: caught.message } }, 400);
