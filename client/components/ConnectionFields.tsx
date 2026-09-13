@@ -617,11 +617,8 @@ export function ProfileFields({
           max={2_000_000}
           placeholder={strings.settings.profileContextPlaceholder}
           defaultValue={profile?.contextSize ?? ""}
-          className="field mb-[6px]"
+          className="field mb-[14px]"
         />
-        <p className="chrome mb-[14px] text-[12.5px] text-ink-dim">
-          {strings.settings.profileContextHint}
-        </p>
 
         {error === null ? null : (
           <p className="explain explain-alert mb-[10px]">{error}</p>
