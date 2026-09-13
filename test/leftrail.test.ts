@@ -54,9 +54,17 @@ describe("the left side is an icon rail, not a sidebar", () => {
     expect(RAIL).not.toContain('navigate({ name: "settings" })');
   });
 
-  test("the sections are scene-scoped by reading the route", () => {
-    expect(RAIL).toContain("useRoute");
-    expect(RAIL).toContain('route.name === "chat" ? route.sceneId : null');
+  test("the sections are scene-scoped by reading the base route", () => {
+    /*
+     * `useRoute` until phase 180, and that was a bug once Settings became an
+     * overlay over a still-mounted base (phase 171): opening it told every
+     * docked panel there was no roleplay, so the Models panel's "This
+     * roleplay" went blank and the prompt panel stopped previewing, all of it
+     * coming back on close. The rails sit outside the overlay and should see
+     * what is behind it.
+     */
+    expect(RAIL).toContain("useShellRoute");
+    expect(RAIL).toContain('base.name === "chat" ? base.sceneId : null');
   });
 
   test("is collapsible", () => {

@@ -1,4 +1,4 @@
-import { useRoute } from "../lib/router.ts";
+import { useShellRoute } from "../lib/router.ts";
 import { useDock } from "../lib/queries.ts";
 import { useUiStore } from "../state/ui.ts";
 import { strings } from "../strings.ts";
@@ -22,13 +22,24 @@ import { PANEL_META } from "./DockPanels.tsx";
  * inspector is still a sheet, the preset editor a screen.
  */
 export function LeftRail() {
-  const route = useRoute();
+  const { base } = useShellRoute();
   const dock = useDock();
   const leftRailOpen = useUiStore((state) => state.leftRailOpen);
   const toggleLeftRail = useUiStore((state) => state.toggleLeftRail);
   const storedActive = useUiStore((state) => state.leftActive);
   const setLeftActive = useUiStore((state) => state.setLeftActive);
-  const sceneId = route.name === "chat" ? route.sceneId : null;
+  /*
+   * The *base* route's scene, not the current route's (§20 phase 180).
+   *
+   * Every non-base screen is an overlay over a still-mounted base since phase
+   * 171, so a roleplay stays open behind Settings — but this read was
+   * `route.name === "chat"`, which meant opening Settings told every docked
+   * panel there was no roleplay. The Models panel's "This roleplay" went
+   * blank, the prompt panel stopped previewing, and all of it came back on
+   * close. The rails sit outside the overlay; they should see what is behind
+   * it.
+   */
+  const sceneId = base.name === "chat" ? base.sceneId : null;
 
   const panels = dock.left;
   // Nothing here to show — a reader moved every panel to the other side or

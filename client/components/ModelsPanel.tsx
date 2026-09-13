@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ConnectionProfileDto } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import {
@@ -14,6 +14,7 @@ import {
   kindLabel,
   statusDot,
 } from "./ConnectionFields.tsx";
+import { ModelPicker } from "./ModelPicker.tsx";
 
 /**
  * Models, in a rail (§20 phase 179).
@@ -54,6 +55,22 @@ export function ModelsPanel({ sceneId }: { sceneId: string | null }) {
   const profileList = profiles.data ?? [];
   const byId = new Map(providerList.map((provider) => [provider.id, provider]));
   const activeId = scene.data?.scene.connectionProfileId ?? null;
+
+  /*
+   * Which model this roleplay actually runs on, and where that came from
+   * (§20 phase 180).
+   *
+   * The chain the server resolves is scene, then profile, then provider
+   * (`server/generation/route.ts`), so the panel shows the same three in the
+   * same order — a picker that displayed the profile's model while the turn
+   * used the scene's would be worse than no picker.
+   */
+  const activeProfile = profileList.find((profile) => profile.id === activeId) ?? null;
+  const activeProvider =
+    activeProfile === null ? null : (byId.get(activeProfile.providerId) ?? null);
+  const inherited = activeProfile?.model ?? activeProvider?.model ?? null;
+  const sceneModel = scene.data?.scene.model ?? null;
+  const modelRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="pt-[12px] pb-[16px]">
@@ -101,6 +118,60 @@ export function ModelsPanel({ sceneId }: { sceneId: string | null }) {
               </button>
             );
           })}
+        </div>
+      )}
+
+      {/* Changing the model, not only reading it. Editing the profile would
+          change every roleplay pointed at it; this belongs to one. */}
+      {sceneId === null || activeProfile === null ? null : (
+        <div className="mb-[18px]">
+          <p className="section-label mb-[6px]">{strings.models.modelLabel}</p>
+          <ModelPicker
+            request={() => ({
+              // Spread rather than an undefined-valued key: the project runs
+              // `exactOptionalPropertyTypes`, so an absent option and one set
+              // to `undefined` are different types.
+              ...(activeProvider === null ? {} : { kind: activeProvider.kind, providerId: activeProvider.id }),
+              baseUrl: activeProvider?.baseUrl ?? "",
+            })}
+            selected={sceneModel ?? inherited ?? ""}
+            emptyMessage={strings.models.modelNoAddress}
+            onPick={(model) => {
+              if (modelRef.current !== null) modelRef.current.value = model;
+              updateScene.mutate({ model });
+            }}
+          >
+            <input
+              ref={modelRef}
+              className="field min-w-0 flex-1"
+              aria-label={strings.models.modelLabel}
+              // Keyed on what is in force, so switching profiles or clearing
+              // the override re-seeds the box rather than stranding old text.
+              key={sceneModel ?? inherited ?? ""}
+              defaultValue={sceneModel ?? inherited ?? ""}
+              onBlur={(event) => {
+                const next = event.target.value.trim();
+                if (next === (sceneModel ?? "")) return;
+                updateScene.mutate({ model: next });
+              }}
+            />
+          </ModelPicker>
+          <p className="explain mt-[6px]">
+            {sceneModel === null
+              ? inherited === null
+                ? strings.models.modelNoAddress
+                : strings.models.modelFromProfile(inherited)
+              : ""}
+          </p>
+          {sceneModel === null ? null : (
+            <button
+              type="button"
+              className="btn w-full"
+              onClick={() => updateScene.mutate({ model: null })}
+            >
+              {strings.models.modelClear}
+            </button>
+          )}
         </div>
       )}
 

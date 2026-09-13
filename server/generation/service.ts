@@ -2182,6 +2182,7 @@ export class GenerationService {
     try {
       return resolveRoute(this.db, this.keyring, {
         profileId: overrideProfileId ?? scene.connection_profile_id,
+        model: scene.model,
       });
     } catch (caught) {
       // The generation path speaks in GenerationErrors, which routes map onto

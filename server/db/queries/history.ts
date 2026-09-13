@@ -103,6 +103,9 @@ export interface SceneRow {
   scenario_override: string | null;
   /** An unsent turn, kept with the roleplay (§20 phase 166). '' is none. */
   draft: string;
+  /** A model chosen for this roleplay alone (§20 phase 180). Null is "ask the
+   *  profile", which is the ordinary state. */
+  model: string | null;
   /** Rolling summarisation, all of §11's knobs, per scene. */
   summarise: number;
   summarise_every_messages: number;
@@ -332,6 +335,7 @@ function toSceneDto(
     autoBackgroundPrompt: row.auto_background_prompt,
     scenarioOverride: row.scenario_override,
     draft: row.draft,
+    model: row.model,
     summarise: row.summarise === 1,
     summariseEveryMessages: row.summarise_every_messages,
     summariseEveryWords: row.summarise_every_words,

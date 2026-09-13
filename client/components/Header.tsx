@@ -1,5 +1,5 @@
 import { strings } from "../strings.ts";
-import { navigate, useRoute } from "../lib/router.ts";
+import { navigate, useShellRoute } from "../lib/router.ts";
 import { useGeneration } from "../lib/generation.ts";
 import { Logo } from "./Logo.tsx";
 import {
@@ -47,7 +47,12 @@ const PROSE_STEP = 0.05;
 const BASE_THEMES = { dark: "Midnight", light: "Bone" } as const;
 
 export function Header() {
-  const route = useRoute();
+  // The *base* route, not the current one (§20 phase 180). Settings and every
+  // other non-base screen is an overlay over a still-mounted base since phase
+  // 171 — so the roleplay is still open behind them, and the header used to
+  // stop showing it the moment one opened, leaving no way back to the thing
+  // you were reading.
+  const { base, overlay } = useShellRoute();
   const generation = useGeneration();
   const scenes = useScenes();
   const reading = useReading();
@@ -56,7 +61,7 @@ export function Header() {
   const activate = useActivateTheme();
   const { toggleLeftRail, toggleRightRail } = useUiStore();
 
-  const sceneId = route.name === "chat" ? route.sceneId : null;
+  const sceneId = base.name === "chat" ? base.sceneId : null;
   const scene = (scenes.data ?? []).find((candidate) => candidate.id === sceneId) ?? null;
 
   // The scene's title runs amber while it is writing — the same live state the
@@ -90,32 +95,52 @@ export function Header() {
       className="flex flex-none items-stretch border-b border-rule bg-bg-sunken"
       style={{ minHeight: "38px" }}
     >
-      {/* The wordmark and the open scene in one: the brand always, the scene
-          title and turn count when there is one. Both go to the scene list. */}
+      {/* Two buttons, not one. The wordmark opens the roleplay list; the
+          scene chip goes back to the roleplay itself — which is what it looked
+          like it did and did not (§20 phase 180). Both were one button to the
+          list, so the only thing in the header naming the open roleplay was
+          the one thing that navigated away from it. */}
       <button
         type="button"
         onClick={() => navigate({ name: "scenes" })}
         aria-label={strings.header.sceneMenu}
-        className="chrome flex flex-none items-center gap-[7px] px-[12px] text-[12px] font-medium"
+        className="chrome flex flex-none items-center gap-[7px] pl-[12px] pr-[8px] text-[12px] font-medium"
         style={{ color: "var(--onsen-color-text)" }}
       >
         <Logo className="h-[18px] w-auto" />
         <span>onsen</span>
-        {scene === null ? null : (
-          <span className="flex items-center gap-[7px]" style={{ color: "var(--onsen-color-text-dim)" }}>
-            <span aria-hidden="true">{"\u00b7"}</span>
-            <span
-              className="font-medium"
-              style={{ color: sceneWriting ? "var(--onsen-color-amber)" : "var(--onsen-color-text)" }}
-            >
-              {scene.title === "" ? strings.scenes.untitled : scene.title}
-            </span>
-            <span className="text-[11px]" style={{ color: "var(--onsen-color-text-dim)" }}>
-              {strings.header.turns(scene.messageCount)}
-            </span>
-          </span>
-        )}
       </button>
+      {scene === null ? null : (
+        <button
+          type="button"
+          onClick={() => navigate(base)}
+          aria-label={strings.header.backToScene(
+            scene.title === "" ? strings.scenes.untitled : scene.title,
+          )}
+          className="chrome flex min-w-0 flex-none items-center gap-[7px] pr-[12px] text-[12px]"
+        >
+          {/* A left chevron while an overlay is up, because then this is a way
+              back rather than a label. The dot is the separator otherwise. */}
+          <span aria-hidden="true" style={{ color: "var(--onsen-color-text-dim)" }}>
+            {overlay === null ? "\u00b7" : "\u2039"}
+          </span>
+          <span
+            className="truncate font-medium"
+            style={{
+              color: sceneWriting
+                ? "var(--onsen-color-amber)"
+                : overlay === null
+                  ? "var(--onsen-color-text)"
+                  : "var(--onsen-color-blue-text)",
+            }}
+          >
+            {scene.title === "" ? strings.scenes.untitled : scene.title}
+          </span>
+          <span className="text-[11px]" style={{ color: "var(--onsen-color-text-dim)" }}>
+            {strings.header.turns(scene.messageCount)}
+          </span>
+        </button>
+      )}
 
       <div className="min-w-0 flex-1" />
 

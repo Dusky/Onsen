@@ -485,6 +485,27 @@ export function sceneRoutes(
         scenario: scenario === null || scenario.trim() === "" ? null : scenario.trim(),
       });
     }
+    /*
+     * A model for this roleplay alone (§20 phase 180).
+     *
+     * Empty or null clears it, which hands the decision back to the connection
+     * profile — the same "empty means the layer above decides" the scenario
+     * override just above uses, and the reason there is one state for "no
+     * override" rather than two.
+     */
+    if ("model" in input) {
+      const model = input.model;
+      if (model !== null && typeof model !== "string") {
+        return c.json(badRequest("The model must be text, or nothing."), 400);
+      }
+      if (typeof model === "string" && model.length > 200) {
+        return c.json(badRequest("That model name is too long."), 400);
+      }
+      ctx.db.query("UPDATE scenes SET model = $model WHERE id = $id").run({
+        id: row.id,
+        model: model === null || model.trim() === "" ? null : model.trim(),
+      });
+    }
     // Whether a finished turn gets read by the passes without being asked
     // (SPEC §7.5). Which passes take part is the per-op switch.
     if ("autoPasses" in input) {
