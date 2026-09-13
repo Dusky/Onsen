@@ -8928,3 +8928,40 @@ job natively, so coloured dialogue works with any preset and none of the
 **Nesting flattens, on purpose.** `<span color><b>bold</b></span>` reads as
 coloured "bold" — the outer style wins, the same trade the asterisk marks
 already make. The rare loss of an inner bold beats resolving the ambiguity.
+
+## Phase 186 — A context window per profile
+
+The reader asked where to raise the context window, because it looked locked at
+32k — and it was, in a way nobody had written down. The prompt budget is the
+smaller of two numbers: the preset's own window, and the model's own. The first
+is the "Context window" field on the preset, editable to two million. The second
+was `maxContext: 32_768`, hardcoded in the OpenAI-compatible adapter — the safe
+default for a provider whose real window varies model by model, and with no
+place to say otherwise.
+
+So a reader on a 128k model could set the preset to 128k and the budget would
+still come out 32k. The number on the screen said where the budget *ought* to
+be; the `min()` said otherwise, silently.
+
+**The window moves to the profile, where the model lives.** A model's window is
+a fact about the model, and the profile is the thing that names a model — so
+`connection_profiles` gains a nullable `context_size`, the route carries it as
+`maxContext` into the adapter, and the profile form gains a "Context window"
+field with a blank meaning "the provider's default". The OpenAI-compatible 32k
+default stays for a profile that says nothing, which is exactly the conservative
+reading a fresh install wants.
+
+Three pieces: the migration (0078, with the same 512–2M check the preset's
+window uses), the route (`ResolvedRoute.maxContext`, read in `resolveRoute` and
+passed by both the generation service and the task runner), and the field in
+`ProfileFields`. The prompt-builder already did `min()`; nothing there changed,
+because it was already asking the right question — it was the answer that was
+stuck.
+
+### Surprises
+
+**The two windows were already both real, and only one was reachable.** The
+preset's window had a field and bounds; the model's had neither. The fix was
+not to add budget logic but to expose a number the schema had effectively
+frozen. The `min()` the builder already performed is the whole feature, once
+the profile can say what the model actually holds.

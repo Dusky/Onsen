@@ -67,6 +67,21 @@ import {
 import { badRequest, notFound, requiredText } from "../lib/routes.ts";
 
 /**
+ * The context window a profile names, or null for the provider's default
+ * (§20 phase 186). Shared by the create and edit routes.
+ */
+const CONTEXT_SIZE_ERROR =
+  "contextSize must be a whole number between 512 and 2,000,000, or null.";
+
+function optionalContextSize(value: unknown): number | null | "invalid" {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 512 || value > 2_000_000) {
+    return "invalid";
+  }
+  return value;
+}
+
+/**
  * Providers and connection profiles (SPEC §20 phase 13).
  *
  * A profile is provider + model + preset under a name, and the reason it is an
@@ -840,12 +855,16 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
     const preset = presetRef(body["presetId"]);
     if (preset === INVALID) return c.json(badRequest("No such preset."), 400);
 
+    const contextSize = optionalContextSize(body["contextSize"]);
+    if (contextSize === "invalid") return c.json(badRequest(CONTEXT_SIZE_ERROR), 400);
+
     const row = insertConnectionProfile(ctx.db, {
       name,
       providerId: provider.id,
       model: requiredText(body["model"], 200),
       presetId: preset,
       isDefault: body["isDefault"] === true,
+      contextSize,
     });
     return c.json(profileDto(row), 201);
   });
@@ -877,6 +896,11 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
       const preset = presetRef(body["presetId"]);
       if (preset === INVALID) return c.json(badRequest("No such preset."), 400);
       patch.presetId = preset;
+    }
+    if ("contextSize" in body) {
+      const contextSize = optionalContextSize(body["contextSize"]);
+      if (contextSize === "invalid") return c.json(badRequest(CONTEXT_SIZE_ERROR), 400);
+      patch.contextSize = contextSize;
     }
 
     return c.json(profileDto(updateConnectionProfile(ctx.db, row.id, patch)));

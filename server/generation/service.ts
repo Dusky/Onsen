@@ -653,6 +653,7 @@ export class GenerationService {
         apiKey: route.apiKey,
         model: route.model,
         ...(route.supportsPrefill === null ? {} : { supportsPrefill: route.supportsPrefill }),
+        ...(route.maxContext === null ? {} : { maxContext: route.maxContext }),
         ...(instruct === null ? {} : { instruct }),
       });
     } catch (caught) {

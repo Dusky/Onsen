@@ -4110,6 +4110,16 @@ Each phase ends in a working, usable application.
     picked a colour. See §16, `client/lib/emphasis.ts`,
     `server/prompt/blocks.ts`.
 
+186. **A context window per profile** — the prompt budget is the smaller of
+    the preset's window and the model's own, and the model's own was hardcoded
+    to 32k for every OpenAI-compatible provider, so a 128k model was unusable.
+    The window is a property of the model a profile names, so the profile now
+    carries an optional `contextSize` (null = the provider's default) and the
+    route hands it to the adapter as `maxContext`. Surfaced as a "Context
+    window" field on the profile form. See §16,
+    `server/generation/route.ts`,
+    `server/db/migrations/0078_profile_context.sql`.
+
 Settled while building phase 15.
 
 - **The desktop layout is phase 19, not a polish item.** The design is explicit

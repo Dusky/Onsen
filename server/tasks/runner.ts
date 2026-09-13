@@ -162,6 +162,7 @@ export class TaskRunner {
           baseUrl: route.baseUrl,
           apiKey: route.apiKey,
           model: route.model,
+          ...(route.maxContext === null ? {} : { maxContext: route.maxContext }),
         });
         for await (const chunk of adapter.generate(
           request.prompt,

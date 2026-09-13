@@ -407,6 +407,14 @@ export interface ConnectionProfileDto {
   providerId: string;
   model: string | null;
   presetId: string | null;
+  /**
+   * The model's context window, or null for the provider's default (§186).
+   *
+   * The prompt budget is the smaller of this and the preset's own window, so
+   * a reader on a 128k model sets it here rather than being capped at the
+   * OpenAI-compatible default of 32k.
+   */
+  contextSize: number | null;
   isDefault: boolean;
   createdAt: number;
   updatedAt: number;
@@ -448,6 +456,7 @@ export interface CreateConnectionProfileRequest {
   model?: string | null;
   presetId?: string | null;
   isDefault?: boolean;
+  contextSize?: number | null;
 }
 
 export interface UpdateConnectionProfileRequest {
@@ -456,6 +465,7 @@ export interface UpdateConnectionProfileRequest {
   model?: string | null;
   presetId?: string | null;
   isDefault?: boolean;
+  contextSize?: number | null;
 }
 
 export interface BootstrapDto {

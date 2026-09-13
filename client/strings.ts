@@ -626,6 +626,8 @@ export const strings = {
     providerBaseUrl: "Address",
     providerModel: "Model",
     providerKey: "API key",
+    profileContextPlaceholder: "Provider's default",
+    profileContextHint: "The model's window. Leave blank for the provider's default.",
     providerKeyHeld: (mask: string) => `Key held · ${mask}`,
     providerKeyNone: "No key",
     providerKeyKeep: "Leave blank to keep the stored key",

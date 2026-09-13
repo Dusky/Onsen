@@ -538,16 +538,18 @@ export function ProfileFields({
           const model = String(form.get("model") ?? "").trim();
           const presetRaw = String(form.get("presetId") ?? "");
           const presetId = presetRaw === "" ? null : presetRaw;
+          const contextRaw = String(form.get("contextSize") ?? "").trim();
+          const contextSize = contextRaw === "" ? null : Number.parseInt(contextRaw, 10);
           const done = { onSuccess: () => onClose(), onError: (e: Error) => setError(e.message) };
 
           if (profile === null) {
             create.mutate(
-              { name, providerId, model: model === "" ? null : model, presetId },
+              { name, providerId, model: model === "" ? null : model, presetId, contextSize },
               done,
             );
           } else {
             update.mutate(
-              { id: profile.id, name, providerId, model: model === "" ? null : model, presetId },
+              { id: profile.id, name, providerId, model: model === "" ? null : model, presetId, contextSize },
               done,
             );
           }
@@ -602,6 +604,24 @@ export function ProfileFields({
             />
           </ModelPicker>
         </div>
+
+        {/* The model's own window (§20 phase 186): the preset's window is
+            capped by this, so a 128k model needs it named here rather than
+            being stuck at the OpenAI-compatible 32k default. */}
+        <p className="section-label mb-[6px]">{strings.settings.contextSize}</p>
+        <input
+          name="contextSize"
+          type="number"
+          inputMode="numeric"
+          min={512}
+          max={2_000_000}
+          placeholder={strings.settings.profileContextPlaceholder}
+          defaultValue={profile?.contextSize ?? ""}
+          className="field mb-[6px]"
+        />
+        <p className="chrome mb-[14px] text-[12.5px] text-ink-dim">
+          {strings.settings.profileContextHint}
+        </p>
 
         {error === null ? null : (
           <p className="explain explain-alert mb-[10px]">{error}</p>

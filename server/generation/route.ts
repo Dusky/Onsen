@@ -20,6 +20,14 @@ export interface ResolvedRoute {
   model: string;
   presetId: number | null;
   /**
+   * The model's context window, or null for the provider's default (§186).
+   *
+   * The profile names a model, and a model's window is a fact about it — so
+   * the reader sets it on the profile and it caps the prompt budget here,
+   * beating the OpenAI-compatible default of 32k for a 128k model.
+   */
+  maxContext: number | null;
+  /**
    * Whether this endpoint accepts a prefill (§13). Null means the adapter's own
    * default stands — prefill is a property of the endpoint, not the wire
    * format, so an operator can say what their local server actually does.
@@ -76,9 +84,9 @@ export function resolveRoute(
    * its own model; which provider serves the turn is a separate question.
    */
   const profile = db
-    .query("SELECT model AS profile_model, preset_id, provider_id FROM connection_profiles WHERE id = $id")
+    .query("SELECT model AS profile_model, preset_id, provider_id, context_size FROM connection_profiles WHERE id = $id")
     .get({ id: request.profileId }) as
-    | { profile_model: string | null; preset_id: number | null; provider_id: number }
+    | { profile_model: string | null; preset_id: number | null; provider_id: number; context_size: number | null }
     | null;
 
   if (profile === null) {
@@ -152,6 +160,7 @@ export function resolveRoute(
     apiKey,
     model,
     presetId: profile.preset_id,
+    maxContext: profile.context_size,
     supportsPrefill: row.supports_prefill === null ? null : row.supports_prefill === 1,
     instructTemplateId: row.instruct_template,
   };

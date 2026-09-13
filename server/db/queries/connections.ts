@@ -80,6 +80,7 @@ interface ConnectionProfileRow {
   provider_id: number;
   model: string | null;
   preset_id: number | null;
+  context_size: number | null;
   is_default: number;
   created_at: number;
   updated_at: number;
@@ -252,6 +253,7 @@ export function toConnectionProfileDto(
     providerId: providerUlid,
     model: row.model,
     presetId: presetUlid,
+    contextSize: row.context_size,
     isDefault: row.is_default === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -409,6 +411,7 @@ export interface NewConnectionProfile {
   model?: string | null;
   presetId?: number | null;
   isDefault?: boolean;
+  contextSize?: number | null;
 }
 
 export function insertConnectionProfile(
@@ -424,8 +427,8 @@ export function insertConnectionProfile(
   }
   return db
     .query(
-      `INSERT INTO connection_profiles (ulid, name, provider_id, model, preset_id, is_default, created_at, updated_at)
-       VALUES ($ulid, $name, $provider_id, $model, $preset_id, $is_default, $now, $now)
+      `INSERT INTO connection_profiles (ulid, name, provider_id, model, preset_id, is_default, context_size, created_at, updated_at)
+       VALUES ($ulid, $name, $provider_id, $model, $preset_id, $is_default, $context_size, $now, $now)
        RETURNING *`,
     )
     .get({
@@ -435,6 +438,7 @@ export function insertConnectionProfile(
       model: input.model ?? null,
       preset_id: input.presetId ?? null,
       is_default: input.isDefault ? 1 : 0,
+      context_size: input.contextSize ?? null,
       now,
     }) as ConnectionProfileRow;
 }
@@ -529,6 +533,7 @@ export interface ConnectionProfilePatch {
   model?: string | null;
   presetId?: number | null;
   isDefault?: boolean;
+  contextSize?: number | null;
 }
 
 export function updateConnectionProfile(
@@ -550,7 +555,7 @@ export function updateConnectionProfile(
     .query(
       `UPDATE connection_profiles
           SET name = $name, provider_id = $provider, model = $model, preset_id = $preset,
-              is_default = $is_default, updated_at = $now
+              is_default = $is_default, context_size = $context_size, updated_at = $now
         WHERE id = $id
         RETURNING *`,
     )
@@ -561,6 +566,7 @@ export function updateConnectionProfile(
       model: patch.model === undefined ? current.model : patch.model,
       preset: patch.presetId === undefined ? current.preset_id : patch.presetId,
       is_default: patch.isDefault === undefined ? current.is_default : patch.isDefault ? 1 : 0,
+      context_size: patch.contextSize === undefined ? current.context_size : patch.contextSize,
       now: Date.now(),
     }) as ConnectionProfileRow;
 }
