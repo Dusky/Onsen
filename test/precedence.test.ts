@@ -67,6 +67,7 @@ const CARD: PromptCharacter = {
   depthPromptRole: "system",
   systemPrompt: "CARD FRAMING",
   postHistoryInstructions: "CARD FINAL",
+  colour: null,
 };
 
 /** The blocks the prompt assembled, by id, with their content and source. */

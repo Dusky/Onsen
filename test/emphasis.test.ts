@@ -105,6 +105,75 @@ describe("emphasis", () => {
     expect(isPlain("She looked up.")).toBe(true);
     expect(isPlain("She *looked up*.")).toBe(false);
   });
+
+  test("coloured dialogue renders as a coloured span", () => {
+    expect(emphasis('<span style="color:#e6a8d7">"Hello."</span>')).toEqual([
+      { kind: "colour", text: '"Hello."', colour: "#e6a8d7" },
+    ]);
+    // `<font color>` is the legacy spelling, still what some presets emit.
+    expect(emphasis('<font color="red">He nodded.</font>')).toEqual([
+      { kind: "colour", text: "He nodded.", colour: "red" },
+    ]);
+  });
+
+  test("b, i and u are the bold, italic and underline they name", () => {
+    expect(emphasis("<b>bold</b>")).toEqual([{ kind: "strong", text: "bold" }]);
+    expect(emphasis("<strong>bold</strong>")).toEqual([{ kind: "strong", text: "bold" }]);
+    expect(emphasis("<i>it</i>")).toEqual([{ kind: "em", text: "it" }]);
+    expect(emphasis("<em>it</em>")).toEqual([{ kind: "em", text: "it" }]);
+    expect(emphasis("<u>under</u>")).toEqual([{ kind: "underline", text: "under" }]);
+  });
+
+  test("a line break tag is a newline, which pre-wrap draws", () => {
+    expect(emphasis("a<br>b")).toEqual([
+      { kind: "text", text: "a" },
+      { kind: "text", text: "\n" },
+      { kind: "text", text: "b" },
+    ]);
+  });
+
+  test("asterisks and HTML mix in one paragraph", () => {
+    expect(emphasis('*she looked up* and <span style="color:#f00">"hi."</span>')).toEqual([
+      { kind: "em", text: "she looked up" },
+      { kind: "text", text: " and " },
+      { kind: "colour", text: '"hi."', colour: "#f00" },
+    ]);
+  });
+
+  test("anything not on the whitelist is text, not markup", () => {
+    for (const text of [
+      "<script>alert(1)</script>",
+      "<img src=x onerror=alert(1)>",
+      "<a href=\"javascript:alert(1)\">x</a>",
+      "<span style=\"color:url(javascript:alert(1))\">x</span>",
+      "<div>block</div>",
+    ]) {
+      expect(emphasis(text)).toEqual([{ kind: "text", text }]);
+    }
+  });
+
+  test("only the colour survives a style attribute — nothing else is applied", () => {
+    // `position:fixed` and friends are in the model's string and are dropped:
+    // the renderer sets `color` alone, so the extra CSS never reaches the page.
+    expect(emphasis('<span style="color:red; position:fixed">x</span>')).toEqual([
+      { kind: "colour", text: "x", colour: "red" },
+    ]);
+  });
+
+  test("an unclosed or closing tag is literal, never swallowed", () => {
+    expect(emphasis("<b>unclosed")).toEqual([{ kind: "text", text: "<b>unclosed" }]);
+    expect(emphasis("she said </b> nothing")).toEqual([
+      { kind: "text", text: "she said </b> nothing" },
+    ]);
+  });
+
+  test("colour inside colour keeps the outer and flattens the inner", () => {
+    // Outer wins, the same trade the asterisks make: the rare nested bold is
+    // flattened into the colour rather than resolved ambiguously.
+    expect(emphasis('<span style="color:#f00"><b>bold</b> *and*</span>')).toEqual([
+      { kind: "colour", text: "bold and", colour: "#f00" },
+    ]);
+  });
 });
 
 /**

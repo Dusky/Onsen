@@ -83,7 +83,7 @@ function orderedBlockIds(ctx: PromptContext): readonly string[] {
   // if missing.
   const seen = new Set(configured);
   const required: PromptBlockId[] = [];
-  for (const id of ["history", "spotlight_instruction"] as const) {
+  for (const id of ["history", "spotlight_instruction", "dialogue_colour"] as const) {
     if (!seen.has(id)) required.push(id);
   }
   return [...configured, ...required, ...extensionIds];

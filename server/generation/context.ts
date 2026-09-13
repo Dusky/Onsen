@@ -74,6 +74,7 @@ export const PLACEHOLDER_SPOTLIGHT: PromptCharacter = {
   depthPromptRole: "system",
   systemPrompt: null,
   postHistoryInstructions: null,
+  colour: null,
 };
 
 interface PresetRow {
@@ -289,6 +290,7 @@ export function toPromptCharacter(
     depthPromptRole: row.depth_prompt_role,
     systemPrompt: row.system_prompt,
     postHistoryInstructions: row.post_history_instructions,
+    colour: row.colour,
   };
 }
 

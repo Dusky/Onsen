@@ -205,17 +205,29 @@ export function Emphasis({ text }: { text: string }) {
   if (isPlain(text)) return <>{text}</>;
   return (
     <>
-      {emphasis(text).map((span, index) =>
-        span.kind === "strong" ? (
-          <strong key={index} className="font-semibold">
-            {span.text}
-          </strong>
-        ) : span.kind === "em" ? (
-          <em key={index}>{span.text}</em>
-        ) : (
-          <Fragment key={index}>{span.text}</Fragment>
-        ),
-      )}
+      {emphasis(text).map((span, index) => {
+        if (span.kind === "strong") {
+          return (
+            <strong key={index} className="font-semibold">
+              {span.text}
+            </strong>
+          );
+        }
+        if (span.kind === "em") {
+          return <em key={index}>{span.text}</em>;
+        }
+        if (span.kind === "underline") {
+          return <u key={index}>{span.text}</u>;
+        }
+        if (span.kind === "colour") {
+          return (
+            <span key={index} style={{ color: span.colour }}>
+              {span.text}
+            </span>
+          );
+        }
+        return <Fragment key={index}>{span.text}</Fragment>;
+      })}
     </>
   );
 }

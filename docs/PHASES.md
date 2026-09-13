@@ -8884,3 +8884,47 @@ and its guard both state that Document is Quiet with the attribution moved into
 the paragraph — and Document cannot show a portrait anyway, its header is
 hidden. The fix was to change only Instrument, the preset the complaint was
 actually about, and leave Quiet as the unadorned reading layout it names.
+
+## Phase 185 — Coloured dialogue, rendered
+
+The Megumin-class presets — the community packs people actually run — emit
+inline HTML for coloured dialogue: `<span style="color:#e6a8d7">"Hello."</span>`.
+This app, which had rendered the model's output as one plain text node since
+the start, showed those tags verbatim. A turn of `<span style="color:...">` is
+a turn of punctuation, the same way `*asterisks*` used to be before phase 161.
+
+Two halves, and the boundary between them is the point:
+
+- **The view.** `emphasis.ts` grows a safe HTML whitelist alongside its two
+  asterisk marks: `b`/`strong`, `i`/`em`, `u`, `br`, and `span`/`font` carrying
+  a colour. Each becomes a React element — `<strong>`, `<em>`, `<u>`, a
+  `<span style={{color}}>` — never an HTML string, so `dangerouslySetInnerHTML`
+  still appears zero times in the client. That is the whole reason this stays a
+  hand-rolled tokenizer instead of a markdown or HTML library: nothing enters
+  the page that the whitelist did not name.
+- **The colours.** A `span`/`font` colour is re-validated — `#hex`, numeric
+  `rgb()`/`rgba()`, or a letter-only name. `url(`, `expression(`, a semicolon,
+  a brace: anything that could smuggle CSS makes the tag text. And because the
+  renderer sets `color` alone, a style attribute carrying `position:fixed`
+  beside a colour drops everything but the colour.
+
+**The prompt half.** A character's colour is now carried into the prompt
+(`PromptCharacter.colour`), and a new `dialogue_colour` block tells the model to
+wrap each character's spoken lines in that colour's span — and only the spoken
+words, narration and thought stay plain. It drafts nothing when nobody has
+picked a colour, so a colourless scene costs nothing and the inspector never
+shows an empty row. It is one of the required blocks, like the spotlight
+instruction, so a preset's saved order cannot drop it.
+
+### Surprises
+
+**The preset already asked for it.** The user's preset turns out to carry a
+`[[COLOR]]` macro in its jailbreak — Megumin Suite's own placeholder, expanded
+by a regex script in the incumbent and left literal here. Rather than implement
+Megumin's macro language, the app's own per-character colours (phase 162) do the
+job natively, so coloured dialogue works with any preset and none of the
+`[[...]]` grammar.
+
+**Nesting flattens, on purpose.** `<span color><b>bold</b></span>` reads as
+coloured "bold" — the outer style wins, the same trade the asterisk marks
+already make. The rare loss of an inner bold beats resolving the ambiguity.

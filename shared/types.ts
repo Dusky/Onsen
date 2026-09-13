@@ -2625,6 +2625,8 @@ export type PromptBlockId =
   | "guides"
   | "trackers"
   | "depth_prompts"
+  /** Dialogue coloured per character (§20 phase 185). */
+  | "dialogue_colour"
   /** A selected prompt option, one block each so the inspector names it (§13.5). */
   | "prompt_option"
   /** The banned constructions in force (§13.6). */
@@ -2665,6 +2667,7 @@ export const DEFAULT_BLOCK_ORDER: readonly PromptBlockId[] = [
   // Instructions about *how* to write sit near the turn with the other
   // instructions, not up in the system prompt where a long history separates
   // them from the writing they govern.
+  "dialogue_colour",
   "prompt_option",
   "ban_list",
   "director_note",

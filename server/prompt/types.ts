@@ -248,6 +248,8 @@ export interface PromptCharacter {
   depthPromptRole: PromptRole;
   systemPrompt: string | null;
   postHistoryInstructions: string | null;
+  /** The character's own colour, `#rrggbb`, or null (§162, §185). */
+  colour: string | null;
   /**
    * The last message that had already happened when this character joined
    * (SPEC §6). Null means they were present from the start. Characters should

@@ -33,6 +33,7 @@ export function character(
     depthPromptRole: "system",
     systemPrompt: null,
     postHistoryInstructions: null,
+    colour: null,
     ...overrides,
   };
 }

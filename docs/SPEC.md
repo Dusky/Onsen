@@ -4097,6 +4097,19 @@ Each phase ends in a working, usable application.
     `client/components/MessageBlock.tsx`, `client/styles/tokens.css`,
     `shared/types.ts` (`LAYOUT_PRESETS`).
 
+185. **Coloured dialogue, rendered** — the Megumin-class presets emit inline
+    HTML for coloured dialogue, and this app showed the tags verbatim. The
+    emphasis tokenizer now reads a small, safe HTML subset — `b`/`strong`,
+    `i`/`em`, `u`, `br`, and `span`/`font` carrying a colour — and turns them
+    into React elements, never an HTML string, so `dangerouslySetInnerHTML`
+    stays absent. Colours are re-validated (`#hex`, numeric `rgb()`/`rgba()`, or
+    a letter-only name) and anything else — a script, an image, a URL in a
+    style — renders as the literal text it is. On the prompt side, a new
+    `dialogue_colour` block lists each cast member with their colour and tells
+    the model to wrap only spoken words in it; it costs nothing when nobody has
+    picked a colour. See §16, `client/lib/emphasis.ts`,
+    `server/prompt/blocks.ts`.
+
 Settled while building phase 15.
 
 - **The desktop layout is phase 19, not a polish item.** The design is explicit

@@ -169,6 +169,25 @@ function castBlock(ctx: PromptContext): string | null {
   return paragraphs("## Also in this scene", ...others.map(compactCharacter));
 }
 
+/**
+ * Coloured dialogue (§20 phase 185).
+ *
+ * Each cast member who picked a colour gets a line mapping name to hex, and the
+ * model is told to wrap only the spoken words in that colour's span — narration,
+ * action and thought stay plain. Drops to nothing when nobody has a colour, so
+ * a colourless scene costs nothing.
+ */
+function dialogueColourBlock(ctx: PromptContext): string | null {
+  const coloured = ctx.cast.filter((member) => member.colour !== null);
+  if (coloured.length === 0) return null;
+  return paragraphs(
+    'Colour spoken dialogue. Wrap each line a character says out loud in a span carrying their colour, and only the spoken words: narration, action and thought stay uncoloured.',
+    ...coloured.map(
+      (member) => `${member.name} \u2014 <span style="color:${member.colour}">spoken dialogue</span>`,
+    ),
+  );
+}
+
 function personaBlock(ctx: PromptContext): string | null {
   // With no name and no description there is nothing to say about the reader
   // that the user-lock has not already said.
@@ -679,6 +698,11 @@ export function draftBlocks(ctx: PromptContext): Map<string, DraftBlock[]> {
   }
 
   add("guides", "Guides", "persistent guides", guidesBlock(ctx), NEAR_TURN);
+
+  // Dialogue colour (§20 phase 185): only when somebody in the cast has one.
+  // A colourless cast drafts nothing, so the block costs nothing and the
+  // inspector never shows a row that carried no instruction.
+  add("dialogue_colour", "Dialogue colour", "cast", dialogueColourBlock(ctx), NEAR_TURN);
 
   // One block per selected option, rather than one block for all of them.
   // §13.5's whole argument is that an option is visible in the inspector as a
