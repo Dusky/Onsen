@@ -1,14 +1,14 @@
-import { useRef } from "react";
 import { strings } from "../strings.ts";
-import { useModalFocus } from "../lib/modal.ts";
+import { Sheet } from "./Sheet.tsx";
 
 /**
- * A full-size picture over a dimmed page (§20 phase 187).
+ * A full-size portrait in a sheet (§20 phase 187).
  *
  * The portrait in a turn's masthead is a 40px thumbnail; this is its full
- * size, the same file the masthead draws from, shown as large as the viewport
- * allows. Click anywhere to close — the picture is the point, and the close
- * button is the keyboard and screen-reader way in.
+ * size, the same file the masthead draws from, shown as large as the sheet
+ * allows. It is the app's ordinary modal — `Sheet` owns the phone and desktop
+ * shapes, the backdrop and the Escape — because a picture is no reason to
+ * invent a second overlay.
  */
 export function ImageLightbox({
   src,
@@ -19,37 +19,22 @@ export function ImageLightbox({
   alt: string;
   onClose(): void;
 }) {
-  const dialog = useRef<HTMLDivElement | null>(null);
-  useModalFocus(dialog, onClose);
-
   return (
-    <div
-      ref={dialog}
-      role="dialog"
-      aria-modal="true"
-      aria-label={alt}
-      tabIndex={-1}
-      onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ background: "rgba(0, 0, 0, 0.86)" }}
-    >
-      <button
-        type="button"
-        aria-label={strings.common.close}
-        onClick={onClose}
-        className="chrome absolute top-[14px] right-[14px] flex h-[44px] w-[44px] items-center justify-center text-[24px] text-ink-dim hover:text-ink-label"
-      >
-        {"\u00d7"}
-      </button>
-      <img
-        src={src}
-        alt={alt}
-        // The picture does not close the lightbox on click — only the backdrop
-        // and the button do — so a reader can still zoom the browser without
-        // dismissing the thing they are looking at.
-        onClick={(event) => event.stopPropagation()}
-        className="max-h-full max-w-full object-contain"
-      />
-    </div>
+    <Sheet title={alt} onClose={onClose}>
+      <div className="flex items-center justify-center pt-[8px] pb-[14px]">
+        <img
+          src={src}
+          alt={alt}
+          className="block max-w-full"
+          style={{
+            maxHeight: "70dvh",
+            width: "auto",
+            height: "auto",
+            border: "1px solid var(--onsen-color-rule)",
+            background: "var(--onsen-color-bg-raised)",
+          }}
+        />
+      </div>
+    </Sheet>
   );
 }
