@@ -76,7 +76,9 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
       bubble: getSetting(ctx.db, `layout_${which}_bubble`) === null
         ? LAYOUT_PRESETS.instrument[which].bubble
         : getSetting(ctx.db, `layout_${which}_bubble`) === "1",
-      avatar: getSetting(ctx.db, `layout_${which}_avatar`) === "1",
+      avatar: getSetting(ctx.db, `layout_${which}_avatar`) === null
+        ? LAYOUT_PRESETS.instrument[which].avatar
+        : getSetting(ctx.db, `layout_${which}_avatar`) === "1",
     });
     const values = {
       readouts: getSetting(ctx.db, "layout_readouts") !== "0",
