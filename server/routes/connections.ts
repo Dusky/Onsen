@@ -41,6 +41,7 @@ import {
   isInjectionRole,
   type PromptOrderEntry,
 } from "../../shared/types.ts";
+import { chatPathFor, joinUrl, providerErrorMessage } from "../adapters/errors.ts";
 import { fetchProviderModels } from "../adapters/models.ts";
 import { parseStPreset, StPresetError } from "../presets/st.ts";
 import { importStPreset } from "../presets/import.ts";
@@ -669,7 +670,6 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
     apiKey: string | null;
     model: string | null;
   }): Promise<{ ok: boolean; latencyMs: number; detail: string | null }> {
-    const baseUrl = input.baseUrl.replace(/\/+$/, "");
     const headers = {
       "Content-Type": "application/json",
       ...(input.apiKey === null || input.apiKey === ""
@@ -677,45 +677,72 @@ export function connectionRoutes(ctx: AppContext): Hono<AppEnv> {
         : { Authorization: `Bearer ${input.apiKey}` }),
     };
 
-    // One token is the whole test: the request shape is the provider's own.
-    let body: string;
-    let path = "/chat/completions";
-    switch (input.kind) {
-      case "text_completion":
-        path = "/completions";
-        body = JSON.stringify({ prompt: "ping", max_tokens: 1 });
-        break;
-      case "anthropic":
-        path = "/messages";
-        body = JSON.stringify({
-          model: input.model ?? "",
-          max_tokens: 1,
-          messages: [{ role: "user", content: "ping" }],
-        });
-        break;
-      default:
-        body = JSON.stringify({
-          model: input.model ?? "",
-          messages: [{ role: "user", content: "ping" }],
-          max_tokens: 1,
-        });
-        break;
+    /*
+     * The same URL the turn will use (§20 phase 182).
+     *
+     * This built its own path per kind and disagreed with the adapters on one
+     * of them: `/messages` for Anthropic where the adapter appends
+     * `v1/messages`. An Anthropic address ending in `/v1` therefore passed
+     * the test and 404'd on every real turn. A test that checks a different
+     * URL than the turn can pass while the app is broken.
+     */
+    const url = joinUrl(input.baseUrl, chatPathFor(input.kind));
+
+    /*
+     * No model is a failure this app can name itself (§20 phase 182).
+     *
+     * Sending `model: ""` and relaying whatever came back put the provider's
+     * words on our own omission: DeepSeek answers an empty model with a 400
+     * listing what it does serve, which reads as "your key is wrong" to
+     * everyone who has not seen it before. A turn cannot run without a model
+     * either — `resolveRoute` throws `no_model` before any adapter is reached
+     * — so refusing here costs nothing and says the true thing.
+     */
+    if (input.model === null || input.model === "") {
+      return {
+        ok: false,
+        latencyMs: 0,
+        // No dash in this sentence: the client renders it after "Failed — ",
+        // and two em dashes in one line read as one muddled clause.
+        detail: "Name a model first. A test sends one real turn, and a turn needs one.",
+      };
     }
+
+    // One token is the whole test: the request shape is the provider's own,
+    // and it names the model on every kind, because every adapter does.
+    const body =
+      input.kind === "text_completion"
+        ? JSON.stringify({ model: input.model, prompt: "ping", max_tokens: 1 })
+        : JSON.stringify({
+            model: input.model,
+            max_tokens: 1,
+            messages: [{ role: "user", content: "ping" }],
+          });
 
     const started = Date.now();
     try {
-      const response = await fetch(`${baseUrl}${path}`, {
+      const response = await fetch(url, {
         method: "POST",
         headers,
         body,
         signal: AbortSignal.timeout(15_000),
       });
       if (!response.ok) {
-        const detail = (await response.text()).slice(0, 200);
+        /*
+         * The provider's own sentence, not its JSON envelope (§20 phase 182).
+         *
+         * This read the raw body and clipped it at 200 characters, so a
+         * reader testing a key against a provider that had renamed its models
+         * saw `HTTP 400: {"error":{"message":"The supported API model n` — the
+         * useful half cut off mid-word, and no way to reach the rest. The
+         * adapters had parsed these properly since §16; the Test button was
+         * written later and did not reuse them.
+         */
+        const said = providerErrorMessage(await response.text());
         return {
           ok: false,
           latencyMs: Date.now() - started,
-          detail: `HTTP ${response.status}: ${detail}`,
+          detail: said === null ? `HTTP ${response.status}` : `HTTP ${response.status}: ${said}`,
         };
       }
       return { ok: true, latencyMs: Date.now() - started, detail: null };

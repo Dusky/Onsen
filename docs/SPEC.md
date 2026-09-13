@@ -4061,6 +4061,19 @@ Each phase ends in a working, usable application.
     `Background.tsx` joined the header and the rails in reading the base route
     rather than the current one. See §16, `server/generation/route.ts`.
 
+182. **Test what the turn actually does** — a report that "deepseek is failing
+    even tho i am using a valid api", with the error cut off mid-word, named
+    one cause with three faces: the Test button asked a different question
+    than a turn does. It sent no model (it reused the *model list* request,
+    which correctly names none), built its Anthropic URL from its own copy of
+    the path, and printed the raw JSON envelope clipped at 200 characters. One
+    `server/adapters/errors.ts` now owns `providerErrorMessage`, `chatPathFor`
+    and `joinUrl` for all four callers, so the test resolves the same URL and
+    body the adapter will; no model is refused in the app's own words rather
+    than by relaying a provider's confusion; and no preset names a model,
+    because a shipped model id goes stale and Fetch cannot.
+    See §16, `server/adapters/errors.ts`.
+
 Settled while building phase 15.
 
 - **The desktop layout is phase 19, not a polish item.** The design is explicit

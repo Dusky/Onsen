@@ -174,6 +174,26 @@ export function ProviderFields({
     };
   }
 
+  /*
+   * What Test sends, which is not what the model list sends (§20 phase 182).
+   *
+   * Test reused `modelRequest()` verbatim, and that request has no `model` in
+   * it — correctly, because asking a provider what it serves is a question
+   * that cannot name a model. So every test posted `model: ""`, and a hosted
+   * provider answered the only way it can: a 400 naming the models it does
+   * serve. The reader saw their key blamed for a field the button never sent,
+   * with the model they had just fetched and picked sitting in the box above.
+   *
+   * The rule this settles, and the one the whole phase is about: Test must ask
+   * the same question the turn asks. The turn always names a model — a route
+   * with none throws `no_model` before it reaches an adapter — so this does
+   * too.
+   */
+  function testRequest() {
+    const data = new FormData(formRef.current ?? undefined);
+    return { ...modelRequest(), model: String(data.get("model") ?? "").trim() };
+  }
+
   return (
     <>
       <form
@@ -239,9 +259,11 @@ export function ProviderFields({
                 if (nameRef.current !== null) nameRef.current.value = picked.name;
                 if (baseUrlRef.current !== null) baseUrlRef.current.value = picked.baseUrl;
                 if (kindRef.current !== null) kindRef.current.value = picked.kind;
-                const first = picked.models?.[0] ?? "";
-                if (modelRef.current !== null) modelRef.current.value = first;
-                setChosenModel(first);
+                // No model: a preset names an address, never a model id
+                // (§20 phase 182). Fetch asks the provider what it serves,
+                // which is the only answer that cannot go stale.
+                if (modelRef.current !== null) modelRef.current.value = "";
+                setChosenModel("");
               }}
             >
               <option value="">{strings.settings.providerPresetNone}</option>
@@ -382,13 +404,17 @@ export function ProviderFields({
             can be tested before it is committed (§20 phase 179). It used to
             need a saved row, which made adding one a loop of save, reopen,
             test, fix, save. */}
-        <div className="mb-[10px] flex items-center gap-[8px]">
+        {/* Stacked, not a row: the result is a sentence from the provider and
+            it used to sit in a `truncate` span beside the button, so a 400
+            explaining exactly which models an endpoint serves was clipped
+            mid-word with no way to reach the rest (§20 phase 182). */}
+        <div className="mb-[10px]">
           <button
             type="button"
-            className="btn flex-1"
+            className="btn w-full"
             disabled={test.isPending}
             onClick={() =>
-              test.mutate(modelRequest(), {
+              test.mutate(testRequest(), {
                 onSuccess: (result) =>
                   setTestResult(
                     result.ok
@@ -402,9 +428,13 @@ export function ProviderFields({
             {test.isPending ? strings.settings.providerTesting : strings.settings.providerTest}
           </button>
           {testResult === null ? null : (
-            <span className="chrome min-w-0 flex-1 truncate text-[12px] leading-[1.4] text-ink-dim">
+            <p
+              className="chrome mt-[8px] max-h-[180px] overflow-y-auto text-[12px] leading-[1.5] break-words whitespace-pre-wrap text-ink-dim select-all"
+              // `select-all` because the useful thing to do with a provider's
+              // error is paste it somewhere.
+            >
               {testResult}
-            </span>
+            </p>
           )}
         </div>
 

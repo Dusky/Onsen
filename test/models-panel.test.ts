@@ -141,7 +141,7 @@ describe("a provider can be tested before it is saved", () => {
   test("the client sends the form, so the button needs no id", () => {
     expect(QUERIES).toContain("export function useTestConnection()");
     expect(FIELDS).toContain("const test = useTestConnection();");
-    expect(FIELDS).toContain("test.mutate(modelRequest()");
+    expect(FIELDS).toContain("test.mutate(testRequest()");
     // The old gate: Test used to be hidden until the provider existed.
     expect(FIELDS).not.toContain("{provider !== null ? (\n          <div className=\"mb-[10px] flex");
   });

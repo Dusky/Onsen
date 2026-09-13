@@ -8700,3 +8700,103 @@ them per connection, and this app sets `PRAGMA foreign_keys = ON` at open
 as a guarantee whether or not anything switches it on. The test asserts the
 *column* is null after a delete, not merely that the DTO's ulid lookup missed;
 those look identical through the API and are not the same thing.
+
+## Phase 182 — Test what the turn actually does
+
+The report was one sentence and an error cut off mid-word: *"deepseek is
+failing even tho i am using a valid api. Failed — HTTP 400:
+`{"error":{"message":"The supported API model n`"* — and then, when the first
+guess landed on the preset's prefilled model id, a correction: *"these were
+grabbed from the 'fetch' tho?"*
+
+That correction is what turned a plausible fix into the right one. The model
+**was** fetched from the provider's own API and **was** valid. The Test button
+never sent it.
+
+### The one cause, with three faces
+
+`ProviderEditor` had a `modelRequest()` built for `POST /providers/models` —
+asking a provider what it serves, a question that cannot name a model, so the
+request correctly carries none. Test reused it verbatim. Every test therefore
+posted `model: ""`, and DeepSeek answered the only way it can: a 400 listing
+the models it *does* serve. The reader read that as their key being rejected,
+with the model they had just fetched sitting in the box above.
+
+Pulling that thread found two more of the same kind, both shipped by the two
+phases just before this one:
+
+- **The Test button built its own Anthropic path.** It used `/messages`; the
+  adapter appends `v1/messages`. Phase 180's preset shipped
+  `https://api.anthropic.com/v1` to match the test — so Test passed and every
+  real turn 404'd at `…/v1/v1/messages`. Confirmed against the live API:
+  `POST https://api.anthropic.com/v1/messages` → 401 (endpoint real, no key),
+  `POST https://api.anthropic.com/v1/v1/messages` → 404.
+- **The text-completion probe sent no model either**, while `text.ts` sends
+  `model: config.model`. A third way the test differed from the turn.
+
+The common shape is worth naming because it is the same one phase 181 found in
+the status readouts: **a check that asks a different question than the real
+thing can pass while the app is broken.** There it was three client readouts
+re-deriving `resolveRoute`; here it is a Test button re-deriving the request.
+Both fixes are the same move — one owner, and everybody reads it.
+
+### What changed
+
+`server/adapters/errors.ts` is new and owns four things that existed in three
+or four near-identical copies: `providerErrorMessage` (pull the sentence out of
+whatever envelope arrived — nested `error.message`, a flat `error` string, a
+top-level `message` or `detail`, or the raw body if it is not JSON at all),
+`readErrorBody`, `chatPathFor` and `joinUrl`. The three adapters lost their
+private copies; `connections.ts` gained the shared ones.
+
+Test now names a model on every kind, and refuses locally when there is none —
+a turn with no model throws `no_model` before any adapter is reached, so a test
+without one is testing something that cannot happen, and saying so ourselves
+beats relaying a provider's confusion about a field we omitted.
+
+The result is a wrapping, scrolling, selectable panel rather than a `truncate`d
+span beside the button. The old shape clipped at 200 characters *and* showed
+the JSON envelope, so the two failures compounded: the useful half of the
+sentence was exactly what got cut.
+
+And **no preset names a model any more**. The first version shipped ids for the
+two providers whose documentation seemed clearest and DeepSeek's were already
+wrong. Fetch asks the provider what it serves right now, which cannot go stale.
+The asymmetry is the argument: a blank model is a small, obvious, one-click
+gap; a wrong one is invisible until a turn fails, naming something the reader
+never typed.
+
+**Verified** in Chromium at 1600×950 and 390×844, both themes, against a
+stand-in provider that records the URL and body it was asked. With a model the
+probe resolves `/v1/chat/completions` carrying `{"model":"deepseek-chat",…}`
+and Anthropic resolves `/v1/messages` — not `/v1/v1/messages`. With no model it
+refuses in 0ms without a round trip. A 556-character provider error arrives
+whole, envelope stripped, and renders with `scrollWidth === clientWidth` at
+both sizes (no horizontal clipping); the phone caps at 180px and scrolls
+(scrollH 234). Picking the DeepSeek preset over a typed `deepseek-flash`
+cleared it and filled `https://api.deepseek.com/v1`; picking Anthropic filled
+`https://api.anthropic.com`.
+
+### Surprises
+
+**The bug was in the two phases immediately before it.** Phase 179 gave Test a
+second door (test before saving) by reusing the model-list request, and phase
+180 shipped an Anthropic address that agreed with the *test's* wrong path
+instead of the adapter's. Both were driven in a browser and both looked right,
+because the thing that verified them was the thing that was wrong.
+
+**A guard that names a function pins nothing about what it sends.** The phase
+179 test asserted `test.mutate(modelRequest()` — perfectly true throughout, and
+the whole bug was inside `modelRequest()`. Renaming the call site to
+`testRequest()` was the only reason it failed at all. It now asserts the
+request *contains a model*, and that the model-list request does not — pinned
+in `client/lib/queries.ts` at the type level, where it is actually true, rather
+than by proximity in a component.
+
+**A sweep that reads prose as code fails on its own explanation.** The new
+"never build these paths by hand" guard tripped on the comment in
+`connections.ts` explaining which path it used to build wrongly. Second time
+this project has hit it (the first was `test/sheet-dialog.test.ts` on a doc
+comment quoting Tailwind classes). Fixed the same way both times — make the
+assertion mean what it says, with a `codeOf()` that strips comments first, not
+by deleting the comment.

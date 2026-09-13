@@ -6,6 +6,7 @@ import type {
   ToolCall,
 } from "../prompt/index.ts";
 import { parseSseStream } from "./sse.ts";
+import { chatPathFor, joinUrl, readErrorBody } from "./errors.ts";
 import {
   AdapterError,
   type Adapter,
@@ -286,26 +287,6 @@ interface ErrorBody {
   error?: { type?: string; message?: string };
 }
 
-function joinUrl(baseUrl: string, path: string): string {
-  return `${baseUrl.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`;
-}
-
-async function readErrorBody(response: Response): Promise<string | null> {
-  try {
-    const text = await response.text();
-    if (text === "") return null;
-    try {
-      const parsed = JSON.parse(text) as ErrorBody;
-      if (parsed.error?.message !== undefined) return parsed.error.message;
-    } catch {
-      /* Not JSON; the raw body is still the most useful thing to show. */
-    }
-    return text.slice(0, 500);
-  } catch {
-    return null;
-  }
-}
-
 /** 429 and 5xx are worth another attempt; 529 is the overload code. */
 function isRetryable(status: number): boolean {
   return status === 408 || status === 429 || status >= 500;
@@ -389,7 +370,7 @@ export function createAnthropicAdapter(config: AdapterConfig): Adapter {
 
       let response: Response;
       try {
-        response = await doFetch(joinUrl(config.baseUrl, "v1/messages"), {
+        response = await doFetch(joinUrl(config.baseUrl, chatPathFor("anthropic")), {
           method: "POST",
           headers: headers(),
           // SPEC §4: the signal must reach upstream, or an abandoned

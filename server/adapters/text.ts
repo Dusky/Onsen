@@ -1,6 +1,7 @@
 import type { SamplerSettings } from "../../shared/types.ts";
 import type { BuiltPrompt, InstructTemplate, ProviderCapabilities } from "../prompt/index.ts";
 import { parseSseStream } from "./sse.ts";
+import { chatPathFor, joinUrl, readErrorBody } from "./errors.ts";
 import { AdapterError, type Adapter, type AdapterConfig, type ModelInfo, type TokenChunk } from "./types.ts";
 
 /**
@@ -66,10 +67,6 @@ interface CompletionChunk {
   error?: { message?: string } | string;
 }
 
-function joinUrl(baseUrl: string, path: string): string {
-  return `${baseUrl.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`;
-}
-
 function samplerFields(settings: SamplerSettings): Record<string, unknown> {
   const fields: Record<string, unknown> = {};
   const put = (key: string, value: number | string[] | undefined) => {
@@ -89,23 +86,6 @@ function samplerFields(settings: SamplerSettings): Record<string, unknown> {
   put("xtc_probability", settings.xtc_probability);
 
   return fields;
-}
-
-async function readErrorBody(response: Response): Promise<string | null> {
-  try {
-    const text = await response.text();
-    if (text === "") return null;
-    try {
-      const parsed = JSON.parse(text) as { error?: { message?: string } | string };
-      if (typeof parsed.error === "string") return parsed.error;
-      if (parsed.error?.message !== undefined) return parsed.error.message;
-    } catch {
-      /* Not JSON; the raw body is still the most useful thing to show. */
-    }
-    return text.slice(0, 500);
-  } catch {
-    return null;
-  }
 }
 
 /** Everything the text adapter needs beyond the shared config. */
@@ -154,7 +134,7 @@ export function createTextCompletionAdapter(config: TextAdapterConfig): Adapter 
       const stop = config.instruct?.stopSequences ?? [];
       let response: Response;
       try {
-        response = await doFetch(joinUrl(config.baseUrl, "completions"), {
+        response = await doFetch(joinUrl(config.baseUrl, chatPathFor("text_completion")), {
           method: "POST",
           headers: headers(),
           signal,
