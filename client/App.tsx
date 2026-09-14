@@ -282,9 +282,13 @@ function Shell() {
     <div className="relative screen-height">
       <SkipToWriting />
       <Background />
-      <div className="relative z-10 flex h-full bg-bg">
-        {vanished ? null : <LeftRail />}
-        <div className="flex min-w-0 flex-1 flex-col">
+      <div className="relative z-10 grid h-full bg-bg" style={{ gridTemplateColumns: "auto 1fr auto" }}>
+        {/* Main content first in the DOM, so a keyboard reaches the composer
+            before the rails' seventy-odd tab stops (§20 phase 212). Grid
+            placement, not flex `order`, keeps the rails visually where they
+            have always been — left rail, main column, right rail — because
+            `order` would reorder the tab sequence along with the visuals. */}
+        <div className="flex min-w-0 flex-col" style={{ gridColumn: 2 }}>
           {vanished ? null : <Header />}
           <div className="relative flex min-h-0 flex-1 flex-col">
             {/* `hidden`, not unmounted — see the same wrapper on the phone
@@ -302,7 +306,16 @@ function Shell() {
             )}
           </div>
         </div>
-        {vanished ? null : <RightRail />}
+        {vanished ? null : (
+          <div className="flex flex-none" style={{ gridColumn: 1 }}>
+            <LeftRail />
+          </div>
+        )}
+        {vanished ? null : (
+          <div className="flex flex-none" style={{ gridColumn: 3 }}>
+            <RightRail />
+          </div>
+        )}
       </div>
       <NoticeRegion position={reader.notices} />
       <SearchOverlay />

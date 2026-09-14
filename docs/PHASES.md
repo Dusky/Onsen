@@ -10023,3 +10023,31 @@ has no model box) and with 1946 tests across 143 files, typecheck clean. The
 phase-182 guard's "picking a preset clears the model box" assertion became "a
 provider form carries no model box to go stale", and the per-scene model tests
 followed the override into Scene Setup.
+
+## Phase 212 — The writing comes before the machinery, in the DOM
+
+`docs/PRODUCT.md` named the prime anti-pattern as "machinery louder than
+writing": the composer sat behind the left rail's prompt panel in the tab
+order, and a keyboard reader reached it in ~102 presses. Phase 191 shipped the
+fast routes (`c`, a skip link) and deferred the structural fix. This is it.
+
+The desktop shell now renders the main column **first in the DOM**, with the
+rails after it. The catch that forced a second attempt: flex `order` puts the
+rails back visually but also reorders the *tab sequence* along with them, so it
+cancelled itself out. The fix is CSS Grid placement instead — the container is
+`grid-template-columns: auto 1fr auto`, the main column sits in `gridColumn: 2`
+and the rails in 1 and 3, and grid placement (unlike `order`) does not touch
+sequential navigation. Visual order is unchanged; DOM and tab order now reach
+the composer first.
+
+**Verified** with a browser drive: composer at **58** tab presses from the top
+(down from 102), and the prompt rail now sits *after* it. `vanish.test.ts`'s
+guard was widened to the new grid-wrapper shape. 1946 tests across 143 files,
+typecheck clean. No horizontal overflow, rails at their old positions.
+
+### Not done here
+
+The remaining distance is the message log's own per-turn action buttons (reroll
+/ edit / branch / copy / hide / inspect — six per turn). Whether those should
+all be tab stops is a design decision for its own phase; the fast routes (`c`,
+the skip link) already answer the common case.

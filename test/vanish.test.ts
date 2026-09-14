@@ -51,9 +51,15 @@ describe("the key", () => {
 
 describe("what disappears", () => {
   test("both rails and the header vanish on desktop", () => {
-    expect(APP).toMatch(/\{vanished \? null : <LeftRail \/>\}/);
+    // Phase 212 wrapped each rail in a grid-column div so the main content
+    // can come first in the DOM; the vanish guard still wraps each rail.
+    expect(APP).toMatch(
+      /\{vanished \? null : \(\s*<div className="flex flex-none" style=\{\{ gridColumn: 1 \}\}>\s*<LeftRail \/>/,
+    );
     expect(APP).toMatch(/\{vanished \? null : <Header \/>\}/);
-    expect(APP).toMatch(/\{vanished \? null : <RightRail \/>\}/);
+    expect(APP).toMatch(
+      /\{vanished \? null : \(\s*<div className="flex flex-none" style=\{\{ gridColumn: 3 \}\}>\s*<RightRail \/>/,
+    );
   });
 
   test("the phone's top bar vanishes too, even with no rail to lose", () => {
