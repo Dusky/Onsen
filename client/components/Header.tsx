@@ -61,6 +61,7 @@ export function Header() {
   const themes = useThemes();
   const activate = useActivateTheme();
   const { toggleLeftRail, toggleRightRail } = useUiStore();
+  const setSearchOpen = useUiStore((state) => state.setSearchOpen);
 
   const sceneId = base.name === "chat" ? base.sceneId : null;
   const scene = (scenes.data ?? []).find((candidate) => candidate.id === sceneId) ?? null;
@@ -239,6 +240,14 @@ export function Header() {
       {/* Settings: a destination, not a section, so it does not share the
           panel toggles' shape or the wordmark's weight \u2014 a hairline and the
           muted treatment mark it as leaving the page (design review fix 4). */}
+      <button
+        type="button"
+        onClick={() => setSearchOpen(true)}
+        aria-label={strings.search.title}
+        className="chrome flex items-center border-l border-rule px-[12px] text-[12px] text-ink-muted"
+      >
+        {strings.search.title}
+      </button>
       <button
         type="button"
         onClick={() => navigate({ name: "assistant" })}

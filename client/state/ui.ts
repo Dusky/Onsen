@@ -43,6 +43,8 @@ interface UiState {
    * rather than becoming the one thing in this store that persists.
    */
   vanished: boolean;
+  /** Global search (phase 211): the library-wide find, over the chat/search. */
+  searchOpen: boolean;
   toggleLeftRail(): void;
   toggleRightRail(): void;
   /** Set directly rather than toggled — the auto-collapse bands (breakpoint.ts,
@@ -54,6 +56,7 @@ interface UiState {
   setRightActive(panel: DockPanel): void;
   setSceneInspector(node: ReactNode | null): void;
   setOocPanel(node: ReactNode | null): void;
+  setSearchOpen(open: boolean): void;
   toggleVanished(): void;
 }
 
@@ -65,6 +68,7 @@ export const useUiStore = create<UiState>((set) => ({
   sceneInspector: null,
   oocPanel: null,
   vanished: false,
+  searchOpen: false,
   toggleLeftRail: () => set((state) => ({ leftRailOpen: !state.leftRailOpen })),
   toggleRightRail: () => set((state) => ({ rightRailOpen: !state.rightRailOpen })),
   setLeftRailOpen: (open) => set({ leftRailOpen: open }),
@@ -73,5 +77,6 @@ export const useUiStore = create<UiState>((set) => ({
   setRightActive: (panel) => set({ rightActive: panel }),
   setSceneInspector: (node) => set({ sceneInspector: node }),
   setOocPanel: (node) => set({ oocPanel: node }),
+  setSearchOpen: (open) => set({ searchOpen: open }),
   toggleVanished: () => set((state) => ({ vanished: !state.vanished })),
 }));

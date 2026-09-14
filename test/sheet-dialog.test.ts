@@ -165,13 +165,20 @@ describe("nothing else hand-rolls the phone shape", () => {
 
   test("a full-screen overlay is the shell, the palette, or a route", () => {
     /*
-     * `fixed inset-0` is how a modal covers the window, and three files are
-     * entitled to it: the shell, the palette, and `Background`, which paints
-     * the scene's artwork behind everything and is not a modal at all.
-     * `RouteOverlay` uses `absolute inset-0` inside the shell's own layer, so
-     * it is not in this list by construction.
+     * `fixed inset-0` is how a modal covers the window, and four files are
+     * entitled to it: the shell, the palette and its sibling the global
+     * search (both keyboard-first full-screen dialogs, distinct from the
+     * bottom-sheet `Sheet`), and `Background`, which paints the scene's
+     * artwork behind everything and is not a modal at all. `RouteOverlay`
+     * uses `absolute inset-0` inside the shell's own layer, so it is not in
+     * this list by construction.
      */
     const overlays = files.filter((name) => read(name).includes("fixed inset-0"));
-    expect(overlays.sort()).toEqual(["Background.tsx", "CommandPalette.tsx", "Sheet.tsx"]);
+    expect(overlays.sort()).toEqual([
+      "Background.tsx",
+      "CommandPalette.tsx",
+      "SearchOverlay.tsx",
+      "Sheet.tsx",
+    ]);
   });
 });

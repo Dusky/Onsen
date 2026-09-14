@@ -1338,6 +1338,23 @@ export const strings = {
     addProfile: "Add a profile",
   },
 
+  search: {
+    title: "Search",
+    placeholder: "Search the library\u2026",
+    hint: "Roleplays, characters, lorebooks, personas and authors. Type to find one.",
+    empty: "Nothing matches that.",
+    lorebook: "Lorebook",
+    persona: "Persona",
+    author: "Author",
+    kinds: {
+      scene: "Roleplay",
+      character: "Character",
+      lorebook: "Lorebook",
+      persona: "Persona",
+      author: "Author",
+    },
+  },
+
   rightRail: {
     inThisScene: "In this scene",
     characters: "Characters",

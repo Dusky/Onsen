@@ -2,6 +2,7 @@ import { useState } from "react";
 import { strings } from "../strings.ts";
 import { navigate, useRoute, type Route } from "../lib/router.ts";
 import { useGeneration } from "../lib/generation.ts";
+import { useUiStore } from "../state/ui.ts";
 import { Logo } from "./Logo.tsx";
 import { Sheet } from "./Sheet.tsx";
 
@@ -45,6 +46,7 @@ export function TopBar() {
   const route = useRoute();
   const generation = useGeneration();
   const [moreOpen, setMoreOpen] = useState(false);
+  const setSearchOpen = useUiStore((state) => state.setSearchOpen);
 
   // A chat, a scene's setup, and the roleplays list are all "roleplays" as far
   // as the nav is concerned; an editor names its list.
@@ -131,6 +133,16 @@ export function TopBar() {
           }}
         >
           {"\u22ef"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setSearchOpen(true)}
+          aria-label={strings.search.title}
+          title={strings.search.title}
+          className="chrome flex-none px-[10px] py-[14px] text-[13px]"
+          style={{ color: "var(--onsen-color-text-muted)" }}
+        >
+          {"\u2315"}
         </button>
       </nav>
 

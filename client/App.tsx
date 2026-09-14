@@ -27,6 +27,7 @@ import { setChimeWanted, unlockAudio } from "./lib/chime.ts";
 import { usePreferences, useReader, useReading } from "./lib/queries.ts";
 import { useMotionPreference, useReadingVariables, useViewportHeight } from "./lib/viewport.ts";
 import { NoticeRegion } from "./components/NoticeRegion.tsx";
+import { SearchOverlay } from "./components/SearchOverlay.tsx";
 import { RouteOverlay } from "./components/RouteOverlay.tsx";
 import { useUiStore } from "./state/ui.ts";
 import type { BootstrapDto } from "@shared/types.ts";
@@ -272,6 +273,7 @@ function Shell() {
         {/* Above every screen on both layouts, mounted once: the live regions
             have to be watched before the first notice arrives (§167). */}
         <NoticeRegion position={reader.notices} />
+        <SearchOverlay />
         {vanished ? <VanishHandle onRestore={toggleVanished} /> : null}
       </div>
     );
@@ -303,6 +305,7 @@ function Shell() {
         {vanished ? null : <RightRail />}
       </div>
       <NoticeRegion position={reader.notices} />
+      <SearchOverlay />
       {vanished ? <VanishHandle onRestore={toggleVanished} /> : null}
     </div>
   );
