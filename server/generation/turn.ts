@@ -60,6 +60,8 @@ export function resolveNextSpeaker(
         characterId:
           spoke === null ? null : (castRows.find((member) => member.id === spoke)?.ulid ?? null),
         content: row.content,
+        // The mention strategy scans only the reader's words.
+        isUser: row.author_type === "user",
       };
     }),
     ...(requested == null ? {} : { requested }),

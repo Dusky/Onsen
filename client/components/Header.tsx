@@ -241,6 +241,14 @@ export function Header() {
           muted treatment mark it as leaving the page (design review fix 4). */}
       <button
         type="button"
+        onClick={() => navigate({ name: "assistant" })}
+        aria-label={strings.nav.assistant}
+        className="chrome flex items-center border-l border-rule px-[12px] text-[12px] text-ink-muted"
+      >
+        {strings.nav.assistant}
+      </button>
+      <button
+        type="button"
         onClick={() => navigate({ name: "settings" })}
         aria-label={strings.nav.settings}
         className="chrome flex items-center border-l border-rule px-[12px] text-[12px] text-ink-muted"

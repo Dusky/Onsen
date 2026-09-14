@@ -137,16 +137,12 @@ export function ProviderFields({
   const create = useCreateProvider();
   const update = useUpdateProvider();
   const remove = useDeleteProvider();
-  const test = useTestConnection();
   const [error, setError] = useState<string | null>(null);
-  const [testResult, setTestResult] = useState<string | null>(null);
-  const modelRef = useRef<HTMLInputElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const baseUrlRef = useRef<HTMLInputElement>(null);
   const kindRef = useRef<HTMLSelectElement>(null);
   /** The preset last picked, for the note under the picker. */
   const [preset, setPreset] = useState<ProviderPreset | null>(null);
-  const [chosenModel, setChosenModel] = useState(provider?.model ?? "");
   const [confirmNode, confirm] = useConfirm();
   const formRef = useRef<HTMLFormElement>(null);
   /*
@@ -161,39 +157,9 @@ export function ProviderFields({
   const [instruct, setInstruct] = useState<string | null>(provider?.instructTemplate ?? null);
 
   // The model list comes from the provider's own API (§16). The key crosses to
-  // our server transiently for the call — never stored, never to a third party.
-  // Read at click time, not from state: this form is uncontrolled and is still
-  // being typed into.
-  function modelRequest() {
-    const data = new FormData(formRef.current ?? undefined);
-    return {
-      kind: provider?.kind ?? String(data.get("kind") ?? ""),
-      baseUrl: String(data.get("baseUrl") ?? ""),
-      apiKey: String(data.get("apiKey") ?? ""),
-      ...(provider === null ? {} : { providerId: provider.id }),
-    };
-  }
-
-  /*
-   * What Test sends, which is not what the model list sends (§20 phase 182).
-   *
-   * Test reused `modelRequest()` verbatim, and that request has no `model` in
-   * it — correctly, because asking a provider what it serves is a question
-   * that cannot name a model. So every test posted `model: ""`, and a hosted
-   * provider answered the only way it can: a 400 naming the models it does
-   * serve. The reader saw their key blamed for a field the button never sent,
-   * with the model they had just fetched and picked sitting in the box above.
-   *
-   * The rule this settles, and the one the whole phase is about: Test must ask
-   * the same question the turn asks. The turn always names a model — a route
-   * with none throws `no_model` before it reaches an adapter — so this does
-   * too.
-   */
-  function testRequest() {
-    const data = new FormData(formRef.current ?? undefined);
-    return { ...modelRequest(), model: String(data.get("model") ?? "").trim() };
-  }
-
+  // A provider is an endpoint, not a model (phase 210): its model lives on the
+  // profiles that point at it, so the form carries no model box and no Test.
+  // The profile's own form fetches the model list and tests a real turn.
   return (
     <>
       <form
@@ -203,7 +169,6 @@ export function ProviderFields({
           const form = new FormData(event.currentTarget);
           const name = String(form.get("name") ?? "").trim();
           const baseUrl = String(form.get("baseUrl") ?? "").trim();
-          const model = String(form.get("model") ?? "").trim();
           const apiKey = String(form.get("apiKey") ?? "").trim();
           const kind = String(form.get("kind") ?? "openai_compatible");
 
@@ -214,7 +179,6 @@ export function ProviderFields({
                 name,
                 kind: kind as ProviderDto["kind"],
                 baseUrl: baseUrl === "" ? null : baseUrl,
-                model: model === "" ? null : model,
                 apiKey: apiKey === "" ? null : apiKey,
               },
               done,
@@ -225,7 +189,6 @@ export function ProviderFields({
                 id: provider.id,
                 name,
                 baseUrl: baseUrl === "" ? null : baseUrl,
-                model: model === "" ? null : model,
                 supportsPrefill: prefill,
                 instructTemplate: instruct,
                 // Blank leaves the stored key alone. A form that came back
@@ -259,11 +222,6 @@ export function ProviderFields({
                 if (nameRef.current !== null) nameRef.current.value = picked.name;
                 if (baseUrlRef.current !== null) baseUrlRef.current.value = picked.baseUrl;
                 if (kindRef.current !== null) kindRef.current.value = picked.kind;
-                // No model: a preset names an address, never a model id
-                // (§20 phase 182). Fetch asks the provider what it serves,
-                // which is the only answer that cannot go stale.
-                if (modelRef.current !== null) modelRef.current.value = "";
-                setChosenModel("");
               }}
             >
               <option value="">{strings.settings.providerPresetNone}</option>
@@ -319,28 +277,6 @@ export function ProviderFields({
           placeholder="http://localhost:8080/v1"
           defaultValue={provider?.baseUrl ?? ""}
         />
-
-        <p className="section-label mb-[6px]">{strings.settings.providerModel}</p>
-        <div className="mb-[14px]">
-          <ModelPicker
-            request={modelRequest}
-            selected={chosenModel}
-            onPick={(model) => {
-              // Written straight to the field, which is uncontrolled; the state
-              // is kept in step so the pick stays highlighted.
-              if (modelRef.current !== null) modelRef.current.value = model;
-              setChosenModel(model);
-            }}
-          >
-            <input
-              ref={modelRef}
-              name="model"
-              className="field min-w-0 flex-1"
-              defaultValue={provider?.model ?? ""}
-              onChange={(event) => setChosenModel(event.target.value)}
-            />
-          </ModelPicker>
-        </div>
 
         <p className="section-label mb-[6px]">{strings.settings.providerKey}</p>
         <input name="apiKey" type="password" className="field" autoComplete="off" />
@@ -398,45 +334,6 @@ export function ProviderFields({
         {error === null ? null : (
           <p className="explain explain-alert mb-[10px]">{error}</p>
         )}
-
-        {/* §16: one round trip, so a bad key reads here rather than on the
-            first generation — and on the values in the form, so a new provider
-            can be tested before it is committed (§20 phase 179). It used to
-            need a saved row, which made adding one a loop of save, reopen,
-            test, fix, save. */}
-        {/* Stacked, not a row: the result is a sentence from the provider and
-            it used to sit in a `truncate` span beside the button, so a 400
-            explaining exactly which models an endpoint serves was clipped
-            mid-word with no way to reach the rest (§20 phase 182). */}
-        <div className="mb-[10px]">
-          <button
-            type="button"
-            className="btn w-full"
-            disabled={test.isPending}
-            onClick={() =>
-              test.mutate(testRequest(), {
-                onSuccess: (result) =>
-                  setTestResult(
-                    result.ok
-                      ? `${strings.settings.providerTestOk} · ${result.latencyMs}ms`
-                      : `${strings.settings.providerTestFail} — ${result.detail ?? ""}`,
-                  ),
-                onError: (e: Error) => setTestResult(e.message),
-              })
-            }
-          >
-            {test.isPending ? strings.settings.providerTesting : strings.settings.providerTest}
-          </button>
-          {testResult === null ? null : (
-            <p
-              className="chrome mt-[8px] max-h-[180px] overflow-y-auto text-[12px] leading-[1.5] break-words whitespace-pre-wrap text-ink-dim select-all"
-              // `select-all` because the useful thing to do with a provider's
-              // error is paste it somewhere.
-            >
-              {testResult}
-            </p>
-          )}
-        </div>
 
         <ActionRow
           onRemove={
@@ -498,8 +395,10 @@ export function ProfileFields({
   const create = useCreateProfile();
   const update = useUpdateProfile();
   const remove = useDeleteProfile();
+  const test = useTestConnection();
   const presets = usePresets().data ?? [];
   const [error, setError] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<string | null>(null);
   const [confirmNode, confirm] = useConfirm();
   const modelRef = useRef<HTMLInputElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
@@ -522,6 +421,23 @@ export function ProfileFields({
     return {
       kind: provider?.kind ?? "",
       baseUrl: provider?.baseUrl ?? "",
+      ...(provider === undefined ? {} : { providerId: provider.id }),
+    };
+  }
+
+  /*
+   * Test asks the same question a turn asks (§20 phase 182), moved here from
+   * the provider form: a turn's model comes from the profile, so this is the
+   * place that can name it.
+   */
+  function testRequest() {
+    const data = new FormData(formRef.current ?? undefined);
+    const providerId = String(data.get("providerId") ?? "");
+    const provider = providers.find((candidate) => candidate.id === providerId);
+    return {
+      kind: provider?.kind ?? "",
+      baseUrl: provider?.baseUrl ?? "",
+      model: String(data.get("model") ?? "").trim(),
       ...(provider === undefined ? {} : { providerId: provider.id }),
     };
   }
@@ -619,6 +535,35 @@ export function ProfileFields({
           defaultValue={profile?.contextSize ?? ""}
           className="field mb-[14px]"
         />
+
+        {/* §16's test, on the values the profile will actually use: one round
+            trip so a bad key or model reads here rather than on a scene's
+            first turn. */}
+        <div className="mb-[10px]">
+          <button
+            type="button"
+            className="btn w-full"
+            disabled={test.isPending}
+            onClick={() =>
+              test.mutate(testRequest(), {
+                onSuccess: (result) =>
+                  setTestResult(
+                    result.ok
+                      ? `${strings.settings.providerTestOk} · ${result.latencyMs}ms`
+                      : `${strings.settings.providerTestFail} — ${result.detail ?? ""}`,
+                  ),
+                onError: (e: Error) => setTestResult(e.message),
+              })
+            }
+          >
+            {test.isPending ? strings.settings.providerTesting : strings.settings.providerTest}
+          </button>
+          {testResult === null ? null : (
+            <p className="chrome mt-[8px] max-h-[180px] overflow-y-auto text-[12px] leading-[1.5] break-words whitespace-pre-wrap text-ink-dim select-all">
+              {testResult}
+            </p>
+          )}
+        </div>
 
         {error === null ? null : (
           <p className="explain explain-alert mb-[10px]">{error}</p>

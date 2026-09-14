@@ -318,8 +318,14 @@ export function openAiRoutes({ ctx, generation }: OpenAiRouteOptions): Hono<AppE
     const created = Math.floor(Date.now() / 1000);
 
     if (body["stream"] === true) {
-      finish(200, warning);
-      return streamCompletion(generation, snapshot.id, modelId, completionId, created);
+      // The request is recorded when the stream ends rather than when it starts:
+      // a streaming error would otherwise be logged as an HTTP 200 before the
+      // first token left the server. The recorder carries the true status, and
+      // the generation is server-owned, so it always settles even if the
+      // client disconnects.
+      return streamCompletion(generation, snapshot.id, modelId, completionId, created, (status) =>
+        finish(status, warning),
+      );
     }
 
     const settled = await generation.awaitSettled(snapshot.id);
@@ -390,6 +396,13 @@ export function openAiRoutes({ ctx, generation }: OpenAiRouteOptions): Hono<AppE
  * offset is what the conversion needs — a client that missed nothing still gets
  * each token exactly once, and one that reconnects gets a new completion rather
  * than a duplicated one, which is what every OpenAI client already expects.
+ *
+ * The stream shape has **no error channel**: `finish_reason` is the only word
+ * a chunk has for why it ended, and no client knows a non-standard value. So a
+ * generation that failed or was cancelled terminates as a length-limited
+ * completion — the partial content, then `[DONE]` — and the *request log* is
+ * what records the true outcome (`onSettled`). The non-streaming path returns
+ * the real 502; this path cannot, and does not pretend.
  */
 function streamCompletion(
   generation: GenerationService,
@@ -397,6 +410,7 @@ function streamCompletion(
   model: string,
   completionId: string,
   created: number,
+  onSettled: (status: number) => void,
 ): Response {
   const encoder = new TextEncoder();
 
@@ -440,6 +454,10 @@ function streamCompletion(
           return;
         }
         if (event.type === "done" || event.type === "cancelled" || event.type === "error") {
+          // The one place the true outcome is known. `error` is the only one
+          // that is a failure; a cancel is the reader stopping early, which is
+          // a fulfilled request on this surface.
+          onSettled(event.type === "error" ? 502 : 200);
           send(chunk({}, event.type === "done" ? "stop" : "length"));
           if (!closed) {
             closed = true;

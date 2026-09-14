@@ -605,9 +605,15 @@ function Avatar({
   personaId: string | null;
 }) {
   const [open, setOpen] = useState(false);
+  // A character with no portrait has no URL worth requesting; the initial
+  // letter is the whole thing (§20 phase 200). The reader's own picture is
+  // gated by the layout toggle and `personaId`, not by this flag, so it keeps
+  // the URL it always had.
   const url =
     message.characterId !== null
-      ? `/api/characters/${message.characterId}/avatar`
+      ? message.hasAvatar
+        ? `/api/characters/${message.characterId}/avatar`
+        : null
       : personaId === null
         ? null
         : `/api/personas/${personaId}/avatar`;

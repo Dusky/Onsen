@@ -10,6 +10,9 @@ import type {
   ReadingDto,
   SceneFilterQuery,
   SceneListDto,
+  AgentThreadDto,
+  AgentMessageDto,
+  AgentUndoDto,
 } from "@shared/types.ts";
 import { DOCK_DEFAULTS, LAYOUT_PRESETS, READER_DEFAULTS, READING_DEFAULTS } from "@shared/types.ts";
 import type {
@@ -19,7 +22,6 @@ import type {
   BulkCharacterRequest,
   BulkCharacterResponse,
   CharacterFilterQuery,
-  CharacterSnapshotDto,
   CharacterVersionDto,
   ConnectionProfileDto,
   DocumentDto,
@@ -901,7 +903,6 @@ export const characterKeys = {
   tags: ["characters", "tags"] as const,
   folders: ["characters", "folders"] as const,
   versions: (id: string) => ["characters", id, "versions"] as const,
-  snapshot: (id: string, versionId: string) => ["characters", id, "versions", versionId] as const,
 };
 
 /** The library, searched and filtered server-side (SPEC §9, phase 26). */
@@ -1652,14 +1653,6 @@ export function useCharacterVersions(characterId: string) {
   return useQuery({
     queryKey: characterKeys.versions(characterId),
     queryFn: () => api.get<CharacterVersionDto[]>(`/characters/${characterId}/versions`),
-  });
-}
-
-export function useCharacterSnapshot(characterId: string, versionId: string | null) {
-  return useQuery({
-    queryKey: characterKeys.snapshot(characterId, versionId ?? ""),
-    queryFn: () => api.get<CharacterSnapshotDto>(`/characters/${characterId}/versions/${versionId}`),
-    enabled: versionId !== null,
   });
 }
 
@@ -3140,6 +3133,119 @@ export function useStartRoleplayFromGroup() {
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: keys.scenes });
       void client.invalidateQueries({ queryKey: keys.groups });
+    },
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* The assistant (SPEC §25, phase 46)                                  */
+/* ------------------------------------------------------------------ */
+
+export const agentKeys = {
+  threads: ["agent", "threads"] as const,
+  thread: (id: string) => ["agent", "threads", id] as const,
+  tools: ["agent", "tools"] as const,
+  undo: ["agent", "undo"] as const,
+};
+
+/** Every conversation, newest first. */
+export function useAgentThreads() {
+  return useQuery({
+    queryKey: agentKeys.threads,
+    queryFn: () => api.get<AgentThreadDto[]>("/agent/threads"),
+  });
+}
+
+/** One conversation and its history. */
+export function useAgentThread(threadId: string | null) {
+  return useQuery({
+    queryKey: agentKeys.thread(threadId ?? ""),
+    queryFn: () =>
+      api.get<{ thread: AgentThreadDto; messages: AgentMessageDto[] }>(
+        `/agent/threads/${threadId}`,
+      ),
+    enabled: threadId !== null,
+  });
+}
+
+/** What the assistant can do, for the disclosure. */
+export function useAgentTools() {
+  return useQuery({
+    queryKey: agentKeys.tools,
+    queryFn: () => api.get<{ name: string; description: string }[]>("/agent/tools"),
+  });
+}
+
+/** Everything the assistant has changed, newest first. */
+export function useAgentUndo() {
+  return useQuery({
+    queryKey: agentKeys.undo,
+    queryFn: () => api.get<AgentUndoDto[]>("/agent/undo"),
+  });
+}
+
+export function useCreateAgentThread() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (title?: string) => api.post<AgentThreadDto>("/agent/threads", { title }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: agentKeys.threads });
+    },
+  });
+}
+
+export function useRenameAgentThread() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, title }: { id: string; title: string }) =>
+      api.patch<AgentThreadDto>(`/agent/threads/${id}`, { title }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: agentKeys.threads });
+    },
+  });
+}
+
+export function useDeleteAgentThread() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/agent/threads/${id}`),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: agentKeys.threads });
+    },
+  });
+}
+
+/** Put one of the assistant's changes back. */
+export function useRestoreUndo() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.post<{ restored: Record<string, unknown>; removed: string }>(`/agent/undo/${id}`),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: agentKeys.undo });
+      // A restored character or theme changes the library and the scene list.
+      void client.invalidateQueries();
+    },
+  });
+}
+
+/** The connection profile the assistant runs on, or null for the default. */
+export function useAssistantProfile() {
+  return useQuery({
+    queryKey: ["agent", "profile"] as const,
+    queryFn: () => api.get<{ connectionProfileId: string | null }>("/agent/profile"),
+  });
+}
+
+export function useSetAssistantProfile() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (connectionProfileId: string | null) =>
+      api.patch<{ connectionProfileId: string | null }>("/agent/profile", {
+        connectionProfileId,
+      }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ["agent", "profile"] as const });
     },
   });
 }

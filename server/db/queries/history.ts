@@ -204,17 +204,21 @@ const MAX_DEPTH = 100_000;
 export interface SpeakerLookup {
   ulidById: Map<number, string>;
   nameById: Map<number, string>;
+  /** Whether each character has a portrait, so the log can skip the request. */
+  hasAvatarById: Map<number, boolean>;
 }
 
 export function speakerLookup(db: Database): SpeakerLookup {
-  const rows = db.query("SELECT id, ulid, name FROM characters").all() as {
+  const rows = db.query("SELECT id, ulid, name, avatar_path FROM characters").all() as {
     id: number;
     ulid: string;
     name: string;
+    avatar_path: string | null;
   }[];
   return {
     ulidById: new Map(rows.map((row) => [row.id, row.ulid])),
     nameById: new Map(rows.map((row) => [row.id, row.name])),
+    hasAvatarById: new Map(rows.map((row) => [row.id, row.avatar_path !== null])),
   };
 }
 
@@ -265,6 +269,9 @@ export function toMessageDto(
     // Resolved here so the log does not need the character list to render.
     speakerName:
       row.character_id === null ? null : (speakers?.nameById.get(row.character_id) ?? null),
+    // A character with no portrait has no URL worth requesting (§20 phase 200).
+    hasAvatar:
+      row.character_id === null ? false : (speakers?.hasAvatarById.get(row.character_id) ?? false),
     content: row.content,
     reasoning: row.reasoning,
     isHidden: row.is_hidden === 1,
@@ -1167,7 +1174,8 @@ function ulidOf(db: Database, table: "presets" | "connection_profiles" | "messag
 function castOf(db: Database, sceneId: number): SceneMemberDto[] {
   const rows = db
     .query(
-      `SELECT c.ulid, c.name, c.avatar_path, c.colour, m.display_order, m.is_active, m.is_muted
+      `SELECT c.ulid, c.name, c.avatar_path, c.colour, c.description, c.personality,
+              m.display_order, m.is_active, m.is_muted
          FROM scene_members m JOIN characters c ON c.id = m.character_id
         WHERE m.scene_id = $scene_id
         ORDER BY m.display_order, m.id`,
@@ -1177,6 +1185,8 @@ function castOf(db: Database, sceneId: number): SceneMemberDto[] {
     name: string;
     avatar_path: string | null;
     colour: string | null;
+    description: string | null;
+    personality: string | null;
     display_order: number;
     is_active: number;
     is_muted: number;
@@ -1185,6 +1195,8 @@ function castOf(db: Database, sceneId: number): SceneMemberDto[] {
     characterId: row.ulid,
     name: row.name,
     hasAvatar: row.avatar_path !== null,
+    hasDescription: (row.description ?? "").trim() !== "",
+    hasPersonality: (row.personality ?? "").trim() !== "",
     colour: row.colour,
     displayOrder: row.display_order,
     isActive: row.is_active === 1,

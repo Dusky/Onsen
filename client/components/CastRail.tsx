@@ -209,6 +209,17 @@ export function CastRail({
                     </span>
                   ) : null}
 
+                  {/* A card with nothing to anchor on, said on the card it is
+                      about, before the turn rather than in the prose. */}
+                  {cued && !member.hasDescription && !member.hasPersonality ? (
+                    <span
+                      className="chrome mt-[4px] block text-[11.5px] leading-[1.5]"
+                      style={{ color: "var(--onsen-color-amber)" }}
+                    >
+                      {strings.chat.thinCard(member.name)}
+                    </span>
+                  ) : null}
+
                   {/* What they last said. Spectral italic, because it is the
                       story speaking rather than the app. */}
                   {lastLine.has(member.characterId) ? (

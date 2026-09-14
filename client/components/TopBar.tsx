@@ -34,6 +34,7 @@ const ITEMS: readonly { key: string; label: string; route: Route }[] = [
   { key: "lorebooks", label: strings.nav.lorebooks, route: { name: "lorebooks" } },
   { key: "backgrounds", label: strings.nav.backgrounds, route: { name: "backgrounds" } },
   { key: "settings", label: strings.nav.settings, route: { name: "settings" } },
+  { key: "assistant", label: strings.nav.assistant, route: { name: "assistant" } },
 ];
 
 /** Always on the bar; the rest go behind "more" until the bar is wide enough. */

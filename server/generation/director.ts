@@ -31,6 +31,12 @@ export interface DirectorHistoryEntry {
   /** The cast member who voiced this turn, or null for the user and narration. */
   characterId: string | null;
   content: string;
+  /**
+   * Whether this is the reader's own message. The mention strategy scans only
+   * the reader's words — a character's dialogue, and a beat's own speaker
+   * labels, are not somebody addressing the cast.
+   */
+  isUser?: boolean;
 }
 
 export interface DirectorInput {
@@ -160,8 +166,12 @@ export function chooseSpeaker(input: DirectorInput): DirectorDecision | null {
     case "mention": {
       const last = input.history.at(-1);
       const eligible = allowSelf ? active : active.filter((member) => member.id !== previous);
+      // Only the reader's own words name someone. A character's reply — or a
+      // beat, whose speaker labels are its own formatting — must not be read
+      // as an address, or the strategy elects whoever happened to be named
+      // last inside the prose it itself produced.
       const named =
-        last === undefined || eligible.length === 0
+        last === undefined || last.isUser !== true || eligible.length === 0
           ? null
           : mentionedIn(last.content, eligible.map(termsFor));
 

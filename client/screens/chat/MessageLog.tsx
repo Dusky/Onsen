@@ -261,6 +261,11 @@ export function MessageLog({
           className="chrome border border-red-border bg-red-bg px-[11px] py-[9px] text-ui-loose text-red-text"
         >
           {active.error ?? strings.errors.generationFailed}
+          {active.errorDetail === null ? null : (
+            <span className="block text-[12px] leading-[1.5] opacity-80">
+              {active.errorDetail}
+            </span>
+          )}
         </p>
       ) : null}
 

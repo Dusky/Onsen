@@ -91,6 +91,7 @@ export const COMMANDS: readonly Command[] = [
   { id: "go-characters", title: strings.nav.characters, scope: "global", group: "goto", keywords: ["cast", "cards"] },
   { id: "go-authors", title: strings.nav.authors, scope: "global", group: "goto", keywords: ["writing partner"] },
   { id: "go-lorebooks", title: strings.nav.lorebooks, scope: "global", group: "goto", keywords: ["world info", "books"] },
+  { id: "go-assistant", title: strings.nav.assistant, scope: "global", group: "goto", keywords: ["agent", "tools", "ask"] },
   { id: "go-settings", title: strings.nav.settings, scope: "global", group: "goto", keywords: ["preferences", "models", "providers"] },
   { id: "sign-out", title: strings.settings.signOut, scope: "global", group: "goto", keywords: ["lock", "log out"] },
 ];

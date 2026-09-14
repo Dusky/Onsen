@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { completeSetup, createHarness, type TestHarness } from "./helpers.ts";
-import { V2_CARD, V2_CARD_SILENT, V3_CARD, charxCard, pngCard } from "./card-fixtures.ts";
+import { V1_CARD, V2_CARD, V2_CARD_SILENT, V3_CARD, charxCard, jsonBytes, pngCard } from "./card-fixtures.ts";
 import type {
   CharacterDto,
   ConnectionProfileDto,
@@ -104,7 +104,44 @@ describe("a scene opens on its first cast member's greeting", () => {
     expect(after.messages).toHaveLength(1);
     expect(after.messages[0]!.content).toBe(V2_CARD.data.first_mes);
     expect(after.messages[0]!.speakerName).toBe("Sister Bell");
+    // The card is a PNG, so its portrait travelled with it.
+    expect(after.messages[0]!.hasAvatar).toBe(true);
     expect(after.messages[0]!.parentId).toBeNull();
+  });
+
+  test("a character without a portrait says so on the turn, not by 404ing later", async () => {
+    const t = await signedIn();
+    // A JSON card carries no image, so the character has no portrait to serve.
+    const bell = await importCharacter(t, jsonBytes(V1_CARD), "bell.json");
+    const sceneId = await emptyScene(t);
+    await json<SceneDto>(t, "PUT", `/api/scenes/${sceneId}/cast/${bell.id}`);
+
+    const after = await history(t, sceneId);
+    expect(after.messages[0]!.speakerName).toBe("Aldan Roe");
+    expect(after.messages[0]!.hasAvatar).toBe(false);
+  });
+
+  test("the cast says which identity fields a card actually carries", async () => {
+    const t = await signedIn();
+    const bell = await importCharacter(t, pngCard({ chara: V2_CARD }), "bell.png");
+    // A card with a description but no personality — the shape that makes the
+    // cast rail warn before a thin speaker is about to write.
+    const ghost = await json<CharacterDto>(t, "POST", "/api/characters", { name: "Ghost" });
+    await json<CharacterDto>(t, "PATCH", `/api/characters/${ghost.id}`, {
+      description: "Only a description.",
+    });
+
+    const sceneId = await emptyScene(t);
+    await json<SceneDto>(t, "PUT", `/api/scenes/${sceneId}/cast/${bell.id}`);
+    await json<SceneDto>(t, "PUT", `/api/scenes/${sceneId}/cast/${ghost.id}`);
+
+    const after = await history(t, sceneId);
+    const bellMember = after.scene.cast.find((m) => m.name === "Sister Bell")!;
+    const ghostMember = after.scene.cast.find((m) => m.name === "Ghost")!;
+    expect(bellMember.hasDescription).toBe(true);
+    expect(bellMember.hasPersonality).toBe(true);
+    expect(ghostMember.hasDescription).toBe(true);
+    expect(ghostMember.hasPersonality).toBe(false);
   });
 
   test("the alternates arrive as root siblings, a swipe away", async () => {

@@ -30,8 +30,11 @@ import {
   sceneDto,
   updateScene,
 } from "../db/queries/history.ts";
-import { addSceneMember, insertPersona, listPersonas, updatePersona } from "../db/queries/authors.ts";
+import { addSceneMember, findAuthor, listAuthors, listPersonas, insertPersona, removeSceneMember, updateAuthor, updatePersona } from "../db/queries/authors.ts";
 import {
+  deleteEntry,
+  findEntry,
+  findLorebook,
   insertEntry,
   insertLorebook,
   listEntries,
@@ -40,6 +43,14 @@ import {
   toEntryDto,
   updateEntry,
 } from "../db/queries/lore.ts";
+import {
+  addGroupMember,
+  findCharacterGroup,
+  insertCharacterGroup,
+  listCharacterGroups,
+  removeGroupMember,
+} from "../db/queries/groups.ts";
+import { listDocuments } from "../documents/store.ts";
 import {
   activeTheme,
   findTheme,
@@ -194,7 +205,8 @@ export const TOOLS: Record<string, Tool> = {
       name: "delete_character",
       description:
         "Remove a character from the library. What they said in existing " +
-        "roleplays stays. Snapshotted first, so it can be restored.",
+        "roleplays stays. Snapshotted first, so it can be restored — though " +
+        "not its picture or book binding, which a restore does not carry.",
       parameters: S.object({ id: S.string("The character's id.") }, ["id"]),
     },
     run: (ctx, args) => {
@@ -546,6 +558,270 @@ export const TOOLS: Record<string, Tool> = {
       snapshotBefore(ctx, "theme", row.ulid, toThemeDto(row));
       return toThemeDto(updateTheme(ctx.db, row.id, { tokens }));
     },
+  },
+
+  /* --- authors (§2) ------------------------------------------- */
+
+  list_authors: {
+    spec: {
+      name: "list_authors",
+      description:
+        "Every author in the install, with id, name, and whether it is the " +
+        "default one scenes use.",
+      parameters: S.object({}),
+    },
+    run: (ctx) =>
+      listAuthors(ctx.db).map((row) => ({
+        id: row.ulid,
+        name: row.name,
+        isDefault: row.is_default === 1,
+      })),
+  },
+
+  get_author: {
+    spec: {
+      name: "get_author",
+      description: "One author in full: personality, writing and directing style, voice.",
+      parameters: S.object({ id: S.string("The author's id.") }, ["id"]),
+    },
+    run: (ctx, args) => {
+      const row = findAuthor(ctx.db, str(args, "id"));
+      if (row === null) throw new Error("No author has that id.");
+      return {
+        id: row.ulid,
+        name: row.name,
+        personality: row.personality,
+        writingStyle: row.writing_style,
+        directingStyle: row.directing_style,
+        oocVoice: row.ooc_voice,
+        boundaries: row.boundaries,
+      };
+    },
+  },
+
+  update_author: {
+    spec: {
+      name: "update_author",
+      description:
+        "Change an author's fields. Only the fields you pass are touched. " +
+        "The author is the one writing partner who voices every cast member, " +
+        "so these shape how every scene reads.",
+      parameters: S.object(
+        {
+          id: S.string("The author's id."),
+          name: S.string("New name."),
+          personality: S.string("Who they are, as a writing partner."),
+          writingStyle: S.string("How their prose reads."),
+          directingStyle: S.string("How they move a scene."),
+          oocVoice: S.string("How they talk out of character."),
+          boundaries: S.string("What they steer toward and away from."),
+        },
+        ["id"],
+      ),
+    },
+    run: (ctx, args) => {
+      const row = findAuthor(ctx.db, str(args, "id"));
+      if (row === null) throw new Error("No author has that id.");
+      const patch: Record<string, unknown> = {};
+      for (const key of [
+        "name",
+        "personality",
+        "writingStyle",
+        "directingStyle",
+        "oocVoice",
+        "boundaries",
+      ] as const) {
+        const value = args[key];
+        if (typeof value === "string") patch[key] = value;
+      }
+      updateAuthor(ctx.db, row.id, patch);
+      return { id: row.ulid, name: (patch["name"] as string | undefined) ?? row.name };
+    },
+  },
+
+  /* --- a scene's cast (§2) ------------------------------------ */
+
+  add_to_cast: {
+    spec: {
+      name: "add_to_cast",
+      description:
+        "Put a character into a roleplay's cast. Casting the first one seeds " +
+        "the scene's opening from the character's card.",
+      parameters: S.object(
+        {
+          sceneId: S.string("The roleplay's id."),
+          characterId: S.string("The character's id."),
+        },
+        ["sceneId", "characterId"],
+      ),
+    },
+    run: (ctx, args) => {
+      const scene = findScene(ctx.db, str(args, "sceneId"));
+      if (scene === null) throw new Error("No roleplay has that id.");
+      const character = findCharacter(ctx.db, str(args, "characterId"));
+      if (character === null) throw new Error("No character has that id.");
+      addSceneMember(ctx.db, scene.id, character.id);
+      return { added: character.name, to: scene.title };
+    },
+  },
+
+  remove_from_cast: {
+    spec: {
+      name: "remove_from_cast",
+      description:
+        "Take a character out of a roleplay's cast. What they already said in " +
+        "the roleplay stays.",
+      parameters: S.object(
+        {
+          sceneId: S.string("The roleplay's id."),
+          characterId: S.string("The character's id."),
+        },
+        ["sceneId", "characterId"],
+      ),
+    },
+    run: (ctx, args) => {
+      const scene = findScene(ctx.db, str(args, "sceneId"));
+      if (scene === null) throw new Error("No roleplay has that id.");
+      const character = findCharacter(ctx.db, str(args, "characterId"));
+      if (character === null) throw new Error("No character has that id.");
+      removeSceneMember(ctx.db, scene.id, character.id);
+      return { removed: character.name, from: scene.title };
+    },
+  },
+
+  /* --- lore entries (§10) ------------------------------------- */
+
+  update_lore_entry: {
+    spec: {
+      name: "update_lore_entry",
+      description:
+        "Change a lore entry's title, text or keys. Editing clears its timed " +
+        "state, so the change takes effect next turn.",
+      parameters: S.object(
+        {
+          id: S.string("The entry's id."),
+          title: S.string("New title."),
+          content: S.string("New text, injected when it fires."),
+          keys: {
+            type: "array",
+            items: { type: "string" },
+            description: "Words that make it fire.",
+          },
+        },
+        ["id"],
+      ),
+    },
+    run: (ctx, args) => {
+      const entry = findEntry(ctx.db, str(args, "id"));
+      if (entry === null) throw new Error("No lore entry has that id.");
+      const patch: Record<string, unknown> = {};
+      const title = optionalStr(args, "title");
+      if (title !== undefined) patch["title"] = title;
+      const content = optionalStr(args, "content");
+      if (content !== undefined) patch["content"] = content;
+      if (Array.isArray(args["keys"])) {
+        patch["keys"] = JSON.stringify(
+          (args["keys"] as unknown[]).filter((k): k is string => typeof k === "string"),
+        );
+      }
+      updateEntry(ctx.db, entry.id, patch as never);
+      return { id: entry.ulid, title: (patch["title"] as string | undefined) ?? entry.title };
+    },
+  },
+
+  delete_lore_entry: {
+    spec: {
+      name: "delete_lore_entry",
+      description:
+        "Remove a lore entry from its book. This is not undoable — check the " +
+        "entry is the right one first.",
+      parameters: S.object({ id: S.string("The entry's id.") }, ["id"]),
+    },
+    run: (ctx, args) => {
+      const entry = findEntry(ctx.db, str(args, "id"));
+      if (entry === null) throw new Error("No lore entry has that id.");
+      deleteEntry(ctx.db, entry.id);
+      return { deleted: entry.title };
+    },
+  },
+
+  /* --- character groups (§178) -------------------------------- */
+
+  list_groups: {
+    spec: {
+      name: "list_groups",
+      description: "Every character group, with its id, name and members.",
+      parameters: S.object({}),
+    },
+    run: (ctx) => listCharacterGroups(ctx.db),
+  },
+
+  create_group: {
+    spec: {
+      name: "create_group",
+      description: "Make a character group. Groups start a roleplay with a whole cast at once.",
+      parameters: S.object({ name: S.string("What to call it.") }, ["name"]),
+    },
+    run: (ctx, args) => {
+      const row = insertCharacterGroup(ctx.db, { name: str(args, "name") });
+      return { id: row.ulid, name: row.name };
+    },
+  },
+
+  add_to_group: {
+    spec: {
+      name: "add_to_group",
+      description: "Add a character to a group, so a group roleplay starts with them in it.",
+      parameters: S.object(
+        { groupId: S.string("The group's id."), characterId: S.string("The character's id.") },
+        ["groupId", "characterId"],
+      ),
+    },
+    run: (ctx, args) => {
+      const group = findCharacterGroup(ctx.db, str(args, "groupId"));
+      if (group === null) throw new Error("No group has that id.");
+      const character = findCharacter(ctx.db, str(args, "characterId"));
+      if (character === null) throw new Error("No character has that id.");
+      addGroupMember(ctx.db, group.id, character.id);
+      return { added: character.name, to: group.name };
+    },
+  },
+
+  remove_from_group: {
+    spec: {
+      name: "remove_from_group",
+      description: "Remove a character from a group.",
+      parameters: S.object(
+        { groupId: S.string("The group's id."), characterId: S.string("The character's id.") },
+        ["groupId", "characterId"],
+      ),
+    },
+    run: (ctx, args) => {
+      const group = findCharacterGroup(ctx.db, str(args, "groupId"));
+      if (group === null) throw new Error("No group has that id.");
+      const character = findCharacter(ctx.db, str(args, "characterId"));
+      if (character === null) throw new Error("No character has that id.");
+      removeGroupMember(ctx.db, group.id, character.id);
+      return { removed: character.name, from: group.name };
+    },
+  },
+
+  /* --- the data bank (§11) ------------------------------------ */
+
+  list_documents: {
+    spec: {
+      name: "list_documents",
+      description:
+        "Documents in the data bank, global first: title, id, and whether it is " +
+        "scoped to one roleplay or available everywhere.",
+      parameters: S.object({}),
+    },
+    run: (ctx) =>
+      listDocuments(ctx.db, null).map((row) => ({
+        id: row.ulid,
+        title: row.title,
+        global: row.scene_id === null,
+      })),
   },
 };
 

@@ -18,6 +18,7 @@ import {
   applySegmentExpressions,
   findMessageById,
   findSceneById,
+  lastSpeakerOf,
   reparseSegments,
   replaceSegment,
   segmentDtosOf,
@@ -1361,16 +1362,22 @@ export class GenerationService {
         : { decided: null, why: null };
     const decided = asked.decided;
 
-    const characterUlid = decided?.characterId ?? fallback.characterId;
-    const name = decided?.name ?? fallback.name;
+    // An explicit cue always wins over the classifier (SPEC §6): with scope
+    // "auto" the classifier is asked only to settle one-voice-or-the-room, and
+    // its name answer was made against a roster that may not even have
+    // contained the cued character — taking it here would silently swap the
+    // speaker the reader chose. Only the scope answer is used.
+    const cued = fallback.source === "user";
+    const characterUlid = cued ? fallback.characterId : (decided?.characterId ?? fallback.characterId);
+    const name = cued ? fallback.name : (decided?.name ?? fallback.name);
     // When the classifier was asked and could not answer, the reason says so
     // rather than repeating the provisional sentence the scene carried before
     // the turn: a director that is quietly broken should not look exactly like
     // one that is quietly working. The fallback under `classifier` is round
     // robin (see `chooseSpeaker`), which is what the sentence names.
-    const reason =
-      decided?.reason ??
-      (asked.why === null ? fallback.reason : `Round robin — ${asked.why}`);
+    const reason = cued
+      ? fallback.reason
+      : (decided?.reason ?? (asked.why === null ? fallback.reason : `Round robin — ${asked.why}`));
     const scope: ResolvedTurnScope =
       generation.turn.kind === "beat"
         ? "beat"
@@ -1433,7 +1440,7 @@ export class GenerationService {
     };
 
     const path = activePathOf(this.db, scene.id);
-    const lastSpoke = lastCharacterOf(path);
+    const lastSpoke = lastCharacterOf(this.db, path);
     // Present and unmuted: who can be offered the next turn (§20 phase 62).
     const cast = castRowsOf(this.db, scene.id).filter(
       (row) => row.is_active === 1 && row.is_muted === 0,
@@ -1460,7 +1467,7 @@ export class GenerationService {
       id: row.ulid,
       name: row.name,
       description: row.description,
-      turnsSilent: turnsSinceSpeaking(path, row.id),
+      turnsSilent: turnsSinceSpeaking(this.db, path, row.id),
     }));
 
     const request = {
@@ -1491,10 +1498,13 @@ export class GenerationService {
     }
 
     const scope: ResolvedTurnScope = wantsScope ? (parsed.scope ?? "spotlight") : "spotlight";
+    // The name is the classifier's answer. A pinned speaker is handled by the
+    // caller, not here: when the reader cued a character, `direct()` keeps the
+    // cue whatever this said, and this function is asked only for the scope.
     return {
       decided: {
-        characterId: speakerIsPinned ? candidates[0]!.id : parsed.characterId,
-        name: speakerIsPinned ? candidates[0]!.name : parsed.name,
+        characterId: parsed.characterId,
+        name: parsed.name,
         reason: parsed.reason ?? "Chosen by the classifier",
         scope,
       },
@@ -2509,18 +2519,35 @@ function activePathOf(db: Database, sceneId: number): MessageRowWithSiblings[] {
   return activePath(db, sceneId);
 }
 
+/** Every cast member who spoke in a message. A beat's are its segments. */
+function speakersOf(db: Database, message: MessageRowWithSiblings): Set<number> {
+  const ids = new Set<number>();
+  if (message.kind === "beat") {
+    for (const segment of segmentRowsOf(db, message.id)) {
+      if (segment.character_id !== null) ids.add(segment.character_id);
+    }
+  } else if (message.character_id !== null) {
+    ids.add(message.character_id);
+  }
+  return ids;
+}
+
 /** The last cast member to speak, counting who a beat ended on (SPEC §3.5). */
-function lastCharacterOf(path: MessageRowWithSiblings[]): number | null {
+function lastCharacterOf(db: Database, path: MessageRowWithSiblings[]): number | null {
   for (let index = path.length - 1; index >= 0; index--) {
-    const row = path[index]!;
-    if (row.character_id !== null) return row.character_id;
+    const speaker = lastSpeakerOf(db, path[index]!);
+    if (speaker !== null) return speaker;
   }
   return null;
 }
 
-function turnsSinceSpeaking(path: MessageRowWithSiblings[], characterId: number): number | null {
+function turnsSinceSpeaking(
+  db: Database,
+  path: MessageRowWithSiblings[],
+  characterId: number,
+): number | null {
   for (let index = path.length - 1; index >= 0; index--) {
-    if (path[index]!.character_id === characterId) return path.length - 1 - index;
+    if (speakersOf(db, path[index]!).has(characterId)) return path.length - 1 - index;
   }
   return null;
 }
@@ -2536,11 +2563,15 @@ function recentTurns(
     .slice(-CLASSIFIER_HISTORY_TURNS)
     .map((row) => ({
       speaker:
-        row.character_id === null
-          ? row.author_type === "user"
-            ? "The reader"
-            : "Narration"
-          : (speakers.nameById.get(row.character_id) ?? "Someone"),
+        // A beat labels its own speakers inside its text, so an outer label
+        // would attribute the whole exchange to whoever opened it.
+        row.kind === "beat"
+          ? "Several characters"
+          : row.character_id === null
+            ? row.author_type === "user"
+              ? "The reader"
+              : "Narration"
+            : (speakers.nameById.get(row.character_id) ?? "Someone"),
       content: row.content,
     }));
 }

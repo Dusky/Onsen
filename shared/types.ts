@@ -661,6 +661,12 @@ export interface MessageDto {
   characterId: string | null;
   /** Resolved for display, so the log does not need the character list. */
   speakerName: string | null;
+  /**
+   * Whether the speaking character has a portrait to request. False for turns
+   * with no character (user, narration, asides): their picture, where one is
+   * drawn, is gated by the reader/author layout toggles, not by this flag.
+   */
+  hasAvatar: boolean;
   content: string;
   /**
    * The display-only translation of this turn, when the scene has a target
@@ -1008,6 +1014,8 @@ export interface AgentUndoDto {
   id: string;
   kind: string;
   subjectId: string;
+  /** The thing's name, so the list reads without a lookup. */
+  label: string;
   at: number;
 }
 
@@ -3381,6 +3389,13 @@ export interface SceneMemberDto {
   characterId: string;
   name: string;
   hasAvatar: boolean;
+  /**
+   * Whether the card's two identity fields carry anything. A cast member with
+   * neither has no anchor in the prompt, and the UI says so before a turn is
+   * sent rather than leaving the reader to discover it in the prose.
+   */
+  hasDescription: boolean;
+  hasPersonality: boolean;
   /**
    * The card's colour, carried here so the log can tell five grey columns
    * apart without a request per speaker (§162). Null is every card until

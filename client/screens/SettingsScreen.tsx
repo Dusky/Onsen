@@ -171,7 +171,11 @@ function OpFields({ task, profiles }: { task: TaskDto; profiles: ConnectionProfi
         ) : null}
 
         {/* Routing only means something for an op that makes its own call. */}
-        {task.runs === "side_call" ? (
+        {task.runs === "side_call" && task.key === "turn_classifier" ? (
+          <p className="explain mb-[16px]">
+            {strings.settings.classifierRoutedElsewhere}
+          </p>
+        ) : task.runs === "side_call" ? (
           <>
             <p className="section-label mb-[6px]">{strings.settings.routing}</p>
             <div className="mb-[16px] flex flex-wrap gap-[6px]">
@@ -1600,7 +1604,7 @@ export function SettingsScreen() {
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[15px] font-medium">{provider.name}</span>
                     <span className="meta block truncate">
-                      {[provider.model, kindLabel(provider.kind), provider.hasApiKey ? "keyed" : null]
+                      {[kindLabel(provider.kind), provider.hasApiKey ? "keyed" : null]
                         .filter((part) => part !== null && part !== "")
                         .join(" · ")}
                     </span>

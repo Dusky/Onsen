@@ -69,3 +69,13 @@ export function snapshotBefore(
 export function snapshots(ctx: AppContext): Snapshot[] {
   return read(ctx);
 }
+
+/** One snapshot, by id, or null. */
+export function snapshotById(ctx: AppContext, id: string): Snapshot | null {
+  return read(ctx).find((entry) => entry.id === id) ?? null;
+}
+
+/** Take a snapshot off the list once it has been restored. */
+export function removeSnapshot(ctx: AppContext, id: string): void {
+  setSetting(ctx.db, KEY, JSON.stringify(read(ctx).filter((entry) => entry.id !== id)));
+}

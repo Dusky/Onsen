@@ -439,5 +439,3 @@ export function useOps(deps: OpsDeps) {
     opsDrawer,
   };
 }
-
-export type OpsApi = ReturnType<typeof useOps>;

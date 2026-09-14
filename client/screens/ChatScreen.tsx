@@ -565,6 +565,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       "go-characters": () => navigate({ name: "characters" }),
       "go-authors": () => navigate({ name: "authors" }),
       "go-lorebooks": () => navigate({ name: "lorebooks" }),
+      "go-assistant": () => navigate({ name: "assistant" }),
       "go-settings": () => navigate({ name: "settings" }),
       "sign-out": () => signOut.mutate(undefined),
     };

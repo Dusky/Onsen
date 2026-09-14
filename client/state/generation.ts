@@ -53,6 +53,13 @@ export interface ActiveGeneration {
   offset: number;
   status: "connecting" | "streaming" | "done" | "cancelled" | "error";
   error: string | null;
+  /**
+   * The specific reason for a mid-stream failure, kept apart from the summary
+   * sentence. The stream carries it; dropping it here reduced every provider
+   * failure to "The generation failed.", which hides the one thing worth
+   * reading.
+   */
+  errorDetail: string | null;
 }
 
 interface GenerationStore {
@@ -64,7 +71,7 @@ interface GenerationStore {
   begin(
     generation: Omit<
       ActiveGeneration,
-      "text" | "offset" | "status" | "error" | "director" | "reasoning"
+      "text" | "offset" | "status" | "error" | "errorDetail" | "director" | "reasoning"
     >,
   ): void;
   /** The turn director's answer, which arrives on the stream. */
@@ -77,7 +84,12 @@ interface GenerationStore {
    * buffer already ends with is a replay and replaces rather than extends.
    */
   appendReasoning(generationId: string, text: string): void;
-  settle(generationId: string, status: ActiveGeneration["status"], error?: string | null): void;
+  settle(
+    generationId: string,
+    status: ActiveGeneration["status"],
+    error?: string | null,
+    detail?: string | null,
+  ): void;
   failStart(error: { message: string; code: string }): void;
   clearStartError(): void;
   clear(): void;
@@ -106,6 +118,7 @@ export const useGenerationStore = create<GenerationStore>((set) => ({
         offset: 0,
         status: "connecting",
         error: null,
+        errorDetail: null,
       },
     });
   },
@@ -143,11 +156,11 @@ export const useGenerationStore = create<GenerationStore>((set) => ({
     });
   },
 
-  settle(generationId, status, error = null) {
+  settle(generationId, status, error = null, detail = null) {
     set((state) => {
       const active = state.active;
       if (active === null || active.generationId !== generationId) return state;
-      return { active: { ...active, status, error } };
+      return { active: { ...active, status, error, errorDetail: detail } };
     });
   },
 

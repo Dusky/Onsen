@@ -298,6 +298,37 @@ describe("what the tools actually do", () => {
     expect(listed[0]!.kind).toBe("character");
   });
 
+  test("a delete can actually be undone — that is the point of the snapshot", async () => {
+    const t = await signedIn();
+    const bell = await importBell(t);
+    const thread = await newThread(t);
+
+    await ask(
+      t,
+      thread.id,
+      "Delete Bell",
+      callThenAnswer([
+        { id: "c1", name: "delete_character", arguments: JSON.stringify({ id: bell.id }) },
+      ]),
+    );
+    const snapshot = snapshots(t.ctx)[0]!;
+
+    const restored = await json<{ restored: { name: string; note?: string }; removed: string }>(
+      t,
+      "POST",
+      `/api/agent/undo/${snapshot.id}`,
+    );
+    expect(restored.restored.name).toBe("Sister Bell");
+    expect(restored.restored.note).toContain("without its picture");
+
+    // The re-created character gets a fresh id; what matters is the text is back.
+    const library = await json<CharacterDto[]>(t, "GET", "/api/characters");
+    expect(library.some((character) => character.name === "Sister Bell")).toBe(true);
+
+    // And the snapshot is gone: an undo that can fire twice would resurrect twice.
+    expect(snapshots(t.ctx)).toHaveLength(0);
+  });
+
   test("it can make a theme and switch to it", async () => {
     const t = await signedIn();
     const thread = await newThread(t);

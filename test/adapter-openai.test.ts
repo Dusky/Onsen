@@ -219,6 +219,31 @@ describe("the request", () => {
     expect(calls[0]!.body["model"]).toBe("test-model");
   });
 
+  test("sends max_tokens from what the builder reserved", async () => {
+    // The response cap the prompt was fitted around has to reach the wire, or
+    // `max_response_tokens` is silently ignored and auto-continue never fires
+    // (it branches on a reported `length`, which this cap is what produces).
+    const { fetch, calls } = fakeFetch(streamingResponse(["data: [DONE]\n\n"]));
+    await collect(adapterWith(fetch));
+
+    expect(calls[0]!.body["max_tokens"]).toBe(200);
+  });
+
+  test("omits max_tokens when nothing was reserved, as on a side call", async () => {
+    // Side calls reserve nothing and are bounded by the task runner; sending a
+    // floor here would be a second, disagreeing cap.
+    const { fetch, calls } = fakeFetch(streamingResponse(["data: [DONE]\n\n"]));
+    const adapter = adapterWith(fetch);
+    for await (const _ of adapter.generate(
+      { ...PROMPT, debug: { ...PROMPT.debug, reservedForResponse: 0 } },
+      MODERN_SAMPLER_DEFAULTS,
+      new AbortController().signal,
+    )) {
+      /* drain */
+    }
+    expect("max_tokens" in calls[0]!.body).toBe(false);
+  });
+
   test("passes the modern samplers through, including the ones local shims add", async () => {
     const { fetch, calls } = fakeFetch(streamingResponse(["data: [DONE]\n\n"]));
     await collect(adapterWith(fetch));

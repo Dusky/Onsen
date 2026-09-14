@@ -294,6 +294,32 @@ describe("a completion", () => {
     expect(chunks.at(-1)?.choices[0]?.finish_reason).toBe("stop");
   });
 
+  test("a streaming failure records its true status, not a 200 logged up front", async () => {
+    const t = await signedIn();
+    const { token } = await ready(t);
+
+    const pending = call(t, "/v1/chat/completions", token, {
+      model: "scene/the-pass",
+      stream: true,
+      messages: [{ role: "user", content: "go on" }],
+    });
+    await adapter.started;
+    adapter.push("She set ");
+    adapter.fail(new Error("the model fell over"));
+    const response = await pending;
+    await response.text();
+
+    // The stream has no error channel, so the client sees a length-limited
+    // completion — but the usage log must not say the request succeeded.
+    const keys = await json<{ requests: { model: string; status: number }[] }[]>(
+      t,
+      "GET",
+      "/api/api-keys",
+    );
+    const requests = keys.flatMap((key) => key.requests);
+    expect(requests.some((r) => r.model === "scene/the-pass" && r.status === 502)).toBe(true);
+  });
+
   test("only the last user message is taken; the rest of the array is ignored", async () => {
     const t = await signedIn();
     const { sceneId, token } = await ready(t);

@@ -23,6 +23,7 @@ const read = (...parts: string[]) => readFileSync(join(ROOT, ...parts), "utf8");
 const FIELDS = read("client", "components", "ConnectionFields.tsx");
 const HEADER = read("client", "components", "Header.tsx");
 const PANEL = read("client", "components", "ModelsPanel.tsx");
+const SETUP = read("client", "screens", "SceneSetupScreen.tsx");
 const ROUTE = read("server", "generation", "route.ts");
 const SERVICE = read("server", "generation", "service.ts");
 const SCENES = read("server", "routes", "scenes.ts");
@@ -141,7 +142,7 @@ describe("a model for one roleplay", () => {
      * server and in the panel alike.
      */
     expect(ROUTE).toContain("overridden ? row.provider_model : (profile.profile_model ?? row.provider_model)");
-    expect(PANEL).toContain("sceneProviderId === null");
+    expect(SETUP).toContain("sceneProviderId === null");
     // And changing the provider clears the stale model rather than keeping it.
     expect(SCENES).toContain('if ("providerId" in input) {');
     expect(SCENES).toContain("UPDATE scenes SET model = NULL WHERE id = $id");
@@ -179,11 +180,13 @@ describe("a model for one roleplay", () => {
   });
 
   test("the panel picks from what the provider serves", () => {
-    expect(PANEL).toContain("<ModelPicker");
-    expect(PANEL).toContain("updateScene.mutate({ model })");
+    // Phase 210: this moved from the rail panel into Scene Setup, where a
+    // roleplay's own model override lives with the rest of its setup.
+    expect(SETUP).toContain("<ModelPicker");
+    expect(SETUP).toContain("setup.mutate({ model })");
     // And offers the way back to the profile's choice.
-    expect(PANEL).toContain("updateScene.mutate({ model: null })");
-    expect(PANEL).toContain("strings.models.modelClear");
+    expect(SETUP).toContain("setup.mutate({ model: null })");
+    expect(SETUP).toContain("strings.models.modelClear");
   });
 
   test("every readout reads one resolved answer instead of re-deriving it", () => {
@@ -208,8 +211,8 @@ describe("a model for one roleplay", () => {
   test("and the panel says which step a model came from, accurately", () => {
     // "From the profile" about a value that came from an overridden provider
     // is the same lie in a quieter place.
-    expect(PANEL).toContain("strings.models.modelFromProvider");
-    expect(PANEL).toContain("sceneProviderId === null\n                  ? strings.models.modelFromProfile");
+    expect(SETUP).toContain("strings.models.modelFromProvider");
+    expect(SETUP).toContain("sceneProviderId === null\n                  ? strings.models.modelFromProfile");
   });
 
   test("the rails read the base route, so an overlay does not blank them", () => {
@@ -237,8 +240,8 @@ describe("a model for one roleplay", () => {
   });
 
   test("it shows the same three-step chain the server resolves", () => {
-    expect(PANEL).toContain("activeProfile?.model ?? activeProvider?.model ?? null");
-    expect(PANEL).toContain("strings.models.modelFromProfile");
+    expect(SETUP).toContain("activeProfile?.model ?? activeProvider?.model ?? null");
+    expect(SETUP).toContain("strings.models.modelFromProfile");
   });
 });
 

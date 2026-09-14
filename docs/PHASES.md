@@ -9515,3 +9515,511 @@ and every shipped theme sits at 4.55–4.60:1 on it. The new headroom test cover
 the grounds the rails paint on and leaves inset to plain AA, named in the test
 rather than silently excluded: re-tuning eight palettes' inset wells is a design
 pass, not a contrast fix.
+
+## Phase 196 — The response cap reaches the wire
+
+A second review (`docs/UX-REVIEW-2.md`) ran the generation loop against real
+providers for the first time and found one thing that makes a shipped feature
+silently dead, plus a handful of smaller defects. The dead feature is this one.
+
+### The cap was reserved but never sent
+
+`max_response_tokens` lives beside the samplers on the preset row, and the
+prompt builder *reserves* it — trims the prompt to leave room for it
+(`server/prompt/index.ts`). But only the Anthropic adapter ever sent it to the
+provider, and only because Anthropic *requires* `max_tokens`. The
+OpenAI-compatible and text-completion adapters built their request bodies
+without it, so for those providers the cap was silently ignored: turns ran to
+the provider's own default or natural stop, while the prompt was needlessly
+shortened to make room for a limit nobody enforced.
+
+And it is worse than an ignored setting, because it is the trigger for another
+feature. Auto-continue (§13.6, phase 63) fires on a reported `length` finish,
+and the cap that produces that `length` *is* `max_response_tokens`. A provider
+that is never told to stop at the cap never reports `length`, so auto-continue
+could never run on two of the three provider kinds. The tests passed because the
+only adapter required to send `max_tokens` — Anthropic — was the only one tested
+for it.
+
+Measured before the fix: `max_response_tokens = 24` on an OpenAI-compatible
+provider came back **126 tokens with `finishReason: "stop"`**. After: **26
+tokens with `finishReason: "length"`**, and with `auto_continue = 1` the
+continue chain fired and landed the joined turn — the first time auto-continue
+has ever run on that kind.
+
+### The change
+
+Both adapters now send `max_tokens: prompt.debug.reservedForResponse` when the
+builder reserved something, and omit it when it did not — side calls reserve
+nothing and are bounded by the task runner, so sending a floor there would be a
+second, disagreeing cap. The text adapter's comment records that the field name
+is the OpenAI legacy `/completions` one this adapter already targets; a native
+llama.cpp `/completion` would want `n_predict`, which a capability flag can
+cover if one is ever spoken to directly.
+
+Three tests, in the same shape as the tools conformance file so the next adapter
+cannot ship without a cap:
+
+- `test/adapter-openai.test.ts` — sends `max_tokens` from the reservation, and
+  omits it at zero.
+- `test/adapter-text.test.ts` — new; the same two assertions, plus the raw
+  prompt and stream flag.
+- `test/adapter-response-cap.test.ts` — new; every `PROVIDER_KINDS` sends
+  `max_tokens` from the reservation, which is the guard that makes the other
+  two files mean something.
+
+**Verified** with 1937 tests across 143 files (up from 1929), typecheck clean,
+and live against `nanogpt` and `DeepSeek` — the two numbers above are the
+before-and-after of the same call.
+
+### Surprises
+
+**The response-cap test had to run the text adapter too, and that is where the
+omission hid.** Each per-adapter test passes on its own terms, which is exactly
+how the OpenAI adapter's omission sat green for forty-plus phases; the shared
+file over `PROVIDER_KINDS` is the guard, the same reason the tools file exists.
+
+### Not done here
+
+The other review findings are scheduled in `docs/PLAN-REVIEW-2.md` and not
+shipped in this phase: the "Stop" button that keeps a partial turn without
+saying so, the client dropping a mid-stream error's `detail`, the OpenAI
+surface reporting streaming errors as `length`, and the avatar 404. Each is a
+phase of its own.
+
+## Phase 197 — Stop says what it kept
+
+Phase 196's review (`docs/UX-REVIEW-2.md`) found a smaller seam beside the dead
+cap: the generation "Stop" button. Cancel persists whatever was produced
+(§5.6), and the service lands that partial as the scene's active message — so a
+reader who stopped a turn that was going wrong got a mid-sentence fragment as
+their newest story turn, with a button that said only "Stop" and no
+explanation anywhere.
+
+### The notice, not the contract
+
+The keep is deliberate and stays: partial output is the reader's text, and the
+service's own comment defends landing it. The gap was that nothing said so.
+`client/lib/generation.ts`'s `cancel()` now reads the cancel response's `buffer`
+and, when it is non-empty, posts a `done` notice — "Turn stopped — the partial
+reply was kept as the last turn." — through the one `notify` primitive. A stop
+that produced nothing says nothing, which is the same gate the service's own
+`land()` uses (`buffer.trim() !== ""`).
+
+The notice, not a relabel: a reader who cancels and looks away is the one the
+notice reaches, and the fragment is already sitting in the log with delete and
+reroll on it.
+
+**Verified** in the browser against the real provider: cancel after the first
+token showed the notice over a 133-character partial, and the fragment was the
+last message. A source-level test in `test/notices.test.ts` asserts the wiring
+and the non-empty gate, beside the other "what used to say nothing" checks.
+1937 tests, typecheck clean.
+
+### Surprises
+
+**The first browser pass missed it and the second caught it.** The first drive
+clicked Stop too late — the turn had already finished, the button was gone, and
+nothing was cancelled, so no notice. The second intercepted the cancel response
+and confirmed the non-empty buffer before asserting the text. A browser check
+that does not verify *the action it is checking actually happened* reports a
+pass on a no-op, which is the browser's version of the same sentence the last
+three phases have been about.
+
+## Phase 198 — The error says why
+
+The second review (`docs/UX-REVIEW-2.md`) found that a mid-stream failure
+rendered as just "The generation failed." — the server computes a specific
+`detail` (`describeFailure` in `service.ts`), sends it on the SSE `error` event,
+and the client dropped it in `settle`. The one thing worth reading about a dead
+provider — the reason — never reached the screen.
+
+### Detail beside the summary
+
+`client/state/generation.ts` keeps `errorDetail` beside `error`, `settle` takes
+it, and `MessageLog.tsx` renders it under the summary when present. The summary
+stays the sentence; the detail is the diagnostic, in a smaller, dimmer line —
+the same hierarchy a failed field uses, only here the field is the turn.
+
+**Verified** in the browser against a mock provider that streams a few words
+and then drops the connection: the strip reads "The generation failed." over
+"The socket connection was closed unexpectedly…". Confirmed the server already
+sent `detail` before touching the client, so the change was exactly the gap.
+1938 tests, typecheck clean.
+
+### Surprises
+
+**The first browser pass reported the defect as fixed when nothing had
+rendered.** The scene used for the test had no cast, so the log showed the
+"Describe the scene" prompt with its own textarea, and the test typed into that
+instead of the composer — nothing generated, nothing errored, and the check for
+"the detail is absent" trivially passed. The fix was the same discipline as the
+last phase: make the test assert *the thing it is checking actually happened*
+(the user message in the log, the error strip present) before asserting the
+outcome.
+
+## Phase 199 — The outbound API's stream says what happened to its log
+
+The second review's fourth finding was on §19's outbound surface: a streaming
+request was logged as HTTP 200 the moment it started, before a token had left
+the server, so a request that errored mid-stream was recorded as a success.
+And the stream itself reported an error or a cancel as `finish_reason: "length"`
+with no other signal — indistinguishable from a clean cap.
+
+### The true status, once it is known
+
+The request is now recorded when the stream settles, not when it starts:
+`streamCompletion` takes an `onSettled` callback, and the terminal event calls
+it with 502 for an error and 200 for a done or cancelled turn. The generation
+is server-owned, so it always settles even if the client disconnects, which is
+what makes recording at the end reliable rather than optimistic.
+
+### The length mapping stays, and now says why
+
+OpenAI's stream shape has **no error channel** — `finish_reason` is the only
+word a chunk has for why it ended, and no client knows a non-standard value.
+So a failed or cancelled generation still terminates as a length-limited
+completion (partial content, then `[DONE]`), and the request log is what
+records the truth. The doc comment on `streamCompletion` says exactly that;
+inventing a `finish_reason: "error"` would have broken real OpenAI SDKs for a
+signal nobody could read.
+
+**Verified** with a new test in `test/openai-api.test.ts` — a scripted adapter
+streams a few words then fails, and the usage log shows 502, not the 200 the
+old code would have written up front. 1939 tests across 143 files, typecheck
+clean.
+
+### Not done here
+
+The remaining finding — the avatar 404 on every avatar-less message — is
+`docs/PLAN-REVIEW-2.md` phase 5 and is its own phase.
+
+## Phase 200 — No request for a portrait that is not there
+
+The second review's last finding was the smallest and the most visible in the
+network tab: every message spoken by a character with no portrait requested
+`/api/characters/:id/avatar` anyway, because the message DTO carried the
+speaker's id and name but not whether a portrait existed. The initial letter
+rendered through the failed image — nothing was *broken* — but six other avatar
+call sites already guarded on `hasAvatar`, and the log's own comment claimed
+the same graceful fallback while issuing a 404 to get it.
+
+### hasAvatar travels with the message
+
+`MessageDto.hasAvatar` is resolved in `toMessageDto` from a new
+`SpeakerLookup.hasAvatarById` map, for character turns only. The reader's and
+author's pictures are gated by their own layout toggles and a `personaId`, so
+they keep the URL they always had — this flag is about the *character* portrait,
+not a blanket "no picture".
+
+`MessageBlock`'s `Avatar` now skips the `backgroundImage` request when a
+character has no portrait, rendering the initial alone — the same guard the
+cast rail, cast strip, dock, and editor already had, and the same one the
+component's own doc comment had been claiming to have.
+
+**Verified** in the browser against the real database (three avatar-less cast
+members): zero `/avatar` requests on the chat screen, initials still rendered.
+Two tests in `test/greetings.test.ts` pin both directions — a PNG card's turn
+carries `hasAvatar: true`, a JSON card's carries `false`. 1940 tests across 143
+files, typecheck clean.
+
+### Surprises
+
+**Vite's module cache turned a code change into a blank page, and the first
+browser pass nearly reported the fix against nothing.** After the
+`MessageBlock.tsx` edit, the dev server served a stale HMR graph that threw
+`does not provide an export named 'Emphasis'` on every full load — the page
+rendered no articles, so "zero avatar 404s" was trivially true. The test only
+became a test once it asserted the thing it was checking *actually happened*:
+"Elira Voss" in the body and four articles rendered, then zero 404s. Restarting
+the dev server and clearing the vite cache fixed the graph; the code was never
+wrong.
+
+### That closes the review
+
+The five findings of `docs/UX-REVIEW-2.md` are all shipped: phases 196 (the
+response cap), 197 (Stop says what it kept), 198 (the error says why), 199 (the
+outbound stream's true status), and this one. `docs/PLAN-REVIEW-2.md` records
+the same in plan form.
+
+## Phase 201 — A cue beats the classifier, in every scope
+
+A report from real use: sometimes a turn was written as the wrong character. It
+traced to one narrow but real combination — the classifier turn director, the
+composer's "auto" scope (let the director pick one voice or the room), and a
+character the reader had explicitly cued.
+
+### The cue was fed to a roster it was not on
+
+`classify()` offers the model the cast minus whoever spoke last (the
+never-twice-consecutively rule), and when the speaker is pinned it answered with
+`candidates[0]` as the name — on the assumption that the cued character was the
+first candidate. It was not, in general: the cued character is whichever one the
+reader tapped, and it is not even on the roster when they spoke last. So the
+cue was silently replaced by the first offered cast member, and the director
+announced it as `source: "user"` — a reader who picked Dusky watched Elira
+speak, captioned as their own pick.
+
+The fix is in `direct()`, where the decision is assembled: when the source is a
+cue, the classifier's name answer is ignored outright — the cue picks the
+speaker, and the classifier was asked only for the scope, so only its scope
+answer is used. `classify()` no longer fakes a name for a pinned speaker; it
+returns what the model said and leaves the override to the one place that knows
+the cue.
+
+**Verified** with a new test in `test/turn-director.test.ts` — cue Aldan, scope
+"auto", classifier says Mira: the director names Aldan, source "user", scope
+"beat" (the classifier's scope answer still shapes the turn). It failed against
+the old code with the first cast member's id and passes now. 1941 tests across
+143 files, typecheck clean.
+
+## Phase 202 — The classifier sees who actually spoke in a beat
+
+The same "wrong character" report, second cause, same file. The classifier
+built its view of recent history from the message's own `character_id` — which,
+for a beat, is whoever *opened* it, not whoever *spoke last*. Three of its
+helpers read that column:
+
+- `lastCharacterOf` fed "never twice consecutively": the roster excluded the
+  beat's lead even when the lead had not said the last line, and kept whoever
+  *ended* the beat eligible to speak again immediately.
+- `turnsSinceSpeaking` reported "silent N turns" for a character who had spoken
+  inside a beat, because only the lead's id matched.
+- `recentTurns` labelled a whole beat with the lead's name, attributing a
+  three-way exchange to one person in the transcript the classifier reads.
+
+All three now read the segments. `lastCharacterOf` delegates to
+`lastSpeakerOf` — the same function the pure fallback director already used —
+and the other two go through a `speakersOf` helper that returns every cast
+member a beat's segments name.
+
+**Verified** with a test in `test/turn-director.test.ts`: Aldan leads a beat,
+Mira closes it; the next classifier question offers Aldan and excludes Mira.
+Against the old code the roster held Mira and dropped Aldan. 1942 tests across
+143 files, typecheck clean.
+
+## Phase 203 — A mention is the reader's words, not the author's
+
+The mention turn director scans "the last message" for a cast member's name.
+The last message is usually the reader's, so it worked — but after a beat, or
+under autopilot, the last message is the author's own output, whose `**Name:**`
+labels and dialogue are not anybody being addressed. The strategy read them as
+mentions anyway and elected whoever happened to be named last inside prose the
+model had produced itself.
+
+`DirectorHistoryEntry` now carries `isUser`, `turn.ts` sets it from the
+message's author type, and the mention case scans only the reader's words —
+anything else falls back to round robin. The `said` test helper grew a third
+argument so the fixtures say which entries are the reader's.
+
+**Verified** with two tests: a character's own words are not read as an address,
+and the self-response fixtures were rewritten to model the reader's message
+separately from the previous speaker's turn. 1944 tests across 143 files,
+typecheck clean.
+
+## Phase 204 — The assistant's undo actually undoes
+
+The agent's write tools recorded a snapshot before touching anything — "so this
+can be undone", "so it can be restored" — and `GET /agent/undo` listed them.
+The restore half was never built: the recorded `before` DTO was written, listed,
+and read by nothing. A delete made through the assistant was as irreversible as
+any other, while the tool description promised otherwise.
+
+`POST /agent/undo/:id` restores a snapshot and removes it from the list.
+Restoring a character re-creates it from the recorded card; its picture,
+version history and lorebook binding do not survive a delete and are not
+invented, which the response says rather than leaving silent. Restoring a theme
+reverts its tokens. The `delete_character` description now says the same thing
+out loud.
+
+**Verified** with a test in `test/agent.test.ts` — delete, undo, the character's
+text is back and the snapshot is gone. The endpoint is excused in
+`reachable.test.ts` beside its siblings, for the same stated reason: the
+assistant's client is still its own phase. 1944 tests, typecheck clean.
+
+## Phase 205 — The cast says when a card has nothing to anchor on
+
+The last open thread from the wrong-character hunt was thin cards: a cast
+member with no description and no personality gives the model nothing to hold
+onto, and the first the reader hears about it is the prose coming back wrong.
+Now the app says so *before* the turn.
+
+`SceneMemberDto` carries `hasDescription` and `hasPersonality`, resolved in
+`castOf` from the two columns it already joins. When the speaker about to write
+has neither, the cast rail and the phone deck print one amber line — "{name}
+has no description or personality — they may not sound like themselves." — on
+the card it is about, next to the director's own sentence, not as a separate
+panel.
+
+**Verified** in the browser: a scene with an empty card cued shows the line;
+a populated card does not. A test in `test/greetings.test.ts` pins the DTO
+flags for a full card and a description-only card. 1945 tests across 143 files,
+typecheck clean.
+
+### Surprises
+
+**The phone's cast strip was dead code.** `CastStrip.tsx` is exported and read
+by nothing — the deck replaced it (§20 phase 50) and the file stayed behind.
+The warning went on the deck and the rail, which is where the cast actually
+lives; the strip is left alone rather than deleted in a phase about a warning,
+but it is noted here so a future sweep can remove it deliberately.
+
+## Phase 206 — Dead code out of the client
+
+Phase 205 found the phone's cast strip was dead — replaced by the deck in
+phase 50 and left behind. A sweep over `client/` turned up the rest:
+
+- `CastStrip.tsx`, ~230 lines, exported and imported by nothing. Deleted; the
+  one comment in `Deck.tsx` that named it now says the same thing without it.
+- `useCharacterSnapshot` and its `characterKeys.snapshot` key — a query hook no
+  screen ever called. Gone, with its now-unused `CharacterSnapshotDto` import.
+- `OpsApi` and `Strings`, two exported convenience types nothing read. Gone.
+
+The sweep also surfaced that several interfaces (`OocProps`, `SwipeHandlers`,
+`SwipeBindings`, `MatchContext`, `OpsDeps`) are *exported but only read in their
+own file*. Those are left alone: de-exporting them is churn without a reader,
+and an exported type is a public surface, not a defect.
+
+**Verified** with 1945 tests across 143 files and a clean typecheck; no source
+guard reads any of the removed names.
+
+## Phase 207 — The macro and lore engines, audited
+
+A targeted audit of the two surfaces most likely to hide a "wrong prompt" bug
+after the turn-director work: macro/outlet resolution and the lorebook
+activation model.
+
+The result is mostly "no defect". `macros.ts` resolves every built-in macro
+from the same `PromptContext` the blocks draft from, so `{{char}}`,
+`{{user}}`, `{{scenario}}`, outlets and the seeded `{{random}}`/`{{pick}}`
+cannot disagree with the assembled prompt; 27 tests cover the surface. The
+lore engine's six rules run in the order the spec names, and 40 tests cover the
+whole matrix — character filter, sticky/cooldown/delay, inclusion groups,
+recursion, and the book budget.
+
+One latent footgun was found and pinned rather than changed: `windowFor` takes
+the scan window as `transcript.slice(-Math.max(0, depth))`, and `slice(-0)` is
+the whole array — so scan depth 0 scans the entire chat. That is the
+SillyTavern convention for "scan depth 0" (unlimited), and the import carries 0
+through unchanged, so the behaviour is the interop contract — but it sat
+undocumented on a JS quirk. It now says so in a comment, and a test pins it so
+a future reader cannot "fix" the `-0` into a regression without failing the
+suite. 1946 tests across 143 files, typecheck clean.
+
+## Phase 208 — The assistant's client
+
+Phase 46 shipped the assistant's server half — threads, a tool-calling loop, and
+an undo list — and parked the client as "its own phase". The whole surface has
+been reachable only by curl ever since, excused in `reachable.test.ts` under
+that sentence. This closes it.
+
+### The screen
+
+`/assistant`, reached like Settings — a Header button on desktop, the phone's
+"more" sheet, and a ⌘K command. One screen, two shapes:
+
+- **Desktop** — a 280px rail of conversations (new, pick, auto-titled by the
+  first question, delete with a confirmation), the conversation itself, and an
+  Undo drawer at the rail's foot.
+- **Phone** — the rail collapses into a native `<select>` plus New/Undo
+  buttons, and the composer stays pinned under the log.
+
+The conversation streams live — the assistant's words, each tool call as a chip
+("Used list characters"), then its result ("Returned …") — and a "What it can
+do" sheet lists every tool with its description before anyone asks. The Undo
+drawer names what each change touched (`character · Sister Bell`, now carried on
+the DTO rather than a raw ULID) and restores it with one press.
+
+### What the guard now verifies
+
+Every `/agent` endpoint came off `reachable.test.ts`'s allowlist. The guard that
+used to excuse "the assistant's client is its own phase" now asserts the client
+actually calls each one — which is the same shift the file made in phase 47,
+one level up.
+
+**Verified** in the browser at both widths: create a thread, ask "how many
+characters do I have", watch it call `list_characters` and answer with the
+count, rename a character for real, and see the composer, tool chips and Undo
+drawer all present with no console errors. 1946 tests across 143 files,
+typecheck clean.
+
+### Notes
+
+- `update_character` still undoes through the character's version history, not
+  the Undo drawer — the drawer lists the two tools that *snapshot* (delete a
+  character, edit a theme), which is the same split the tool descriptions draw.
+- The empty-state hint the screen first used was an explanation, and
+  `test/voice.test.ts`'s prose ceiling said so; it is gone, and the composer's
+  own placeholder does the prompting instead.
+
+## Phase 209 — The assistant's own model, and twelve more tools
+
+Two things the assistant was missing once it had a client.
+
+### Its own connection profile
+
+The assistant had no routing of its own: every thread fell back to the
+install's default profile — the same one scenes use. §7's whole point is that
+bookkeeping can go to a cheap model, and the assistant is the most
+bookkeeping-shaped call in the app. `GET`/`PATCH /agent/profile` store a
+profile ULID in `app_settings`, and `runAgentTurn` resolves
+thread → assistant profile → default. A "Runs on" row in the assistant's header
+— Default plus one button per profile — sets it, and the resolution is verified
+by the existing `reachable` guard, which now sees the `/agent/profile` calls.
+
+### The tools
+
+The registry covered characters, scenes, lorebooks, personas and themes. It
+could not manage an author, fix a lore entry, move a cast, or touch groups or
+the data bank — the things an assistant asked to "tidy up this install" would
+reach for first. Twelve tools:
+
+- **Authors** — `list_authors`, `get_author`, `update_author` (name, the five
+  voice fields; the author is the one partner who shapes every scene).
+- **A scene's cast** — `add_to_cast`, `remove_from_cast` (what they said stays).
+- **Lore entries** — `update_lore_entry` (title, text, keys; clears timed
+  state), `delete_lore_entry` (described as not undoable, because it is not).
+- **Groups** — `list_groups`, `create_group`, `add_to_group`, `remove_from_group`.
+- **Data bank** — `list_documents`.
+
+Each write resolves ULIDs through the same queries the routes use, so a tool
+cannot drift from what the UI would have done. The "every tool has a schema"
+and "registry key matches advertised name" guards cover the new set.
+
+**Verified**: 1946 tests across 143 files, typecheck clean; in the browser the
+"Runs on" row picks `nanogpt` and the setting round-trips.
+
+## Phase 210 — The model has one home: the profile
+
+A report that "navigating the provider/model settings is a complete mess"
+turned out to be several things wearing one coat: a model field on three
+layers at once (provider, profile, scene), a per-scene provider override that
+skipped the profile's model, the per-scene controls living in a rail panel
+instead of Scene Setup, and the classifier routed from two different surfaces.
+The fix collapses the layers.
+
+### The provider is an endpoint, not a model
+
+The provider form no longer carries a model box, a model-list fetch, or a Test
+button. A provider is name, kind, address and key — and its row shows
+`kind · keyed` rather than a model that a profile was about to shadow. The Test
+button moved to the profile form, where the model actually lives; it still asks
+the same question a turn asks (§20 phase 182's contract, now on the surface
+that can name the model). `provider.model` stays in the schema as a legacy
+fallback, but nothing new writes it.
+
+### The scene's routing is one place: Scene Setup
+
+Scene Setup gains a "Runs on" group — a profile picker and one override, the
+model. The rail's Models panel loses its per-scene "provider and model" section
+and keeps the quick one-click profile switch; a scene that still carries the
+legacy provider override (phase 181) is shown as an amber note with a "use the
+profile's" button rather than as a third model-ish knob. The classifier's
+second routing surface (Settings → Tasks) now points at Scene Setup instead of
+offering a competing choice that the director profile would silently beat.
+
+**Verified** in the browser (Scene Setup's "Runs on" renders; the provider form
+has no model box) and with 1946 tests across 143 files, typecheck clean. The
+phase-182 guard's "picking a preset clears the model box" assertion became "a
+provider form carries no model box to go stale", and the per-scene model tests
+followed the override into Scene Setup.

@@ -181,6 +181,13 @@ export const strings = {
     send: "Send",
     writing: (speaker: string) => `${speaker} is writing`,
     stop: "Stop",
+    /**
+     * What cancel did with the part of the turn that had already arrived
+     * (§5.6 keeps it). Said once, so a reader who stopped a turn that was
+     * going wrong knows the fragment is now the last turn and can delete or
+     * reroll it.
+     */
+    stoppedKept: "Turn stopped — the partial reply was kept as the last turn.",
 
     /** Autopilot (SPEC §6) — the strip while it runs, the line when it stops. */
     autopilot: "Autopilot",
@@ -543,6 +550,14 @@ export const strings = {
     youOpens: "You chose",
     youCued: "You cued",
     yourPickOverrides: "Your pick overrides the director this turn",
+    /**
+     * A cast member with no card to anchor on. Shown beside the director's
+     * reason when the one about to speak has neither a description nor a
+     * personality, so the reader knows why they might sound generic *before*
+     * the turn is written rather than after.
+     */
+    thinCard: (name: string) =>
+      `${name} has no description or personality — they may not sound like themselves. Fill their card to fix it.`,
     /*
      * The deck (§20 phase 50). Each readout says what one subsystem is
      * holding right now — a figure, not a setting.
@@ -698,6 +713,10 @@ export const strings = {
     /** Routing by operation — the headline of this screen (design handoff). */
     routing: "Routing by operation",
     routingSame: "Scene's own",
+    /** The classifier's routing lives in Scene Setup, which wins anyway (§210). */
+    classifierRoutedElsewhere:
+      "This op's profile is set in the scene's Setup — Director profile — which " +
+      "beats any choice here, so it is only set there.",
     opEnabled: "On",
     opDisabled: "Off",
     opHidden: "Button hidden",
@@ -1293,6 +1312,15 @@ export const strings = {
   /** The Models rail panel (§20 phase 179). */
   models: {
     title: "Models",
+    /** The group heading in Scene Setup (§20 phase 210): one place for it. */
+    runsOn: "Runs on",
+    /** The profile is where the model lives; a scene points at one. */
+    profileLabel: "Profile",
+    noProfile: "No profile is chosen — pick one so this scene can run.",
+    /** A scene that overrides its whole endpoint (legacy, phase 181). */
+    providerOverrideNote: (name: string) =>
+      `This scene overrides its endpoint to ${name} (set before profiles carried the model).`,
+    providerOverrideClear: "Use the profile's",
     /** What the scene being read is talking to, and how to point it elsewhere. */
     inUse: "This roleplay",
     switchTo: "Point it at",
@@ -1876,6 +1904,52 @@ export const strings = {
     noScene: "Open a roleplay to ask its author something.",
   },
 
+  assistant: {
+    kicker: "Tools",
+    title: "Assistant",
+    /* The one-line description of what it is, under the title. */
+    blurb:
+      "The assistant can read and change what is in this install \u2014 characters, " +
+      "roleplays, lore, personas and themes \u2014 for real. It looks things up rather " +
+      "than guessing, and every change it makes is listed under Undo.",
+    newThread: "New conversation",
+    justNow: "now",
+    /** The model picker row. */
+    profile: "Runs on",
+    profileDefault: "Default",
+    placeholder: "Ask the assistant\u2026",
+    send: "Send",
+    thinking: "Working\u2026",
+    /** The tools disclosure. */
+    tools: "What it can do",
+    toolsEmpty: "No tools are loaded.",
+    undo: "Undo",
+    undoEmpty: "Nothing to undo yet. Changes the assistant makes show up here.",
+    undoEntry: (kind: string, name: string) => `${kind} \u00b7 ${name}`,
+    restore: "Restore",
+    restored: (name: string) => `Restored ${name}.`,
+    restoreNote: (note: string) => note,
+    /** The thread list. */
+    threads: "Conversations",
+    threadsEmpty: "No conversations yet.",
+    rename: "Rename",
+    renamePrompt: "A title for this conversation.",
+    deleteThread: "Delete conversation",
+    deleteConfirm: "Delete this conversation? Its history goes with it.",
+    /** The message log. */
+    empty: "No conversation selected.",
+    /** Tool calls and results, in the log. */
+    toolCall: (name: string) => `Used ${name}`,
+    toolResult: "Returned",
+    toolFailed: "Failed",
+    /** The error strip. */
+    errorTitle: "The assistant stopped",
+    /** The streaming assistant bubble's name. */
+    name: "Assistant",
+    /** The reader's bubble name. */
+    reader: "You",
+  },
+
   dossiers: {
     title: "Dossiers",
     hint: "Sheets for characters who turned up during play. They reach the prompt when their name does \u2014 not on every turn.",
@@ -2147,6 +2221,7 @@ export const strings = {
     /** The desktop sidebar's roleplay list (design 4a). */
     recent: "Recent",
     settings: "Settings",
+    assistant: "Assistant",
     roleplays: "Roleplays",
     characters: "Characters",
     authors: "Authors",
@@ -2206,5 +2281,3 @@ export const strings = {
     },
   },
 } as const;
-
-export type Strings = typeof strings;

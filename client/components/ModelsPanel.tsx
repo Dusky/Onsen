@@ -1,12 +1,7 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import type { ConnectionProfileDto } from "@shared/types.ts";
 import { strings } from "../strings.ts";
-import {
-  useConnectionProfiles,
-  useProviders,
-  useScene,
-  useUpdateScene,
-} from "../lib/queries.ts";
+import { useConnectionProfiles, useProviders, useScene, useUpdateScene } from "../lib/queries.ts";
 import {
   ProfileFields,
   ProviderFields,
@@ -14,23 +9,16 @@ import {
   kindLabel,
   statusDot,
 } from "./ConnectionFields.tsx";
-import { ModelPicker } from "./ModelPicker.tsx";
 
 /**
  * Models, in a rail (§20 phase 179).
  *
  * Providers lived only in Settings, which is a full-screen overlay: changing
- * what a roleplay talks to meant leaving the thing you were reading, finding
- * the Models category, scrolling, expanding a row, and scrolling again to
- * reach a Save button that sat below the fold. The report was that this needs
- * to be faster and that it should be a rail activity, which is right — a
- * provider is machinery, and the left rail is where this app keeps machinery.
- *
- * Three things in one panel, because the request named three verbs:
- *
- *   - **changing** — what this roleplay is pointed at, switched in one click;
- *   - **editing** — the provider and profile rows, expanded in place;
- *   - **managing** — adding and removing either.
+ * what a roleplay talks to meant leaving the thing you were reading. The rail
+ * keeps the quick half — which profile a roleplay is pointed at, switched in
+ * one click — and the full per-scene controls (model override, provider
+ * override) live in Scene Setup now (§20 phase 210), where every other
+ * per-scene decision is.
  *
  * The forms are `ConnectionFields`', not this file's. A credential form is the
  * last thing that should exist twice, so the settings screen and this panel
@@ -55,35 +43,6 @@ export function ModelsPanel({ sceneId }: { sceneId: string | null }) {
   const profileList = profiles.data ?? [];
   const byId = new Map(providerList.map((provider) => [provider.id, provider]));
   const activeId = scene.data?.scene.connectionProfileId ?? null;
-
-  /*
-   * Which model this roleplay actually runs on, and where that came from
-   * (§20 phase 180).
-   *
-   * The chain the server resolves is scene, then profile, then provider
-   * (`server/generation/route.ts`), so the panel shows the same three in the
-   * same order — a picker that displayed the profile's model while the turn
-   * used the scene's would be worse than no picker.
-   */
-  const activeProfile = profileList.find((profile) => profile.id === activeId) ?? null;
-  const profileProvider =
-    activeProfile === null ? null : (byId.get(activeProfile.providerId) ?? null);
-  const sceneProviderId = scene.data?.scene.providerId ?? null;
-  /** What actually serves this roleplay: its own choice, else the profile's. */
-  const activeProvider =
-    sceneProviderId === null ? profileProvider : (byId.get(sceneProviderId) ?? profileProvider);
-  const sceneModel = scene.data?.scene.model ?? null;
-  /*
-   * What the model box falls back to when the scene has no model of its own.
-   * A scene that overrode the *provider* skips the profile's model, because a
-   * model id belongs to the provider that serves it — the same skip
-   * `resolveRoute` makes on the server.
-   */
-  const inherited =
-    sceneProviderId === null
-      ? (activeProfile?.model ?? activeProvider?.model ?? null)
-      : (activeProvider?.model ?? null);
-  const modelRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="pt-[12px] pb-[16px]">
@@ -134,90 +93,9 @@ export function ModelsPanel({ sceneId }: { sceneId: string | null }) {
         </div>
       )}
 
-      {/* Provider and model for this roleplay, not only readouts of them.
-          Editing the profile would change every roleplay pointed at it, and
-          switching profiles only reaches a provider you already made a profile
-          for; these belong to one roleplay. */}
-      {sceneId === null || activeProfile === null ? null : (
-        <div className="mb-[18px]">
-          <p className="section-label mb-[6px]">{strings.models.providerLabel}</p>
-          <select
-            className="field mb-[6px]"
-            aria-label={strings.models.providerLabel}
-            value={sceneProviderId ?? ""}
-            onChange={(event) =>
-              updateScene.mutate({
-                providerId: event.target.value === "" ? null : event.target.value,
-              })
-            }
-          >
-            <option value="">
-              {profileProvider === null
-                ? strings.models.modelClear
-                : strings.models.providerFromProfile(profileProvider.name)}
-            </option>
-            {providerList.map((provider) => (
-              <option key={provider.id} value={provider.id}>
-                {provider.name}
-              </option>
-            ))}
-          </select>
-
-          <p className="section-label mt-[14px] mb-[6px]">{strings.models.modelLabel}</p>
-          <ModelPicker
-            request={() => ({
-              // Spread rather than an undefined-valued key: the project runs
-              // `exactOptionalPropertyTypes`, so an absent option and one set
-              // to `undefined` are different types.
-              ...(activeProvider === null ? {} : { kind: activeProvider.kind, providerId: activeProvider.id }),
-              baseUrl: activeProvider?.baseUrl ?? "",
-            })}
-            selected={sceneModel ?? inherited ?? ""}
-            emptyMessage={strings.models.modelNoAddress}
-            onPick={(model) => {
-              if (modelRef.current !== null) modelRef.current.value = model;
-              updateScene.mutate({ model });
-            }}
-          >
-            <input
-              ref={modelRef}
-              className="field min-w-0 flex-1"
-              aria-label={strings.models.modelLabel}
-              // Keyed on what is in force, so switching profiles or clearing
-              // the override re-seeds the box rather than stranding old text.
-              key={sceneModel ?? inherited ?? ""}
-              defaultValue={sceneModel ?? inherited ?? ""}
-              onBlur={(event) => {
-                const next = event.target.value.trim();
-                if (next === (sceneModel ?? "")) return;
-                updateScene.mutate({ model: next });
-              }}
-            />
-          </ModelPicker>
-          {/* Which of the three steps this value came from, said accurately:
-              a roleplay that moved provider is not inheriting from its
-              profile, and saying so would be the same class of lie the
-              composer's chip used to tell. */}
-          <p className="explain mt-[6px]">
-            {sceneModel !== null
-              ? ""
-              : inherited === null
-                ? strings.models.modelNoAddress
-                : sceneProviderId === null
-                  ? strings.models.modelFromProfile(inherited)
-                  : strings.models.modelFromProvider(inherited)}
-          </p>
-          {sceneModel === null ? null : (
-            <button
-              type="button"
-              className="btn w-full"
-              onClick={() => updateScene.mutate({ model: null })}
-            >
-              {strings.models.modelClear}
-            </button>
-          )}
-        </div>
-      )}
+      {/* Provider and model for this roleplay moved to Scene Setup (§20 phase
+          210), so the rail keeps only the quick switch above and the
+          management lists below. */}
 
       <p className="section-label mb-[6px]">{strings.settings.providers}</p>
       {providerList.map((provider) => {
@@ -234,7 +112,7 @@ export function ModelsPanel({ sceneId }: { sceneId: string | null }) {
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-ui-loose font-medium">{provider.name}</span>
                 <span className="meta block truncate">
-                  {[provider.model, kindLabel(provider.kind), provider.hasApiKey ? "keyed" : null]
+                  {[kindLabel(provider.kind), provider.hasApiKey ? "keyed" : null]
                     .filter((part) => part !== null && part !== "")
                     .join(" · ")}
                 </span>

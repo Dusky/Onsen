@@ -3,6 +3,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { api, ApiRequestError } from "./api.ts";
 import { keys } from "./queries.ts";
 import { useGenerationStore } from "../state/generation.ts";
+import { notify } from "../state/notices.ts";
+import { strings } from "../strings.ts";
 import { chimeIfWanted } from "./chime.ts";
 import type { BeatBound, ReviseMode, TurnScope } from "@shared/types.ts";
 
@@ -145,6 +147,7 @@ export function useGeneration() {
                   generationId,
                   event.type === "done" ? "done" : event.type,
                   event.message ?? null,
+                  event.detail ?? null,
                 );
                 // §5's completion chime, for a turn that finished while the
                 // reader was somewhere else. On the scene they are watching the
@@ -251,7 +254,14 @@ export function useGeneration() {
   const cancel = useCallback(async () => {
     const active = useGenerationStore.getState().active;
     if (active === null) return;
-    await api.post(`/generations/${active.generationId}/cancel`);
+    const snapshot = await api.post<{ buffer: string }>(
+      `/generations/${active.generationId}/cancel`,
+    );
+    // Cancel keeps whatever was produced (§5.6), and the partial lands as the
+    // scene's last turn. The button says only "Stop", so this says the rest: a
+    // reader who stopped a turn that was going wrong knows the fragment is now
+    // in the story and can delete or reroll it through the turn's own controls.
+    if (snapshot.buffer.trim() !== "") notify("done", strings.chat.stoppedKept);
   }, []);
 
   /**

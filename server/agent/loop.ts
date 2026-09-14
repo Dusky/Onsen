@@ -10,6 +10,7 @@ import type { SamplerSettings } from "../../shared/types.ts";
 import type { AppContext } from "../context.ts";
 import { createAdapter as defaultCreateAdapter, AdapterError } from "../adapters/index.ts";
 import { resolveRoute } from "../generation/route.ts";
+import { SettingKey, getSetting } from "../db/queries/settings.ts";
 import type { BuiltPrompt, NormalizedMessage, ToolCall } from "../prompt/index.ts";
 import { TOOLS, toolSpecs } from "./tools.ts";
 import {
@@ -164,15 +165,24 @@ export async function runAgentTurn(
 ): Promise<void> {
   // A thread without a profile of its own runs on the install's default. The
   // route resolver refuses a null outright — it is written for scenes, which
-  // always have one — so the fallback belongs here.
+  // always have one — so the fallback belongs here. The assistant's own
+  // profile sits between the two: a reader who wants the assistant on a cheap
+  // model sets it once and every thread inherits it.
   const fallback = ctx.db
     .query("SELECT id FROM connection_profiles ORDER BY is_default DESC, id LIMIT 1")
     .get() as { id: number } | null;
+  const assistantProfileUlid = getSetting(ctx.db, SettingKey.assistantProfile);
+  const assistantProfileId =
+    assistantProfileUlid === null
+      ? null
+      : ((ctx.db
+          .query("SELECT id FROM connection_profiles WHERE ulid = $ulid")
+          .get({ ulid: assistantProfileUlid }) as { id: number } | null)?.id ?? null);
 
   let route;
   try {
     route = resolveRoute(ctx.db, ctx.keyring, {
-      profileId: thread.connection_profile_id ?? fallback?.id ?? null,
+      profileId: thread.connection_profile_id ?? assistantProfileId ?? fallback?.id ?? null,
     });
   } catch (caught) {
     await emit({
