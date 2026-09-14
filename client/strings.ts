@@ -1826,6 +1826,8 @@ export const strings = {
     vnMode: "Visual novel stage",
     vnModeOn: "On",
     vnModeOff: "Off",
+    /** Messaging-client rendering of the same tree (§20 phase 213). */
+    conversationMode: "Conversation mode",
     background: "Set a background",
     backgroundGenerate: "Generate",
     backgroundWorking: "Drawing…",

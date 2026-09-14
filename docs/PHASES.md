@@ -10051,3 +10051,31 @@ The remaining distance is the message log's own per-turn action buttons (reroll
 / edit / branch / copy / hide / inspect — six per turn). Whether those should
 all be tab stops is a design decision for its own phase; the fast routes (`c`,
 the skip link) already answer the common case.
+
+## Phase 213 — Conversation mode
+
+The first of the two SillyBunny-derived feature gaps. Conversation mode is a
+per-scene skin over the same history tree: the reader's own words on the right,
+the cast on the left with their colour, and a timestamp where the reader has
+them on. The prompt, the tree, the composer and every action are untouched —
+this is rendering, not a second product.
+
+`scenes.conversation_mode` (migration 0080, off by default) reaches the scene
+DTO, the scene PATCH and Scene Setup's "Model" group as an On/Off toggle.
+`MessageLog` branches: conversation mode renders a `ConversationBubble` per
+turn (name, colour, optional time, the content) instead of the prose
+`MessageBlock`, and the streaming tail renders as the same bubble shape while a
+turn is being written. Long-press still opens the same turn actions.
+
+**Verified** in the browser: enabling the toggle on "The Last Inn" renders
+bubbles with speaker names and the two bubble radii, no console errors. 1946
+tests across 143 files, typecheck clean. The explainer string the toggle first
+carried was cut by `test/voice.test.ts`'s prose ceiling — the On/Off toggle
+needs no explanation, which is the ceiling doing its job.
+
+### Not done here
+
+The SillyBunny extras that make its conversation mode *more* than a skin —
+time-based scheduling, statuses, follow-up messages, a distinct conversation
+system prompt — are deliberately out of scope. This is the rendering first;
+those are their own phases if wanted.

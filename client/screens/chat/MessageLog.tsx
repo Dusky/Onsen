@@ -50,6 +50,7 @@ export function MessageLog({
   colours,
   trackerState,
   personaId,
+  conversationMode,
   onReroll,
   onOpenVersions,
   onLongPress,
@@ -87,6 +88,8 @@ export function MessageLog({
   /** Message id → the state written at that turn (§163). */
   trackerState: Map<string, TrackerDto[]>;
   layout: LayoutDto;
+  /** Messaging-client rendering (§20 phase 213). */
+  conversationMode: boolean;
   /** The reader's own controls (§20 phase 166). */
   reader: ReaderDto;
   personaId: string | null;
@@ -107,26 +110,47 @@ export function MessageLog({
   onStopAutopilot(): void;
   onCancel(): void;
 }) {
-  // One message, in every shape it can be: an aside, an edit, or a turn.
-  const renderMessage = (message: MessageDto, index: number) =>
-    message.kind === "ooc" ? (
-      <OocBlock
-        key={message.id}
-        message={message}
-        speakerName={message.authorType === "user" ? strings.chat.you : authorName}
-        onOpenChannel={onOpenOoc}
-      />
-    ) : editing === message.id ? (
-      <MessageEditor
-        key={message.id}
-        initial={message.content}
-        onCancel={onCancelEdit}
-        onSave={(content) => {
-          onCancelEdit();
-          onSaveEdit(message.id, content);
-        }}
-      />
-    ) : (
+  // One message, in every shape it can be: an aside, an edit, a turn, or — in
+  // conversation mode — a messaging bubble (§20 phase 213).
+  const renderMessage = (message: MessageDto, index: number) => {
+    if (message.kind === "ooc") {
+      return (
+        <OocBlock
+          key={message.id}
+          message={message}
+          speakerName={message.authorType === "user" ? strings.chat.you : authorName}
+          onOpenChannel={onOpenOoc}
+        />
+      );
+    }
+    if (editing === message.id) {
+      return (
+        <MessageEditor
+          key={message.id}
+          initial={message.content}
+          onCancel={onCancelEdit}
+          onSave={(content) => {
+            onCancelEdit();
+            onSaveEdit(message.id, content);
+          }}
+        />
+      );
+    }
+    if (conversationMode) {
+      return (
+        <ConversationBubble
+          key={message.id}
+          message={message}
+          speakerName={speakerFor(message, authorName)}
+          speakerColour={
+            message.characterId === null ? null : (colours.get(message.characterId) ?? null)
+          }
+          timestamp={reader.timestamps}
+          onLongPress={() => onLongPress(message)}
+        />
+      );
+    }
+    return (
       <MessageBlock
         key={message.id}
         message={message}
@@ -172,6 +196,7 @@ export function MessageLog({
           : {})}
       />
     );
+  };
 
   /**
    * A turn, and the scene state it was written under (§20 phase 163).
@@ -219,7 +244,25 @@ export function MessageLog({
   // area when it is engaged, so a streamed turn can grow without a re-measure.
   const tail = (
     <>
-      {isGenerating && recastInFlight === null && !oocInFlight && active?.speaker != null ? (
+      {isGenerating && recastInFlight === null && !oocInFlight && active?.speaker != null && conversationMode ? (
+        <div className="mb-[12px] flex flex-col items-start">
+          <span className="chrome mb-[4px] text-[12px]" style={{ color: "var(--onsen-color-text-label)" }}>
+            {active.speaker}
+          </span>
+          <div
+            className="chrome max-w-[85%] px-[12px] py-[9px] text-ui leading-[1.55] whitespace-pre-wrap"
+            style={{
+              background: "var(--onsen-color-bg-raised)",
+              border: "1px solid var(--onsen-color-border-quiet)",
+              borderRadius: "3px 12px 12px 12px",
+            }}
+          >
+            {active.text === "" ? strings.assistant.thinking : active.text}
+          </div>
+        </div>
+      ) : null}
+
+      {isGenerating && recastInFlight === null && !oocInFlight && active?.speaker != null && !conversationMode ? (
         <article>
           {/* Document mode runs the name into the paragraph here too (§20 phase
               165). The director's reason stays either way: it is only on screen
@@ -331,6 +374,80 @@ export function MessageLog({
           {tail}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * One turn, rendered as a messaging bubble (§20 phase 213).
+ *
+ * Conversation mode is a skin over the same tree: the reader's own words on
+ * the right, the cast on the left with their colour, and a timestamp where the
+ * reader has them on. Long-press still opens the same turn actions; nothing
+ * about the prompt or the tree changes.
+ */
+function ConversationBubble({
+  message,
+  speakerName,
+  speakerColour,
+  timestamp,
+  onLongPress,
+}: {
+  message: MessageDto;
+  speakerName: string;
+  speakerColour: string | null;
+  timestamp: boolean;
+  onLongPress(): void;
+}) {
+  const isUser = message.authorType === "user";
+  const name = speakerName;
+  const time =
+    timestamp === false
+      ? null
+      : new Date(message.createdAt).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+
+  return (
+    <div
+      className={`mb-[12px] flex flex-col ${isUser ? "items-end" : "items-start"}`}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        onLongPress();
+      }}
+    >
+      <span
+        className="chrome mb-[4px] text-[12px]"
+        style={{
+          color:
+            speakerColour ??
+            (isUser ? "var(--onsen-color-text-muted)" : "var(--onsen-color-text-label)"),
+        }}
+      >
+        {name}
+        {time === null ? null : (
+          <span className="opacity-60"> · {time}</span>
+        )}
+      </span>
+      <div
+        className="chrome max-w-[85%] px-[12px] py-[9px] text-ui leading-[1.55] whitespace-pre-wrap"
+        style={
+          isUser
+            ? {
+                background: "var(--onsen-color-ooc-reader-bg)",
+                color: "var(--onsen-color-ooc-reader-text)",
+                borderRadius: "12px 3px 12px 12px",
+              }
+            : {
+                background: "var(--onsen-color-bg-raised)",
+                border: "1px solid var(--onsen-color-border-quiet)",
+                borderRadius: "3px 12px 12px 12px",
+              }
+        }
+      >
+        {message.content}
+      </div>
     </div>
   );
 }

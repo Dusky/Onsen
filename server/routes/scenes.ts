@@ -612,6 +612,15 @@ export function sceneRoutes(
         on: input.vnModeEnabled ? 1 : 0,
       });
     }
+    if ("conversationMode" in input) {
+      if (typeof input.conversationMode !== "boolean") {
+        return c.json(badRequest("conversationMode must be a boolean."), 400);
+      }
+      ctx.db.query("UPDATE scenes SET conversation_mode = $on WHERE id = $id").run({
+        id: row.id,
+        on: input.conversationMode ? 1 : 0,
+      });
+    }
     if ("summariseEvict" in input) {
       if (typeof input.summariseEvict !== "boolean") {
         return c.json(badRequest("summariseEvict must be a boolean."), 400);

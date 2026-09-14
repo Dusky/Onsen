@@ -124,6 +124,8 @@ export interface SceneRow {
   autopilot_max_turns: number;
   /** Visual novel staging, sprites above the log (SPEC §12). */
   vn_mode_enabled: number;
+  /** Messaging-client rendering of the same tree (§20 phase 213). */
+  conversation_mode: number;
   /** A scene background, when one is set (SPEC §12). */
   background_path: string | null;
   /** Whether an OOC aside renders inline in the log, or only in the channel (§7). */
@@ -362,6 +364,7 @@ function toSceneDto(
     autopilotEnabled: row.autopilot_enabled === 1,
     autopilotMaxTurns: row.autopilot_max_turns,
     vnModeEnabled: row.vn_mode_enabled === 1,
+    conversationMode: row.conversation_mode === 1,
     hasBackground: row.background_path !== null,
     oocInline: row.ooc_inline === 1,
     apiEnabled: row.api_enabled === 1,

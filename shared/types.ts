@@ -1506,6 +1506,8 @@ export interface SceneDto {
   autopilotMaxTurns: number;
   /** Visual novel staging, sprites above the log (SPEC §12). */
   vnModeEnabled: boolean;
+  /** Messaging-client rendering of the same tree (§20 phase 213). */
+  conversationMode: boolean;
   /** Whether a background image is set (served at /scenes/:id/background). */
   hasBackground: boolean;
   /** Whether OOC asides render inline in the log, or only in the channel (§7). */
@@ -3519,6 +3521,8 @@ export interface SceneSetupRequest {
   autopilotEnabled?: boolean;
   autopilotMaxTurns?: number;
   vnModeEnabled?: boolean;
+  /** Messaging-client rendering of the same tree (§20 phase 213). */
+  conversationMode?: boolean;
   summariseFreeze?: number;
   title?: string;
   /** Display-only translation's target language (§20 phase 78). */

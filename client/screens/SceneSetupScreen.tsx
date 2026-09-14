@@ -901,6 +901,22 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               </button>
             ))}
           </div>
+
+          {/* Conversation mode (§20 phase 213): the same tree, rendered as
+              messages. A skin, not a different prompt or a different tree. */}
+          <p className="section-label mb-[8px]">{strings.sceneSetup.conversationMode}</p>
+          <div className="mb-[22px] flex gap-[6px]">
+            {[true, false].map((on) => (
+              <button
+                key={String(on)}
+                type="button"
+                onClick={() => setup.mutate({ conversationMode: on })}
+                className={`btn flex-1 ${scene.conversationMode === on ? "btn-primary" : ""}`}
+              >
+                {on ? strings.sceneSetup.vnModeOn : strings.sceneSetup.vnModeOff}
+              </button>
+            ))}
+          </div>
           <div className="mb-[8px] flex gap-[6px]">
             <button
               type="button"

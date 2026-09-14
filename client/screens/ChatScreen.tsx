@@ -712,6 +712,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           colours={colours}
           trackerState={trackerState}
           personaId={scene.data?.scene.personaId ?? null}
+          conversationMode={scene.data?.scene.conversationMode ?? false}
           onReroll={(message) => void reroll(message)}
           onOpenVersions={(message) => setVersionsFor(message)}
           onLongPress={(message) => setActing(message)}
