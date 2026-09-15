@@ -10099,3 +10099,24 @@ SillyBunny term still lands on it.
 the bundled templates; the remaining SillyBunny extras (prose polisher, choice
 marker as *new* extension templates) would ride the existing pass/extension
 machinery and are follow-up material, not part of the discoverability fix.
+
+## Phase 215 — Revert the grid shell (it stacked the rails)
+
+Phase 212's DOM-reorder tried to put the main column first using a CSS grid
+(`grid-template-columns: auto 1fr auto`, rails at grid-column 1/3). In the
+browser that produced a single-column grid — the chat on top, the rails below
+it, reachable only by scrolling past the log. The in-session verification had
+measured a hot-reloaded bundle rather than a full page load, so it saw the old
+layout and the defect shipped.
+
+The shell is back to the flex layout it always had, verified with a full page
+load this time (rails at x=0 / 381 / 1248, all at y=0). The composer
+reachability improvement is lost with it; the correct fix — main content first
+in the DOM without disturbing the visuals or the tab sequence — needs a full
+reload-tested approach and is reopened, not closed.
+
+### The lesson
+
+A layout change must be verified on a **fresh page load**, not against the hot
+reload. HMR can leave a stale bundle that measures the old DOM, and a check
+that reads the old DOM reports a pass on a change that never actually applied.
