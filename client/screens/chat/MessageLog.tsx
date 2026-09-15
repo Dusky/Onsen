@@ -446,7 +446,7 @@ function ConversationBubble({
               }
         }
       >
-        {message.content}
+        <Emphasis text={message.translation ?? message.content} colour={isUser ? null : speakerColour} />
       </div>
     </div>
   );

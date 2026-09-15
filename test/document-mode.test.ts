@@ -124,7 +124,7 @@ describe("the run-in head", () => {
     // The distinction from Broadsheet's `inline`, which sets the whole message
     // as one unformatted paragraph. Document goes through `Prose`, so it gets
     // the paragraph split and the tokenizer like every other turn.
-    expect(BLOCK).toContain("function Prose({ text, lead }");
+    expect(BLOCK).toContain("function Prose({");
     expect(BLOCK).toContain("{index === 0 ? lead : null}");
     expect(BLOCK).toMatch(/attribution === "runin"[\s\S]{0,200}lead: \(\s*<RunIn/);
   });

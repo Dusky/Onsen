@@ -78,6 +78,7 @@ import sceneProvider from "./0077_scene_provider.sql" with { type: "text" };
 import profileContext from "./0078_profile_context.sql" with { type: "text" };
 import oocSidebar from "./0079_ooc_sidebar.sql" with { type: "text" };
 import conversationMode from "./0080_conversation_mode.sql" with { type: "text" };
+import characterColourBackfill from "./0081_character_colour_backfill.sql" with { type: "text" };
 
 export interface Migration {
   /** Monotonic, gapless, never reordered once merged. */
@@ -173,4 +174,5 @@ export const migrations: readonly Migration[] = [
   { version: 78, name: "profile_context", sql: profileContext },
   { version: 79, name: "ooc_sidebar", sql: oocSidebar },
   { version: 80, name: "conversation_mode", sql: conversationMode },
+  { version: 81, name: "character_colour_backfill", sql: characterColourBackfill },
 ];

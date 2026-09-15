@@ -32,7 +32,6 @@ export interface OpsDeps {
   speakerName: string | null;
   scope: TurnScope;
   nextSpeaker: NextSpeakerDto | null;
-  decidesOnSend: boolean;
   cast: SceneMemberDto[];
   messages: MessageDto[];
   cued: string | null;
@@ -70,7 +69,6 @@ export function useOps(deps: OpsDeps) {
     speakerName,
     scope,
     nextSpeaker,
-    decidesOnSend,
     cast,
     messages,
     cued,
@@ -108,8 +106,14 @@ export function useOps(deps: OpsDeps) {
       // Null means "not decided yet"; the director event fills it in.
       speaker: scope === "beat" ? (authorName ?? strings.chat.beatLabel) : speakerName,
       scope,
-      // In a beat the cue chooses who opens rather than who speaks.
-      ...(nextSpeaker === null || decidesOnSend ? {} : { characterId: nextSpeaker.characterId }),
+      // Only the reader's *explicit* cue travels as `characterId`. The footer
+      // also shows the director's suggestion, and sending that as a cue would
+      // mark a stale provisional pick as "user" — the mention strategy would
+      // never scan the message just sent, and round robin would freeze one
+      // turn behind. The server re-derives the choice from fresh history.
+      ...(nextSpeaker === null || nextSpeaker.source !== "user"
+        ? {}
+        : { characterId: nextSpeaker.characterId }),
     };
   }
 

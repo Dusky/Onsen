@@ -202,7 +202,7 @@ export function Direction({ text }: { text: string }) {
  * the same prose while it is still arriving, and text that reflowed the
  * instant a turn finished would be worse than text that never formatted.
  */
-export function Emphasis({ text }: { text: string }) {
+export function Emphasis({ text, colour = null }: { text: string; colour?: string | null }) {
   if (isPlain(text)) return <>{text}</>;
   return (
     <>
@@ -217,8 +217,16 @@ export function Emphasis({ text }: { text: string }) {
         if (span.kind === "em") {
           return <em key={index}>{span.text}</em>;
         }
+        // Spoken words are italic *and* take the speaker's colour — the same
+        // colour the name and spine carry, so the voice is found the same way
+        // wherever it is. The model never supplies this colour: it is a fact
+        // the client already knows, applied to the quoted runs deterministically.
         if (span.kind === "dialogue") {
-          return <em key={index}>{span.text}</em>;
+          return (
+            <em key={index} style={colour === null ? undefined : { color: colour }}>
+              {span.text}
+            </em>
+          );
         }
         if (span.kind === "underline") {
           return <u key={index}>{span.text}</u>;
@@ -247,7 +255,16 @@ export function Emphasis({ text }: { text: string }) {
  * including its markup, and a recast splice stays correct only while that is
  * true.
  */
-function Prose({ text, lead }: { text: string; lead?: ReactNode }) {
+function Prose({
+  text,
+  lead,
+  colour = null,
+}: {
+  text: string;
+  lead?: ReactNode;
+  /** The speaker's colour, for the quoted dialogue inside this prose. */
+  colour?: string | null;
+}) {
   const paragraphs = text.split(/\n{2,}/).filter((paragraph) => paragraph.trim() !== "");
   // A run-in head with nothing after it yet — the first frame of a streamed
   // turn, or a part of a beat that has only been announced. The name still
@@ -267,7 +284,7 @@ function Prose({ text, lead }: { text: string; lead?: ReactNode }) {
           className="mt-[14px] first:mt-0 text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)] whitespace-pre-wrap"
         >
           {index === 0 ? lead : null}
-          <Emphasis text={paragraph} />
+          <Emphasis text={paragraph} colour={colour} />
         </p>
       ))}
     </>
@@ -369,6 +386,7 @@ function Segment({
       )}
       <Prose
         text={replacement ?? segment.content}
+        colour={colour ?? null}
         {...(runin === true && segment.speakerName !== null
           ? {
               lead: (
@@ -992,6 +1010,7 @@ export function MessageBlock({
                 message header says only that the author wrote it. */}
             <Prose
               text={text}
+              colour={isUser ? null : (speakerColour ?? null)}
               {...(attribution === "runin"
                 ? {
                     lead: (

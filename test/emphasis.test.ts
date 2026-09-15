@@ -205,7 +205,7 @@ describe("where it is used", () => {
   const LOG = readFileSync(join(ROOT, "client", "screens", "chat", "MessageLog.tsx"), "utf8");
 
   test("a finished turn and the streaming tail share one renderer", () => {
-    expect(BLOCK).toContain("<Emphasis text={paragraph} />");
+    expect(BLOCK).toContain("<Emphasis text={paragraph} colour={colour} />");
     expect(LOG).toContain("<Emphasis text={active.text} />");
   });
 

@@ -471,7 +471,6 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     speakerName,
     scope,
     nextSpeaker,
-    decidesOnSend,
     cast,
     messages,
     cued,

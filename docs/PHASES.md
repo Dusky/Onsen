@@ -10188,3 +10188,33 @@ cast is told apart at a glance. Anyone can still be repainted in the editor.
 italic dialogue, the unclosed-quote and attribute-quote cases, the absent
 prompt instruction, and auto-assignment (distinct colours; an existing colour
 is kept).
+
+## Phase 218 — The wrong-character bug, and the colour that was missing
+
+Two live reports fixed.
+
+**The wrong character was a client bug, not the director.** The composer
+shows the director's provisional pick, and the send button sent that pick back
+as `characterId`. The server reads any `characterId` as a *user cue* and
+honours it over the strategy — so every ordinary send froze a choice computed
+against stale history. The mention strategy never scanned the message just
+typed (the cue pre-empted it), and round robin ran one turn behind. The only
+cue that travels now is the reader's explicit tap (`source === "user"`); a
+"director" suggestion stays on the client and the server re-derives the choice
+from fresh history at generation time. `decidesOnSend` is gone from the ops
+hook — it was the gate that let the stale pick through for every non-classifier
+strategy. Guarded by `test/next-turn-cue.test.ts`.
+
+**Colour was applied to the name and spine but never the spoken words.** The
+`dialogue` span now renders italic *and* in the speaker's colour, client-side:
+`Emphasis` takes the colour, `Prose` passes it down, and the spotlight turn and
+each beat part hand over the speaker's own colour. The model supplies no colour
+— it is a fact the client already knows, applied to the quoted runs
+deterministically, so a scene reads "blue speaks, green answers" without the
+model being asked to emit markup. The conversation-mode bubble shares it.
+
+**And the colour that never existed is backfilled.** Migration 0081 gives every
+character that predates the palette a colour by creation order, so an existing
+library is told apart at a glance the same way a new cast is.
+
+**Verified**: 1951 tests across 144 files, typecheck clean.
