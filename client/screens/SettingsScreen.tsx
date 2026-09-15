@@ -1386,7 +1386,7 @@ function EmbeddingsSection() {
 const CATEGORIES = [
   { id: "models", words: ["provider", "profile", "model", "api key", "endpoint", "anthropic", "llama"] },
   { id: "generation", words: ["preset", "sampler", "temperature", "context", "reasoning", "prefill"] },
-  { id: "tasks", words: ["routing", "ops", "background", "guide", "summariser", "classifier"] },
+  { id: "tasks", words: ["agent", "routing", "ops", "background", "guide", "summariser", "classifier"] },
   { id: "reading", words: ["font", "size", "theme", "prose", "light", "dark"] },
   { id: "branding", words: ["logo", "mark", "icon", "wordmark", "silhouette", "branding"] },
   { id: "backgrounds", words: ["backdrop", "background", "wallpaper", "picture"] },
@@ -1786,63 +1786,79 @@ export function SettingsScreen() {
           ) : null}
           {show("tasks") ? (
             <>
-          {/* Routing by operation — the interesting one. */}
-          <p className="group-heading mb-[12px]">{strings.settings.routing}</p>
-          {(tasks.data ?? []).map((task) => {
-            const routed =
-              task.runs === "turn"
-                ? "—"
-                : task.connectionProfileId === null
-                  ? strings.settings.routingSame
-                  : (profileList.find((profile) => profile.id === task.connectionProfileId)?.name ??
-                    strings.settings.routingSame);
-            const isOpen = isDesktop && openOp === task.key;
+          {/* Agents, grouped by when they run (§20 phase 214): before the
+              turn, alongside it, or after it. The same ops, now framed the
+              way a reader reaches for them. */}
+          {(["pre_generation", "sidecar", "post_generation"] as const).map((stage) => {
+            const stageTasks = (tasks.data ?? []).filter((task) => task.stage === stage);
+            if (stageTasks.length === 0) return null;
+            const heading =
+              stage === "pre_generation"
+                ? strings.settings.stagePre
+                : stage === "sidecar"
+                  ? strings.settings.stageSidecar
+                  : strings.settings.stagePost;
             return (
-              <Row key={task.key}>
-                <button
-                  type="button"
-                  onClick={() =>
-                    isDesktop ? setOpenOp(isOpen ? null : task.key) : setEditingOp(task)
-                  }
-                  aria-expanded={isDesktop ? isOpen : undefined}
-                  className="tap flex w-full items-baseline gap-[9px] text-left"
-                >
-                  <span className="min-w-0 flex-1">
-                    <span
-                      className="block truncate text-[15px] font-medium"
-                      style={{ opacity: task.enabled ? 1 : 0.55 }}
-                    >
-                      {task.label}
-                    </span>
-                    <span className="meta block truncate">
-                      {[
-                        task.enabled ? null : strings.settings.opDisabled,
-                        task.promptTemplate === null
-                          ? strings.settings.opWordsDefault
-                          : strings.settings.opWordsOverridden,
-                      ]
-                        .filter((part) => part !== null)
-                        .join(" · ")}
-                    </span>
-                  </span>
-                  <span className="chrome flex-none text-ui text-ink-muted">
-                    {routed}
-                  </span>
-                  <span className="chrome flex-none self-center text-[12px] text-ink-dim">
-                    {isDesktop ? (isOpen ? "▾" : "›") : "›"}
-                  </span>
-                </button>
+              <div key={stage}>
+                <p className="group-heading mb-[12px]">{heading}</p>
+                {stageTasks.map((task) => {
+                  const routed =
+                    task.runs === "turn"
+                      ? "—"
+                      : task.connectionProfileId === null
+                        ? strings.settings.routingSame
+                        : (profileList.find((profile) => profile.id === task.connectionProfileId)?.name ??
+                          strings.settings.routingSame);
+                  const isOpen = isDesktop && openOp === task.key;
+                  return (
+                    <Row key={task.key}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          isDesktop ? setOpenOp(isOpen ? null : task.key) : setEditingOp(task)
+                        }
+                        aria-expanded={isDesktop ? isOpen : undefined}
+                        className="tap flex w-full items-baseline gap-[9px] text-left"
+                      >
+                        <span className="min-w-0 flex-1">
+                          <span
+                            className="block truncate text-[15px] font-medium"
+                            style={{ opacity: task.enabled ? 1 : 0.55 }}
+                          >
+                            {task.label}
+                          </span>
+                          <span className="meta block truncate">
+                            {[
+                              task.enabled ? null : strings.settings.opDisabled,
+                              task.promptTemplate === null
+                                ? strings.settings.opWordsDefault
+                                : strings.settings.opWordsOverridden,
+                            ]
+                              .filter((part) => part !== null)
+                              .join(" · ")}
+                          </span>
+                        </span>
+                        <span className="chrome flex-none text-ui text-ink-muted">
+                          {routed}
+                        </span>
+                        <span className="chrome flex-none self-center text-[12px] text-ink-dim">
+                          {isDesktop ? (isOpen ? "▾" : "›") : "›"}
+                        </span>
+                      </button>
 
-                {/* With room, the options are the row itself (design 4a,
-                    §20 phase 71): expand in place, no sheet between the reader
-                    and the setting. On a phone there is no room, so the sheet
-                    stays. */}
-                {isOpen ? (
-                  <div className="mt-[14px] border-t border-rule pt-[14px]">
-                    <OpFields task={task} profiles={profileList} />
-                  </div>
-                ) : null}
-              </Row>
+                      {/* With room, the options are the row itself (design 4a,
+                          §20 phase 71): expand in place, no sheet between the
+                          reader and the setting. On a phone there is no room,
+                          so the sheet stays. */}
+                      {isOpen ? (
+                        <div className="mt-[14px] border-t border-rule pt-[14px]">
+                          <OpFields task={task} profiles={profileList} />
+                        </div>
+                      ) : null}
+                    </Row>
+                  );
+                })}
+              </div>
             );
           })}
             </>

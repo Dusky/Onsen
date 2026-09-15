@@ -620,7 +620,7 @@ export const strings = {
     categories: {
       models: "Models",
       generation: "Generation",
-      tasks: "Background tasks",
+      tasks: "Agents",
       reading: "Reading",
       branding: "Branding",
       backgrounds: "Background",
@@ -713,6 +713,10 @@ export const strings = {
     /** Routing by operation — the headline of this screen (design handoff). */
     routing: "Routing by operation",
     routingSame: "Scene's own",
+    /** The three stages an op can run in (§20 phase 214). */
+    stagePre: "Before the turn",
+    stageSidecar: "Alongside",
+    stagePost: "After the turn",
     /** The classifier's routing lives in Scene Setup, which wins anyway (§210). */
     classifierRoutedElsewhere:
       "This op's profile is set in the scene's Setup — Director profile — which " +

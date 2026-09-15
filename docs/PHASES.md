@@ -10079,3 +10079,23 @@ The SillyBunny extras that make its conversation mode *more* than a skin —
 time-based scheduling, statuses, follow-up messages, a distinct conversation
 system prompt — are deliberately out of scope. This is the rendering first;
 those are their own phases if wanted.
+
+## Phase 214 — Agents, discoverable and grouped by stage
+
+The last SillyBunny-derived gap. Onsen already had the machinery — every named
+op in `server/tasks/registry.ts` is an agent in SillyBunny's sense: pre, sidecar
+and post stages, each routable, each with its own words. What it lacked was the
+framing. Settings called it "Background tasks", and the list was flat, so the
+agents were buried as machinery rather than reachable as a thing a reader would
+pick.
+
+The Settings category is now **Agents**, and the list is grouped by when an op
+runs — **Before the turn**, **Alongside**, **After the turn** — the same three
+stages SillyBunny names. The ops themselves are unchanged: this is disclosure,
+not a rewrite. The filter words gained "agent" so a reader who remembers the
+SillyBunny term still lands on it.
+
+**Verified** with 1946 tests across 143 files and a clean typecheck. The ops are
+the bundled templates; the remaining SillyBunny extras (prose polisher, choice
+marker as *new* extension templates) would ride the existing pass/extension
+machinery and are follow-up material, not part of the discoverability fix.
