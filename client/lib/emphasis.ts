@@ -34,7 +34,7 @@
  */
 
 export interface Span {
-  kind: "text" | "strong" | "em" | "underline" | "colour";
+  kind: "text" | "strong" | "em" | "underline" | "colour" | "dialogue";
   text: string;
   /** The validated colour, only when `kind === "colour"`. */
   colour?: string;
@@ -210,6 +210,30 @@ export function emphasis(text: string): Span[] {
       continue;
     }
 
+    // Spoken dialogue, in straight quotes, renders italic — the reader's
+    // eye finds the voice before the name. The quotes stay inside the run, so
+    // "she said." reads as one italic phrase; an unclosed quote is literal.
+    // Its own kind (not `em`) keeps "no text lost" round-tripping exact: the
+    // quotes are part of the span, so rebuilding the input adds nothing.
+    //
+    // Only a quote that can *open* speech counts — after whitespace, the start
+    // of the paragraph, or sentence punctuation. An `=` before it means it is
+    // an HTML attribute (`href="…"`), which stays literal text.
+    if (text[at] === '"') {
+      const previous = at === 0 ? "" : text[at - 1]!;
+      const canOpen = at === 0 || /\s|[.,:;!?\u2014\u2013([{]/u.test(previous);
+      const close = text.indexOf('"', at + 1);
+      if (!canOpen || close === -1) {
+        plain += text[at];
+        at += 1;
+        continue;
+      }
+      flush();
+      spans.push({ kind: "dialogue", text: text.slice(at, close + 1) });
+      at = close + 1;
+      continue;
+    }
+
     if (text[at] !== "*") {
       plain += text[at];
       at += 1;
@@ -236,5 +260,5 @@ export function emphasis(text: string): Span[] {
 
 /** True when nothing in the text would render differently. */
 export function isPlain(text: string): boolean {
-  return !text.includes("*") && !text.includes("<");
+  return !text.includes("*") && !text.includes("<") && !text.includes('"');
 }

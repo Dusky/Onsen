@@ -104,6 +104,20 @@ describe("emphasis", () => {
   test("text with no asterisk is known to be plain without scanning it", () => {
     expect(isPlain("She looked up.")).toBe(true);
     expect(isPlain("She *looked up*.")).toBe(false);
+    expect(isPlain('She said "hi."')).toBe(false);
+  });
+
+  test("quoted dialogue renders italic, quotes included", () => {
+    expect(emphasis('"Hello."')).toEqual([{ kind: "dialogue", text: '"Hello."' }]);
+    expect(emphasis('She said "Hello." and left.')).toEqual([
+      { kind: "text", text: "She said " },
+      { kind: "dialogue", text: '"Hello."' },
+      { kind: "text", text: " and left." },
+    ]);
+  });
+
+  test("an unclosed quote is literal, never swallowed", () => {
+    expect(emphasis('She said "Hello.')).toEqual([{ kind: "text", text: 'She said "Hello.' }]);
   });
 
   test("coloured dialogue renders as a coloured span", () => {

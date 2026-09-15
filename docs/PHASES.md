@@ -10151,3 +10151,40 @@ spine** take the character's colour (client-side, deterministic), and the
 block (phase 185) once the character has a colour set in the character editor.
 Neither is active until a colour is picked — which is the one gap, and it is a
 one-tap choice in the editor, not a missing feature.
+
+## Phase 217 — Formatting is a client concern, not a prompt one
+
+The reader asked for more breathing room and italic dialogue, and whether the
+model should just emit HTML. It should not: the model's output is untrusted,
+and history is plain text that gets re-fed into every prompt. So the
+formatting moved to the renderer, where it is deterministic and cannot leak.
+
+**Italic dialogue.** Quoted speech — `"Hello."` — renders italic in `Emphasis`,
+quotes included, as its own `dialogue` span kind (not `em`, so the "no text
+lost" round-trip stays exact). Only a quote that can *open* speech counts:
+after whitespace, the start of a paragraph, or sentence punctuation. An `=`
+before it means an HTML attribute (`href="…"`), which stays literal text, so
+the whitelist guarantee is untouched.
+
+**Breathing room.** Paragraphs split on blank lines now sit 14px apart (was
+9px), still `text-wrap: pretty`.
+
+**The `dialogue_colour` block is gone.** Phase 185 asked the model to wrap
+spoken lines in the character's colour span. It made every prompt bigger, gave
+the model one more way to leak raw tags, and was redundant — the client already
+colours the speaker's name, spine and each beat part's label from the cast's
+colours. The prompt no longer instructs it. (The `Emphasis` colour-span
+*parser* stays, for models that emit spans unprompted; the block and its
+`PromptBlockId` are removed, so the inspector and the label map no longer know
+it.)
+
+**The one real gap the block papered over is closed at the source.** A cast
+with no colours at all rendered nobody's name in colour. Now a colourless
+character joining a scene takes the first palette colour nobody else in that
+scene is using — a muted mid-dark palette readable on both themes — so a fresh
+cast is told apart at a glance. Anyone can still be repainted in the editor.
+
+**Verified**: 1949 tests across 143 files, typecheck clean. New tests cover
+italic dialogue, the unclosed-quote and attribute-quote cases, the absent
+prompt instruction, and auto-assignment (distinct colours; an existing colour
+is kept).

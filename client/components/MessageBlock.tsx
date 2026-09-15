@@ -217,6 +217,9 @@ export function Emphasis({ text }: { text: string }) {
         if (span.kind === "em") {
           return <em key={index}>{span.text}</em>;
         }
+        if (span.kind === "dialogue") {
+          return <em key={index}>{span.text}</em>;
+        }
         if (span.kind === "underline") {
           return <u key={index}>{span.text}</u>;
         }
@@ -261,7 +264,7 @@ function Prose({ text, lead }: { text: string; lead?: ReactNode }) {
       {paragraphs.map((paragraph, index) => (
         <p
           key={index}
-          className="mt-[9px] first:mt-0 text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)] whitespace-pre-wrap"
+          className="mt-[14px] first:mt-0 text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)] whitespace-pre-wrap"
         >
           {index === 0 ? lead : null}
           <Emphasis text={paragraph} />

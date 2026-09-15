@@ -817,7 +817,6 @@ export const strings = {
       guides: "Guides",
       trackers: "Trackers",
       depth_prompts: "Depth prompts",
-      dialogue_colour: "Dialogue colour",
       prompt_option: "Options",
       ban_list: "Banned constructions",
       director_note: "Director's note",
