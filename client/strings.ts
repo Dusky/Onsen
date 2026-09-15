@@ -204,7 +204,7 @@ export const strings = {
     } as Record<string, string>,
     edited: "Edited",
     /** The reasoning strip (SPEC §13), collapsed by default. */
-    reasoning: (chars: number) => `Model reasoning · ${chars} chars · not sent back`,
+    reasoning: (chars: number) => `Model reasoning · ${chars} chars`,
     /** The direction that produced this turn (§7, §20 phase 130), collapsed. */
     direction: "Direction",
     directionNote: (chars: number) => `Direction · ${chars} chars`,

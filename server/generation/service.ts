@@ -1807,23 +1807,32 @@ export class GenerationService {
 
     const revise = generation.turn.kind === "revise" ? generation.turn : null;
     const isBeat = revise === null ? generation.turn.kind === "beat" : revise.targetKind === "beat";
+    // Continue extends rather than replaces: the message that lands is the
+    // whole turn, original and continuation, so the log reads as one piece of
+    // writing rather than a fragment beside its own beginning.
+    // Trimmed, which matters once an aside can be lifted off the end of a
+    // turn (§7): the prose before it keeps the space that separated them,
+    // and a turn should not end in whitespace the reader cannot see.
+    let content = this.scripted(
+      generation,
+      revise?.mode === "continue"
+        ? `${revise.original.trimEnd()} ${generation.buffer.trimStart()}`
+        : generation.buffer.trim(),
+    );
+    // A model often opens a spotlight turn with the speaker's own name, in
+    // imitation of the history format. The log already attributes the turn and
+    // the prompt's history adds the name again, so a stored "Daphne: …" would
+    // read "Daphne" twice and feed back doubled. Beats keep their prefixes —
+    // those are per-part labels, not a header.
+    if (!isBeat && revise === null) {
+      content = stripSpeakerPrefix(this.db, content, generation.spotlightId);
+    }
     const message = appendMessage(this.db, {
       sceneId: generation.sceneId,
       parentId: generation.parentId,
       kind: isBeat ? "beat" : "spotlight",
       authorType: "character",
-      // Continue extends rather than replaces: the message that lands is the
-      // whole turn, original and continuation, so the log reads as one piece of
-      // writing rather than a fragment beside its own beginning.
-      // Trimmed, which matters once an aside can be lifted off the end of a
-      // turn (§7): the prose before it keeps the space that separated them,
-      // and a turn should not end in whitespace the reader cannot see.
-      content: this.scripted(
-        generation,
-        revise?.mode === "continue"
-          ? `${revise.original.trimEnd()} ${generation.buffer.trimStart()}`
-          : generation.buffer.trim(),
-      ),
+      content,
       // A beat is filed under whoever opened it, so the log has something to
       // attribute it to; who spoke *last* in it comes from its segments (§6).
       characterId: generation.spotlightId,
@@ -2588,6 +2597,33 @@ function personaNameOf(db: Database, scene: SceneRow): string | null {
 function directorChoice(db: Database, scene: SceneRow): number | null {
   const decision = resolveNextSpeaker(db, scene);
   return decision === null ? null : internalIdOf(db, scene, decision.characterId);
+}
+
+/**
+ * Strip a leading `Name:` (or `**Name:**`) the model wrote to imitate the
+ * history format. The log already attributes the turn and the prompt's history
+ * adds the name again, so a stored "Daphne: …" would read twice and feed back
+ * doubled. Only the speaker's *own* name is stripped, and only at the very
+ * start of the turn — a name later in the prose is dialogue, not a header.
+ */
+function stripSpeakerPrefix(
+  db: Database,
+  content: string,
+  spotlightId: number | null,
+): string {
+  if (spotlightId === null) return content;
+  const row = db.query("SELECT name FROM characters WHERE id = $id").get({ id: spotlightId }) as
+    | { name: string }
+    | null;
+  const name = row?.name.trim();
+  if (name === undefined || name === "") return content;
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // `Daphne: …` and `**Daphne:** …`, case-insensitively, whitespace-tolerant.
+  const pattern = new RegExp(
+    `^\\s*(?:\\*\\*${escaped}\\s*:\\*\\*|${escaped}\\s*:)\\s*`,
+    "i",
+  );
+  return content.replace(pattern, "");
 }
 
 function hashToSeed(value: string): number {

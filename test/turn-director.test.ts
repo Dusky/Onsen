@@ -193,6 +193,24 @@ describe("what the classifier is allowed to decide", () => {
     expect(adapter.callsLabelled("Classifier")).toBe(0);
   });
 
+  test("a spotlight turn's redundant name prefix is stripped at land", async () => {
+    const t = await signedIn();
+    const { aldan, sceneId } = await classifierScene(t);
+    const started = await json<GenerationSnapshot>(
+      t,
+      "POST",
+      `/api/scenes/${sceneId}/generate`,
+      { characterId: aldan.id },
+    );
+    await adapter.started;
+    adapter.push("Aldan Roe: He set the lamp on the counter.");
+    adapter.end();
+    await until(() => t.generation.get(started.id)?.status === "complete");
+
+    const messages = await json<MessageDto[]>(t, "GET", `/api/scenes/${sceneId}/messages`);
+    expect(messages.at(-1)!.content).toBe("He set the lamp on the counter.");
+  });
+
   test("after a beat, whoever ended it is the one kept off the next roster", async () => {
     const t = await signedIn();
     const { aldan, mira, sceneId } = await classifierScene(t);

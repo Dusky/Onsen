@@ -10120,3 +10120,34 @@ reload-tested approach and is reopened, not closed.
 A layout change must be verified on a **fresh page load**, not against the hot
 reload. HMR can leave a stale bundle that measures the old DOM, and a check
 that reads the old DOM reports a pass on a change that never actually applied.
+
+## Phase 216 — The log reads once, not twice
+
+Two readability cleanups from real use.
+
+**The redundant name prefix.** The prompt's history renders past turns as
+`Name: content`, so the model often opens its own spotlight turn with the
+speaker's name — and the log already attributes the turn above it. A stored
+"Daphne: …" read as "Daphne" twice, and fed back into the next prompt doubled
+("Daphne: Daphne: …"). `land()` now strips a leading `Name:` (or `**Name:**`)
+that matches the turn's own speaker, for spotlight turns only — a beat's
+prefixes are per-part labels and stay. A name later in the prose is dialogue,
+not a header, and is untouched.
+
+**"Not sent back".** The reasoning strip said "Model reasoning · N chars · not
+sent back", reassurance the reader does not need; it read as the app talking
+about its plumbing. It is "Model reasoning · N chars" now.
+
+**Verified** with a new test in `test/turn-director.test.ts` (a cued spotlight
+turn pushes "Aldan Roe: He set the lamp…" and lands as "He set the lamp…") and
+the updated reasoning-string guard. 1947 tests across 143 files, typecheck
+clean.
+
+### On colouring dialogue
+
+Colouring per character already exists, in two halves: the **speaker's name and
+spine** take the character's colour (client-side, deterministic), and the
+**spoken text** can be coloured by the model via the `dialogue_colour` prompt
+block (phase 185) once the character has a colour set in the character editor.
+Neither is active until a colour is picked — which is the one gap, and it is a
+one-tap choice in the editor, not a missing feature.
