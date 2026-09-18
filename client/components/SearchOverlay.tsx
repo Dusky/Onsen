@@ -30,8 +30,30 @@ interface Hit {
   go(): void;
 }
 
+/**
+ * Mounted only while it is open (§20 phase 223).
+ *
+ * This used to be one component that rendered itself, read `searchOpen`, and
+ * returned null when closed — which reads fine and breaks `useModalFocus`. The
+ * hook takes the element that opened the modal from `document.activeElement` on
+ * its *first render* and puts focus back there in its unmount cleanup, so a
+ * component that never unmounts captures whatever was focused when the app
+ * booted (nothing) and never restores at all. Measured: Search button → Escape
+ * → `<body>`, where the command palette, mounted conditionally, restores the
+ * button. `test/sheet-dialog.test.ts` was satisfied because its check was a
+ * list of filenames allowed to use `fixed inset-0`, which this file was simply
+ * added to.
+ *
+ * So the gate moved out here and the panel below holds the hook. Two components
+ * rather than an early return, because an early return is exactly the shape
+ * that hides the bug.
+ */
 export function SearchOverlay() {
   const open = useUiStore((state) => state.searchOpen);
+  return open ? <SearchPanel /> : null;
+}
+
+function SearchPanel() {
   const close = () => useUiStore.getState().setSearchOpen(false);
   const [query, setQuery] = useState("");
   const [at, setAt] = useState(0);
@@ -111,7 +133,6 @@ export function SearchOverlay() {
     return out.slice(0, 60);
   }, [query, scenes, characters, lorebooks, personas, authors]);
 
-  if (!open) return null;
 
   const run = (hit: Hit) => {
     hit.go();

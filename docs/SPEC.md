@@ -4466,6 +4466,28 @@ Each phase ends in a working, usable application.
     round-trip a recast splice depends on is untouched, and speech with no marks
     in it keeps the exact shape it had. See §14, §16, `client/lib/emphasis.ts`.
 
+222. *(Deferred — the rendered guard's own pass, taken after the review that
+    follows it so the budgets are recorded against what the app becomes rather
+    than what it is now. `bun run guard:rendered` still gates its scene route
+    and every contrast sample on `ONSEN_SCENE`, which `package.json` does not
+    set, so it prints "all within budget" having measured neither.)*
+
+223. **The leaks in the new screens** — four, in surfaces phases 208–218 added.
+    The assistant's routing row put two adjacent buttons reading "Default" on
+    screen, meaning the app's own routing and a profile that shares the name;
+    the app default is called **App default** now. Global search never restored
+    focus (`BUTTON[Search]` → Escape → `<body>`) because it was mounted
+    unconditionally and self-gated *after* calling `useModalFocus`, which takes
+    the opener on first render and restores on unmount — so it captured the app
+    boot and never unmounted; the gate moved to a parent. Three cast-rail
+    buttons set 8.5px inline over `.btn`'s 12.5px, the smallest text in the app.
+    And the `Name:` prefix streamed in and vanished on settling, because phase
+    216 stripped what was stored and not what was watched — one regex in
+    `shared/speaker-prefix.ts` now, with a streaming half that holds back text
+    still becoming the prefix so it never flashes. The guard that missed the
+    focus bug was a filename allowlist; it sweeps for the shape now.
+    See §16, `shared/speaker-prefix.ts`.
+
 Settled while building phase 15.
 
 - **The desktop layout is phase 19, not a polish item.** The design is explicit

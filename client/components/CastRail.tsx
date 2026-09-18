@@ -97,7 +97,13 @@ export function CastRail({
                 type="button"
                 onClick={() => onScope(value)}
                 className={`btn flex-1 ${scope === value ? "btn-primary" : ""}`}
-                style={{ minHeight: "32px", fontSize: "8.5px", padding: "0 8px" }}
+                /* 8.5px until §20 phase 223 — the smallest text in the app by
+                   2.5px, inline, overriding `.btn`'s own `--onsen-text-button`,
+                   in the primary rail. Phase 194 gave the chrome two owners and
+                   this was not on its list. The height and padding stay: the
+                   rail is deliberately dense, and it is the type that was
+                   wrong. */
+                style={{ minHeight: "32px", padding: "0 8px" }}
               >
                 {value === "spotlight" ? strings.chat.scopeSpotlight : strings.chat.scopeBeat}
               </button>
@@ -117,7 +123,6 @@ export function CastRail({
           className="btn w-full"
           style={{
             minHeight: "32px",
-            fontSize: "8.5px",
             padding: "0 8px",
             borderColor: autopilotOn ? "var(--onsen-color-amber)" : undefined,
             color: autopilotOn ? "var(--onsen-color-amber)" : undefined,

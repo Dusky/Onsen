@@ -252,8 +252,21 @@ describe("where it is used", () => {
   const LOG = readFileSync(join(ROOT, "client", "screens", "chat", "MessageLog.tsx"), "utf8");
 
   test("a finished turn and the streaming tail share one renderer", () => {
+    /*
+     * The spelling of the tail's call changed in §20 phase 223, when it gained
+     * the `Name:` strip, so this asserts the relationship rather than the
+     * literal: both surfaces render prose through `Emphasis`, and the tail's
+     * text is still derived from `active.text` rather than from some second
+     * path. A guard pinned to the exact JSX fails on formatting and says
+     * nothing about the property it is named for.
+     */
     expect(BLOCK).toContain("<Emphasis text={paragraph} colour={colour} />");
-    expect(LOG).toContain("<Emphasis text={active.text} />");
+    expect(LOG).toContain("<Emphasis");
+    expect(LOG).toContain("active.text");
+    // Two uses in the log, both accounted for: the streaming tail and phase
+    // 213's conversation bubble. Neither renders prose any other way, which is
+    // the property — a third would be a renderer free to drift from these.
+    expect(LOG.match(/<Emphasis/g)?.length).toBe(2);
   });
 
   test("it builds elements, never an HTML string", () => {

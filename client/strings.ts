@@ -1948,7 +1948,17 @@ export const strings = {
     justNow: "now",
     /** The model picker row. */
     profile: "Runs on",
-    profileDefault: "Default",
+    /**
+     * Not "Default" (§20 phase 223).
+     *
+     * The row renders this, then one button per connection profile — and an
+     * install whose only profile is *named* Default put two adjacent buttons on
+     * screen reading the same word and meaning different things: the app's own
+     * routing, and a profile that happens to share the name. Saying which
+     * default is meant costs three words and removes the collision whatever
+     * anybody has called their profiles.
+     */
+    profileDefault: "App default",
     placeholder: "Ask the assistant\u2026",
     send: "Send",
     thinking: "Working\u2026",

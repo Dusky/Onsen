@@ -9,6 +9,7 @@ import type {
 } from "@shared/types.ts";
 import type { ActiveGeneration } from "../../state/generation.ts";
 import { strings } from "../../strings.ts";
+import { stripStreamingPrefix } from "@shared/speaker-prefix.ts";
 import { SceneDescribePrompt } from "./SceneDescribePrompt.tsx";
 import {
   Emphasis,
@@ -293,7 +294,18 @@ export function MessageLog({
             {layout.attribution === "runin" ? (
               <RunIn name={active.speaker} colour={null} isUser={false} />
             ) : null}
-            <Emphasis text={active.text} />
+            {/* The same `Name:` strip `land()` applies to what gets stored
+                (§20 phase 223). Without it the prefix streamed in and vanished
+                the instant the turn settled — the jump this paragraph's own
+                comment above is about. A beat's `**Name:**` labels are per-part
+                attribution, so only a spotlight is stripped. */}
+            <Emphasis
+              text={
+                active.director?.scope === "beat"
+                  ? active.text
+                  : stripStreamingPrefix(active.text, active.speaker)
+              }
+            />
           </p>
         </article>
       ) : null}

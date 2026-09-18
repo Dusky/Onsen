@@ -119,3 +119,49 @@ describe("no wire-format role reaches a reader", () => {
     expect(block.slice(0, 200)).not.toMatch(/name: "(Assistant|User|System)"/);
   });
 });
+
+/**
+ * Two controls side by side never read the same (§20 phase 223).
+ *
+ * The assistant's "Runs on" row renders a hardcoded default, then one button
+ * per connection profile. An install whose only profile is *named* Default put
+ * two adjacent buttons on screen reading the same word and meaning different
+ * things — the app's own routing, and a profile that happens to share the name
+ * — with no `aria-label` or `title` to tell them apart either.
+ *
+ * The same family as this file's other findings: a value that belongs to one
+ * layer surfacing where a reader cannot tell which layer they are looking at.
+ */
+describe("the assistant's routing row", () => {
+  test("the app's own default is not just called Default", () => {
+    const label = strings.assistant.profileDefault;
+    expect(label.toLowerCase()).not.toBe("default");
+    // It still has to *say* default, or it stops naming what it is.
+    expect(label.toLowerCase()).toContain("default");
+  });
+});
+
+/**
+ * No text on screen is smaller than the scale (§20 phase 223).
+ *
+ * `.btn` sets its own size from `--onsen-text-button`, and three buttons in the
+ * cast rail overrode it inline to 8.5px — the smallest text in the app by
+ * 2.5px, in the rail a reader looks at every turn. Phase 194 gave the chrome
+ * two owners and swept the literals it knew about; 8.5 was not among them,
+ * which is the argument for sweeping rather than listing.
+ */
+describe("the type scale has no stragglers under it", () => {
+  test("no inline font-size in the client is below 11px", () => {
+    const offenders: string[] = [];
+    for (const { path, source } of SOURCES) {
+      const code = codeOf(source);
+      for (const match of code.matchAll(/fontSize:\s*"([\d.]+)px"/g)) {
+        if (Number(match[1]) < 11) offenders.push(`${path}: ${match[1]}px`);
+      }
+      for (const match of code.matchAll(/text-\[([\d.]+)px\]/g)) {
+        if (Number(match[1]) < 11) offenders.push(`${path}: ${match[1]}px`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+});

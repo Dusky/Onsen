@@ -182,3 +182,60 @@ describe("nothing else hand-rolls the phone shape", () => {
     ]);
   });
 });
+
+/**
+ * A modal's focus hook only ever runs while the modal is open (§20 phase 223).
+ *
+ * `useModalFocus` takes the element that opened the modal from
+ * `document.activeElement` on its **first render**, and puts focus back there in
+ * its **unmount cleanup**. Both halves assume the component is mounted when the
+ * modal opens and unmounted when it closes. A component that instead mounts
+ * once and returns null while closed satisfies neither: it captures whatever
+ * was focused when the app booted, and its cleanup never runs at all.
+ *
+ * That shipped. `SearchOverlay` read `searchOpen`, called the hook, and then
+ * `if (!open) return null` — and closing the search dropped focus on `<body>`
+ * where the command palette, mounted conditionally, restores the button that
+ * opened it. Measured, not read: `BUTTON[Search]` → Escape → `BODY`.
+ *
+ * The guard that was in place could not see it, because it was a list of
+ * filenames allowed to use `fixed inset-0` and the new file was added to the
+ * list. So this one sweeps for the shape instead: whatever function calls the
+ * hook must not be able to render nothing, because that is what "mounted while
+ * closed" looks like in source. Split the gate into a parent, as
+ * `SearchOverlay` now does, and the hook lives in a component that only exists
+ * while it is open.
+ */
+describe("a modal is mounted only while it is open", () => {
+  const files = readdirSync(COMPONENTS).filter((name) => name.endsWith(".tsx"));
+
+  /** The body of the function containing `useModalFocus`, source-sliced. */
+  function hookOwner(source: string): string {
+    const call = source.indexOf("useModalFocus(");
+    if (call === -1) return "";
+    // Back to the nearest function header, forward to its closing brace at
+    // column zero — enough structure for a file written in this repo's style.
+    const header = source.lastIndexOf("\nfunction ", call);
+    const exported = source.lastIndexOf("\nexport function ", call);
+    const from = Math.max(header, exported);
+    const close = source.indexOf("\n}", call);
+    return from === -1 || close === -1 ? source : source.slice(from, close);
+  }
+
+  test("nothing that calls useModalFocus can render nothing", () => {
+    const callers = files.filter((name) => read(name).includes("useModalFocus("));
+    // The sweep has to find the modals, or it is passing over an empty set.
+    expect(callers.length).toBeGreaterThanOrEqual(3);
+
+    const selfGating = callers.filter((name) => /return null/.test(hookOwner(read(name))));
+    expect(selfGating).toEqual([]);
+  });
+
+  test("and the hook is what every one of them uses", () => {
+    // The other half of the rule: a modal that hand-rolls focus instead is not
+    // caught by the test above, and `OocChannel` was exactly that once.
+    const dialogs = files.filter((name) => read(name).includes('role="dialog"'));
+    const missing = dialogs.filter((name) => !read(name).includes("useModalFocus("));
+    expect(missing).toEqual([]);
+  });
+});

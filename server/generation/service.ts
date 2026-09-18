@@ -1,5 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { ulid } from "../lib/ulid.ts";
+import { stripSpeakerPrefix } from "../../shared/speaker-prefix.ts";
 import type { Keyring } from "../lib/crypto.ts";
 import { createAdapter as defaultCreateAdapter, AdapterError, type Adapter } from "../adapters/index.ts";
 import { buildPrompt, createEstimatingTokenizer, PromptBudgetError, type BuiltPrompt } from "../prompt/index.ts";
@@ -1825,7 +1826,7 @@ export class GenerationService {
     // read "Daphne" twice and feed back doubled. Beats keep their prefixes —
     // those are per-part labels, not a header.
     if (!isBeat && revise === null) {
-      content = stripSpeakerPrefix(this.db, content, generation.spotlightId);
+      content = stripSpotlightPrefix(this.db, content, generation.spotlightId);
     }
     const message = appendMessage(this.db, {
       sceneId: generation.sceneId,
@@ -2600,13 +2601,14 @@ function directorChoice(db: Database, scene: SceneRow): number | null {
 }
 
 /**
- * Strip a leading `Name:` (or `**Name:**`) the model wrote to imitate the
- * history format. The log already attributes the turn and the prompt's history
- * adds the name again, so a stored "Daphne: …" would read twice and feed back
- * doubled. Only the speaker's *own* name is stripped, and only at the very
- * start of the turn — a name later in the prose is dialogue, not a header.
+ * The speaker's own `Name:` off the front of a spotlight turn.
+ *
+ * The regex lives in `shared/speaker-prefix.ts` since §20 phase 223, because
+ * the streaming tail needs the identical answer: when only this end stripped,
+ * a turn streamed with the prefix and lost it on settling, and the reader
+ * watched the text jump.
  */
-function stripSpeakerPrefix(
+function stripSpotlightPrefix(
   db: Database,
   content: string,
   spotlightId: number | null,
@@ -2615,15 +2617,7 @@ function stripSpeakerPrefix(
   const row = db.query("SELECT name FROM characters WHERE id = $id").get({ id: spotlightId }) as
     | { name: string }
     | null;
-  const name = row?.name.trim();
-  if (name === undefined || name === "") return content;
-  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  // `Daphne: …` and `**Daphne:** …`, case-insensitively, whitespace-tolerant.
-  const pattern = new RegExp(
-    `^\\s*(?:\\*\\*${escaped}\\s*:\\*\\*|${escaped}\\s*:)\\s*`,
-    "i",
-  );
-  return content.replace(pattern, "");
+  return stripSpeakerPrefix(content, row?.name ?? null);
 }
 
 function hashToSeed(value: string): number {

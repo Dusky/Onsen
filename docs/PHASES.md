@@ -10624,3 +10624,106 @@ sign the change is as narrow as it claims.
 1988 tests across 147 files, typecheck clean. New tests cover a mark inside
 speech resolving, the unmarked case keeping its old shape, and the round-trip
 staying exact across five inputs mixing quotes, asterisks and tags.
+
+## Phase 222 — The rendered guard measures the whole app (deferred)
+
+*Deliberately deferred, and written down at the time rather than left as a hole
+— `test/tracker-drift.test.ts` caught the gap the moment 223 landed, which is
+the guard doing exactly what phase 219 built it for.*
+
+`bun run guard:rendered` prints **"all within budget"** having taken zero
+contrast samples and never opened a scene. Both the scene route and the whole
+contrast half are gated on `ONSEN_SCENE`, which `package.json` does not set.
+Measured both ways:
+
+| | fontSizes | controlHeights | gaps | smallTargets | overflowing | contrast |
+|---|---|---|---|---|---|---|
+| as wired | 9 | 13 | 10 | 156 | 12 | **0 samples** |
+| with a scene | 14 | 27 | 14 | 202 | 38 | 8 |
+| budget | 14 | 27 | 14 | 208 | 38 | — |
+
+Four of five budgets sit *exactly* at their ceiling once the scene is included,
+which is where they were recorded — so the default invocation has been
+certifying a smaller app than the budgets describe. Mine, from phases 193/195.
+
+The work: resolve a scene at run time and fail loudly when there is none rather
+than silently dropping the route; sample contrast by DOM selector instead of the
+four hardcoded rectangles that are valid only at 1600×950 (which is why phase
+220's dialogue runs were never measured by it); re-record every budget.
+
+**Why it waits.** A full fit-and-finish review is running against a live
+provider, and re-recording budgets now would record them against an app that is
+about to change. The probes that review builds are what this should absorb, so
+the work accretes rather than happening twice.
+
+## Phase 223 — The leaks in the new screens
+
+Four small things, all measured, all in surfaces phases 208–218 added.
+
+### "Runs on: Default / Default"
+
+The assistant's routing row renders a hardcoded default, then one button per
+connection profile — and this install's only profile is *named* Default. Two
+adjacent buttons, same visible text, different meanings (the app's own routing,
+and a profile that happens to share the name), neither carrying an `aria-label`
+or a `title` to tell them apart. The app default says **App default** now, which
+removes the collision whatever anybody has called their profiles.
+
+### Global search never restored focus
+
+Measured: `BUTTON[Search]` → Escape → `<body>`. The command palette, through the
+same hook, restores the button that opened it.
+
+`useModalFocus` takes the opener from `document.activeElement` on its **first
+render** and puts focus back in its **unmount cleanup**. Both halves assume the
+component is mounted when the modal opens and unmounted when it closes.
+`SearchOverlay` was mounted unconditionally in `App.tsx` and self-gated with
+`if (!open) return null` *after* calling the hook — so it captured whatever was
+focused when the app booted, and its cleanup never ran at all.
+
+The gate moved to a parent and the panel holds the hook. Two components rather
+than an early return, because an early return is exactly the shape that hides
+this.
+
+**The guard that missed it is the more interesting half.** `sheet-dialog.test.ts`
+checked a list of filenames allowed to use `fixed inset-0`, and phase 211
+satisfied it by adding the new file to the list. A check that asks a different
+question than the real thing — the fourth instance recorded in this file, and
+the reason the replacement sweeps for the *shape*: whatever function calls
+`useModalFocus` must not be able to render nothing. Verified by putting the old
+shape back, which fails the suite and names the file.
+
+### 8.5px text in the primary rail
+
+"One voice", "The room" and "Autopilot" set `fontSize: "8.5px"` inline,
+overriding `.btn`'s own `--onsen-text-button` (12.5px) — the smallest text in
+the app by 2.5px, in a rail a reader looks at every turn. Phase 194 gave the
+chrome two owners and swept the literals it knew about; 8.5 was not on its list,
+which is the argument for sweeping rather than listing. The inline size is gone;
+the height and padding stay, because the rail is deliberately dense and it was
+the type that was wrong. `test/labels.test.ts` now fails on any inline size
+under 11px anywhere in the client.
+
+### The `Name:` prefix arrived and then vanished
+
+Phase 216 taught `land()` to strip a leading `Name:` off a spotlight turn. It
+stripped what was **stored**. What was **streamed** still had it, so a turn
+arrived reading "Aldan Roe: He set the lamp down." and lost its first two words
+the instant it settled. `MessageLog`'s own comment beside that tail already
+names the principle it was breaking — prose that "reflows the instant the turn
+completes… reads as the app changing its mind".
+
+The regex lives in `shared/speaker-prefix.ts` now and both ends read it. The
+streaming half needed something the stored half does not: a stream delivers
+`"A"`, `"Ald"`, `"Aldan Roe"` before there is a colon to match, so a strip that
+only fired on the finished prefix would let the name flash and then remove it —
+the same jump, arriving in instalments. `stripStreamingPrefix` holds back text
+that is still a possible beginning of `Name:` and releases it the moment it
+stops being one, so `"Alone, he"` never stutters. A beat is never stripped: its
+`**Name:**` labels are per-part attribution and the app's own doing.
+
+### Verified
+
+2002 tests across 148 files, typecheck clean. On screen: focus returns to the
+Search button, the routing row reads "App default | Default", and the smallest
+inline type in the client is 11px.
