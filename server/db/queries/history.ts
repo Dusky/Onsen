@@ -625,6 +625,15 @@ export function updateScene(
     isFavourite?: boolean;
     /** Display-only translation's target language (§20 phase 78). */
     translateTo?: string | null;
+    /**
+     * This scene's own framing, in place of the card's (§2). Null puts the
+     * card's scenario back.
+     *
+     * Here since §20 phase 219, which found the agent's `update_scene` offering
+     * it and this function quietly dropping it — the patch type had no such
+     * key, so the tool reported success on a column it never wrote.
+     */
+    scenarioOverride?: string | null;
   },
 ): SceneRow {
   const current = findSceneById(db, id);
@@ -646,6 +655,7 @@ export function updateScene(
               folder = $folder,
               is_favourite = $favourite,
               translate_to = $translate_to,
+              scenario_override = $scenario_override,
               updated_at = $now
         WHERE id = $id
         RETURNING *`,
@@ -661,6 +671,7 @@ export function updateScene(
       folder: keep(patch.folder, current.folder),
       favourite: (patch.isFavourite ?? current.is_favourite === 1) ? 1 : 0,
       translate_to: keep(patch.translateTo, current.translate_to),
+      scenario_override: keep(patch.scenarioOverride, current.scenario_override),
       now: Date.now(),
     }) as SceneRow;
 }

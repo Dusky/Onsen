@@ -13,6 +13,17 @@
 import type { AppContext } from "../context.ts";
 import { ulid } from "../lib/ulid.ts";
 import { setSetting, getSetting } from "../db/queries/settings.ts";
+/*
+ * The kinds live in `shared/types.ts` because the client names each one in
+ * words. A union rather than a bare string so the compiler is the first guard:
+ * a tool recording a kind nothing restores does not typecheck, and
+ * `restoreSnapshot`'s switch is exhaustive over exactly this. Phase 219 found
+ * `snapshotBefore` called twice against nineteen write tools while the screen
+ * promised every change was listed, which a `kind: string` could never have
+ * caught.
+ */
+export { UNDO_KINDS, type UndoKind } from "../../shared/types.ts";
+import type { UndoKind } from "../../shared/types.ts";
 
 const KEY = "agent_undo";
 /** Enough to walk back a session's worth of work, not enough to grow forever. */
@@ -20,7 +31,7 @@ const KEEP = 40;
 
 export interface Snapshot {
   id: string;
-  kind: string;
+  kind: UndoKind;
   subjectId: string;
   /** The DTO as it was, JSON-encoded. */
   before: string;
@@ -47,7 +58,7 @@ function read(ctx: AppContext): Snapshot[] {
  */
 export function snapshotBefore(
   ctx: AppContext,
-  kind: string,
+  kind: UndoKind,
   subjectId: string,
   before: unknown,
 ): void {
@@ -63,6 +74,24 @@ export function snapshotBefore(
   } catch {
     /* An undo is a courtesy; the operation is the point. */
   }
+}
+
+/**
+ * Remember that something did not exist before the agent made it.
+ *
+ * The same list and the same storage — this exists only so a create's call site
+ * reads honestly, since the id it records can only be known *after* the insert
+ * and `snapshotBefore` would be a lie about the order. Undoing one of these is
+ * a delete, which is why what it stores is the new subject rather than an old
+ * state.
+ */
+export function snapshotCreated(
+  ctx: AppContext,
+  kind: UndoKind,
+  subjectId: string,
+  what: unknown,
+): void {
+  snapshotBefore(ctx, kind, subjectId, what);
 }
 
 /** Everything the agent has overwritten or removed, newest first. */

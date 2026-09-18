@@ -10,7 +10,7 @@
  * Corollary: type names, database columns, and route paths take their names
  * from SPEC.md, never from the labels here.
  */
-import type { PromptBlockId } from "@shared/types.ts";
+import type { PromptBlockId, UndoKind } from "@shared/types.ts";
 
 export const strings = {
   app: {
@@ -1947,7 +1947,50 @@ export const strings = {
     toolsEmpty: "No tools are loaded.",
     undo: "Undo",
     undoEmpty: "Nothing to undo yet. Changes the assistant makes show up here.",
-    undoEntry: (kind: string, name: string) => `${kind} \u00b7 ${name}`,
+    /**
+     * What each recorded change is called, in words (§20 phase 219).
+     *
+     * The list used to render the server's own `kind` string, which was fine
+     * while the only two were "character" and "theme" and became a raw key on
+     * screen the moment there were nineteen — `lore_entry.created` is a
+     * storage detail, not something to show a reader. Typed against
+     * `UndoKind`, so a kind added on the server without words here does not
+     * compile, and `test/agent-undo.test.ts` keeps the two lists level.
+     *
+     * Each one reads as the *undo*, because the button beside it does that:
+     * "Rewritten" is what Restore takes back.
+     */
+    undoKinds: {
+      character: "Rewritten",
+      "character.deleted": "Deleted",
+      "scene.created": "New roleplay",
+      scene: "Roleplay changed",
+      "scene.note": "Note added",
+      "lorebook.created": "New lorebook",
+      "lore_entry.created": "Lore added",
+      lore_entry: "Lore rewritten",
+      "lore_entry.deleted": "Lore deleted",
+      "persona.created": "New persona",
+      persona: "Persona changed",
+      author: "Author rewritten",
+      "theme.created": "New theme",
+      theme: "Theme changed",
+      "theme.active": "Theme switched",
+      "cast.added": "Cast added",
+      "cast.removed": "Cast removed",
+      "group.created": "New group",
+      "group.added": "Added to group",
+      "group.removed": "Removed from group",
+    } satisfies Record<UndoKind, string>,
+    /**
+     * A kind the server sent that this build has no words for — a newer server
+     * against an older page. The name still reads, which is the part a reader
+     * needs to recognise what they are about to take back.
+     */
+    undoEntry: (kind: string, name: string) => {
+      const words = (strings.assistant.undoKinds as Record<string, string>)[kind];
+      return words === undefined ? name : `${words} \u00b7 ${name}`;
+    },
     restore: "Restore",
     restored: (name: string) => `Restored ${name}.`,
     restoreNote: (note: string) => note,

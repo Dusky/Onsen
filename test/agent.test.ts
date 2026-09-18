@@ -291,11 +291,13 @@ describe("what the tools actually do", () => {
     expect((await t.fetch(`/api/characters/${bell.id}`)).status).toBe(404);
 
     const kept = snapshots(t.ctx);
-    expect(kept[0]).toMatchObject({ kind: "character", subjectId: bell.id });
+    // `character.deleted` rather than `character` since §20 phase 219: a
+    // delete and an overwrite undo differently, so they are different kinds.
+    expect(kept[0]).toMatchObject({ kind: "character.deleted", subjectId: bell.id });
     expect(JSON.parse(kept[0]!.before).name).toBe("Sister Bell");
 
     const listed = await json<{ kind: string }[]>(t, "GET", "/api/agent/undo");
-    expect(listed[0]!.kind).toBe("character");
+    expect(listed[0]!.kind).toBe("character.deleted");
   });
 
   test("a delete can actually be undone — that is the point of the snapshot", async () => {

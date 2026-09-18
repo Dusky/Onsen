@@ -9,8 +9,15 @@
  *
  * Reads are wide. Writes are real writes: this is a single-user app on a LAN,
  * and an agent that can only suggest is a worse version of the ops that already
- * exist. What the destructive ones do first is snapshot (see `snapshot.ts`), so
- * there is something to go back to — which the app mostly did not have before.
+ * exist. **Every** write snapshots first (see `snapshot.ts`), so there is
+ * something to go back to — which the app mostly did not have before.
+ *
+ * "Every" is load-bearing and was not true until §20 phase 219. Two tools
+ * snapshotted while the assistant's own screen promised that every change it
+ * made was listed under Undo, so an overwritten author or a deleted lore entry
+ * was simply gone. `test/agent-undo.test.ts` runs each tool against a real
+ * database and requires a snapshot from anything that changed a row, which is
+ * the only version of this check that asks the question the reader cares about.
  */
 import type { AppContext } from "../context.ts";
 import type { ToolSpec } from "../prompt/index.ts";
@@ -30,7 +37,19 @@ import {
   sceneDto,
   updateScene,
 } from "../db/queries/history.ts";
-import { addSceneMember, findAuthor, listAuthors, listPersonas, insertPersona, removeSceneMember, updateAuthor, updatePersona } from "../db/queries/authors.ts";
+import {
+  addSceneMember,
+  findAuthor,
+  insertPersona,
+  listAuthors,
+  listPersonas,
+  removeSceneMember,
+  setTurnStrategy,
+  toAuthorDto,
+  toPersonaDto,
+  updateAuthor,
+  updatePersona,
+} from "../db/queries/authors.ts";
 import {
   deleteEntry,
   findEntry,
@@ -61,7 +80,7 @@ import {
   updateTheme,
 } from "../db/queries/themes.ts";
 import { listCharactersFiltered } from "../db/queries/library.ts";
-import { snapshotBefore } from "./snapshot.ts";
+import { snapshotBefore, snapshotCreated } from "./snapshot.ts";
 
 export interface Tool {
   spec: ToolSpec;
@@ -89,6 +108,22 @@ function optionalStr(args: Record<string, unknown>, key: string): string | undef
 function num(args: Record<string, unknown>, key: string, fallback: number): number {
   const value = args[key];
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+/**
+ * The turn strategies, named once. The schema the model is shown and the check
+ * the tool runs read the same list, so an enum the tool would reject can never
+ * be offered.
+ */
+const TURN_STRATEGIES = ["manual", "round_robin", "mention", "classifier"] as const;
+
+/**
+ * A lorebook's id as the rest of the app says it, from the numeric one a row
+ * carries. Through `listLorebooks` rather than a query of its own, so this file
+ * keeps reading the library the same way everything else does.
+ */
+function bookUlidOf(ctx: AppContext, lorebookId: number): string {
+  return listLorebooks(ctx.db).find((book) => book.id === lorebookId)?.ulid ?? "";
 }
 
 const S = {
@@ -196,6 +231,7 @@ export const TOOLS: Record<string, Tool> = {
       const row = findCharacter(ctx.db, str(args, "id"));
       if (row === null) throw new Error("No character has that id.");
       const { id: _id, ...patch } = args;
+      snapshotBefore(ctx, "character", row.ulid, toCharacterDto(ctx.db, row));
       return toCharacterDto(ctx.db, updateCharacter(ctx.db, row.id, patch));
     },
   },
@@ -212,7 +248,7 @@ export const TOOLS: Record<string, Tool> = {
     run: (ctx, args) => {
       const row = findCharacter(ctx.db, str(args, "id"));
       if (row === null) throw new Error("No character has that id.");
-      snapshotBefore(ctx, "character", row.ulid, toCharacterDto(ctx.db, row));
+      snapshotBefore(ctx, "character.deleted", row.ulid, toCharacterDto(ctx.db, row));
       deleteCharacter(ctx.db, row.id);
       return { deleted: row.name };
     },
@@ -291,6 +327,9 @@ export const TOOLS: Record<string, Tool> = {
         const character = findCharacter(ctx.db, id);
         if (character !== null) addSceneMember(ctx.db, row.id, character.id);
       }
+      // One snapshot for the whole scene, cast included: undoing a create is a
+      // delete, and the members go with it.
+      snapshotCreated(ctx, "scene.created", row.ulid, { name: row.title });
       return sceneDto(ctx.db, row);
     },
   },
@@ -306,7 +345,7 @@ export const TOOLS: Record<string, Tool> = {
           scenarioOverride: S.string("This roleplay's own framing, replacing the card's."),
           turnStrategy: {
             type: "string",
-            enum: ["manual", "round_robin", "mention", "classifier"],
+            enum: TURN_STRATEGIES,
             description: "Who speaks next.",
           },
         },
@@ -316,7 +355,38 @@ export const TOOLS: Record<string, Tool> = {
     run: (ctx, args) => {
       const scene = findScene(ctx.db, str(args, "id"));
       if (scene === null) throw new Error("No roleplay has that id.");
-      const { id: _id, ...patch } = args;
+      snapshotBefore(ctx, "scene", scene.ulid, {
+        name: scene.title,
+        title: scene.title,
+        scenarioOverride: scene.scenario_override,
+        turnStrategy: scene.turn_strategy,
+      });
+      /*
+       * Each of the three advertised fields, written through the one thing that
+       * owns its column (§20 phase 219).
+       *
+       * This used to spread the raw arguments into `updateScene`, whose patch
+       * type has no `scenarioOverride` or `turnStrategy` — so two of the three
+       * fields the tool describes were accepted, reported as changed, and
+       * dropped. The strategy has its own writer because `scene_members` work
+       * lives beside it; the scenario is a plain scene column and `updateScene`
+       * carries it now.
+       */
+      const patch: Parameters<typeof updateScene>[2] = {};
+      const title = optionalStr(args, "title");
+      if (title !== undefined && title.trim() !== "") patch.title = title.trim();
+      if ("scenarioOverride" in args) {
+        const scenario = optionalStr(args, "scenarioOverride");
+        patch.scenarioOverride =
+          scenario === undefined || scenario.trim() === "" ? null : scenario.trim();
+      }
+      const strategy = optionalStr(args, "turnStrategy");
+      if (strategy !== undefined) {
+        if (!TURN_STRATEGIES.includes(strategy as (typeof TURN_STRATEGIES)[number])) {
+          throw new Error(`turnStrategy must be one of ${TURN_STRATEGIES.join(", ")}.`);
+        }
+        setTurnStrategy(ctx.db, scene.id, strategy);
+      }
       return sceneDto(ctx.db, updateScene(ctx.db, scene.id, patch));
     },
   },
@@ -342,6 +412,10 @@ export const TOOLS: Record<string, Tool> = {
         authorType: "system",
         content: str(args, "text"),
         isHidden: true,
+      });
+      snapshotCreated(ctx, "scene.note", row.ulid, {
+        name: `a note on ${scene.title}`,
+        sceneId: scene.ulid,
       });
       return { added: row.ulid };
     },
@@ -383,8 +457,11 @@ export const TOOLS: Record<string, Tool> = {
         "with no entries does nothing.",
       parameters: S.object({ name: S.string("What to call it.") }, ["name"]),
     },
-    run: (ctx, args) =>
-      toBookDto(ctx.db, insertLorebook(ctx.db, { name: str(args, "name"), rawImport: null })),
+    run: (ctx, args) => {
+      const row = insertLorebook(ctx.db, { name: str(args, "name"), rawImport: null });
+      snapshotCreated(ctx, "lorebook.created", row.ulid, { name: row.name });
+      return toBookDto(ctx.db, row);
+    },
   },
 
   add_lore_entry: {
@@ -413,6 +490,9 @@ export const TOOLS: Record<string, Tool> = {
       updateEntry(ctx.db, row.id, {
         keys: JSON.stringify(keys),
         ...(optionalStr(args, "comment") === undefined ? {} : { comment: args["comment"] }),
+      });
+      snapshotCreated(ctx, "lore_entry.created", row.ulid, {
+        name: `an entry in ${book.name}`,
       });
       return { added: row.ulid };
     },
@@ -445,6 +525,13 @@ export const TOOLS: Record<string, Tool> = {
     run: (ctx, args) => {
       const existing = listPersonas(ctx.db).find((row) => row.ulid === optionalStr(args, "id"));
       const row = existing ?? insertPersona(ctx.db, str(args, "name"));
+      // Two tools in one name, so two kinds: an overwrite keeps the old
+      // persona to put back, a create keeps only the id to delete.
+      if (existing === undefined) {
+        snapshotCreated(ctx, "persona.created", row.ulid, { name: str(args, "name") });
+      } else {
+        snapshotBefore(ctx, "persona", row.ulid, toPersonaDto(existing));
+      }
       const patch: Record<string, unknown> = { name: str(args, "name") };
       if (optionalStr(args, "description") !== undefined) patch["description"] = args["description"];
       const saved = updatePersona(ctx.db, row.id, patch);
@@ -506,6 +593,7 @@ export const TOOLS: Record<string, Tool> = {
         tokens,
       });
       const saved = toThemeDto(row);
+      snapshotCreated(ctx, "theme.created", saved.id, { name: saved.name });
       // Report what was refused, so the model can correct rather than assume.
       const refused = Object.keys(tokens).filter((key) => !(key in saved.tokens));
       return { id: saved.id, name: saved.name, refusedTokens: refused };
@@ -521,6 +609,12 @@ export const TOOLS: Record<string, Tool> = {
     run: (ctx, args) => {
       const row = findTheme(ctx.db, str(args, "id"));
       if (row === null) throw new Error("No theme has that id.");
+      // Which theme *was* active is the thing an undo needs, not which one is
+      // being set — so the snapshot is the one being replaced.
+      const was = activeTheme(ctx.db);
+      if (was !== null) {
+        snapshotBefore(ctx, "theme.active", was.ulid, { name: was.name });
+      }
       setActiveTheme(ctx.db, row.ulid);
       return { active: row.name };
     },
@@ -634,6 +728,7 @@ export const TOOLS: Record<string, Tool> = {
         const value = args[key];
         if (typeof value === "string") patch[key] = value;
       }
+      snapshotBefore(ctx, "author", row.ulid, toAuthorDto(row));
       updateAuthor(ctx.db, row.id, patch);
       return { id: row.ulid, name: (patch["name"] as string | undefined) ?? row.name };
     },
@@ -660,6 +755,11 @@ export const TOOLS: Record<string, Tool> = {
       if (scene === null) throw new Error("No roleplay has that id.");
       const character = findCharacter(ctx.db, str(args, "characterId"));
       if (character === null) throw new Error("No character has that id.");
+      snapshotCreated(ctx, "cast.added", character.ulid, {
+        name: `${character.name} in ${scene.title}`,
+        sceneId: scene.ulid,
+        characterId: character.ulid,
+      });
       addSceneMember(ctx.db, scene.id, character.id);
       return { added: character.name, to: scene.title };
     },
@@ -684,6 +784,11 @@ export const TOOLS: Record<string, Tool> = {
       if (scene === null) throw new Error("No roleplay has that id.");
       const character = findCharacter(ctx.db, str(args, "characterId"));
       if (character === null) throw new Error("No character has that id.");
+      snapshotBefore(ctx, "cast.removed", character.ulid, {
+        name: `${character.name} in ${scene.title}`,
+        sceneId: scene.ulid,
+        characterId: character.ulid,
+      });
       removeSceneMember(ctx.db, scene.id, character.id);
       return { removed: character.name, from: scene.title };
     },
@@ -724,6 +829,10 @@ export const TOOLS: Record<string, Tool> = {
           (args["keys"] as unknown[]).filter((k): k is string => typeof k === "string"),
         );
       }
+      snapshotBefore(ctx, "lore_entry", entry.ulid, {
+        ...toEntryDto(entry, bookUlidOf(ctx, entry.lorebook_id)),
+        name: entry.title ?? "a lore entry",
+      });
       updateEntry(ctx.db, entry.id, patch as never);
       return { id: entry.ulid, title: (patch["title"] as string | undefined) ?? entry.title };
     },
@@ -733,13 +842,17 @@ export const TOOLS: Record<string, Tool> = {
     spec: {
       name: "delete_lore_entry",
       description:
-        "Remove a lore entry from its book. This is not undoable — check the " +
-        "entry is the right one first.",
+        "Remove a lore entry from its book. Snapshotted first, so it can be " +
+        "restored into the same book.",
       parameters: S.object({ id: S.string("The entry's id.") }, ["id"]),
     },
     run: (ctx, args) => {
       const entry = findEntry(ctx.db, str(args, "id"));
       if (entry === null) throw new Error("No lore entry has that id.");
+      snapshotBefore(ctx, "lore_entry.deleted", entry.ulid, {
+        ...toEntryDto(entry, bookUlidOf(ctx, entry.lorebook_id)),
+        name: entry.title ?? "a lore entry",
+      });
       deleteEntry(ctx.db, entry.id);
       return { deleted: entry.title };
     },
@@ -764,6 +877,7 @@ export const TOOLS: Record<string, Tool> = {
     },
     run: (ctx, args) => {
       const row = insertCharacterGroup(ctx.db, { name: str(args, "name") });
+      snapshotCreated(ctx, "group.created", row.ulid, { name: row.name });
       return { id: row.ulid, name: row.name };
     },
   },
@@ -782,6 +896,11 @@ export const TOOLS: Record<string, Tool> = {
       if (group === null) throw new Error("No group has that id.");
       const character = findCharacter(ctx.db, str(args, "characterId"));
       if (character === null) throw new Error("No character has that id.");
+      snapshotCreated(ctx, "group.added", character.ulid, {
+        name: `${character.name} in ${group.name}`,
+        groupId: group.ulid,
+        characterId: character.ulid,
+      });
       addGroupMember(ctx.db, group.id, character.id);
       return { added: character.name, to: group.name };
     },
@@ -801,6 +920,11 @@ export const TOOLS: Record<string, Tool> = {
       if (group === null) throw new Error("No group has that id.");
       const character = findCharacter(ctx.db, str(args, "characterId"));
       if (character === null) throw new Error("No character has that id.");
+      snapshotBefore(ctx, "group.removed", character.ulid, {
+        name: `${character.name} in ${group.name}`,
+        groupId: group.ulid,
+        characterId: character.ulid,
+      });
       removeGroupMember(ctx.db, group.id, character.id);
       return { removed: character.name, from: group.name };
     },

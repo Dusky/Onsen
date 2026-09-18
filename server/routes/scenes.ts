@@ -480,9 +480,8 @@ export function sceneRoutes(
       if (scenario !== null && typeof scenario !== "string") {
         return c.json(badRequest("The scenario must be text, or nothing."), 400);
       }
-      ctx.db.query("UPDATE scenes SET scenario_override = $scenario WHERE id = $id").run({
-        id: row.id,
-        scenario: scenario === null || scenario.trim() === "" ? null : scenario.trim(),
+      updateScene(ctx.db, row.id, {
+        scenarioOverride: scenario === null || scenario.trim() === "" ? null : scenario.trim(),
       });
     }
     /*

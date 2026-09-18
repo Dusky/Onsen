@@ -24,11 +24,8 @@ import {
 import { runAgentTurn, type AgentAdapterFactory } from "../agent/loop.ts";
 import { toolSpecs } from "../agent/tools.ts";
 import { removeSnapshot, snapshotById, snapshots } from "../agent/snapshot.ts";
+import { restoreSnapshot } from "../agent/restore.ts";
 import { SettingKey, getSetting, setSetting } from "../db/queries/settings.ts";
-import { insertCharacter, findCharacter } from "../db/queries/characters.ts";
-import { findTheme, updateTheme } from "../db/queries/themes.ts";
-import { buildCardDocument, type NormalisedCard } from "../cards/index.ts";
-import type { CharacterDto, ThemeDto } from "../../shared/types.ts";
 import { badRequest, notFound } from "../lib/routes.ts";
 
 const MAX_ASK = 8000;
@@ -99,26 +96,25 @@ export function agentRoutes(
   });
 
   /**
-   * Put one snapshot back. The write tools record a snapshot before they touch
-   * anything; this is the restore half, which is what makes "so it can be
-   * undone" true rather than a promise the list cannot keep.
+   * Put one snapshot back.
    *
-   * Restoring a character re-creates it from the recorded card — its text, not
-   * its picture or lorebook binding, which the snapshot does not carry.
+   * Every write tool records a snapshot before it touches anything, and
+   * `server/agent/restore.ts` knows how to walk each kind back — which is what
+   * makes "so it can be undone" true rather than a promise the list cannot
+   * keep. It was a promise until §20 phase 219: two tools recorded, two kinds
+   * restored, and the other seventeen changes were simply gone.
+   *
+   * What a restore is honest about travels in the response's `note`: a
+   * re-created character comes back without its picture or lorebook bindings,
+   * a re-created lore entry under a new id.
    */
-  app.post("/undo/:id", (c) => {    const snapshot = snapshotById(ctx, c.req.param("id"));
+  app.post("/undo/:id", (c) => {
+    const snapshot = snapshotById(ctx, c.req.param("id"));
     if (snapshot === null) return c.json(notFound("snapshot"), 404);
 
     let restored: Record<string, unknown>;
     try {
-      const before: unknown = JSON.parse(snapshot.before);
-      if (snapshot.kind === "character") {
-        restored = restoreCharacter(ctx, before as CharacterDto);
-      } else if (snapshot.kind === "theme") {
-        restored = restoreTheme(ctx, before as ThemeDto);
-      } else {
-        return c.json(badRequest(`Cannot restore a ${snapshot.kind} snapshot.`), 400);
-      }
+      restored = restoreSnapshot(ctx, snapshot);
     } catch (caught) {
       return c.json(
         {
@@ -214,66 +210,6 @@ export function agentRoutes(
   });
 
   return app;
-}
-
-/**
- * Re-create a deleted character from the snapshot the delete tool recorded.
- *
- * The snapshot is the DTO, so the text identity round-trips; the picture, the
- * version history and the lorebook binding do not survive a delete and are not
- * invented here. That is the honest bound of "so it can be restored", and it
- * is said in the response rather than left silent.
- */
-function restoreCharacter(ctx: AppContext, before: CharacterDto): Record<string, unknown> {
-  if (findCharacter(ctx.db, before.id) !== null) {
-    return { kind: "character", name: before.name, note: "Already in the library." };
-  }
-  const card: NormalisedCard = {
-    name: before.name,
-    description: before.description ?? null,
-    personality: before.personality ?? null,
-    scenario: before.scenario ?? null,
-    firstMessage: before.firstMessage ?? null,
-    alternateGreetings: before.alternateGreetings ?? [],
-    groupGreetings: before.groupGreetings ?? [],
-    exampleDialogue: before.exampleDialogue ?? null,
-    systemPrompt: before.systemPrompt ?? null,
-    postHistoryInstructions: before.postHistoryInstructions ?? null,
-    creatorNotes: before.creatorNotes ?? null,
-    tags: before.tags ?? [],
-    creator: before.creator ?? null,
-    characterVersion: before.characterVersion ?? null,
-    depthPrompt: before.depthPrompt ?? null,
-    depthPromptDepth: before.depthPromptDepth ?? 4,
-    depthPromptRole: before.depthPromptRole ?? "system",
-    extensions:
-      before.mentionKeywords === undefined || before.mentionKeywords.length === 0
-        ? {}
-        : { mention_keywords: before.mentionKeywords },
-  };
-  const row = insertCharacter(ctx.db, {
-    card,
-    rawCard: buildCardDocument(card, null),
-    format: before.format ?? "native",
-    avatarPath: null,
-    sourceFilename: null,
-    sourceHash: null,
-    voiceNotes: before.voiceNotes ?? null,
-  });
-  return {
-    kind: "character",
-    id: row.ulid,
-    name: row.name,
-    note: "Restored without its picture or book bindings.",
-  };
-}
-
-/** Revert a theme's tokens to what they were before the agent changed them. */
-function restoreTheme(ctx: AppContext, before: ThemeDto): Record<string, unknown> {
-  const row = findTheme(ctx.db, before.id);
-  if (row === null) return { kind: "theme", name: before.name, note: "That theme is gone." };
-  updateTheme(ctx.db, row.id, { tokens: before.tokens });
-  return { kind: "theme", id: before.id, name: before.name };
 }
 
 /** The name the snapshot's subject had, so the undo list reads without a join. */

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import type { AgentMessageDto, AgentThreadDto } from "@shared/types.ts";
+import type { AgentMessageDto, AgentThreadDto, AgentUndoDto } from "@shared/types.ts";
 import { strings } from "../strings.ts";
 import { useIsDesktop } from "../lib/breakpoint.ts";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
@@ -223,24 +223,7 @@ export function AssistantScreen() {
             </button>
             {showUndo ? (
               <div className="max-h-[180px] overflow-y-auto pt-[4px]">
-                {(undo.data ?? []).length === 0 ? (
-                  <p className="explain px-[6px] py-[4px]">{strings.assistant.undoEmpty}</p>
-                ) : null}
-                {(undo.data ?? []).map((entry) => (
-                  <div key={entry.id} className="flex items-center gap-[6px] px-[6px] py-[3px]">
-                    <span className="chrome min-w-0 flex-1 truncate text-[12px] text-ink-dim">
-                      {strings.assistant.undoEntry(entry.kind, entry.label)}
-                    </span>
-                    <button
-                      type="button"
-                      className="chrome flex-none text-[12px]"
-                      style={{ color: "var(--onsen-color-blue-text)" }}
-                      onClick={() => doRestore(entry.id, entry.label)}
-                    >
-                      {strings.assistant.restore}
-                    </button>
-                  </div>
-                ))}
+                <UndoList entries={undo.data ?? []} onRestore={doRestore} />
               </div>
             ) : null}
           </div>
@@ -267,12 +250,16 @@ export function AssistantScreen() {
             <button type="button" className="btn flex-none" onClick={startThread}>
               {strings.assistant.newThread}
             </button>
+            {/* The count is the whole signal: "Undo" alone says nothing about
+                whether there is anything to take back. It reads the same as
+                the desktop rail's control for the same reason. */}
             <button
               type="button"
               className="btn flex-none"
+              aria-expanded={showUndo}
               onClick={() => setShowUndo((value) => !value)}
             >
-              {strings.assistant.undo}
+              {strings.assistant.undo} · {undo.data?.length ?? 0}
             </button>
           </div>
         ) : null}
@@ -417,8 +404,61 @@ export function AssistantScreen() {
         ))}
       </div>
       {body}
+      {/*
+       * The phone's Undo, in a sheet (§20 phase 219).
+       *
+       * The button has been on the phone bar since the screen shipped and it
+       * toggled a flag only the desktop rail read, so tapping it did nothing at
+       * all — the list it was supposed to open lives inside the `isDesktop`
+       * branch. One list, two surfaces, the way every other phone panel here
+       * works.
+       */}
+      {!isDesktop && showUndo ? (
+        <Sheet title={strings.assistant.undo} onClose={() => setShowUndo(false)}>
+          <UndoList entries={undo.data ?? []} onRestore={doRestore} />
+        </Sheet>
+      ) : null}
       {confirm}
     </div>
+  );
+}
+
+/**
+ * What the assistant has changed, newest first, each with the way back.
+ *
+ * One component for both widths: the desktop rail drops it under its own
+ * control, the phone opens it in a sheet. Each row reads as the undo — "Author
+ * rewritten · Mara" — because the button beside it is what does that; the
+ * server's own `kind` never reaches the screen.
+ */
+function UndoList({
+  entries,
+  onRestore,
+}: {
+  entries: AgentUndoDto[];
+  onRestore(id: string, label: string): void;
+}) {
+  if (entries.length === 0) {
+    return <p className="explain px-[6px] py-[4px]">{strings.assistant.undoEmpty}</p>;
+  }
+  return (
+    <>
+      {entries.map((entry) => (
+        <div key={entry.id} className="flex items-center gap-[6px] px-[6px] py-[3px]">
+          <span className="chrome min-w-0 flex-1 truncate text-[12px] text-ink-dim">
+            {strings.assistant.undoEntry(entry.kind, entry.label)}
+          </span>
+          <button
+            type="button"
+            className="chrome flex-none text-[12px]"
+            style={{ color: "var(--onsen-color-blue-text)" }}
+            onClick={() => onRestore(entry.id, entry.label)}
+          >
+            {strings.assistant.restore}
+          </button>
+        </div>
+      ))}
+    </>
   );
 }
 

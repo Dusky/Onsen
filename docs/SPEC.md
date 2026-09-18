@@ -4180,6 +4180,16 @@ Each phase ends in a working, usable application.
     composer before, 15 by way of the skip link, 1 by key.
     See §16, `client/components/Composer.tsx`.
 
+192. **Chrome that fits — nothing to do.** The phase-188 review raised three
+    pieces of chrome; re-checking their evidence first, per `NEXT.md` step 3,
+    found all three answered. The empty scene's two text boxes are phase 157's
+    stated intent ("or just write your turn" is never taken away); the Settings
+    category row has been wrapped in `Scroller`, which fades whichever edge
+    still has something past it, since tens of phases earlier; and the
+    roleplay count had already moved off the sort row, where it "read as part
+    of Longest". Recorded rather than skipped, because a number with no entry
+    cannot say whether a phase was dropped or failed. See §16.
+
 193. **A guard that measures the rendered screen** — every visual guard in the
     repo compares tokens to tokens. `test/surfaces.test.ts` measures
     `contrastRatio(tokens[tier], tokens[ground])`, two flat hex values, while
@@ -4221,6 +4231,211 @@ Each phase ends in a working, usable application.
     grew from 16×22 and 22×26 to WCAG 2.5.8's 24px, with negative margins
     keeping the row where it was: 676 sub-24px targets to 208.
     See §16, `server/db/queries/themes.ts`.
+
+196. **The response cap reaches the wire** — `max_response_tokens` was reserved
+    by the prompt builder and sent by exactly one adapter, Anthropic, and only
+    because Anthropic requires `max_tokens`. So for OpenAI-compatible and
+    text-completion providers the cap was silently ignored *and* auto-continue
+    (§13.6) could never fire, because the `length` finish it triggers on is the
+    one the cap produces. Measured: a 24-token cap came back 126 tokens with
+    `stop`; after, 26 with `length`, and the continue chain ran for the first
+    time on that kind. Both adapters send the builder's own reservation now, and
+    `test/adapter-response-cap.test.ts` asserts it over every `PROVIDER_KINDS` —
+    the per-adapter files each passed on their own terms, which is how the
+    omission sat green. See §4, §13.6, `server/adapters/openai.ts`.
+
+197. **Stop says what it kept** — cancel persists whatever was produced (§5.6)
+    and lands it as the scene's active turn, so a reader who stopped a turn
+    going wrong got a mid-sentence fragment as their newest story with a button
+    that said only "Stop". The contract stays; the silence does not. `cancel()`
+    reads the response's buffer and posts a notice when something was kept.
+    See §5.6, `client/lib/generation.ts`.
+
+198. **The error says why** — `describeFailure` computes a specific `detail` and
+    the SSE `error` event carries it; `settle` passed only the summary, so a
+    dead provider read as "The generation failed." and nothing else. The detail
+    renders under the summary in the smaller, dimmer line a failed field
+    already uses. See §5, `client/state/generation.ts`.
+
+199. **The outbound stream logs its true status** — §19's surface recorded a
+    streaming request as HTTP 200 the moment it opened, before a token had
+    left, so one that died mid-stream was logged a success. The record is
+    written when the stream settles: 502 on error, 200 on done or cancel,
+    through an `onSettled` callback. The error-to-`length` mapping stays and is
+    now documented — OpenAI's stream has no error channel and a non-standard
+    `finish_reason` would break clients. See §19, `server/routes/openai.ts`.
+
+200. **No request for a portrait that is not there** — every turn spoken by a
+    character with no picture requested its avatar anyway and took a 404,
+    because `MessageDto` carried the speaker's id but not whether a portrait
+    existed. Six other call sites already guarded on `hasAvatar`. Resolved in
+    `toMessageDto` from a `SpeakerLookup.hasAvatarById`, character turns only.
+    See §2, `client/components/MessageBlock.tsx`.
+
+201. **A cue beats the classifier, in every scope** — a report of turns written
+    as the wrong character. `classify()` offers the cast minus whoever spoke
+    last, and when the speaker was pinned it answered `candidates[0]` on the
+    assumption that the cued character was first in that list. They are not, in
+    general, and are not even on the roster when they spoke last — so an
+    explicit cue was replaced by whoever happened to be first.
+    See §6, `server/generation/service.ts`.
+
+202. **The classifier reads a beat's last segment, not its lead** — the same
+    report, second cause. Three helpers read a message's own `character_id`,
+    which for a beat is whoever *opened* it: "never twice consecutively"
+    excluded the lead rather than the last speaker, "silent N turns" counted a
+    character who had spoken inside a beat as silent, and recent history
+    attributed a three-way exchange to one name. See §3.5, §6,
+    `server/generation/director.ts`.
+
+203. **A mention is the reader's words, not the author's** — the mention
+    strategy scans "the last message", which after a beat or under autopilot is
+    the author's own prose. Its `**Name:**` labels and dialogue were read as
+    mentions, electing whoever the model had last named itself.
+    `DirectorHistoryEntry` carries `isUser` now and the strategy scans only the
+    reader's words, falling back to round robin. See §6, `server/generation/turn.ts`.
+
+204. **The assistant's undo actually undoes** — the write tools recorded a
+    snapshot and `GET /agent/undo` listed them, and the restore half was never
+    built: the recorded `before` was written, listed, and read by nothing, while
+    the tool descriptions promised otherwise. `POST /agent/undo/:id` restores
+    and removes. See §25, `server/routes/agent.ts`.
+
+205. **The cast warns before a thin card writes** — a cast member with no
+    description and no personality gives the model nothing to hold onto, and
+    the first the reader heard of it was prose coming back wrong. One amber
+    line on the card it is about, before the turn. See §2, §6,
+    `client/components/CastRail.tsx`.
+
+206. **Dead code out of the client** — `CastStrip.tsx` had been replaced by the
+    deck in phase 50 and left behind, ~230 lines imported by nothing. A sweep
+    over `client/` found the rest: `useCharacterSnapshot` and its query key,
+    and the `OpsApi`/`Strings` convenience types. See §16.
+
+207. **The macro and lore engines, audited** — a targeted pass over the two
+    surfaces most likely to hide a wrong-prompt bug after the turn-director
+    work. Mostly no defect: macros resolve from the same `PromptContext` the
+    blocks draft from, so nothing can disagree with the assembled prompt, and
+    the lore engine's six rules run in the order §10 names. One `-0` footgun
+    pinned. See §10, §14, `server/prompt/macros.ts`.
+
+208. **The assistant's client** — phase 46 shipped the server half and parked
+    the client, so the whole surface was reachable only by curl for
+    forty-odd phases, excused in `reachable.test.ts` by that sentence.
+    `/assistant` now has threads, streaming tool calls, undo and both widths.
+    See §25, `client/screens/AssistantScreen.tsx`.
+
+209. **The assistant's own profile, and twelve more tools** — every thread fell
+    back to the install's default profile, which is the opposite of §7's point:
+    the assistant is the most bookkeeping-shaped call in the app and belongs on
+    a cheap model. `GET`/`PATCH /agent/profile` store one, and `runAgentTurn`
+    resolves thread → assistant profile → default. See §7, §25,
+    `server/agent/tools.ts`.
+
+210. **The model has one home: the profile** — a report that the provider and
+    model settings were "a complete mess" turned out to be several things
+    wearing one coat: a model field on three layers at once, a per-scene
+    provider override that skipped the profile's model, the per-scene controls
+    living in a rail panel rather than Scene Setup, and the classifier routed
+    from two surfaces. A provider is now name, kind, address and key; the model
+    and the Test button live on the profile; the scene's "Runs on" lives in
+    Scene Setup; the classifier has one routing knob. See §7,
+    `client/components/ConnectionFields.tsx`.
+
+211. **Product intent, durable lessons, a design contract, and global search** —
+    a learning pass over a fork with the same goals found that Onsen had the
+    machinery but nothing written down about what it is *for*, and no global
+    search. `docs/PRODUCT.md` (the writing is the product; the machinery
+    recedes, with an anti-patterns list to serve as a merge gate),
+    `docs/LESSONS.md` (the "check that asks a different question" sentence,
+    evidence over inference, data-loss first), `docs/DESIGN.md` (the human
+    reading of `tokens.css` and the rendered guard), `docs/PLAN-GAPS.md`. Plus
+    a library-wide find over the cached lists — roleplays, characters,
+    lorebooks, personas, authors — from the header and the phone's top bar.
+    See §15, §16, `client/components/SearchOverlay.tsx`.
+
+212. **The writing comes before the machinery, in the DOM** — `PRODUCT.md`
+    named "machinery louder than writing" as the prime anti-pattern, and the
+    composer sat behind the left rail's prompt panel at ~102 tab presses.
+    Reverted in phase 215; see there. See §16.
+
+213. **Conversation mode** — a per-scene skin over the same history tree: the
+    reader's words on the right, the cast on the left in their colour, a
+    timestamp where the reader has them on. The prompt, the tree, the composer
+    and every action are untouched — rendering, not a second product.
+    `scenes.conversation_mode` (migration 0080, off by default) reaches the
+    scene DTO, the PATCH and Scene Setup. See §16,
+    `client/screens/chat/MessageLog.tsx`.
+
+214. **Agents, discoverable and grouped by stage** — every named op in
+    `server/tasks/registry.ts` was already an agent in the sense the word is
+    used elsewhere: pre, sidecar and post stages, each routable, each with its
+    own words. What was missing was the framing — Settings called it
+    "Background tasks" and the list was flat. The category is **Agents** now,
+    grouped by when an op runs. Disclosure, not a rewrite. See §12, §20.
+
+215. **Revert the grid shell** — phase 212's CSS-grid DOM reorder produced a
+    single-column grid in the browser: the chat on top and the rails below it,
+    reachable only by scrolling past the log. The in-session verification had
+    measured a hot-reloaded bundle rather than a full page load, so it read the
+    old DOM and reported a pass on a change that never applied. The shell is
+    back to flex, verified on a fresh load. **A layout change is verified on a
+    fresh page load, never against the hot reload.** The composer-reachability
+    fix is reopened, not closed. See §16, `client/App.tsx`.
+
+216. **The log reads once, not twice** — the prompt's history renders past
+    turns as `Name: content`, so the model often opened its own spotlight turn
+    with the speaker's name, which the log had already attributed and which fed
+    back into the next prompt doubled. `land()` strips a leading `Name:` (or
+    `**Name:**`) matching the turn's own speaker, spotlight turns only — a
+    beat's prefixes are per-part labels and stay, and a name later in the prose
+    is dialogue. Also: the reasoning strip stopped saying "not sent back", which
+    was the app talking about its own plumbing. See §5,
+    `server/generation/service.ts`.
+
+217. **Formatting is a client concern, not a prompt one** — asked whether the
+    model should emit HTML for italic dialogue, the answer is no: its output is
+    untrusted and history is plain text re-fed into every prompt. So quoted
+    speech renders italic in the renderer, where it is deterministic and cannot
+    leak, as its own `dialogue` span kind so the no-text-lost round-trip stays
+    exact. Only a quote that can *open* speech counts, and an `=` before it
+    means an HTML attribute. The `dialogue_colour` prompt block is gone — it
+    made every prompt bigger and gave the model one more way to leak raw tags
+    — and the gap it papered over is closed at the source: a colourless
+    character joining a scene takes the first palette colour free in that
+    scene. See §14, §16, `client/lib/emphasis.ts`.
+
+218. **The wrong character was a client bug, not the director** — the composer
+    shows the director's provisional pick and the send button sent that pick
+    back as `characterId`, which the server reads as a *user cue* and honours
+    over the strategy. So every ordinary send froze a choice computed against
+    stale history: the mention strategy never scanned the message just typed,
+    and round robin ran one turn behind. Only the reader's explicit tap travels
+    now (`source === "user"`); a director suggestion stays on the client and the
+    server re-derives from fresh history. Separately, the `dialogue` span takes
+    the speaker's colour as well as the italic, client-side, and migration 0081
+    backfills a colour for every character that predates the palette. See §6,
+    §16, `client/screens/chat/useOps.tsx`.
+
+219. **Every change the assistant makes is in Undo** — `server/agent/tools.ts`
+    has nineteen write tools and `snapshotBefore` was called by two of them,
+    while the assistant's own screen promised that *every* change it made was
+    listed under Undo and `agent.ts` claimed "the write tools record a snapshot
+    before they touch anything". An overwritten author, an emptied lorebook, a
+    recast scene were simply gone; `character_versions` is the only history
+    table in the schema. All nineteen record now, `server/agent/restore.ts`
+    walks each of twenty kinds back through the same writer the tool used, and
+    the phone's Undo button — which toggled a flag only the desktop rail read,
+    so it did nothing at all — opens the same list in a sheet. Each kind reads
+    in words, because `lore_entry.created` is storage, not something to show a
+    reader. Two more found while in the file: `update_scene` advertised
+    `scenarioOverride` and `turnStrategy` and spread them into a patch type
+    that has neither, so both were accepted, reported as changed and dropped;
+    and `scenario_override` had two writers, which is now one.
+    `test/agent-undo.test.ts` runs every tool against a real database and
+    requires a snapshot from anything that changed a row — `total_changes()` is
+    the detector, so a write added later needs no declaration to be caught.
+    See §25, `server/agent/restore.ts`.
 
 Settled while building phase 15.
 

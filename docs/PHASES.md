@@ -9277,6 +9277,43 @@ scrolled to its bottom, the first Tab lands in the right rail and the skip link
 is reached on the wrap. It is still the first element in the DOM, which is what
 the guard asserts — the alternative would be asserting a browser heuristic.
 
+## Phase 192 — Chrome that fits (nothing to do)
+
+*Written in phase 219, which found the hole. The number was planned, its three
+items turned out to be already shipped or already decided, and it was skipped
+without a word — so `PHASES.md` read 191, 193 and nobody could tell whether a
+phase had been dropped or had failed. An empty entry is the answer; a gap is
+not.*
+
+The phase-188 use review raised three pieces of chrome and the plan gave them
+their own phase. Re-checked before building, per `NEXT.md` step 3, and all
+three had answers:
+
+**"An empty scene offers two live text boxes with nothing saying which comes
+first."** Decided, and documented at the component:
+`SceneDescribePrompt`'s own doc comment says the composer stays below "so 'or
+just write your turn' is never taken away" (§20 phase 157). Two ways in is the
+intent, not an oversight.
+
+**"Settings tabs clip silently — 209px hidden, no fade or arrow."** Already
+fixed, long before: the category row is wrapped in `Scroller`, which "fades
+whichever edge still has something past it", with a comment naming the exact
+complaint — ten categories in 390px, four fitting, six off the right edge. It
+shipped in the commit that made the palette a modal, tens of phases earlier.
+The review measured a width where the fade was present and read the clipping as
+unhandled.
+
+**"An unlabelled `2` floats beside New roleplay, and the sort buttons outweigh
+their content."** Also already fixed: the count moved to the title row, with a
+comment saying it had been "squeezed onto the edge of 'Longest' and read as
+part of it", and it reads "1 of 60" under a filter rather than a bare number.
+
+Nothing was built. Worth keeping as an entry because two of the three were
+findings the review got wrong by looking rather than measuring, which is the
+same lesson `docs/UX-REVIEW.md`'s Corrections section records six more of — and
+because the third, the empty-scene pair, is the fourth time a documented
+decision has been re-raised as a defect.
+
 ## Phase 193 — A guard that measures the rendered screen
 
 Three phases in a row have now found the same shape of defect:
@@ -10024,6 +10061,65 @@ phase-182 guard's "picking a preset clears the model box" assertion became "a
 provider form carries no model box to go stale", and the per-scene model tests
 followed the override into Scene Setup.
 
+## Phase 211 — Product intent, durable lessons, a design contract, and global search
+
+*Written in phase 219. This phase shipped a feature and four documents and
+never wrote its own entry, so `PHASES.md` jumped 210 → 212 and `SPEC.md` §20
+never learned about it. The gap is the reason phase 219 also added
+`test/tracker-drift.test.ts`, which fails on a numbering hole.*
+
+A learning pass over SillyBunny — a SillyTavern fork with the same goals —
+surfaced a real gap. Onsen had the machinery for everything it does and nothing
+written down about what it is *for*, so a decision about whether a feature
+belonged had no document to lose an argument against. And it had no global
+search: every list was filterable in place, and nothing answered "where is the
+thing".
+
+### The four documents
+
+- **`docs/PRODUCT.md`** — the writing is the product; the machinery recedes.
+  Ends in an anti-patterns and anti-references list meant to serve as a merge
+  gate, adapted for Onsen's deliberate dock system rather than copied from the
+  fork it was read against.
+- **`docs/LESSONS.md`** — durable engineering judgment, undated: the "a check
+  that asks a different question than the real thing can pass while the app is
+  broken" sentence, evidence beats inference, data-loss first, the turn
+  director's single source of truth, seeded data reconciles.
+- **`docs/DESIGN.md`** — the human reading of `client/styles/tokens.css` and
+  `scripts/rendered-guard.ts`: the amber/blue signal split, the 0px radius, one
+  owner per size, and what each budget is.
+- **`docs/PLAN-GAPS.md`** — phase-ready specs for the two remaining feature
+  gaps, which became phases 213 and 214.
+
+### Global search
+
+One box that finds anything in the library — roleplays, characters, lorebooks,
+personas, authors — reachable from the header on desktop and the top bar on the
+phone, keyboard-first. It searches the already-fetched lists rather than a
+server index: the install is single-user and small enough that a client-side
+filter over cached lists is the honest implementation, and a server index can
+come the day a library needs one.
+
+`SearchOverlay` goes through `useModalFocus` like the palette and the sheet, and
+`test/sheet-dialog.test.ts` grew it as a fourth file entitled to `fixed
+inset-0`.
+
+### The bookkeeping this phase skipped, and what it cost
+
+No `PHASES.md` entry, no `SPEC.md` §20 item, no README badge — the three things
+`NEXT.md` step 5 says move in the same commit as the code. It went unnoticed
+for seven phases and surfaced only when somebody read the file and found 210
+followed by 212. `NEXT.md` has now opened by complaining about this drift three
+times; phase 219's guard is the first version of the rule that a commit cannot
+pass.
+
+It also shipped an overlay whose focus behaviour differs from the palette's —
+`SearchOverlay` is mounted unconditionally and self-gates with
+`if (!open) return null` *after* `useModalFocus`, so the hook captures
+`document.activeElement` at app start and its restore never runs. The
+filename-allowlist guard was satisfied by adding the file to the list. Fixed in
+its own phase.
+
 ## Phase 212 — The writing comes before the machinery, in the DOM
 
 `docs/PRODUCT.md` named the prime anti-pattern as "machinery louder than
@@ -10218,3 +10314,148 @@ character that predates the palette a colour by creation order, so an existing
 library is told apart at a glance the same way a new cast is.
 
 **Verified**: 1951 tests across 144 files, typecheck clean.
+
+## Phase 219 — Every change the assistant makes is in Undo
+
+The assistant's own screen says, in the blurb under its title: *"The assistant
+can read and change what is in this install — characters, roleplays, lore,
+personas and themes — for real. It looks things up rather than guessing, and
+every change it makes is listed under Undo."*
+
+The last clause was true of two changes out of nineteen.
+
+### What the sweep found
+
+`server/agent/tools.ts` exports 32 tools, of which 19 write. A repo-wide sweep
+for `snapshotBefore` found **two** call sites: `delete_character` and
+`update_theme`. `POST /agent/undo/:id` could restore exactly those two kinds.
+`update_character` was honest by a different route — `updateCharacter` writes a
+`character_versions` row, with phase 61's exemption for organisational fields —
+and `character_versions` is the **only** history table in the schema, so
+authors, personas, lore entries, scenes and groups had none at all.
+
+The other sixteen left nothing behind: `update_scene`, `add_note_to_scene`,
+`update_author`, `upsert_persona`, `update_lore_entry`, `delete_lore_entry`
+(whose own description admitted it), `create_scene`, `create_lorebook`,
+`add_lore_entry`, `create_theme`, `set_theme`, `add_to_cast`,
+`remove_from_cast`, `create_group`, `add_to_group`, `remove_from_group`.
+
+And `server/routes/agent.ts`'s own doc comment said *"The write tools record a
+snapshot before they touch anything"*. This is the sentence `docs/LESSONS.md`
+keeps: **a check that asks a different question than the real thing can pass
+while the app is broken.** Here there was no check at all, and a comment
+standing in for one.
+
+### The recording half
+
+All nineteen record now. `UNDO_KINDS` is a union of twenty kinds in
+`shared/types.ts` — shared rather than server-only because the client names
+each one in words — and `snapshotBefore` takes that union rather than a string,
+so the compiler is the first guard. The naming carries the undo:
+
+- a bare noun is an overwrite, so its undo puts the old state back
+- `.created` is the absence before a create, so its undo is a delete
+- `.deleted` is the state before a delete, so its undo is a re-create
+- `.added` / `.removed` are memberships, which undo by the opposite call
+
+`snapshotCreated` is a sibling of `snapshotBefore` with the same storage, so a
+create's call site reads honestly: the id it records can only be known *after*
+the insert, and `snapshotBefore` would be a lie about the order.
+
+One consequence worth stating: `delete_character` records `character.deleted`
+rather than `character`, because a delete and an overwrite undo differently.
+`test/agent.test.ts`'s assertion moved with it.
+
+### The restoring half
+
+`server/agent/restore.ts`, new: one `switch` over `UndoKind`, exhaustive, so a
+kind added without a restore does not typecheck. Each branch goes through the
+same query-layer writer the tool used, so there is one way to write each thing.
+Each branch is also idempotent about the thing already being in the state asked
+for — a reader who taps Restore twice gets a note, not an error.
+
+What a restore is honest about travels in the response's `note`: a re-created
+character comes back without its picture or book bindings, a re-created lore
+entry under a **new id**, so anything that referred to the old one does not
+follow it back. The theme in use is not deleted out from under the app.
+
+Restores are not themselves snapshotted — an undo of an undo is the original
+state, which is already in the list until it is used, and recording one would
+make the list grow on the operation meant to shrink it.
+
+### Two more found while in the file
+
+**`update_scene` advertised two fields it could not write.** Its schema offers
+`title`, `scenarioOverride` and `turnStrategy`, and its `run` spread the raw
+arguments into `updateScene`, whose patch type has neither of the last two. So
+they were accepted, reported as changed, and dropped: a model told to set the
+turn strategy got a success and a scene that had not moved. Confirmed by
+execution before the fix — `{title: "Renamed", scenario_override: null,
+turn_strategy: "manual"}`. Each field now goes through the one thing that owns
+its column: `scenarioOverride` joined `updateScene`'s patch, and the strategy
+uses `setTurnStrategy`, which already existed.
+
+**`scenario_override` had two writers.** The scenes route wrote the column with
+a statement of its own. It calls `updateScene` now, so there is one.
+
+### The phone's Undo button did nothing
+
+`showUndo` was toggled by two controls and read by one: the list lives inside
+`AssistantScreen`'s `isDesktop` branch, so on a phone the button had been inert
+since the screen shipped in phase 208. The list is a component now — the
+desktop rail drops it under its own control, the phone opens it in a `Sheet` —
+and the phone's button carries the count, because "Undo" alone says nothing
+about whether there is anything to take back.
+
+### Words, not keys
+
+The list rendered the server's `kind` string. Fine while the only two were
+"character" and "theme"; a raw storage key on screen the moment there were
+twenty. `strings.assistant.undoKinds` is typed against `UndoKind`, so a kind
+added on the server without words does not compile, and each one reads as the
+*undo* — "Author rewritten · Mara" — because the button beside it is what does
+that. An unknown kind falls back to the name alone, which is what a reader
+needs to recognise what they are about to take back.
+
+### The guard
+
+`test/agent-undo.test.ts` does not read the source and does not name the tools
+that are supposed to snapshot. It **runs every tool in the registry against a
+real database** and asks the only question worth asking: did this change a row,
+and if it did, is there something to go back to?
+
+`total_changes()` is the detector — SQLite counts every row inserted, updated or
+deleted on the connection — so "this tool wrote" needs no declaration and a
+write added later is caught without anybody remembering to extend a list. Three
+things keep the sweep honest: destructive tools run last so they do not delete
+the subject the others need, every tool whose schema has required arguments must
+be listed in the fixtures (a missing one would throw before writing and pass
+having tested nothing), and the number of tools that wrote is asserted to be at
+least nineteen. Verified by removing one `snapshotBefore` call, which fails the
+suite and names the tool.
+
+Beside it: every `UNDO_KIND` is reachable by running the tools, so the union has
+no dead entries; every recorded snapshot restores without throwing; and six
+round-trips check real state — an overwritten author, a deleted lore entry back
+in its book, a created scene deleted again with its cast, a recast scene, the
+theme that was active, and the theme in use refusing to be deleted.
+
+### Verified
+
+1966 tests across 145 files, typecheck clean. Driven in the browser at
+1600×950 and 390×844: the desktop rail and the phone sheet both read "Author
+rewritten · Mara", "Lore deleted · The inn keeper", "Cast removed · Elira Voss
+in The Last Inn", "Theme switched · Midnight" — no raw kinds, no console
+errors. `data/onsen.db` was snapshotted before anything was written to it and
+restored byte-for-byte afterwards.
+
+### The trackers, reconciled first
+
+This phase could not add a `SPEC.md` §20 item because the list stopped at 195
+while the tree stood at 218 — a twenty-three-phase drift, and `NEXT.md` opens
+by complaining about the seventeen-phase one. Items 196–218 are backfilled,
+phase 211's missing `PHASES.md` entry is written, and `README.md` and `NEXT.md`
+say 219. `test/tracker-drift.test.ts` is the part that matters: the highest
+phase in `PHASES.md`, the highest item in §20 and the README badge must agree,
+and `PHASES.md` must have no numbering gaps. All three drifts would have failed
+on the commit that caused them.

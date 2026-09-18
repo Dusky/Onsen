@@ -1009,10 +1009,48 @@ export interface AgentMessageDto {
   createdAt: number;
 }
 
+/**
+ * Every change the agent can record, and therefore every change the restore
+ * half has to know how to walk back (§20 phase 219).
+ *
+ * Shared rather than server-only because the client names each one in words —
+ * `lore_entry.created` is a storage detail and never belongs on screen — and a
+ * kind added here without words in `client/strings.ts` does not compile.
+ *
+ * A bare noun is an overwrite, so its undo puts the old state back. `.created`
+ * is the absence before a create, so its undo is a delete. `.deleted` is the
+ * state before a delete, so its undo is a re-create. `.added`/`.removed` are
+ * memberships, which undo by the opposite call.
+ */
+export const UNDO_KINDS = [
+  "character",
+  "character.deleted",
+  "scene.created",
+  "scene",
+  "scene.note",
+  "lorebook.created",
+  "lore_entry.created",
+  "lore_entry",
+  "lore_entry.deleted",
+  "persona.created",
+  "persona",
+  "author",
+  "theme.created",
+  "theme",
+  "theme.active",
+  "cast.added",
+  "cast.removed",
+  "group.created",
+  "group.added",
+  "group.removed",
+] as const;
+
+export type UndoKind = (typeof UNDO_KINDS)[number];
+
 /** A change the agent made, and what the thing looked like before it. */
 export interface AgentUndoDto {
   id: string;
-  kind: string;
+  kind: UndoKind;
   subjectId: string;
   /** The thing's name, so the list reads without a lookup. */
   label: string;
