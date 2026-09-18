@@ -1451,8 +1451,18 @@ export const strings = {
     greetingRandom: "A random one",
     colour: "Colour",
     colourNone: "No colour",
-    colourDim: (ratio: string) =>
-      `Hard to read on this theme — ${ratio} against the page, under the 4.5:1 the ink holds.`,
+    /**
+     * Not a warning any more (§20 phase 220).
+     *
+     * It used to read "Hard to read on this theme — {ratio} against the page,
+     * under the 4.5:1 the ink holds", which was true and is no longer: the app
+     * resolves a speaker's colour against the ground before painting it, so a
+     * colour that measures 2.1:1 stored is painted at 4.5:1 or better. Warning
+     * about a problem the app now fixes would send a reader to change something
+     * that does not need changing. What is worth saying is what will happen.
+     */
+    colourAdjusted: (ratio: string, painted: string) =>
+      `${ratio} against this page as picked, so it is painted ${painted} here to stay readable. Stored as you chose it.`,
     portraitPrompt: "Portrait prompt",
     /* The bound lorebook (§20 phase 139). */
     lore: "Lorebook",

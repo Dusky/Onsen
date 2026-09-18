@@ -2,7 +2,7 @@
 
 A short, honest list. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 219. 1970 tests across 146 files, typecheck clean. Feature
+**State:** phase 220. 1985 tests across 147 files, typecheck clean. Feature
 complete against `SPEC.md` §20 apart from the deferred phase 42.
 
 This file went stale three times, and the third was the worst: it said phase
@@ -43,13 +43,11 @@ things; `219` is shipped and the rest are planned, each its own phase.
 
 0. ~~**Every change the assistant makes is in Undo.**~~ — **phase 219.**
 
-1. **A speaker's colour is legible on both themes.** Measured on composited
-   pixels in the light theme: coloured dialogue at **2.07:1, 1.99:1, 2.34:1**
-   against AA's 4.5:1, and all eight `CAST_PALETTE` colours at 2.12–3.93:1 on
-   Bone and Slate. Dark is fine at 7.5:1. The names have failed the same way
-   since phase 185; phase 218 extended the colour to the prose, which is what
-   made it loud. `readableOn()` in `shared/contrast.ts`, resolved once in
-   `ChatScreen`'s colour map, plus a palette that clears the floor unaided.
+1. ~~**A speaker's colour is legible on both themes.**~~ — **phase 220**, and
+   the plan's own prescription turned out to be impossible: no palette clears
+   the floor on both bases, because the luminance windows do not overlap. The
+   stored colour is identity and `readableOn` resolves it against the ground.
+   2.07/1.99/2.34:1 composited before, 4.98/4.88/5.76:1 after.
 
 2. **Markup inside speech renders again.** Phase 217 made a quoted run one
    terminal `dialogue` span, so `"…road **has** a name."` shows its asterisks.

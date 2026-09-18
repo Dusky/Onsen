@@ -4437,6 +4437,23 @@ Each phase ends in a working, usable application.
     the detector, so a write added later needs no declaration to be caught.
     See §25, `server/agent/restore.ts`.
 
+220. **A speaker's colour is legible on both themes** — coloured dialogue
+    measured **2.07:1, 1.99:1 and 2.34:1** on composited pixels in the light
+    theme, against AA's 4.5:1 and below the 3:1 large-text floor; the name and
+    spine had failed the same way since phase 185. No better palette exists:
+    clearing 4.5:1 against `#e5eaee` needs relative luminance at or below 0.143
+    and against `#0a0d18` at or above 0.194, so no single stored hex is legible
+    in both bases. The stored colour is identity now and `readableOn` resolves
+    it against the ground before painting, once, in the one map that feeds the
+    name, the spine, each beat part's label, the quoted runs and the
+    conversation bubble. The client's floor is 5.5 rather than 4.5 because the
+    token is not the ground — prose sits on a translucent panel over the
+    reader's photograph, and resolving to exactly AA against the token landed at
+    4.07:1 on screen. After: 4.98, 4.88, 5.76 and 5.39 composited, dark
+    unmoved. The character editor reports what will be painted instead of
+    warning about a problem the app now fixes. See §16,
+    `client/lib/speaker-colour.ts`.
+
 Settled while building phase 15.
 
 - **The desktop layout is phase 19, not a polish item.** The design is explicit

@@ -10459,3 +10459,112 @@ say 219. `test/tracker-drift.test.ts` is the part that matters: the highest
 phase in `PHASES.md`, the highest item in §20 and the README badge must agree,
 and `PHASES.md` must have no numbering gaps. All three drifts would have failed
 on the commit that caused them.
+
+## Phase 220 — A speaker's colour is legible on both themes
+
+Measured on composited pixels at 1600×950, light theme, the real database — the
+coloured dialogue phase 218 introduced:
+
+| run | before |
+|---|---|
+| `"Name it anyway,"` | **2.07:1** |
+| `"It had no face,"` | **1.99:1** |
+| `"They never do, this early in the season."` | **2.34:1** |
+
+Against AA's 4.5:1, and below the 3:1 large-text floor as well. The speaker's
+name and spine had been failing the same way since phase 185 at 2.14–2.94:1 on
+the four light grounds; 218 put the same colour on the *spoken words*, which
+turned a dim label into a fifth of the prose on screen. Dark measures 7.5:1 and
+is fine, which is exactly why nobody saw it — the app's own default is dark.
+
+### The fix is not a better palette
+
+There is no better palette. To clear 4.5:1 against `#e5eaee` a colour needs
+relative luminance at or below **0.143**; against `#0a0d18` it needs **0.194**
+or above. The windows do not overlap, so **no single stored hex is legible in
+both theme bases**, and the plan's "repick `CAST_PALETTE` so all eight clear the
+floor unaided" was impossible before it started. `test/cast-colour.test.ts`
+states that as arithmetic, computed from the shipped themes rather than from
+these two numbers, so nobody tries again.
+
+So the stored colour is *identity* — what the reader picked, or what the palette
+handed them — and what gets painted is resolved against the ground in front of
+it. `readableOn(colour, ground, floor)` in `shared/contrast.ts` moves toward
+whichever end has the most headroom, by the smallest amount that clears the
+floor, found by bisection so it is deterministic and as close to the reader's
+colour as legibility allows. Darkening mixes toward black and preserves hue
+exactly, which is the direction light themes need.
+
+At the AA floor it always succeeds, and the arithmetic says why: black against a
+ground of luminance L gives `(L + 0.05) / 0.05` and white gives
+`1.05 / (L + 0.05)`, and the two cross at L ≈ 0.179 where both are 4.58:1. The
+worse of the two ends is never below 4.5:1 for *any* ground — including mid
+grey, which is the case that looks hopeless and is not.
+
+### One owner
+
+`ChatScreen` already built the single `Map<characterId, colour>` that feeds the
+speaker's name, the spine, each beat part's label, the quoted runs inside the
+prose and the conversation-mode bubble. `client/lib/speaker-colour.ts` resolves
+it there, so every surface moves together and there is no second place to
+forget. The ground comes from the live computed style rather than `builtin.ts`,
+because a reader's own theme is as real as a shipped one — phase 195's whole
+lesson. Of the candidate grounds it takes the one closest to mid grey, which is
+the hardest of them: clearing that clears the others on the same side.
+
+No observer watches the theme, because it cannot change without a reload —
+applying a theme calls `window.location.reload()`, and the header's Dark/Light
+switch activates a theme like any other.
+
+### The number the token could not give
+
+The first version resolved to exactly 4.5:1 against the token and **still came
+up short on screen**: 4.07:1 and 3.99:1 composited, with every token-pair check
+passing. Phase 193's argument, one layer in — prose sits on a translucent panel
+over the reader's photograph, so the ground a token names is not the ground text
+lands on.
+
+The headroom is therefore measured, not chosen. The darkest ground the
+transcript actually composited to was `#e3e6ea` against an `#f1f1f1` token,
+which demands 5.01:1 against the token to clear AA on screen. `PAINT_FLOOR` is
+**5.5**: it carries that with margin and still clears 4.04:1 against a `#d0d0d0`
+ground far darker than anything observed. Applied in both bases, because which
+way the photograph pushes is the picture's business and not the theme's.
+
+The guard holds the app's promise at AA; the client paints with headroom above
+it. `scripts/rendered-guard.ts` is what checks the approximation was right, and
+phase 222 is what makes it measure these runs.
+
+### The editor stopped warning about a problem that no longer exists
+
+`ColourField` measured the chosen colour against the live ground and printed
+"Hard to read on this theme — 2.31:1 against the page, under the 4.5:1 the ink
+holds." True when it was written; false now, and worse than useless — it would
+send a reader to change something the app already handles. It reports instead:
+the ratio as picked, the colour it will be painted in here, and that the choice
+is stored as made. The swatch beside the picker shows the *resolved* colour,
+because a swatch that lies about what is coming is worse than no swatch.
+
+### Verified
+
+Composited, on the real screen, through the app's own theme picker:
+
+| | before | after |
+|---|---|---|
+| `"Name it anyway,"` | 2.07:1 | **4.98:1** |
+| `"It had no face,"` | 1.99:1 | **4.88:1** |
+| `"They never do…"` | 2.34:1 | **5.76:1** |
+| the speaker's name | 2.14–2.94:1 | **5.39:1** |
+| dark theme, all of it | 7.5:1 | **7.5:1** (unmoved) |
+
+1985 tests across 147 files, typecheck clean. `test/cast-colour.test.ts` holds
+every palette colour, resolved, to AA on every ground every shipped theme
+defines; keeps the eight tellable apart afterwards (nothing closer than 20 in
+RGB, against a stored palette whose own tightest pair is 28), and checks that
+migration 0081 — which copies the palette and asks in a comment that the two be
+kept in step — still wrote what the live palette hands out.
+
+### Not done here
+
+The asterisks in `"…that road **has** a name."` are phase 221. They are visible
+in the same crop and are a different defect.

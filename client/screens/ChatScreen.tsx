@@ -40,6 +40,7 @@ import { QuickReplyRow } from "../components/QuickReplies.tsx";
 import { VnStage } from "../components/VnStage.tsx";
 import { TrackerPanel } from "../components/TrackerPanel.tsx";
 import { useIsDesktop } from "../lib/breakpoint.ts";
+import { useSpeakerColours } from "../lib/speaker-colour.ts";
 import { useUiStore } from "../state/ui.ts";
 import type { ContextTab } from "../components/ContextSheet.tsx";
 import {
@@ -284,15 +285,15 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     return byMessage;
   }, [trackerHistory.data]);
 
-  const colours = useMemo(
-    () =>
-      new Map(
-        cast
-          .filter((member) => member.colour !== null)
-          .map((member) => [member.characterId, member.colour!] as const),
-      ),
-    [cast],
-  );
+  /*
+   * Resolved against the ground, not taken raw (§20 phase 220).
+   *
+   * One map feeds the speaker's name, the spine, each beat part's label, the
+   * quoted runs inside the prose and the conversation bubble — so this is the
+   * single place a colour becomes something to paint, and the stored hex stays
+   * the reader's own choice.
+   */
+  const colours = useSpeakerColours(cast);
   // Versioned per message and read off the active path, so this changes when the
   // reader rewinds — which is why it is read from the scene every time rather
   // than cached anywhere (SPEC §8).

@@ -329,7 +329,21 @@ export function setAvatarPath(
  * a glance before anyone has opened the editor. The reader can repaint anyone
  * later — this is a starting point, not a decree.
  */
-const CAST_PALETTE = [
+/**
+ * A colour per voice, so a fresh cast is told apart at a glance (§20 phase 217).
+ *
+ * Eight hues, not eight *legible* colours — no such set exists, because clearing
+ * 4.5:1 on a near-white ground and on a near-black one are mutually exclusive
+ * (§20 phase 220). What is stored is identity; `readableOn` resolves it against
+ * whatever ground it is about to be painted on.
+ *
+ * Exported for `test/cast-colour.test.ts`, which holds the resolved forms to the
+ * floor on every ground every shipped theme defines, keeps the eight tellable
+ * apart afterwards, and checks that migration 0081 — which copies these values
+ * and asks in a comment that the two be kept in step — still wrote what this
+ * hands out.
+ */
+export const CAST_PALETTE = [
   "#c77ba9",
   "#6b9bd1",
   "#5ba884",
