@@ -4454,6 +4454,18 @@ Each phase ends in a working, usable application.
     warning about a problem the app now fixes. See §16,
     `client/lib/speaker-colour.ts`.
 
+221. **Markup inside speech renders again** — phase 217 made a quoted run one
+    terminal span so it could be italicised, which meant `"…that road **has** a
+    name."` showed its asterisks on screen, in the middle of the prose, in a
+    live scene. The flattening rule is sound for asterisks and documented since
+    phase 161 — a nested mark inside a `**pair**` is rare enough that flattening
+    beats resolving — but a quote is not a mark somebody chose to write, it is
+    punctuation in nearly every line of dialogue, so the trade was applied to
+    the commonest prose shape in the product. `dialogue` is the one span kind
+    with children now; `text` still holds the whole run so the no-text-lost
+    round-trip a recast splice depends on is untouched, and speech with no marks
+    in it keeps the exact shape it had. See §14, §16, `client/lib/emphasis.ts`.
+
 Settled while building phase 15.
 
 - **The desktop layout is phase 19, not a polish item.** The design is explicit

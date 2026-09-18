@@ -10568,3 +10568,59 @@ kept in step — still wrote what the live palette hands out.
 
 The asterisks in `"…that road **has** a name."` are phase 221. They are visible
 in the same crop and are a different defect.
+
+## Phase 221 — Markup inside speech renders again
+
+Phase 217 made a quoted run one terminal `dialogue` span so it could be
+italicised and, in 218, coloured. The cost showed up in the reader's own live
+scene, in the middle of the prose:
+
+```
+"Half of what comes down that road **has** a name, and the half that does not
+is worse."
+```
+
+Asterisks, on screen, as text. Same input, before and after 217:
+
+```
+pre-217   text | strong("has") | text
+217–220   dialogue("…that road **has** a name.")
+```
+
+### Why the trade that was right for asterisks is wrong for quotes
+
+The tokenizer flattens what is nested inside a mark, and `test/emphasis.test.ts`
+has said why since phase 161: *"nothing inside a pair is read as markup again"*,
+because a nested `*x*` inside a `**sentence**` is rare enough that flattening
+beats resolving. That reasoning is sound and it still stands — for asterisks.
+
+It does not carry to quotes, and the difference is what a quote *is*. A `**` is
+a mark somebody chose to write. A quote is punctuation, in nearly every line of
+dialogue the app renders. So phase 217 took a trade justified by rarity and
+applied it to the commonest prose shape in the product.
+
+### The change
+
+`dialogue` is the one span kind with `children`: the interior is tokenised
+again and rendered inside the `<em>` that already carries the italic and the
+speaker's colour. `renderSpans` in `MessageBlock.tsx` recurses for that kind
+and no other, so the asterisk pairs keep flattening exactly as before.
+
+Two things it deliberately does not do:
+
+**`text` still holds the whole run, quotes included.** `children` is for
+rendering only. `segments.ts`'s "never lose text" invariant is untouched, which
+matters more than it sounds: a recast splice is correct only while segment
+offsets address the canonical string *including* its markup.
+
+**Speech with no marks in it carries no children at all.** That is the
+overwhelmingly common case and it keeps the exact shape it has always had — one
+span, nothing for the renderer to walk — so the contract only changes where the
+defect was. The existing assertion for `"Hello."` passes unedited, which is the
+sign the change is as narrow as it claims.
+
+### Verified
+
+1988 tests across 147 files, typecheck clean. New tests cover a mark inside
+speech resolving, the unmarked case keeping its old shape, and the round-trip
+staying exact across five inputs mixing quotes, asterisks and tags.

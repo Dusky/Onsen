@@ -116,6 +116,53 @@ describe("emphasis", () => {
     ]);
   });
 
+  test("marks inside speech are marks, not asterisks on screen", () => {
+    /*
+     * Phase 217 made a quoted run one terminal span, and phase 221 undid that
+     * for what is *inside* it. The reason the trade differs: the asterisk pairs
+     * flatten what is nested in them because a `**` is a mark somebody chose to
+     * write and the rare nested one is not worth resolving. A quote is not a
+     * mark — it is punctuation, in nearly every line of dialogue the app
+     * renders — so applying the same trade put `**has**` on screen verbatim, in
+     * the middle of the prose, in the reader's own live scene.
+     */
+    const spans = emphasis('"…road **has** a name."');
+    expect(spans).toHaveLength(1);
+    expect(spans[0]!.kind).toBe("dialogue");
+    expect(spans[0]!.children?.map((child) => `${child.kind}:${child.text}`)).toEqual([
+      'text:"',
+      "text:…road ",
+      "strong:has",
+      "text: a name.",
+      'text:"',
+    ]);
+  });
+
+  test("speech with nothing in it keeps the shape it always had", () => {
+    // The common case by a distance, and it carries no children at all: one
+    // span, nothing for the renderer to walk.
+    expect(emphasis('"Hello."')).toEqual([{ kind: "dialogue", text: '"Hello."' }]);
+    expect(emphasis('"Hello."')[0]!.children).toBeUndefined();
+  });
+
+  test("the round-trip is exact whether or not speech carries marks", () => {
+    // `text` still holds the whole run, quotes included, so `segments.ts`'s
+    // "never lose text" invariant is untouched — which is what a recast splice
+    // depends on, since its offsets address the canonical string.
+    for (const text of [
+      '"…road **has** a name."',
+      'He said "it is *fine*" and left.',
+      '"a *b* c" then "d **e** f"',
+      '"<b>shouted</b>"',
+      '"nothing in here"',
+    ]) {
+      expect({ text, out: emphasis(text).map((span) => span.text).join("") }).toEqual({
+        text,
+        out: text,
+      });
+    }
+  });
+
   test("an unclosed quote is literal, never swallowed", () => {
     expect(emphasis('She said "Hello.')).toEqual([{ kind: "text", text: 'She said "Hello.' }]);
   });

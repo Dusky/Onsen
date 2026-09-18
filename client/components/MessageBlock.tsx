@@ -8,7 +8,7 @@ import type {
   MessageSegmentDto,
   TurnStyle,
 } from "@shared/types.ts";
-import { emphasis, isPlain } from "../lib/emphasis.ts";
+import { emphasis, isPlain, type Span } from "../lib/emphasis.ts";
 import { useSwipe } from "../lib/gestures.ts";
 import { strings } from "../strings.ts";
 import { MessageMedia } from "./MessageMedia.tsx";
@@ -204,44 +204,55 @@ export function Direction({ text }: { text: string }) {
  */
 export function Emphasis({ text, colour = null }: { text: string; colour?: string | null }) {
   if (isPlain(text)) return <>{text}</>;
-  return (
-    <>
-      {emphasis(text).map((span, index) => {
-        if (span.kind === "strong") {
-          return (
-            <strong key={index} className="font-semibold">
-              {span.text}
-            </strong>
-          );
-        }
-        if (span.kind === "em") {
-          return <em key={index}>{span.text}</em>;
-        }
-        // Spoken words are italic *and* take the speaker's colour — the same
-        // colour the name and spine carry, so the voice is found the same way
-        // wherever it is. The model never supplies this colour: it is a fact
-        // the client already knows, applied to the quoted runs deterministically.
-        if (span.kind === "dialogue") {
-          return (
-            <em key={index} style={colour === null ? undefined : { color: colour }}>
-              {span.text}
-            </em>
-          );
-        }
-        if (span.kind === "underline") {
-          return <u key={index}>{span.text}</u>;
-        }
-        if (span.kind === "colour") {
-          return (
-            <span key={index} style={{ color: span.colour }}>
-              {span.text}
-            </span>
-          );
-        }
-        return <Fragment key={index}>{span.text}</Fragment>;
-      })}
-    </>
-  );
+  return <>{renderSpans(emphasis(text), colour)}</>;
+}
+
+/**
+ * One span list to elements, used for a paragraph and again for what is inside
+ * a quoted run (§20 phase 221).
+ *
+ * Recursive for exactly one kind. `dialogue` is the only span that carries
+ * children, because it is the only one whose delimiter — a quote — is ordinary
+ * punctuation rather than a mark somebody chose to write. The asterisk pairs
+ * still flatten what is nested in them, which is the trade the header explains
+ * and which phase 217 wrongly extended to speech, so `"…road **has** a name."`
+ * put its asterisks on screen.
+ */
+function renderSpans(spans: Span[], colour: string | null): ReactNode[] {
+  return spans.map((span, index) => {
+    if (span.kind === "strong") {
+      return (
+        <strong key={index} className="font-semibold">
+          {span.text}
+        </strong>
+      );
+    }
+    if (span.kind === "em") {
+      return <em key={index}>{span.text}</em>;
+    }
+    // Spoken words are italic *and* take the speaker's colour — the same
+    // colour the name and spine carry, so the voice is found the same way
+    // wherever it is. The model never supplies this colour: it is a fact
+    // the client already knows, applied to the quoted runs deterministically.
+    if (span.kind === "dialogue") {
+      return (
+        <em key={index} style={colour === null ? undefined : { color: colour }}>
+          {span.children === undefined ? span.text : renderSpans(span.children, colour)}
+        </em>
+      );
+    }
+    if (span.kind === "underline") {
+      return <u key={index}>{span.text}</u>;
+    }
+    if (span.kind === "colour") {
+      return (
+        <span key={index} style={{ color: span.colour }}>
+          {span.text}
+        </span>
+      );
+    }
+    return <Fragment key={index}>{span.text}</Fragment>;
+  });
 }
 
 /**

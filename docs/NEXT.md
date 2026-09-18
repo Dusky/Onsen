@@ -2,7 +2,7 @@
 
 A short, honest list. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 220. 1985 tests across 147 files, typecheck clean. Feature
+**State:** phase 221. 1988 tests across 147 files, typecheck clean. Feature
 complete against `SPEC.md` §20 apart from the deferred phase 42.
 
 This file went stale three times, and the third was the worst: it said phase
@@ -49,10 +49,9 @@ things; `219` is shipped and the rest are planned, each its own phase.
    stored colour is identity and `readableOn` resolves it against the ground.
    2.07/1.99/2.34:1 composited before, 4.98/4.88/5.76:1 after.
 
-2. **Markup inside speech renders again.** Phase 217 made a quoted run one
-   terminal `dialogue` span, so `"…road **has** a name."` shows its asterisks.
-   The flattening rule is deliberate for `**…**` pairs; quotes are punctuation
-   in nearly every line, so it now applies to the app's commonest prose shape.
+2. ~~**Markup inside speech renders again.**~~ — **phase 221.** The
+   flattening rule stands for asterisks and does not carry to quotes, because a
+   quote is punctuation rather than a mark somebody chose to write.
 
 3. **The rendered guard measures the whole app.** `bun run guard:rendered`
    prints "all within budget" having taken **zero** contrast samples and never

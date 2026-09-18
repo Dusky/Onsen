@@ -38,6 +38,21 @@ export interface Span {
   text: string;
   /** The validated colour, only when `kind === "colour"`. */
   colour?: string;
+  /**
+   * What is *inside* a `dialogue` run, already tokenised (§20 phase 221).
+   *
+   * Only `dialogue` carries this, and it is the one span kind that does. The
+   * asterisk pairs flatten what is nested in them on purpose — see the header —
+   * and a quoted run does not, because a quote is not a mark somebody chose to
+   * write: it is punctuation, in nearly every line of dialogue the app renders.
+   * Applying the flattening trade to it meant `"…that road **has** a name."`
+   * showed its asterisks on screen.
+   *
+   * `text` still holds the whole run, quotes included, so the "never lose text"
+   * round-trip is untouched — `spans.map((s) => s.text).join("")` is still the
+   * input exactly. This is for rendering, and rendering only.
+   */
+  children?: Span[];
 }
 
 /** Whether a run of asterisks at `at` can open emphasis. */
@@ -216,6 +231,10 @@ export function emphasis(text: string): Span[] {
     // Its own kind (not `em`) keeps "no text lost" round-tripping exact: the
     // quotes are part of the span, so rebuilding the input adds nothing.
     //
+    // It is also the one kind with `children` (§20 phase 221): a mark written
+    // inside speech is rendered, not flattened, because a quote is punctuation
+    // rather than a mark and the trade the asterisks make does not carry.
+    //
     // Only a quote that can *open* speech counts — after whitespace, the start
     // of the paragraph, or sentence punctuation. An `=` before it means it is
     // an HTML attribute (`href="…"`), which stays literal text.
@@ -229,7 +248,28 @@ export function emphasis(text: string): Span[] {
         continue;
       }
       flush();
-      spans.push({ kind: "dialogue", text: text.slice(at, close + 1) });
+      // The interior is tokenised again, so marks inside speech render as
+      // marks. The quotes come along as text so the whole run is in `children`
+      // and the renderer has nothing to reassemble.
+      //
+      // Most speech has no marks in it, and that case keeps the shape it has
+      // always had: no `children`, one span, nothing for the renderer to walk.
+      // Worth the branch because it is the overwhelmingly common one.
+      const inner = text.slice(at + 1, close);
+      const marked = inner.includes("*") || inner.includes("<");
+      spans.push({
+        kind: "dialogue",
+        text: text.slice(at, close + 1),
+        ...(marked
+          ? {
+              children: [
+                { kind: "text", text: '"' } as Span,
+                ...emphasis(inner),
+                { kind: "text", text: '"' } as Span,
+              ],
+            }
+          : {}),
+      });
       at = close + 1;
       continue;
     }
