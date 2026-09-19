@@ -11225,3 +11225,110 @@ stream is what hid this, because every other generation test pushes prose.
 `data/onsen.db` was restored byte-for-byte afterwards; `reader_send` was moved
 through all three values by the browser drive and is back at the owner's
 `button`.
+
+## Phase 228 — The loop says what it is doing
+
+Findings 11 and 12 of the live-loop addendum. Both are the same complaint from
+two sides: the autopilot machinery is quieter, or narrower, than the controls
+that offer it.
+
+### Armed is not running, and the app only had a word for one of them
+
+Switch **Autopilot** on and wait 200 seconds. `aria-pressed` goes true,
+`scenes.autopilot_enabled` goes to 1, the button goes amber — and there is no
+generation, no turn, no `N OF 3` strip, no notice, no line saying what it waits
+for.
+
+All of that is correct. `server/generation/autopilot.ts` says so at the top:
+*"a turn the reader started themselves is what arms it, not what interrupts
+it."* The design is right and none of it reached the reader, who cannot tell
+armed from broken — which, in an app whose central complaint that week was a
+silent no-op, is the same failure wearing a different hat.
+
+The mechanism is `AutopilotStateDto.active`, true only while the loop *writes*.
+`MessageLog` gated its whole strip on `autopilotActive || isGenerating`, so the
+gap between the two had nothing in it.
+
+It has a line now, in the strip's own vocabulary:
+
+> `Autopilot · armed, up to 3 after your next turn`
+
+Three conditions, and the second two are what keep it from being noise: the
+running strip already says `Autopilot · 2 OF 3`, and a turn the reader started
+already says who is writing. Armed is the gap between them. It carries **no
+button** — the running strip has *Take over*, and here there is nothing to stop;
+the switch that armed it is the control that disarms it, and two controls for
+one state is how a reader learns to trust neither.
+
+`autopilotArmed` is deliberately **not** a `*Hint`. `test/voice.test.ts` caps
+explanatory strings at 45 and the app sits at exactly 45 — phase 226 hit that
+ceiling and had to withdraw a paragraph. This reports what the scene is doing,
+the same job as "Nothing here matches that.", which is the half that test's own
+comment carves out of the count. The guard asserts both the key's shape and the
+count, so the distinction cannot quietly erode.
+
+### Both retries were unreachable for the turn that most needed one
+
+`maybeRetry` opened with:
+
+```ts
+if (generation.landedMessageId === null) return false;
+```
+
+Measured live: reserve 160, **Carry on 2**, `finishReason: "length"`, nothing
+landed, neither retry fired. The reader had set two numbers and got the
+behaviour of neither.
+
+For *continue* that early return is right — there is nothing to continue, and
+continuing from nothing is a reroll by another name. It was wrong for the reroll
+beneath it, whose question is whether the turn came back shorter than the
+reader's floor. **A turn with zero characters answers that as plainly as a turn
+can**, and it was the one case the setting could never reach.
+
+So the guard moved down to the branch it belongs to. `landed` may be null, the
+empty turn's length stands in as zero, and the ban-phrase half keeps its own
+gate because it needs content to find a phrase in. Both retries still ship at 0,
+so a reader who has not asked for this sees no change at all — which is the
+point: the behaviour belongs to the number.
+
+**Where the reroll attaches** is the part that would have been easy to get
+wrong. There is no rejected turn to be a sibling of, so it uses
+`generation.parentId` — the `generations.parent_id` column exists precisely so
+"a leaf move mid-generation cannot silently reparent it", and reading the
+scene's active leaf here would reintroduce that bug in the one path that runs
+without the reader watching.
+
+### The notice and the retry no longer contradict each other
+
+Phase 224's sentence ends *"Send again, or try another model"* — poor advice
+while the app is already sending again. The terminal event is emitted **before**
+the retry starts, so `maybeRetry` became `plannedRetry`: it returns the
+follow-up rather than running it, `finish()` decides once, and the event carries
+the explanation only when nothing is about to happen anyway.
+
+### The bug that decision uncovered
+
+The behaviour was right and the test still failed, which took a detour to
+understand. `terminalEvent()` — the replay a client gets when it reconnects
+*after* the end — recomputed `thin` independently, with a comment from phase 224
+justifying it: *"the inputs are all still on the generation"*. True when it was
+written, and false the moment `finish()` gained an input the replay does not
+have.
+
+A test that subscribes after completion receives the replay, so it saw the old
+answer while the live event carried the new one. Two computations of one answer
+agree only by luck. The decision is stored on the generation now and both paths
+read it, and the guard counts the readers: exactly two, and zero recomputations.
+
+### Verified
+
+Driven at 1600×950: the line appears on arming, names the cap, has no button in
+its row, and is gone again on disarming. The retry half is scripted — a stream
+that yields not one token — with four cases: rerolled when the reader asked for
+it, attached to the generation's own parent with no stray sibling, left alone at
+the shipped default, and never *continued*.
+
+2060 tests across 152 files, typecheck clean.
+
+`data/onsen.db` was restored byte-for-byte afterwards; the drive toggled the
+scene's autopilot on and off.

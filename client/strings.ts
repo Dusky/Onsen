@@ -234,6 +234,19 @@ export const strings = {
     /** Autopilot (SPEC §6) — the strip while it runs, the line when it stops. */
     autopilot: "Autopilot",
     autopilotCount: (turns: number, max: number) => `${turns} OF ${max}`,
+    /**
+     * Armed, and what it is waiting for (§20 phase 228).
+     *
+     * State, not explanation — the same job as "Nothing here matches that."
+     * `test/voice.test.ts` governs the app *explaining itself* and is at its
+     * ceiling of 45; this reports what the scene is doing, which is the half
+     * that comment carves out, and the key is deliberately not a `*Hint`.
+     *
+     * The cap is in it because it is the number the reader chose and the one
+     * that decides how long the run will be.
+     */
+    autopilotArmed: (max: number) =>
+      max > 0 ? `Autopilot · armed, up to ${max} after your next turn` : "Autopilot · armed",
     autopilotTakeOver: "Take over",
     autopilotStopped: (reason: string) => `Autopilot stopped — ${reason}`,
     autopilotReasons: {

@@ -147,6 +147,19 @@ interface ActiveGeneration {
   sceneUlid: string;
   parentId: number | null;
   status: GenerationStatus;
+  /**
+   * What the reader is told about a turn that produced little or nothing
+   * (§20 phase 224), decided once in `finish()` (§20 phase 228).
+   *
+   * Recorded rather than recomputed, which reverses phase 224's own choice and
+   * is worth saying why. The replay below used to call `thinTurn()` a second
+   * time on the grounds that "the inputs are all still on the generation" —
+   * true, and not enough: phase 228 gave `finish()` an input the replay does
+   * not have, namely that a retry was about to run and the explanation was
+   * therefore the wrong thing to say. Two computations of one answer can only
+   * agree by luck once they see different things.
+   */
+  thin: ThinTurn | null;
   buffer: string;
   /** Reasoning, kept apart from the prose all the way to the message (§13). */
   reasoning: string;
@@ -451,6 +464,9 @@ export class GenerationService {
       sceneId: scene.id,
       sceneUlid: scene.ulid,
       reservedForResponse: 0,
+      // Decided in `finish()`; until then the turn has produced nothing to
+      // say anything about (§20 phase 228).
+      thin: null,
       parentId,
       status: "pending",
       buffer: "",
@@ -1681,6 +1697,17 @@ export class GenerationService {
 
     generation.status = cancelled ? "cancelled" : "complete";
     this.persist(generation);
+
+    /*
+     * Decided here, run below (§20 phase 228).
+     *
+     * The terminal event goes out before the retry starts, and phase 224's
+     * thin-turn notice ends "Send again, or try another model" — poor advice
+     * while the app is already sending again. Knowing the answer before saying
+     * anything is what keeps the two from contradicting each other.
+     */
+    const retry = cancelled ? null : this.plannedRetry(generation);
+    generation.thin = retry === null ? thinTurn(generation) : null;
     // A cancelled generation that produced nothing has no message, so its event
     // carries null rather than a fabricated identifier.
     this.emit(
@@ -1694,7 +1721,10 @@ export class GenerationService {
             // The turn is over and nothing landed, or too little did. Not an
             // error — the provider did what it was asked — so it travels on the
             // ordinary terminal event and the reader is told in a notice.
-            thin: thinTurn(generation),
+            //
+            // Unless a retry is about to run, in which case the app is already
+            // doing the thing the notice would advise (§20 phase 228).
+            thin: generation.thin,
           },
     );
 
@@ -1748,7 +1778,8 @@ export class GenerationService {
     // The two automatic retries (§7, §20 phase 63). Before autopilot, because a
     // turn that is about to be continued or rerolled has not finished — telling
     // the loop it had would have it write the next one over the top.
-    if (!cancelled && this.maybeRetry(generation)) {
+    if (retry !== null) {
+      retry();
       this.scheduleEviction(generation);
       return;
     }
@@ -1984,10 +2015,11 @@ export class GenerationService {
           type: "done",
           messageId: generation.messageUlid ?? "",
           meta: generation.meta,
-          // Recomputed rather than stored: a reconnecting client is replayed
-          // the terminal event and has to be told the same thing the first one
-          // was, and the inputs are all still on the generation.
-          thin: thinTurn(generation),
+          // What `finish()` decided, not a second opinion (§20 phase 228). A
+          // reconnecting client is replayed the terminal event and has to be
+          // told the same thing the first one was — which is an argument for
+          // one decision, not for computing it twice.
+          thin: generation.thin,
         };
       case "cancelled":
         return { type: "cancelled", messageId: generation.messageUlid, meta: generation.meta };
@@ -2063,38 +2095,66 @@ export class GenerationService {
    *    stopped simply does not trigger it, which is the honest reading of
    *    silence and the reason `FinishReason` has an `other`.
    *
-   * Returns true when a follow-up was started, which is the caller's signal to
-   * leave autopilot alone: the turn is not over.
+   * Returns the follow-up to run, or null. **Deciding is separated from doing**
+   * (§20 phase 228) because the terminal event is emitted before the retry
+   * starts, and a turn about to be rerolled must not also be explained to the
+   * reader: phase 224's notice ends "Send again, or try another model", which
+   * is poor advice while the app is already sending again. A caller that gets
+   * a plan back knows both things before it says either.
+   *
+   * A non-null plan is also the caller's signal to leave autopilot alone: the
+   * turn is not over.
    */
-  private maybeRetry(generation: ActiveGeneration): boolean {
+  private plannedRetry(generation: ActiveGeneration): (() => void) | null {
     // A revise is already a retry; a recast is a splice and an aside is not the
     // scene. Only a turn the reader is waiting on gets one.
     const kind = generation.turn.kind;
     const continuing = kind === "revise" && generation.turn.mode === "continue";
-    if (kind !== "spotlight" && kind !== "beat" && !continuing) return false;
-    if (generation.landedMessageId === null) return false;
+    if (kind !== "spotlight" && kind !== "beat" && !continuing) return null;
 
     const scene = findSceneById(this.db, generation.sceneId);
-    if (scene === null) return false;
+    if (scene === null) return null;
     const preset = presetRetrySettings(this.db, scene);
-    if (preset === null) return false;
+    if (preset === null) return null;
 
-    const landed = findMessageById(this.db, generation.landedMessageId);
-    if (landed === null) return false;
+    /*
+     * A turn that landed nothing is still a turn that came back wrong
+     * (§20 phase 228).
+     *
+     * This began as `if (generation.landedMessageId === null) return false` at
+     * the top, which is right for *continue* — there is nothing to continue,
+     * and continuing from nothing is a reroll by another name. It was wrong for
+     * the reroll below it, which asks whether the turn was shorter than the
+     * reader's floor: a turn with zero characters answers that as plainly as a
+     * turn can, and it was the one case the setting could never reach.
+     *
+     * Measured against a live reasoning model: reserve 160, **Carry on 2**,
+     * `finishReason: "length"`, nothing landed, neither retry fired. The reader
+     * had set two numbers and got the behaviour of neither.
+     *
+     * So the guard moved down to the branch it belongs to, and `landed` is
+     * allowed to be null with the empty turn's length standing in as zero.
+     */
+    const landed =
+      generation.landedMessageId === null
+        ? null
+        : findMessageById(this.db, generation.landedMessageId);
+    if (generation.landedMessageId !== null && landed === null) return null;
 
     // Continue first: a turn cut off by the cap is short *because* it was cut
     // off, and rerolling it would throw away a good beginning to ask for a
-    // whole new one.
+    // whole new one. Only ever on a turn that landed one.
     if (
+      landed !== null &&
       generation.meta.finishReason === "length" &&
       generation.retries.continued < preset.autoContinue
     ) {
-      this.start({
-        scene,
-        revise: { message: landed, mode: "continue" },
-        retries: { ...generation.retries, continued: generation.retries.continued + 1 },
-      });
-      return true;
+      return () =>
+        this.start({
+          scene,
+          revise: { message: landed, mode: "continue" },
+          retries: { ...generation.retries, continued: generation.retries.continued + 1 },
+        });
     }
 
     /*
@@ -2105,10 +2165,14 @@ export class GenerationService {
      * A turn that is both too short *and* uses a banned phrase is rerolled for
      * being short, which is the more basic complaint.
      */
-    const tooShort =
-      preset.autoSwipeMinChars > 0 && landed.content.trim().length < preset.autoSwipeMinChars;
+    // A turn that landed nothing is zero characters long, which is the whole
+    // of the change: the comparison was always the right question and the
+    // early return above was what stopped it being asked (§20 phase 228).
+    const written = landed === null ? "" : landed.content.trim();
+    const tooShort = preset.autoSwipeMinChars > 0 && written.length < preset.autoSwipeMinChars;
+    // The ban list needs content to find a phrase in, so it keeps its turn.
     const banned =
-      !tooShort && preset.autoSwipeOnBanned
+      !tooShort && landed !== null && preset.autoSwipeOnBanned
         ? bannedPhraseIn(this.db, generation.sceneId, landed.content)
         : null;
 
@@ -2125,28 +2189,39 @@ export class GenerationService {
        * the turn itself and from the token count beside it, where *which
        * phrase* is not recoverable from anything on screen.
        */
-      if (banned !== null) {
-        this.db
-          .query("UPDATE messages SET generation_meta = $meta WHERE id = $id")
-          .run({
-            id: landed.id,
-            meta: JSON.stringify({ ...generation.meta, autoSwipedFor: banned }),
-          });
-      }
+      return () => {
+        if (banned !== null && landed !== null) {
+          this.db
+            .query("UPDATE messages SET generation_meta = $meta WHERE id = $id")
+            .run({
+              id: landed.id,
+              meta: JSON.stringify({ ...generation.meta, autoSwipedFor: banned }),
+            });
+        }
       // A sibling of the turn being rejected, not a replacement for it: the
       // rejected one stays one swipe away, because a reader who wanted it
       // should not have to regenerate to get it back, and deleting a
       // generation they paid for is the worse half of automation.
-      this.start({
-        scene,
-        parentId: landed.parent_id,
-        spotlightId: generation.requestedSpotlightId,
-        retries: { ...generation.retries, swiped: generation.retries.swiped + 1 },
-      });
-      return true;
+      /*
+       * Where the reroll attaches when there is no rejected turn to be a
+       * sibling of (§20 phase 228).
+       *
+       * `generation.parentId`, not the scene's active leaf. The
+       * `generations.parent_id` column exists precisely so "a leaf move
+       * mid-generation cannot silently reparent it" — its own schema comment
+       * — and reading the leaf here would reintroduce exactly that bug in the
+       * one path that runs without the reader watching.
+       */
+        this.start({
+          scene,
+          parentId: landed === null ? generation.parentId : landed.parent_id,
+          spotlightId: generation.requestedSpotlightId,
+          retries: { ...generation.retries, swiped: generation.retries.swiped + 1 },
+        });
+      };
     }
 
-    return false;
+    return null;
   }
 
   /**

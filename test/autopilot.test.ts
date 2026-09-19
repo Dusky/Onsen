@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 import { ScriptedAdapter, completeSetup, createHarness, until, type TestHarness } from "./helpers.ts";
 import { pngCard, V2_CARD_SILENT } from "./card-fixtures.ts";
 import { addressedQuestion, parseAddressedReply } from "../server/generation/autopilot.ts";
@@ -315,5 +316,80 @@ describe("autopilot (SPEC §6)", () => {
     expect(row.active).toBe(false);
     expect(row.stopReason).toBe(null);
     expect((await history(t, sceneId)).messages.length).toBe(2);
+  });
+});
+
+/**
+ * Armed is not running, and the reader can tell (§20 phase 228).
+ *
+ * Reproduction from the live pass: switch Autopilot on, wait 200 seconds.
+ * `aria-pressed` goes true, `scenes.autopilot_enabled` goes to 1, the button
+ * goes amber — and there is no generation, no turn, no `N OF 3` strip, no
+ * notice, no line saying what it waits for.
+ *
+ * All of that is correct. The header of `autopilot.ts` says why: "a turn the
+ * reader started themselves is what arms it, not what interrupts it." None of
+ * it reached the reader, who cannot tell armed from broken — which, in an app
+ * whose central complaint that week was a silent no-op, is the same failure
+ * wearing a different hat.
+ */
+describe("armed, and waiting", () => {
+  test("the state the strip could not express: enabled, not active", async () => {
+    // The distinction the readout exists for, from the server's own answer.
+    harness = createHarness({ adapter: (adapter = new ScriptedAdapter()) });
+    const t = await completeSetup(harness).then(() => harness!);
+    const sceneId = await autopilotScene(t, 3);
+
+    const row = await state(t, sceneId);
+    expect({ active: row.active, stopReason: row.stopReason }).toEqual({
+      active: false,
+      stopReason: null,
+    });
+    // And the cap is on it, which is what the line has to say.
+    expect(row.maxTurns).toBe(3);
+  });
+
+  test("the log renders it, and only while nothing is in flight", () => {
+    /*
+     * Three conditions, and the second two are what keep it from becoming
+     * noise: the running strip already says `Autopilot · 2 OF 3`, and a turn
+     * the reader started says who is writing. Armed is the gap between them.
+     */
+    const log = readFileSync("client/screens/chat/MessageLog.tsx", "utf8");
+    expect(log).toContain("autopilotOn && !autopilotActive && !isGenerating");
+    expect(log).toContain("strings.chat.autopilotArmed");
+  });
+
+  test("it carries no second way to turn the loop off", () => {
+    // The running strip has Take over; this has nothing, because the switch
+    // that armed it is the control that disarms it and two controls for one
+    // state is how a reader learns not to trust either.
+    const log = readFileSync("client/screens/chat/MessageLog.tsx", "utf8");
+    const armed = log.slice(log.indexOf("autopilotOn && !autopilotActive"));
+    const block = armed.slice(0, armed.indexOf("</div>"));
+    expect(block).not.toContain("<button");
+  });
+
+  test("the line names the cap, because that is the number the reader chose", () => {
+    const { strings } = require("../client/strings.ts") as typeof import("../client/strings.ts");
+    expect(strings.chat.autopilotArmed(3)).toContain("3");
+    // And degrades rather than printing a zero it does not know.
+    expect(strings.chat.autopilotArmed(0)).not.toContain("0");
+  });
+
+  test("it is state, not the app explaining itself", () => {
+    /*
+     * `test/voice.test.ts` caps explanatory strings at 45 and the app sits at
+     * exactly 45 — phase 226 hit that ceiling and had to withdraw a paragraph.
+     * This key is deliberately not a `*Hint`: it reports what the scene is
+     * doing, the same job as "Nothing here matches that.", which is the half
+     * that test's own comment carves out of the count.
+     */
+    const source = readFileSync("client/strings.ts", "utf8");
+    const explanatory = [...source.matchAll(/(\w*(?:Hint|Body|explainer|intro))\s*:/g)].map(
+      (m) => m[1]!,
+    );
+    expect(explanatory).not.toContain("autopilotArmedHint");
+    expect(explanatory.length).toBeLessThanOrEqual(45);
   });
 });

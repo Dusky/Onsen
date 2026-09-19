@@ -65,6 +65,7 @@ export function MessageLog({
   recastInFlight,
   oocInFlight,
   autopilotActive,
+  autopilotOn,
   apState,
   onStopAutopilot,
   onCancel,
@@ -107,6 +108,11 @@ export function MessageLog({
   recastInFlight: { messageId: string; ordinal: number; text: string } | null;
   oocInFlight: boolean;
   autopilotActive: boolean;
+  /**
+   * The scene's switch, which is not the same thing as the loop running
+   * (§20 phase 228). `apState.active` is true only while it writes.
+   */
+  autopilotOn: boolean;
   apState: AutopilotStateDto | null;
   onStopAutopilot(): void;
   onCancel(): void;
@@ -344,6 +350,31 @@ export function MessageLog({
           >
             {autopilotActive ? strings.chat.autopilotTakeOver : strings.chat.stop}
           </button>
+        </div>
+      ) : null}
+
+      {/*
+       * Armed, and waiting for the reader's turn (§20 phase 228).
+       *
+       * Switching autopilot on produced nothing observable but a colour: no
+       * generation, no strip, no line — measured over 200 seconds. That is
+       * correct, and `autopilot.ts` says why at the top ("a turn the reader
+       * started themselves is what arms it, not what interrupts it"), but none
+       * of it reached the reader, who cannot tell armed from broken.
+       *
+       * Quieter than the running strip and with no button, because there is
+       * nothing to stop: the switch that armed it is the control that disarms
+       * it, and a second one here would be two ways to say the same thing.
+       */}
+      {autopilotOn && !autopilotActive && !isGenerating ? (
+        <div className="flex items-center gap-[10px]">
+          <span
+            className="h-[6px] w-[6px] flex-none"
+            style={{ background: "var(--onsen-color-amber)", opacity: 0.45 }}
+          />
+          <span className="chrome flex-1 text-[13px] text-ink-dim">
+            {strings.chat.autopilotArmed(apState?.maxTurns ?? 0)}
+          </span>
         </div>
       ) : null}
 

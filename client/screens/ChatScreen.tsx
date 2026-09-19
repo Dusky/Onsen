@@ -726,6 +726,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           recastInFlight={recastInFlight}
           oocInFlight={oocInFlight}
           autopilotActive={autopilotActive}
+          autopilotOn={scene.data?.scene.autopilotEnabled ?? false}
           apState={apState}
           onStopAutopilot={() => stopAutopilot.mutate()}
           onCancel={() => void generation.cancel()}

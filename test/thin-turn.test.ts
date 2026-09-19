@@ -288,3 +288,65 @@ describe("the reader is told, in words, with the setting to change", () => {
     expect(source).toContain("thinTurnStub");
   });
 });
+
+/**
+ * The notice and the retry do not contradict each other (§20 phase 228).
+ *
+ * Phase 224's sentence ends "Send again, or try another model", which is poor
+ * advice while the app is already sending again. The terminal event goes out
+ * *before* the retry starts, so `finish()` decides whether one will run before
+ * it says anything — `plannedRetry` returns the follow-up rather than starting
+ * it, and the two halves of the answer come from one decision.
+ */
+describe("a turn that will be retried", () => {
+  test("says nothing, because the app is already doing what the notice would advise", async () => {
+    const t = await signedIn();
+    const sceneId = await scene(t);
+
+    /*
+     * The scene has to carry a preset for either retry to be reachable at all
+     * — `presetRetrySettings` reads the scene's preset and returns null
+     * without one, which is why the plain `scene()` helper above never
+     * triggers a retry and every other test in this file is unaffected.
+     */
+    const presets = await json<{ id: string }[]>(t, "GET", "/api/connections/presets");
+    await json(t, "PATCH", `/api/connections/presets/${presets[0]!.id}`, {
+      autoSwipe: { minChars: 40, attempts: 2 },
+    });
+    await json(t, "PATCH", `/api/scenes/${sceneId}`, { presetId: presets[0]!.id });
+
+    const started = await json<GenerationSnapshot>(t, "POST", `/api/scenes/${sceneId}/generate`, {});
+    await adapter.started;
+    adapter.end();
+    await until(() => t.generation.get(started.id)?.status === "complete");
+
+    const event = terminalOf(t, started.id);
+    expect(event?.type === "done" ? event.thin : "missing").toBeNull();
+
+    // And the reroll it stayed quiet for did happen.
+    await adapter.started;
+    adapter.push("She said it the way you say a word you intend somebody to regret.");
+    adapter.end();
+  });
+
+  test("the live event and the replay are one decision, not two", () => {
+    /*
+     * Phase 224 recomputed `thin` in `terminalEvent()` on the grounds that
+     * "the inputs are all still on the generation" — true then, and false the
+     * moment `finish()` gained an input the replay does not have. It cost a
+     * real debugging detour: the behaviour was already right and the *replayed*
+     * event, which is what a test subscribing after the end receives, still
+     * carried the old answer.
+     *
+     * So the decision is made once and stored, and both paths read it. Two
+     * computations of one answer agree only by luck.
+     */
+    const source = readFileSync("server/generation/service.ts", "utf8");
+    expect(source).toContain("generation.thin = retry === null ? thinTurn(generation) : null;");
+    expect(source).toContain("private plannedRetry(");
+    // Exactly two readers — the live emit and the replay — and no third
+    // computation anywhere.
+    expect([...source.matchAll(/thin: generation\.thin,/g)].length).toBe(2);
+    expect([...source.matchAll(/thin: thinTurn\(generation\)/g)].length).toBe(0);
+  });
+});

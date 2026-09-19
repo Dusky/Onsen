@@ -4558,6 +4558,22 @@ Each phase ends in a working, usable application.
     reader to raise "the response cap in the preset" when the field is called
     **Reserved for the reply**; the label is one hoisted constant both read.
     See §5, §16, `client/strings.ts`, `server/generation/service.ts`.
+228. **The loop says what it is doing** — autopilot armed produced nothing
+    observable but a colour: no generation, no strip, no line, measured over 200
+    seconds. Correct (`autopilot.ts`: "a turn the reader started themselves is
+    what arms it"), and invisible, so a reader cannot tell armed from broken. It
+    has a line in the strip's own vocabulary now, with no button, because the
+    switch that armed it is the control that disarms it. And `maybeRetry`'s
+    `landedMessageId === null` guard blocked the *reroll* as well as the
+    continue, so "Reroll under N chars" could never reach a turn of zero
+    characters; the guard moved to the branch it belongs to, and the reroll
+    attaches to `generation.parentId` rather than the scene's leaf, which is
+    what the `generations.parent_id` column exists for. Deciding the retry was
+    split from running it so phase 224's notice stops telling a reader to send
+    again while the app is sending again — and that split exposed a second
+    defect: `terminalEvent()` recomputed the notice for a reconnecting client
+    and could not know what `finish()` knew, so the decision is stored once and
+    both paths read it. See §6, §7, `server/generation/service.ts`.
 
 Settled while building phase 15.
 
