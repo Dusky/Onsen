@@ -59,7 +59,10 @@ export function LeftRail() {
     // to be a 44px sliver, which slid every glyph 10px sideways the instant
     // the panel opened (design review fix 3).
     return (
-      <nav className="flex w-[54px] flex-none flex-col items-stretch border-r border-rule bg-bg-sunken py-[8px]">
+      <nav
+        data-rail="left"
+        className="flex w-[54px] flex-none flex-col items-stretch border-r border-rule bg-bg-sunken py-[8px]"
+      >
         {panels.map((id) => {
           const meta = PANEL_META[id];
           const Icon = meta.Icon;
@@ -104,7 +107,7 @@ export function LeftRail() {
   const Active = meta.Component;
 
   return (
-    <nav className="flex flex-none border-r border-rule bg-bg-sunken">
+    <nav data-rail="left" className="flex flex-none border-r border-rule bg-bg-sunken">
       {/* The icon rail: one glyph per docked panel, a label under each, the
           active one picked out in the interactive blue rather than the warm
           red the workbench used. Settings used to sit at the foot of this

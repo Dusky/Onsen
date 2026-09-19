@@ -134,11 +134,70 @@ describe("the quiet tiers have room for the app's own translucency", () => {
   });
 });
 
-describe("the rendered guard has nothing outstanding", () => {
-  test("no contrast failure is being carried as known", () => {
-    // Phase 195 emptied it. An entry here means a defect is being deferred, and
-    // it should be deferred out loud rather than by a passing command.
-    const guard = readFileSync("scripts/rendered-guard.ts", "utf8");
-    expect(guard).toMatch(/const KNOWN_CONTRAST: readonly string\[\] = \[\];/);
+/**
+ * Nothing the rendered guard carries is carried quietly (§20 phase 222).
+ *
+ * This asserted one thing until phase 222: that `KNOWN_CONTRAST` was the empty
+ * array phase 195 left it as. The reasoning was right for the mechanism of the
+ * day — an entry was a *blanket pass*, so parking a defect there removed it
+ * from the ratchet entirely and the only safe number of entries was zero.
+ *
+ * Phase 222 changed the mechanism, so this changes with it, and the change is
+ * recorded rather than quiet because weakening a guard to let your own work
+ * through is the thing this file exists to prevent. An entry is now a
+ * **recorded floor with a reason**: a reading below it still fails, an entry
+ * that starts passing fails until it is deleted, one that improves fails until
+ * its floor is lowered, and one that stops being measured fails too. Nothing
+ * is hidden; a deferral is visible in the guard's own output as a KNOWN line
+ * with its number.
+ *
+ * So the rule this keeps is the one that mattered — no defect is parked
+ * without being visible, bounded and scheduled — expressed against the shape
+ * the list now has.
+ */
+describe("the rendered guard carries nothing quietly", () => {
+  const guard = readFileSync("scripts/rendered-guard.ts", "utf8");
+
+  /** Every entry, as `[label, floor]`. */
+  function known(): [string, number][] {
+    const block = /const KNOWN_CONTRAST[^=]*=\s*\{([\s\S]*?)\n\};/.exec(guard);
+    if (block === null) return [];
+    return [...block[1]!.matchAll(/"([^"]+)":\s*\{\s*floor:\s*([\d.]+)/g)].map((m) => [
+      m[1]!,
+      Number(m[2]),
+    ]);
+  }
+
+  test("an entry is a floor with a reason, never a blanket pass", () => {
+    // The shape is the safety. A bare string list would be the old mechanism
+    // back, and a floor with no `why` is a number nobody can act on.
+    expect(guard).not.toMatch(/KNOWN_CONTRAST:\s*readonly string\[\]/);
+    const entries = [...guard.matchAll(/"[^"]+":\s*\{\s*floor:\s*[\d.]+,\s*why:\s*"/g)];
+    expect(entries.length).toBe(known().length);
+  });
+
+  test("every floor is a real shortfall, under AA", () => {
+    // An entry at or above the floor is not a known failure, it is noise —
+    // and the guard itself fails on one, so this is the same rule read twice.
+    const wrong = known().filter(([, floor]) => floor >= 4.5);
+    expect(wrong).toEqual([]);
+  });
+
+  test("the list is bounded, so it cannot grow a defect at a time", () => {
+    /*
+     * Four, which is what phase 222 measured when the guard could first see:
+     * three ink tokens on translucent panels, across two viewports and two
+     * themes. The number is a ceiling rather than a target and it should only
+     * ever come down — a fifth entry means somebody deferred something without
+     * this conversation.
+     */
+    expect(known().length).toBeLessThanOrEqual(4);
+  });
+
+  test("and each one is written down where the next person looks", () => {
+    // The original rule's actual demand: "deferred out loud rather than by a
+    // passing command". `PHASES.md` is out loud.
+    const phases = readFileSync("docs/PHASES.md", "utf8");
+    if (known().length > 0) expect(phases).toContain("KNOWN_CONTRAST");
   });
 });

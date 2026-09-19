@@ -4466,11 +4466,24 @@ Each phase ends in a working, usable application.
     round-trip a recast splice depends on is untouched, and speech with no marks
     in it keeps the exact shape it had. See §14, §16, `client/lib/emphasis.ts`.
 
-222. *(Deferred — the rendered guard's own pass, taken after the review that
-    follows it so the budgets are recorded against what the app becomes rather
-    than what it is now. `bun run guard:rendered` still gates its scene route
-    and every contrast sample on `ONSEN_SCENE`, which `package.json` does not
-    set, so it prints "all within budget" having measured neither.)*
+222. **The rendered guard measures the whole app** — it was doing the thing it
+    exists to catch. The scene route and every contrast sample were gated on
+    `ONSEN_SCENE`, which `package.json` does not set, so the documented
+    invocation printed "all within budget" having measured no prose and no
+    colour. Now the scene is discovered from the app and a run that measures
+    none fails; samples are DOM selectors against `data-rail` and `data-prose`
+    rather than four rectangles valid only at 1600×950, and a selector that
+    matches nothing fails; the coloured runs phase 220 introduced are swept by
+    carrying an inline colour rather than listed. It absorbed the fourth
+    review's two probes — controls with no accessible name (floor zero) and the
+    rails' share of a screen (24%, guarding phase 225) — and found three ink
+    tokens that clear 4.5:1 against their token ground and miss it on the
+    composited pixel: `text-dim` at 4.19–4.36:1, `amber` at 3.64:1,
+    `blue-text-muted` at 3.99:1. Those are recorded in `KNOWN_CONTRAST` as
+    *floors* rather than passes, so a regression still fails and an entry that
+    starts passing, improves, or stops being measured fails until it is
+    corrected. Every budget re-recorded against the whole app for the first
+    time. See §16, `scripts/rendered-guard.ts`.
 
 223. **The leaks in the new screens** — four, in surfaces phases 208–218 added.
     The assistant's routing row put two adjacent buttons reading "Default" on

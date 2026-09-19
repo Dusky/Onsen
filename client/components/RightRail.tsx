@@ -64,7 +64,10 @@ export function RightRail() {
   if (!rightRailOpen) {
     // Collapsed is an icon rail, not a dead sliver (§149).
     return (
-      <aside className="flex w-[44px] flex-none flex-col items-stretch border-l border-rule bg-bg-sunken py-[8px]">
+      <aside
+        data-rail="right"
+        className="flex w-[44px] flex-none flex-col items-stretch border-l border-rule bg-bg-sunken py-[8px]"
+      >
         {panels.map((id) => {
           const meta = PANEL_META[id];
           const Icon = meta.Icon;
@@ -98,7 +101,11 @@ export function RightRail() {
   const Active = meta.Component;
 
   return (
-    <aside className="flex flex-none flex-col border-l border-rule bg-bg-sunken" style={{ width: `${dock.rightWidth}px` }}>
+    <aside
+      data-rail="right"
+      className="flex flex-none flex-col border-l border-rule bg-bg-sunken"
+      style={{ width: `${dock.rightWidth}px` }}
+    >
       <div className="hairline flex flex-none items-center justify-between pr-[8px]">
         {/* The tab row scrolls sideways rather than wrapping or clipping. Three
             tabs fit the shipped width; a fourth arrived with Off script in

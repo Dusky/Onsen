@@ -10625,36 +10625,129 @@ sign the change is as narrow as it claims.
 speech resolving, the unmarked case keeping its old shape, and the round-trip
 staying exact across five inputs mixing quotes, asterisks and tags.
 
-## Phase 222 — The rendered guard measures the whole app (deferred)
+## Phase 222 — The rendered guard measures the whole app
 
-*Deliberately deferred, and written down at the time rather than left as a hole
-— `test/tracker-drift.test.ts` caught the gap the moment 223 landed, which is
-the guard doing exactly what phase 219 built it for.*
+Deferred at the time and written down rather than left as a hole — which is
+what `test/tracker-drift.test.ts` is for, and it caught the gap the moment 223
+landed. This is that entry, rewritten in place once the work was done.
 
-`bun run guard:rendered` prints **"all within budget"** having taken zero
-contrast samples and never opened a scene. Both the scene route and the whole
-contrast half are gated on `ONSEN_SCENE`, which `package.json` does not set.
-Measured both ways:
+### The guard was doing the thing it exists to catch
+
+`bun run guard:rendered` printed **"all within budget"** having taken zero
+contrast samples and never opened a roleplay. The scene route and the whole
+contrast half were gated on `ONSEN_SCENE`, which `package.json` does not set —
+so the documented invocation measured neither the prose nor a single colour,
+and said so in a parenthesis at the bottom of a wall of `ok` lines.
 
 | | fontSizes | controlHeights | gaps | smallTargets | overflowing | contrast |
 |---|---|---|---|---|---|---|
 | as wired | 9 | 13 | 10 | 156 | 12 | **0 samples** |
 | with a scene | 14 | 27 | 14 | 202 | 38 | 8 |
-| budget | 14 | 27 | 14 | 208 | 38 | — |
+| budget as recorded | 14 | 27 | 14 | 208 | 38 | — |
 
-Four of five budgets sit *exactly* at their ceiling once the scene is included,
-which is where they were recorded — so the default invocation has been
-certifying a smaller app than the budgets describe. Mine, from phases 193/195.
+Four of the five budgets sat *exactly* at their ceiling once a scene was
+included, which is where they had been recorded — so the default invocation had
+been certifying a smaller app than the budgets described. The file's own header
+names the pattern: *a check that asks a different question than the real thing
+can pass while the app is broken.* This is the fourth instance, and this one was
+mine.
 
-The work: resolve a scene at run time and fail loudly when there is none rather
-than silently dropping the route; sample contrast by DOM selector instead of the
-four hardcoded rectangles that are valid only at 1600×950 (which is why phase
-220's dialogue runs were never measured by it); re-record every budget.
+### Three changes, all the same argument
 
-**Why it waits.** A full fit-and-finish review is running against a live
-provider, and re-recording budgets now would record them against an app that is
-about to change. The probes that review builds are what this should absorb, so
-the work accretes rather than happening twice.
+1. **The scene is discovered, not configured.** The guard asks the app which
+   roleplays exist and takes the first with turns on it. No such scene is a
+   *failure*, not a quiet skip. (The first version took `limit=1` and got the
+   400-turn audit fixture, whose active leaf is null — an empty log with no
+   prose to measure, which it duly reported as four samples matching nothing.
+   Which is the mechanism working.)
+2. **Samples are DOM selectors, not rectangles.** `{ x: 92, y: 188, w: 200,
+   h: 12 }` and three like it were a set of coordinates that happened to have
+   the right thing in them at 1600×950 with the rails open. **A selector that
+   matches nothing now fails**, because a silent no-match is exactly how the
+   gate survived. The components carry `data-rail` and `data-prose` so the
+   guard is not guessing at Tailwind classes, and `test/rendered-guard.test.ts`
+   holds both ends of that contract.
+3. **The coloured runs are swept, not listed.** They are `<em style="color: …">`
+   with no class of their own, so they are found by *having* an inline colour.
+   Phase 220 promised this measurement on this script's behalf and this is it
+   arriving.
+
+Each sample also knows where it exists: a rail panel is desktop-only and, since
+phase 225, only open on a roleplay, so requiring it everywhere would be the
+guard failing on the app working as designed.
+
+### What it found the first time it could see
+
+Two probes the fourth review built by hand moved in with it, and one of them
+was wrong on arrival in a way worth recording. **Controls with no accessible
+name**: budget zero, the only number here that is not a ratchet on an excess.
+**The rails' share of a screen**: a first pass counted everything left of
+x=390 and read **78%** on a screen whose rails were both collapsed — because
+the roleplay list starts at x=54 once they are. Measuring "the rails" by where
+they usually sit is the same mistake as the four rectangles. By the marker it
+reads 24%.
+
+And three ink tokens that clear 4.5:1 against their token ground and miss it on
+the pixel:
+
+| token | worn by | measured |
+|---|---|---|
+| `--onsen-color-text-dim` | the rails' icon-strip labels, the header's `Text` | 4.36:1 dark, 4.19:1 light |
+| `--onsen-color-amber` | a cast card's `Cued` | 3.64:1 light |
+| `--onsen-color-blue-text-muted` | a turn's token readout | 3.99:1 dark |
+
+`test/surfaces.test.ts` asserts every ink tier clears 4.5:1 and its comment
+insists `text-dim` "is not decorative". It is right, and it is measuring
+tokens — the rails and cards are translucent panels over the reader's
+photograph. Phase 193's argument one layer on, and phase 220's for a second
+time.
+
+### `KNOWN_CONTRAST` became a recorded floor
+
+The three tokens are a pass over nine palettes with an ordered ramp to
+preserve, which is a phase rather than a paragraph. So they are recorded — but
+recorded **as floors rather than as passes**. A reading below the number still
+fails, so the ratchet applies here too and a regression cannot hide behind a
+known failure. Three further rules keep the list from becoming a place things
+go to be forgotten: an entry that starts passing fails the run until it is
+deleted, an entry that *improves* fails until its floor is lowered, and an
+entry that is never measured fails as well.
+
+That last one exists because a known failure whose sample stops matching is the
+original defect wearing the fix's clothes.
+
+### Verified
+
+    ok    distinct font sizes                       13 (budget 13)
+    ok    distinct control heights                  27 (budget 27)
+    ok    distinct flex/grid gaps                   14 (budget 14)
+    ok    controls under 24px                       52 (budget 52)
+    ok    elements clipping their content           42 (budget 42)
+    ok    controls with no accessible name           0 (budget 0)
+    ok    rails' share of a screen                  24% (budget 45%)
+    …
+    ok    desktop/dark / transcript body         16.11:1 (floor 4.5:1)
+    ok    desktop/light / rail metadata           5.04:1 (floor 4.5:1)
+    scenes:  4 transcript route(s) measured
+
+Every budget is re-recorded against the whole app for the first time. Two moved
+because the guard sees more (`overflowing` 38 → 42, a scene route it never
+opened) and one because the app got better (`smallTargets` 202 → **52**, since
+phase 225 stopped putting the prompt editor's 105 controls on every screen).
+`contrast` stays at 4.5 and always will.
+
+2041 tests across 151 files, typecheck clean, `bun run guard:rendered` green
+with four recorded floors visible in its output.
+
+### One thing this cost, worth writing down
+
+Two dev servers were running at once — one started before a database restore,
+serving its own cached state. It answered `leftOpenOffScene: true` for a
+setting whose row did not exist, and the guard duly reported the rails at 78%
+of a screen where they were collapsed. Twenty minutes went into a defect that
+was a stale process. `HANDOFF.md` already says a running server writes its own
+pages back over a file replaced underneath it; the addition is that *checking
+there is exactly one* is part of that rule, not a separate one.
 
 ## Phase 223 — The leaks in the new screens
 

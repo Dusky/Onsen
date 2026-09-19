@@ -282,7 +282,10 @@ function Prose({
   // belongs on screen: without this the speaker appears a character late.
   if (paragraphs.length === 0) {
     return lead === undefined ? null : (
-      <p className="mt-0 text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)]">
+      <p
+        data-prose
+        className="mt-0 text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)]"
+      >
         {lead}
       </p>
     );
@@ -292,6 +295,7 @@ function Prose({
       {paragraphs.map((paragraph, index) => (
         <p
           key={index}
+          data-prose
           className="mt-[14px] first:mt-0 text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)] whitespace-pre-wrap"
         >
           {index === 0 ? lead : null}
@@ -997,7 +1001,10 @@ export function MessageBlock({
             message: a beat's parts already name their own speakers, and a
             second name at the top would be saying it twice. */}
         {attribution === "inline" && segments === null ? (
-          <p className="mt-0 text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)] whitespace-pre-wrap">
+          <p
+            data-prose
+            className="mt-0 text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)] whitespace-pre-wrap"
+          >
             <span
               className="chrome text-ui-loose font-semibold"
               style={{
