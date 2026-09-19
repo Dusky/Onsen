@@ -227,3 +227,253 @@ The DeepSeek provider and profile were added through the UI; "The Last Inn" was
 pointed at that profile; seven messages (415–421) were written into it. All of
 it was reverted by restoring `data/onsen.db` from the snapshot taken before the
 pass, verified byte-for-byte against the copy taken at the session's start.
+
+---
+
+# Addendum — the live loop
+
+The first pass stopped at findings 2 and 3 and left the loop itself unmeasured.
+This is that work, driven against the same `deepseek-flash` key, in a scene
+created through the app's own **New roleplay** rather than by reaching into the
+database: fourteen generations across spotlight turns, a beat, autopilot,
+auto-continue and the phone.
+
+Same method. Every item below is a failed task, a measured number or a
+reproduction, and four candidates died on inspection — they are at the end.
+
+---
+
+## 8. The composer's only keyboard hint names a key that does not send
+
+Under the composer, on every desktop width, the app prints:
+
+> `⌘↵ SEND · ⌘K CAST`
+
+It is `strings.chat.keyboardHints`, a constant, rendered at
+`client/components/Composer.tsx:353` whenever the composer is wide. It consults
+nothing.
+
+What actually sends is a reader setting with three values — `SendKey` in
+`shared/types.ts:2024` — and this install has `reader_send: "button"`, chosen
+by its owner. So the measurement:
+
+| pressed in the composer | what happened |
+|---|---|
+| `Return` | a newline in the draft; nothing sent |
+| `Ctrl+Return` | a newline in the draft; nothing sent |
+| the send button | the turn went, `POST /generate`, reply in 7.4s |
+
+No message row appeared for either key press. The hint named the one input that
+did nothing, twice, and never named the one that worked.
+
+It is wrong at the shipped default too. `READER_DEFAULTS.send` is `"enter"`, and
+`Composer.tsx:204` reads `sendKey === "enter" ? !event.shiftKey && !modified` —
+so with the default setting a **modified** Return is explicitly excluded. `⌘↵`
+sends under exactly one of the three settings, and the hint is shown under all
+three.
+
+And `⌘` is a Mac key. The app already knows this: six hundred lines away in the
+same file, the setting that offers this behaviour is labelled
+`readerSendMod: "⌘ or Ctrl + Return sends"`. The hint is the only place in the
+app that assumes the reader is on a Mac.
+
+`strings.chat.keyHints` (`"⌘↵ send"`) is a second copy with no reference
+anywhere in `client/`.
+
+## 9. A turn that comes back with nothing at all still says nothing
+
+Phase 224 shipped this session, from this app, against this model: a turn that
+lands nothing now explains itself. It does — in the case where the model
+*thought*. Twice during this pass the model returned nothing whatsoever, and the
+app was silent again.
+
+Generation 11, from the database after the fact:
+
+| | |
+|---|---|
+| `status` | `complete` |
+| `finishReason` | `stop` |
+| `completionTokens` | **0** |
+| `buffer` | empty |
+| `target_message_id` | **null** |
+
+On screen: the reader's turn sitting there, no assistant turn, no notice, no
+error, nothing in the log. The same shape phase 224 was written for.
+
+The reason is one line of my own code. `thinTurn()`
+(`server/generation/service.ts`) opens with:
+
+```ts
+const reasoningChars = generation.reasoning.trim().length;
+if (reasoningChars === 0) return null;
+```
+
+A model that spends its budget thinking is diagnosed. A model that returns zero
+tokens of anything is not — it fails the guard before the `empty` branch is
+reached. The reasoning count is what makes the *sentence* useful; it should not
+be what decides whether there is a sentence. An empty buffer is worth saying so
+about on its own, and the numbers can say "and it did not think either".
+
+## 10. When phase 224 does fire, it names a setting the app does not have
+
+Both notices landed live, with real numbers, and read well:
+
+> That turn came back short — 546 characters of story after 3729 of reasoning,
+> which shared the same reply budget. Raise the response cap in the preset for
+> more room.
+
+> No turn was written — the model spent its whole 160-token reply budget
+> thinking (711 characters of it). Raise the response cap in the preset, or pick
+> a model that does not reason.
+
+Both say **"the response cap in the preset"**. The preset editor's field is
+called **"Reserved for the reply"** (`strings.settings.maxResponseTokens`).
+There is no "response cap" anywhere in the app's interface. A reader who follows
+the instruction opens the Preset rail and scans for a name that is not there.
+
+This is question four of the brief — the vocabulary — in the one place the app
+explicitly sends a reader to go and change something.
+
+## 11. Autopilot turned on does nothing, and does not say it is waiting
+
+Clicked **Autopilot** in the right rail. `aria-pressed` went `true`, the button
+went amber, `scenes.autopilot_enabled` went to `1`. Then 200 seconds:
+
+- no generation row
+- no turn
+- no `N OF 3` strip
+- no notice
+- no line saying what it is waiting for
+
+This is correct. `server/generation/autopilot.ts` says so at the top: *"a turn
+the reader started themselves is what arms it, not what interrupts it."* The
+loop runs *after* a reply completes, and with the scene idle there is nothing to
+run after. The design is right and the rationale is good.
+
+What is missing is any of that reaching the reader. The control is one word and
+a colour. A switch that produces no observable change, in an app whose central
+complaint is a silent no-op (finding 2), is the same failure wearing a different
+hat: the reader cannot tell "armed, waiting for your turn" from "broken".
+
+Armed properly — autopilot on, then a reader turn — it ran. The turn it ran came
+back empty (finding 9), so the run ended there.
+
+## 12. Auto-continue cannot reach the case it exists for
+
+"When a turn comes back wrong → **Carry on** 2 times" is the setting for a turn
+the cap cut off. Its own comment says so:
+
+> Continue first: a turn cut off by the cap is short *because* it was cut off,
+> and rerolling it would throw away a good beginning to ask for a whole new one.
+
+Set **Reserved for the reply** to 160 and **Carry on** to 2 — both verified in
+the `presets` row — and sent a turn. Generation 13:
+
+| | |
+|---|---|
+| `finishReason` | **`length`** — cut off by the cap |
+| `reservedForResponse` | 160 |
+| landed | **nothing** |
+
+Auto-continue did not fire. `maybeRetry` (`server/generation/service.ts:2075`)
+begins `if (generation.landedMessageId === null) return false;`, so a turn the
+cap cut off *before it wrote a word* is outside the retry configured for turns
+the cap cut off.
+
+Defensible — you cannot continue a message that does not exist — and it is
+still the reader setting two numbers and getting the behaviour neither of them
+describes. Continuing from nothing is a reroll, and the app has one.
+
+## 13. The cast card shows raw markup, alone in the app
+
+The right rail's "Just spoke" card, after a beat:
+
+> `**Elira Voss:** took two keys off the board behind her, the ring rattling
+> once, and set t…`
+
+The transcript six inches to the left renders the same content with the speaker
+as a coloured label and no asterisks — that is phase 216/223's strip and phase
+161/221's tokenizer. The card gets neither. `excerpt()`
+(`client/components/CastRail.tsx:278`) collapses whitespace and cuts to 90
+characters; it strips no markup, so every `**`, `*` and `Name:` in a turn shows
+as itself in the one place a reader glances to see who just spoke.
+
+## 14. The touch-target guard cannot see a control that was never in its list
+
+At 390×844 with `hasTouch`, in the chat, controls under the 44px floor:
+
+| control | size | since |
+|---|---|---|
+| `⌄ Model reasoning · N chars` (×3) | 346×**28** | phase 196 |
+| `Trackers 533 tok ▸` | 358×**24** | the tracker strip |
+| `change` (who speaks next) | 46×**22** | — |
+| nav `More` | **33**×50 | — |
+| nav `Search` | **27**×48 | — |
+
+`test/density.test.ts` passes. It asserts that eleven *named files* still carry
+`tap` in a className — an allow-list, added by the phase that found those eleven.
+A control in a twelfth file has nothing to fail. The guard checks that a past
+fix is still applied; it cannot check that the rule holds.
+
+That is the recurring shape again, now for the fifth time: **a check that asks a
+different question than the real thing can pass while the app is broken.** The
+file's own comment is honest about why — "structural rather than rendered — this
+project runs no DOM tests — so it cannot measure a height" — which is precisely
+the gap `scripts/rendered-guard.ts` exists to close, and precisely what
+phase 222 is for.
+
+## What I checked and found working
+
+- **Beats.** "The room" cued, the turn stored as `kind: "beat"`, per-part
+  speaker labels rendered and coloured, `Cued → Just spoke` tracked in the rail.
+- **Trackers fire.** Five tracker rows written across the pass, `Trackers · 533
+  tok` in the prompt inspector, a per-turn `▸ State` disclosure under each reply.
+- **Phase 220 holds on screen** — speaker names and dialogue legible in the
+  light theme at 1600×950, over the photograph.
+- **Phase 223 holds** — no `**Name:**` in the transcript, streaming or settled.
+- **Phase 224 fires and reads well** when a turn has reasoning to report.
+- **The scene's model** changed from the Models rail tab and the footer agreed
+  immediately.
+- **The phone** at 390×844: 88 controls, no horizontal scroll, rails correctly
+  absent, a full turn sent and rendered.
+- **No console errors** at any point in the pass.
+
+## What I nearly reported and did not
+
+- **"The preset's number fields are unlabelled."** My sweep looked for an
+  `aria-label` and an `<input>` has no text of its own. `Whole`
+  (`PresetEditor.tsx:744`) wraps each one in a `<label>` with a `<span>`. They
+  are named correctly. *(The five that genuinely are not: the Model select and
+  the four instruction textareas — Impersonation, Continue, New chat, Group
+  nudge — which belong with finding 7's forms pass.)*
+- **"Editing the preset does not persist."** It does. My probe set the value
+  with a native setter and dispatched a synthetic `blur` Event; React binds
+  `onBlur` to `focusout`, so nothing committed. Driven with a real click, type
+  and Tab, both fields wrote through to the `presets` row.
+- **"`Inspect the prompt` is an 18px touch target."** It is, and
+  `test/density.test.ts` documents it as the one deliberate exemption — the
+  token count doubles as the doorway and sits inline in 12px mono, with the same
+  action at the floor on the turn's `⋯` sheet and in the palette.
+- **"Recast is missing."** It is not on the turn's hover row, which is where I
+  looked. It is a turn-scoped command: select a turn, `⌘K`, "Rewrite this part".
+  I confirmed it is reachable and did not drive it to completion.
+
+## What this pass still did not reach
+
+Summaries firing (the test scene never passed the summariser's 20-message
+threshold — 0 rows written), recast driven end to end, swipe/branch/checkpoint
+as gestures, the assistant's write tools against a live model, vanish mode,
+document and reading modes.
+
+## What was mutated in this pass
+
+A DeepSeek provider and a "DeepSeek flash" profile added through the UI; one new
+roleplay created through **New roleplay** (scene 4, "Untitled") with Elira Voss
+and The Warden as its cast and ten messages (397–406) written into it; fourteen
+generation rows (9–14); five tracker rows; the default preset's **Reserved for
+the reply** moved 1024 → 160 and **Carry on** 0 → 2.
+
+All of it reverted by stopping the dev server and restoring `data/onsen.db` from
+the snapshot taken before the pass. Verified byte-for-byte (`cmp`) and by
+content afterwards: three scenes, one provider, preset back to 1024/0, highest
+message id 396.
