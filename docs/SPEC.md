@@ -4542,6 +4542,22 @@ Each phase ends in a working, usable application.
     for `/api/scenes/?limit=1` when there is no scene. The account line started
     as a paragraph and `test/voice.test.ts` refused it, correctly — it is a
     button's name now. See §16, `client/screens/settings-categories.ts`.
+227. **What the app says about itself** — three sentences it prints that were
+    not true, all found by driving it. The composer's only keyboard hint was
+    the constant `⌘↵ SEND · ⌘K CAST` while what sends is a three-valued
+    reader setting: on the install under test both Return and Ctrl+Return put a
+    newline in the draft and sent nothing, and at the shipped default a
+    *modified* Return is excluded outright, so ⌘↵ sends under one setting of
+    three and the hint showed under all of them — on a key most of this app's
+    readers do not have. It is a function of the setting now, and names no key
+    at all under `button`. Phase 224's empty-turn notice only fired when the
+    model had *thought*, so a turn that returned zero completion tokens of any
+    kind still said nothing — the plainest version of the defect it was written
+    for; the empty branch keys on the empty buffer now and its sentence drops
+    the instruction when there is nothing to raise. And both notices told the
+    reader to raise "the response cap in the preset" when the field is called
+    **Reserved for the reply**; the label is one hoisted constant both read.
+    See §5, §16, `client/strings.ts`, `server/generation/service.ts`.
 
 Settled while building phase 15.
 

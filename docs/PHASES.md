@@ -11118,3 +11118,110 @@ on eleven screens and sheets including the four editors the first drive never
 opened. No console errors, no 404s.
 
 2030 tests across 151 files, typecheck clean.
+
+## Phase 227 — What the app says about itself
+
+Three sentences the app prints that were not true. All three came out of
+driving it rather than reading it, and two of them are defects in phase 224,
+which shipped four commits earlier in the same session.
+
+### The composer's only keyboard hint named a key that does not send
+
+Found by trying to send a turn. Under the composer, at every desktop width:
+
+> `⌘↵ SEND · ⌘K CAST`
+
+`strings.chat.keyboardHints`, a constant, consulting nothing. On the install
+under test:
+
+| pressed in the composer | what happened |
+|---|---|
+| `Return` | a newline in the draft; nothing sent |
+| `Ctrl+Return` | a newline in the draft; nothing sent |
+| the send button | the turn went, reply in 7.4s |
+
+No message row appeared for either key press. The hint named the one input
+that did nothing, twice, and never named the one that worked.
+
+It was wrong at the shipped default too. `READER_DEFAULTS.send` is `"enter"`
+and `Composer.tsx` reads `sendKey === "enter" ? !event.shiftKey && !modified`,
+so with the default a **modified** Return is explicitly excluded. `⌘↵` sends
+under exactly one of three settings and the hint showed under all three.
+
+And `⌘` is a Mac key — the one place in the app that assumed the reader was on
+one. The settings screen has had the platform-neutral phrasing since the
+setting shipped (`"⌘ or Ctrl + Return sends"`), which is the kind of
+inconsistency only found by reading both.
+
+The hint is a function of the setting now:
+
+    enter     ↵ SEND · ⌘/CTRL K CAST
+    modEnter  ⌘/CTRL ↵ SEND · ⌘/CTRL K CAST
+    button    ⌘/CTRL K CAST
+
+`button` names no key, because under that setting no key sends and inventing
+one is how this started. `strings.chat.keyHints`, a staler second copy with no
+reader anywhere in `client/`, is deleted.
+
+`test/send-key.test.ts` sweeps `SEND_KEYS` so a fourth setting cannot arrive
+without a hint, and sweeps `strings.ts` for a `⌘` written without a `Ctrl`
+beside it.
+
+### A turn that came back with nothing at all still said nothing
+
+Phase 224 opened with:
+
+```ts
+if (reasoningChars === 0) return null;
+```
+
+so only a turn that had *thought* was diagnosed. Driving the same provider a
+second time produced the other half — generation 11: `finishReason: "stop"`,
+**`completionTokens: 0`**, empty buffer, no message, no notice, nothing in any
+log. The complaint phase 224 was written for, in the one shape it did not
+cover.
+
+The reasoning count is what makes the *sentence* useful. It was never what
+should decide whether there is a sentence. The empty branch fires on an empty
+buffer now, and the stub branch keeps its reasoning test because there
+reasoning is the mechanism: what separates a cut-off fragment from a model that
+chose to write one line is that the budget went somewhere else.
+
+The sentence changes with it, because "it spent its whole budget thinking (0
+characters of it)" is not a diagnosis:
+
+> No turn was written — the model returned nothing at all, not even reasoning.
+> Nothing was charged for it. Send again, or try another model.
+
+No instruction to raise anything, because reserving more room is no use to a
+turn that spent none of it. An instruction a reader cannot act on is worse than
+none.
+
+### Both notices named a setting the app does not have
+
+> Raise **the response cap** in the preset…
+
+The field is called **"Reserved for the reply"**. There is no "response cap"
+anywhere in the interface, so a reader following the instruction opened the
+Preset rail and scanned for a name that was not there — in the one place the
+app explicitly sends somebody to go and change something.
+
+The label is hoisted to a `FIELD` constant that both the settings table and the
+two notices read, so they are one string rather than two that agree today.
+`test/thin-turn.test.ts` asserts against `strings.settings.maxResponseTokens`
+rather than against the words, so renaming the field cannot orphan the
+sentence.
+
+### Verified
+
+Driven at 1600×950: the hint was read off the screen under all three settings,
+each one switched through the app's own control in Settings → Reading. The
+empty-turn case is scripted — a stream that yields not one token, which is
+exactly what the provider did — for the reason phase 224 gave: a scripted
+stream is what hid this, because every other generation test pushes prose.
+
+2049 tests across 152 files, typecheck clean.
+
+`data/onsen.db` was restored byte-for-byte afterwards; `reader_send` was moved
+through all three values by the browser drive and is back at the owner's
+`button`.

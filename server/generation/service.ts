@@ -2681,15 +2681,35 @@ function stripSpotlightPrefix(
 function thinTurn(generation: ActiveGeneration): ThinTurn | null {
   const prose = generation.buffer.trim();
   const reasoningChars = generation.reasoning.trim().length;
-  if (reasoningChars === 0) return null;
-
   const base = {
     reasoningChars,
     proseChars: prose.length,
     reserved: generation.reservedForResponse,
   };
+
+  /*
+   * Nothing at all is still nothing (§20 phase 227).
+   *
+   * Phase 224 opened with `if (reasoningChars === 0) return null`, so a turn
+   * was only diagnosed when the model had *thought*. Driving the app against
+   * the same provider a second time produced the other half: generation 11,
+   * `finishReason: "stop"`, **`completionTokens: 0`**, empty buffer, no
+   * message — and phase 224 said nothing, which is the exact complaint it was
+   * written for, in the one shape it did not cover.
+   *
+   * The reasoning count is what makes the *sentence* useful. It was never what
+   * should decide whether there is a sentence: an empty turn is worth saying
+   * so about however the model got there, and "it did not think either" is a
+   * diagnosis too — a provider returning zero tokens is a different problem
+   * from a budget spent thinking, and the reader can tell them apart from the
+   * numbers.
+   */
   if (prose === "") return { kind: "empty", ...base };
 
+  // The stub case still needs reasoning, because reasoning is the mechanism:
+  // what distinguishes a cut-off fragment from a model that chose to write one
+  // line is that the budget went somewhere else.
+  if (reasoningChars === 0) return null;
   const cutOff = generation.meta.finishReason === "length";
   if (cutOff && reasoningChars > prose.length) return { kind: "stub", ...base };
   return null;

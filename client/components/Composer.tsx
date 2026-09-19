@@ -349,8 +349,10 @@ export function Composer({
               </span>
             )}
             {wide ? (
+              // Told what actually sends, which is a setting rather than a
+              // constant (§20 phase 227).
               <span className="chrome pl-[4px] text-[11.5px] text-ink-dim">
-                {strings.chat.keyboardHints}
+                {strings.chat.keyboardHints(sendKey)}
               </span>
             ) : null}
           </span>

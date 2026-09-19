@@ -10,7 +10,23 @@
  * Corollary: type names, database columns, and route paths take their names
  * from SPEC.md, never from the labels here.
  */
-import type { PromptBlockId, UndoKind } from "@shared/types.ts";
+import type { PromptBlockId, SendKey, UndoKind } from "@shared/types.ts";
+
+/**
+ * Field names that a sentence elsewhere tells the reader to go and change
+ * (§20 phase 227).
+ *
+ * Hoisted out of the table below so the label and the instruction are one
+ * string rather than two that agree today. Phase 224's notices said "raise the
+ * response cap in the preset" and the field was called **"Reserved for the
+ * reply"** — there is no "response cap" anywhere in this app, so a reader
+ * following the instruction opened the Preset rail and scanned for a name that
+ * was not there. Found by reading both, which is the only way that kind of
+ * thing is ever found.
+ */
+const FIELD = {
+  maxResponseTokens: "Reserved for the reply",
+} as const;
 
 export const strings = {
   app: {
@@ -204,9 +220,16 @@ export const strings = {
      * was wrong.
      */
     thinTurnEmpty: (reasoning: number, reserved: number) =>
-      `No turn was written — the model spent its whole ${reserved}-token reply budget thinking (${reasoning} characters of it). Raise the response cap in the preset, or pick a model that does not reason.`,
+      reasoning === 0
+        ? // The other half, found by driving the same provider twice (§20 phase
+          // 227): zero completion tokens of any kind. Nothing to raise and
+          // nothing to blame on reasoning, so the sentence says what happened
+          // and stops — an instruction the reader cannot act on is worse than
+          // none.
+          `No turn was written — the model returned nothing at all, not even reasoning. Nothing was charged for it. Send again, or try another model.`
+        : `No turn was written — the model spent its whole ${reserved}-token reply budget thinking (${reasoning} characters of it). Raise ${FIELD.maxResponseTokens} in the preset, or pick a model that does not reason.`,
     thinTurnStub: (prose: number, reasoning: number) =>
-      `That turn came back short — ${prose} characters of story after ${reasoning} of reasoning, which shared the same reply budget. Raise the response cap in the preset for more room.`,
+      `That turn came back short — ${prose} characters of story after ${reasoning} of reasoning, which shared the same reply budget. Raise ${FIELD.maxResponseTokens} in the preset for more room.`,
 
     /** Autopilot (SPEC §6) — the strip while it runs, the line when it stops. */
     autopilot: "Autopilot",
@@ -363,8 +386,10 @@ export const strings = {
     statusWriting: "Writing",
     statusJustSpoke: "Just spoke",
     statusBenched: "Benched",
-    /** The desktop keyboard hints, at the end of the flattened ops row. */
-    keyHints: "⌘↵ send",
+    /**
+     * Dead since the ops row was flattened — nothing in `client/` reads it, and
+     * it was a second, staler copy of the hint below (§20 phase 227).
+     */
     /** The desktop hover row, which the design draws as REROLL · BRANCH · EDIT. */
     hoverBranch: "Branch",
     /*
@@ -401,7 +426,32 @@ export const strings = {
     /** Guided ops (SPEC §7). Lettered keys, like proofreading marks. */
     ops: "Ops",
     opsClose: "Close",
-    keyboardHints: "⌘↵ SEND · ⌘K CAST",
+    /**
+     * What actually sends, and what the key is called here (§20 phase 227).
+     *
+     * This was the constant `"⌘↵ SEND · ⌘K CAST"`, rendered on every desktop
+     * width and consulting nothing. Two things were wrong with it and both were
+     * measured by driving the app.
+     *
+     * The first: what sends is a *reader setting* with three values, and the
+     * hint named one of them. On the install under test (`send: "button"`)
+     * Return and Ctrl+Return each put a newline in the draft and sent nothing,
+     * twice, while the line underneath said ⌘↵ sends. At the shipped default
+     * (`"enter"`) `Composer.tsx` explicitly *excludes* a modified Return, so
+     * ⌘↵ sends under exactly one of the three settings.
+     *
+     * The second: ⌘ is a Mac key, and this was the one place in the app that
+     * assumed the reader was on one. The settings screen has had the right
+     * phrasing all along — `readerSendEnter`/`readerSendMod` — which is the
+     * kind of inconsistency that only shows up when somebody reads both.
+     */
+    keyboardHints: (send: SendKey) => {
+      // `button` names no key, because under that setting no key sends and a
+      // hint that invents one is how this got here in the first place.
+      const sends =
+        send === "enter" ? "↵ SEND" : send === "modEnter" ? "⌘/CTRL ↵ SEND" : null;
+      return sends === null ? "⌘/CTRL K CAST" : `${sends} · ⌘/CTRL K CAST`;
+    },
     extensionActions: "Extension actions",
     extensionActionsShort: "Ext",
     extensionActionsNone: "Nothing here. Enable an extension that offers actions.",
@@ -867,7 +917,7 @@ export const strings = {
 
     contextSize: "Context window",
     contextSizeUnit: "tokens",
-    maxResponseTokens: "Reserved for the reply",
+    maxResponseTokens: FIELD.maxResponseTokens,
     maxResponseTokensUnit: "tokens",
     /* Prompt assembly policy (§20 phase 64). */
     examples: "The examples",

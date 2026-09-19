@@ -125,6 +125,32 @@ async function turns(t: TestHarness, sceneId: string): Promise<number> {
 }
 
 describe("a turn that lands nothing", () => {
+  test("even when the model returned nothing at all, not even reasoning", async () => {
+    /*
+     * Phase 224 opened with `if (reasoningChars === 0) return null`, so only a
+     * turn that had *thought* was diagnosed. Driving the same provider a second
+     * time produced the other half — `finishReason: "stop"`,
+     * **`completionTokens: 0`**, empty buffer, no message — and the app said
+     * nothing, which is the complaint phase 224 was written for in the one
+     * shape it did not cover (§20 phase 227).
+     *
+     * Scripted as a stream that yields not one token, because that is exactly
+     * what the provider did.
+     */
+    const t = await signedIn();
+    const sceneId = await scene(t);
+    const before = await turns(t, sceneId);
+    const id = await generate(t, sceneId, []);
+
+    expect(await turns(t, sceneId)).toBe(before);
+    const event = terminalOf(t, id);
+    expect(event?.type === "done" ? event.thin : null).toMatchObject({
+      kind: "empty",
+      proseChars: 0,
+      reasoningChars: 0,
+    });
+  });
+
   test("lands nothing, and the done event says why", async () => {
     const t = await signedIn();
     const sceneId = await scene(t);
@@ -216,18 +242,41 @@ describe("a turn that lands a fragment", () => {
 });
 
 describe("the reader is told, in words, with the setting to change", () => {
-  test("both sentences name the response cap", () => {
-    // The only actionable half. A reader who is told a turn was empty and not
-    // told what to change has been informed, not helped.
+  test("both sentences name the setting by the name the app gives it", () => {
+    /*
+     * The only actionable half — and it named a setting that does not exist
+     * (§20 phase 227). Both lines said "raise the response cap in the preset";
+     * the field is called **"Reserved for the reply"**, and there is no
+     * "response cap" anywhere in the app. A reader following the instruction
+     * opened the Preset rail and scanned for a name that was not there.
+     *
+     * Asserted against `strings.settings.maxResponseTokens` rather than
+     * against the words, so renaming the field cannot orphan the sentence: the
+     * two are one string in `client/strings.ts` now and this is what keeps
+     * them so.
+     */
     const { strings } = require("../client/strings.ts") as typeof import("../client/strings.ts");
+    const field = strings.settings.maxResponseTokens;
     const empty = strings.chat.thinTurnEmpty(4075, 1024);
     const stub = strings.chat.thinTurnStub(77, 4075);
     for (const line of [empty, stub]) {
-      expect(line).toContain("response cap");
+      expect(line).toContain(field);
     }
     expect(empty).toContain("1024");
     expect(empty).toContain("4075");
     expect(stub).toContain("77");
+  });
+
+  test("a model that returned nothing at all is told so, without a knob to turn", () => {
+    /*
+     * The other half of the same defect (§20 phase 227). Reserving more room
+     * is no use to a turn that spent none of it, so that sentence does not
+     * appear — an instruction a reader cannot act on is worse than none.
+     */
+    const { strings } = require("../client/strings.ts") as typeof import("../client/strings.ts");
+    const nothing = strings.chat.thinTurnEmpty(0, 1024);
+    expect(nothing).not.toContain(strings.settings.maxResponseTokens);
+    expect(nothing).toMatch(/nothing at all/);
   });
 
   test("the client posts a notice off the done event, not a second request", () => {
