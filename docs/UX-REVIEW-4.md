@@ -40,10 +40,28 @@ toggle, a name and two reorder arrows.
 The chat screen is the one place this is proportionate, and it is the one place
 the prompt is the subject.
 
-**It can be closed, and closing it does not stick.** Collapsing the rail takes
-Roleplays from **141 controls to 39** — a 72% reduction. Navigate to Characters
-and it is back to 105 of 147. Reload and it is back. So a reader who finds it
-overwhelming and closes it is given it again on the next screen, every time.
+**It can be closed, and closing it survives until the next reload.**
+
+| | left-rail controls |
+|---|---|
+| Roleplays, rail open | 105 of 141 |
+| after collapsing | 10 of **39** — a 72% reduction |
+| after clicking **Assistant** | 10 of 30 |
+| after clicking **Settings** | 18 of 41 |
+| after a reload | 105 of 143 |
+
+> **Corrected.** This paragraph first said the collapse "is discarded on the
+> next navigation and on reload", and the navigation half was wrong. The probe
+> used `page.goto()` for every step, which loads a fresh document each time — so
+> it measured five first-loads and called them navigation. Re-measured with real
+> in-app clicks, the collapse holds across screens and is lost only on reload,
+> which is `client/state/ui.ts` being in memory by policy rather than anything
+> throwing the choice away. `useAutoCollapseRails` tracks the *previous* media
+> match precisely so an unrelated re-render cannot reopen a rail, and says so in
+> its own comment.
+
+The finding that survives is the **default**: 74% of the controls, on every
+non-chat screen, every time the app is opened.
 
 **On the documented decision.** Phase 100 decided the prompt's *structure*
 belongs to the preset rather than to a scene, "so it is editable anywhere", and
@@ -51,10 +69,14 @@ phase 191 cited that when declining to change the rail. That decision is about
 **availability** and this finding is about **default prominence and
 persistence** — they are separable, and nothing in the entry argues that the
 panel must be expanded by default on a library screen, or that a reader's choice
-to collapse it should be discarded on navigation.
+to collapse it should be forgotten every time the app is opened.
 
-Cheapest fix that tests the theory: remember the collapse. It is one setting,
-it changes nothing about where the prompt can be edited, and it is reversible.
+Cheapest fix that tests the theory: default the rail to its icon strip on
+screens with no scene, and remember the reader's choice. Neither changes where
+the prompt can be edited, and the second has a home already — prose scale,
+theme and the dock's own widths all persist server-side, and phase 173 calls the
+widths a preference in as many words, so this needs no browser storage and
+leaves HANDOFF non-negotiable 8 intact.
 
 ---
 
