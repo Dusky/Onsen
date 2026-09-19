@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useShellRoute } from "../lib/router.ts";
 import { useDock } from "../lib/queries.ts";
+import { useRailToggles } from "../lib/breakpoint.ts";
 import { useUiStore } from "../state/ui.ts";
 import { strings } from "../strings.ts";
 import { PANEL_META } from "./DockPanels.tsx";
@@ -21,7 +22,9 @@ export function RightRail() {
   const { base } = useShellRoute();
   const dock = useDock();
   const rightRailOpen = useUiStore((state) => state.rightRailOpen);
-  const toggleRightRail = useUiStore((state) => state.toggleRightRail);
+  // Through the shared hook, not the store: off a scene the flip is also the
+  // reader's stored preference (§20 phase 225).
+  const { toggleRight: toggleRightRail } = useRailToggles();
   const storedActive = useUiStore((state) => state.rightActive);
   const setRightActive = useUiStore((state) => state.setRightActive);
   /*

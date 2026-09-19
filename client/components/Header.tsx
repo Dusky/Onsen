@@ -11,6 +11,7 @@ import {
   useThemes,
 } from "../lib/queries.ts";
 import { useUiStore } from "../state/ui.ts";
+import { useRailToggles } from "../lib/breakpoint.ts";
 import { READING_BOUNDS } from "@shared/types.ts";
 
 /**
@@ -60,7 +61,11 @@ export function Header() {
   const save = useSetPreferences();
   const themes = useThemes();
   const activate = useActivateTheme();
-  const { toggleLeftRail, toggleRightRail } = useUiStore();
+  // The shared hook rather than the store, so the header's two rail buttons
+  // record an off-scene choice exactly as the rails' own do (§20 phase 225).
+  // It also drops a selector-less `useUiStore()` subscribe, which `Shell` has
+  // a long comment about.
+  const { toggleLeft: toggleLeftRail, toggleRight: toggleRightRail } = useRailToggles();
   const setSearchOpen = useUiStore((state) => state.setSearchOpen);
 
   const sceneId = base.name === "chat" ? base.sceneId : null;

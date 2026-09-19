@@ -4501,6 +4501,19 @@ Each phase ends in a working, usable application.
     thinking than to writing, because the first version's own cry-wolf test
     caught it flagging a perfectly ordinary 156-character reply. See §5, §13,
     `server/generation/service.ts`.
+225. **The rails start out of the way** — the prompt editor was 105 of the 141
+    interactive controls on the Roleplays screen, 105 of 143 on Settings, 105 of
+    147 on Characters, and the reader's own primary action was the 119th control
+    in DOM order. On the chat the same rail is 26 of 117, which is
+    proportionate, so the chat is unchanged. Off a scene both rails now start as
+    their icon strip, and the reader's choice for that case persists beside the
+    dock widths in `DockDto`. Phase 100's "editable anywhere" and phase 191's
+    citation of it are about *availability*, which an icon strip does not touch;
+    `ui.ts`'s "no browser storage" is about the browser, and the widths beside
+    this have been a server-side preference since phase 173. The rule reads the
+    *base* route, so an overlay opened from a chat keeps that chat's rails, and
+    a width band still overrides both. Measured after, on a fresh load: 13 of 38
+    on Roleplays, primary action #17. See §16, `client/lib/breakpoint.ts`.
 
 Settled while building phase 15.
 

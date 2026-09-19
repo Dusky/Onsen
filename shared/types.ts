@@ -2307,6 +2307,25 @@ export interface DockDto {
   hidden: DockPanel[];
   leftWidth: number;
   rightWidth: number;
+  /**
+   * Whether each rail's panel starts open on a screen with no roleplay behind
+   * it (§20 phase 225).
+   *
+   * The prompt editor is 105 of the 141 controls on the Roleplays screen, 105
+   * of 143 on Settings, 105 of 147 on Characters — the reader's own first
+   * action is the 119th control in DOM order, measured. On the chat, where the
+   * prompt is the subject, the same rail is 26 of 117 and proportionate. So the
+   * default differs by whether a scene is behind the shell, and the reader's
+   * choice for the off-scene case is remembered here.
+   *
+   * Here rather than in `client/state/ui.ts`, which says the rails are "in
+   * memory only… no browser storage anywhere in this app" — that is about the
+   * *browser*, and this is the same server-side preference the widths beside it
+   * already are. What is stored is the reader's off-scene decision, not the
+   * rails' live open/closed state, which stays chrome and stays in memory.
+   */
+  leftOpenOffScene: boolean;
+  rightOpenOffScene: boolean;
 }
 
 export const DOCK_DEFAULTS: DockDto = {
@@ -2323,6 +2342,10 @@ export const DOCK_DEFAULTS: DockDto = {
   hidden: [],
   leftWidth: 326,
   rightWidth: 352,
+  // Closed off the chat, which is the change phase 225 makes. A reader who
+  // opens a rail on Characters is remembered; nobody has to close it first.
+  leftOpenOffScene: false,
+  rightOpenOffScene: false,
 };
 
 /**
@@ -2370,6 +2393,9 @@ export function readDock(input: Partial<Record<keyof DockDto, unknown>>): DockDt
     else hidden.push(panel);
   }
 
+  const flag = (value: unknown, fallback: boolean): boolean =>
+    typeof value === "boolean" ? value : fallback;
+
   const clampWidth = (value: unknown, fallback: number): number => {
     const raw = typeof value === "number" && Number.isFinite(value) ? value : fallback;
     const [min, max] = DOCK_WIDTH_BOUNDS;
@@ -2382,6 +2408,11 @@ export function readDock(input: Partial<Record<keyof DockDto, unknown>>): DockDt
     hidden,
     leftWidth: clampWidth(input.leftWidth, DOCK_DEFAULTS.leftWidth),
     rightWidth: clampWidth(input.rightWidth, DOCK_DEFAULTS.rightWidth),
+    // Coerced the way the widths are: anything that is not the type falls back
+    // to the default rather than to `undefined`, so a stored value written by
+    // an older build can never make a rail's state unreadable.
+    leftOpenOffScene: flag(input.leftOpenOffScene, DOCK_DEFAULTS.leftOpenOffScene),
+    rightOpenOffScene: flag(input.rightOpenOffScene, DOCK_DEFAULTS.rightOpenOffScene),
   };
 }
 

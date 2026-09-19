@@ -159,6 +159,11 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
       hidden: parseList(getSetting(ctx.db, "dock_hidden")),
       leftWidth: Number(getSetting(ctx.db, "dock_left_width") ?? DOCK_DEFAULTS.leftWidth),
       rightWidth: Number(getSetting(ctx.db, "dock_right_width") ?? DOCK_DEFAULTS.rightWidth),
+      // The reader's off-scene rail choice (§20 phase 225), stored the way the
+      // widths beside it are. An install that has never made the choice reads
+      // as the default, which is closed.
+      leftOpenOffScene: getSetting(ctx.db, "dock_left_off_scene") === "1",
+      rightOpenOffScene: getSetting(ctx.db, "dock_right_off_scene") === "1",
     });
   }
 
@@ -285,6 +290,8 @@ export function systemRoutes(ctx: AppContext): Hono<AppEnv> {
     setSetting(ctx.db, "dock_hidden", JSON.stringify(next.hidden));
     setSetting(ctx.db, "dock_left_width", String(next.leftWidth));
     setSetting(ctx.db, "dock_right_width", String(next.rightWidth));
+    setSetting(ctx.db, "dock_left_off_scene", next.leftOpenOffScene ? "1" : "0");
+    setSetting(ctx.db, "dock_right_off_scene", next.rightOpenOffScene ? "1" : "0");
     return true;
   }
 

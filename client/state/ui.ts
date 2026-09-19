@@ -6,10 +6,18 @@ import type { DockPanel } from "@shared/types.ts";
  * UI chrome state (SPEC §16, §20 phases 85–87).
  *
  * In memory only, like the generation store — no browser storage anywhere in
- * this app. The two rails' open/closed state is chrome, not data. The scene
- * inspector is a slot: the chat screen fills it with the scene-scoped panes
- * (Context / Cast / You), so the rail itself can live at the shell level on
- * every page while the scene content stays where the scene is.
+ * this app. The two rails' open/closed state is chrome, not data.
+ *
+ * What phase 225 added is not an exception to that. The rails' *live* state is
+ * still here and still resets on reload; what it stores server-side, beside the
+ * dock widths in `DockDto`, is the reader's decision about how a rail should
+ * *start* on a screen with no roleplay behind it. A decision is data; whether a
+ * column happens to be open right now is chrome. Nothing about this store
+ * reaches `localStorage`, which is what the rule above is about.
+ *
+ * The scene inspector is a slot: the chat screen fills it with the scene-scoped
+ * panes (Context / Cast / You), so the rail itself can live at the shell level
+ * on every page while the scene content stays where the scene is.
  */
 
 interface UiState {

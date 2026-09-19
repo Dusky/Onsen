@@ -10808,3 +10808,106 @@ snapshotted first and restored byte-for-byte — and the restore needed the dev
 server stopped first, because a server holding the database open writes its own
 pages back over a file replaced underneath it. Worth writing down: the first
 restore reported success and had not worked.
+
+## Phase 225 — The rails start out of the way
+
+The fourth review's first finding was a count rather than an impression, and
+this is the answer to it. Interactive controls on screen at 1600×950, by where
+they were:
+
+| screen | total | left rail | the reader's own primary action |
+|---|---|---|---|
+| Roleplays | 141 | **105** (74%) | "New roleplay", the **119th** control |
+| Settings | 143 | **105** (73%) | the filter box, #119 |
+| Characters | 147 | **105** (71%) | "Cast groups", #119 |
+| Assistant | 132 | **105** (80%) | "What it can do", #119 |
+| Chat | 117 | 26 (22%) | "Setup", #41 |
+
+The 105 are the prompt editor: twenty-six blocks, each with a toggle, a name
+and two reorder arrows, open by default on every screen in the app. On the chat
+that is proportionate and the chat is the one place the prompt is the subject.
+
+### What the documented decisions actually said
+
+Two of them had to be read before anything moved, because both look like they
+forbid this and neither does.
+
+Phase 100 gave the prompt's *structure* to the preset "so it is editable
+anywhere", and phase 191 cited that when it declined to move the rail. Both are
+about **availability** — and an icon strip one click from open is as available
+as a panel already open. Nothing about reach changes here.
+
+`client/state/ui.ts` says the rails are "in memory only… no browser storage
+anywhere in this app", which is HANDOFF non-negotiable 8. That is about **the
+browser**. Prose scale, theme, notice position and the dock's own two widths
+all persist server-side in SQLite already, and phase 173 calls the widths a
+preference in as many words. What phase 225 stores is of exactly that kind: the
+reader's *decision* about how a rail should start. The rails' live open/closed
+state stays in the store, stays in memory, and still resets on reload.
+
+### The rule
+
+`useAutoCollapseRails` (`client/lib/breakpoint.ts`) already owned the forcing
+rule and already distinguished a width *crossing* from a re-render. This adds a
+third input of the same shape and keeps the same discipline:
+
+```ts
+const wantRight = hasRightRoom && (onScene || dock.rightOpenOffScene);
+const wantLeft  = hasLeftRoom  && (onScene || dock.leftOpenOffScene);
+```
+
+Width still wins — `&&`, not `||` — because a rail that does not fit cannot
+open whatever the reader prefers. And only a *change* of the answer forces a
+rail, so a rail opened by hand on Characters survives every unrelated
+re-render.
+
+### The base route, not the visible one
+
+`onScene` is `useShellRoute().base.name === "chat"`, and that choice is the
+interesting half. Since phase 171 an overlay screen fills only the content box
+and leaves the base screen mounted underneath, so a reader who opens Settings
+*from* a chat still has that chat behind them and is going back to it.
+Collapsing its rails on the way in and re-opening them on the way out would be
+churn nobody asked for — a layout moving under someone who only wanted to
+change a setting. A reader who reaches Settings from the Roleplays list has no
+scene behind them, and that is the case the measurement was about.
+
+### One owner for the toggles
+
+The six rail controls — two in the header, two on each rail — reached into
+`useUiStore` directly. They now go through `useRailToggles()`, which flips the
+store and, off a scene, writes the decision beside the dock widths. One hook
+rather than six call sites because the way this regresses is a *seventh*:
+somebody adds a rail button, reaches for the store like the six before it, and
+that one control silently stops recording the preference. `test/dock.test.ts`
+sweeps for it rather than naming the three files.
+
+It also removed a selector-less `useUiStore()` subscribe from `Header.tsx`, the
+pattern `Shell` has a long comment about.
+
+### Measured after, on a fresh page load
+
+Phase 215's lesson: a layout change is verified on a fresh document, never the
+hot reload.
+
+| screen | controls, before → after | in the left rail | primary action |
+|---|---|---|---|
+| Roleplays | 141 → **38** | 105 → **13** | #119 → **#17** |
+| Characters | 147 → **44** | 105 → **12** | #119 → **#17** |
+| Settings | 143 → **38** | 105 → **13** | — |
+| Assistant | 132 → **28** | 105 → **12** | — |
+| **Chat** | 117 → **117** | unchanged | unchanged |
+
+Opening the rail on Characters and reloading: still open (109 of 146). Closing
+it and reloading: closed again (12 of 44). Settings opened from a chat: the
+chat's rails, untouched. At 1300px the width bands still close the right rail
+first; on a phone there are no rails and nothing changed.
+
+### Verified
+
+2019 tests across 149 files, typecheck clean, no console errors. The new guard
+is ten assertions in `test/dock.test.ts`: the defaults, `readDock`'s coercion
+of six kinds of junk, a round trip, the two settings rows, the base-route read,
+`&&` over `||`, the previous-value refs, the sweep for a seventh toggle call
+site, and that `ui.ts` still holds the live state and still names no browser
+storage.
