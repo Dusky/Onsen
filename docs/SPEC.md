@@ -4488,6 +4488,20 @@ Each phase ends in a working, usable application.
     focus bug was a filename allowlist; it sweeps for the shape now.
     See §16, `shared/speaker-prefix.ts`.
 
+224. **A turn that produces nothing says so** — a reasoning model bills its
+    thinking against the same `max_tokens` the builder reserves for the reply,
+    so a turn can spend its whole budget thinking. Twice that landed nothing at
+    all: the reader's message, Stop gone, no turn, no error, no log line. Once
+    it landed 77 characters of prose after 4075 of reasoning. `finish()` was
+    right not to write an empty message and wrong to say nothing about it — it
+    held the buffer, the reasoning, the finish reason and the reservation, and
+    passed none of them on. `done` carries a `ThinTurn` now and the client says
+    what happened and which setting to change. The stub case keys on the
+    mechanism rather than a ratio: the cap was reached *and* more of it went to
+    thinking than to writing, because the first version's own cry-wolf test
+    caught it flagging a perfectly ordinary 156-character reply. See §5, §13,
+    `server/generation/service.ts`.
+
 Settled while building phase 15.
 
 - **The desktop layout is phase 19, not a polish item.** The design is explicit

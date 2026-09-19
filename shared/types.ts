@@ -608,6 +608,35 @@ export interface AnnotationDto {
 /** Why a completion stopped, normalised across providers (SPEC §4). */
 export type FinishReasonName = "stop" | "length" | "tool_calls" | "content_filter" | "other";
 
+/**
+ * Why a turn came back with little or no story in it (§20 phase 224).
+ *
+ * A reasoning model's thinking is billed against the same `max_tokens` the
+ * prompt builder reserved for the reply (phase 196 sends that cap, correctly),
+ * so a budget spent thinking is a budget not spent writing. Measured against
+ * `deepseek-flash`: one turn landed **77 characters of prose after 4075
+ * characters of reasoning**, and two turns landed nothing at all — the reader's
+ * own message sitting there, Stop gone, no message, no error, no log line.
+ *
+ * The service has every number needed to explain that and said none of them.
+ * This is that explanation, carried on the turn's own `done` event so the
+ * client can say it without a second request.
+ *
+ * Null on an ordinary turn, which is the overwhelming majority: a non-reasoning
+ * model never produces one of these, and a reasoning model given room does not
+ * either.
+ */
+export interface ThinTurn {
+  /** Nothing landed at all, or prose far shorter than the room it was given. */
+  kind: "empty" | "stub";
+  /** Characters of reasoning this turn produced. */
+  reasoningChars: number;
+  /** Characters of prose that reached the story. Zero when `kind` is empty. */
+  proseChars: number;
+  /** The token budget the prompt reserved for the reply. */
+  reserved: number;
+}
+
 export interface GenerationMeta {
   provider: string;
   model: string;

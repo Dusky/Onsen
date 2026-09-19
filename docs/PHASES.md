@@ -10727,3 +10727,84 @@ stops being one, so `"Alone, he"` never stutters. A beat is never stripped: its
 2002 tests across 148 files, typecheck clean. On screen: focus returns to the
 Search button, the routing row reads "App default | Default", and the smallest
 inline type in the client is 11px.
+
+## Phase 224 — A turn that produces nothing says so
+
+Found by driving the app against a reasoning model, which no previous review
+had done. `deepseek-flash` bills its thinking against the same `max_tokens` the
+prompt builder reserves for the reply — the cap phase 196 correctly started
+sending — so a turn can spend its whole budget thinking.
+
+Twice, with a fixed wait so nothing was cut short, that produced: **the
+reader's own message sitting there, Stop gone, no assistant message, no error,
+and nothing in any log.** The only move left was to send again and pay for it.
+
+```
+415  user  "I set my cup down and ask her plainly what the Warden wants."  → no child
+421  user  "Tell me what the Warden actually wants."                       → no child
+```
+
+And the same cause with a different face — a turn that *did* land:
+
+| turn | reasoning | prose | share of the output that was the story |
+|---|---|---|---|
+| 417 | 4075 chars | **77 chars** | **2%** |
+| 419 | 932 chars | 404 chars | 30% |
+
+### What the service already knew
+
+`finish()` reads `if (generation.buffer.trim() !== "")` and, when it is empty,
+lands nothing and emits an ordinary `done`. Not landing an empty message is
+right. Saying nothing about it is not — and at that line the service holds the
+buffer, the reasoning, the finish reason and the reservation the prompt was
+built around. Every number needed to explain itself was in scope and none of it
+left the function.
+
+So `done` now carries a `ThinTurn` when there is one: what happened, how much
+reasoning arrived, how much prose, and the budget it was given. On the turn's
+own terminal event, because the reader has already waited once and an
+explanation should not cost a second request. `terminalEvent` recomputes it, so
+a client that reconnects after the end is told the same thing.
+
+### The stub test is the mechanism, not a ratio
+
+The first version asked whether the prose was a small fraction of the reserve,
+and **its own cry-wolf test caught it immediately**: a 1024-token reserve is
+about four thousand characters and an ordinary turn is three hundred, so every
+normal turn is a small fraction of it. The test that was meant to stop this
+from crying wolf failed on a perfectly good 156-character reply.
+
+What actually distinguishes the 77-character case is that the model **was cut
+off** — `finishReason === "length"` means the cap was reached — and that it
+spent more of that cap thinking than writing. Both together are causal; either
+alone is a guess. A turn that stopped on its own is never diagnosed however
+short it is, because a model that chose to write one line chose to write one
+line.
+
+### What the reader is told
+
+> No turn was written — the model spent its whole 64-token reply budget
+> thinking (264 characters of it). Raise the response cap in the preset, or
+> pick a model that does not reason.
+
+Posted as a notice, not an error: the provider did what it was asked, and the
+ask was wrong. The numbers are in it because without them the app is guessing —
+"it spent 4075 characters thinking and wrote 77" is a diagnosis, "the reply was
+short" is not. The second sentence is the only actionable half, and it names
+the setting.
+
+### Verified
+
+2009 tests across 149 files, typecheck clean. `test/thin-turn.test.ts` drives
+the real service with a scripted stream — scripted deliberately, because a
+scripted stream is exactly what hid this: every existing generation test pushes
+prose, so none of them ever produced the shape that breaks. Two of its seven
+tests exist only to stop it crying wolf, and one of those is what corrected the
+threshold.
+
+Then verified live against `deepseek-flash` with the cap dropped to 64, which
+is the sentence quoted above, read off the page. `data/onsen.db` was
+snapshotted first and restored byte-for-byte — and the restore needed the dev
+server stopped first, because a server holding the database open writes its own
+pages back over a file replaced underneath it. Worth writing down: the first
+restore reported success and had not worked.

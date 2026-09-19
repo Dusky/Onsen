@@ -62,7 +62,7 @@ import type { WebhookEvent } from "../webhooks/events.ts";
 import { sceneChannel } from "../sync/channel.ts";
 import { recall, type MemoryRunner } from "../memory/runner.ts";
 import type { PromptMemoryEntity } from "../prompt/types.ts";
-import type { MemoryRecallTrace } from "../../shared/types.ts";
+import type { MemoryRecallTrace, ThinTurn } from "../../shared/types.ts";
 import type { InstructTemplate } from "../prompt/index.ts";
 import type { TaskRunStatus } from "../../shared/types.ts";
 
@@ -111,7 +111,13 @@ export type GenerationEvent =
    * default, and what matters live is only that something is happening.
    */
   | { type: "reasoning"; text: string }
-  | { type: "done"; messageId: string; meta: GenerationMeta }
+  /**
+   * `thin` is set when the turn came back with little or no story in it
+   * (§20 phase 224) — the numbers the client needs to say why, carried on the
+   * turn's own terminal event rather than fetched afterwards. Null on an
+   * ordinary turn, which is nearly all of them.
+   */
+  | { type: "done"; messageId: string; meta: GenerationMeta; thin: ThinTurn | null }
   | { type: "cancelled"; messageId: string | null; meta: GenerationMeta }
   | { type: "error"; message: string; detail: string | null };
 
@@ -144,6 +150,15 @@ interface ActiveGeneration {
   buffer: string;
   /** Reasoning, kept apart from the prose all the way to the message (§13). */
   reasoning: string;
+  /**
+   * The token budget the prompt reserved for this reply (§20 phase 224).
+   *
+   * Read off `prompt.debug` when the prompt is built and kept here because
+   * `finish()` is where it matters — that is the only place that can compare
+   * the room given against the prose that came back, and the prompt is long
+   * out of scope by then.
+   */
+  reservedForResponse: number;
   /** Splits inline `<think>` tags out of the stream. Stateful across chunks. */
   splitter: ReasoningSplitter;
   /**
@@ -435,6 +450,7 @@ export class GenerationService {
       rowId: row.id,
       sceneId: scene.id,
       sceneUlid: scene.ulid,
+      reservedForResponse: 0,
       parentId,
       status: "pending",
       buffer: "",
@@ -748,6 +764,9 @@ export class GenerationService {
       const reasoningConfig = parseReasoningConfig(this.reasoningJson(presetId));
       generation.meta.promptTokens = prompt.debug.totalTokens;
       generation.meta.tokensAreEstimated = prompt.debug.tokensAreEstimated;
+      // Kept for `finish()`, which is the only place that can tell whether the
+      // reply used the room it was given and is long past the prompt's scope.
+      generation.reservedForResponse = prompt.debug.reservedForResponse;
 
       // Captured the moment the prompt is built, before a token streams, so
       // the inspector can answer for a cancelled or failed generation too
@@ -1668,7 +1687,15 @@ export class GenerationService {
       generation,
       cancelled
         ? { type: "cancelled", messageId: generation.messageUlid, meta: generation.meta }
-        : { type: "done", messageId: generation.messageUlid ?? "", meta: generation.meta },
+        : {
+            type: "done",
+            messageId: generation.messageUlid ?? "",
+            meta: generation.meta,
+            // The turn is over and nothing landed, or too little did. Not an
+            // error — the provider did what it was asked — so it travels on the
+            // ordinary terminal event and the reader is told in a notice.
+            thin: thinTurn(generation),
+          },
     );
 
     // The pipeline starts *after* the turn is finished and announced. SPEC §7
@@ -1953,7 +1980,15 @@ export class GenerationService {
   private terminalEvent(generation: ActiveGeneration): GenerationEvent | null {
     switch (generation.status) {
       case "complete":
-        return { type: "done", messageId: generation.messageUlid ?? "", meta: generation.meta };
+        return {
+          type: "done",
+          messageId: generation.messageUlid ?? "",
+          meta: generation.meta,
+          // Recomputed rather than stored: a reconnecting client is replayed
+          // the terminal event and has to be told the same thing the first one
+          // was, and the inputs are all still on the generation.
+          thin: thinTurn(generation),
+        };
       case "cancelled":
         return { type: "cancelled", messageId: generation.messageUlid, meta: generation.meta };
       case "error":
@@ -2618,6 +2653,46 @@ function stripSpotlightPrefix(
     | { name: string }
     | null;
   return stripSpeakerPrefix(content, row?.name ?? null);
+}
+
+/**
+ * Whether this turn came back with little or no story in it, and the numbers
+ * that say why (§20 phase 224).
+ *
+ * Two shapes, one cause. A reasoning model's thinking is billed against the
+ * same `max_tokens` the builder reserved for the reply, so a turn can spend its
+ * whole budget thinking and land **nothing** — which the service already
+ * handled correctly by not writing an empty message, and incorrectly by saying
+ * nothing about it. Or it can land a fragment: measured at 77 characters of
+ * prose after 4075 of reasoning, with nothing on screen to explain the length.
+ *
+ * **The stub test is the mechanism, not a ratio.** The first version of this
+ * asked whether the prose was a small fraction of the reserve, and its own
+ * cry-wolf test caught it immediately: a reserve of 1024 tokens is around four
+ * thousand characters and an ordinary turn is three hundred, so *every* normal
+ * turn is a small fraction of it. What actually distinguishes the 77-character
+ * case is that the model **was cut off** — `finishReason === "length"` means
+ * the cap was reached — and that it spent more of that cap thinking than
+ * writing. Both together are causal; either alone is a guess.
+ *
+ * A turn that stopped on its own is never diagnosed, however short it is,
+ * because a model that chose to write one line chose to write one line.
+ */
+function thinTurn(generation: ActiveGeneration): ThinTurn | null {
+  const prose = generation.buffer.trim();
+  const reasoningChars = generation.reasoning.trim().length;
+  if (reasoningChars === 0) return null;
+
+  const base = {
+    reasoningChars,
+    proseChars: prose.length,
+    reserved: generation.reservedForResponse,
+  };
+  if (prose === "") return { kind: "empty", ...base };
+
+  const cutOff = generation.meta.finishReason === "length";
+  if (cutOff && reasoningChars > prose.length) return { kind: "stub", ...base };
+  return null;
 }
 
 function hashToSeed(value: string): number {

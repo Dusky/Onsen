@@ -188,6 +188,22 @@ export const strings = {
      * reroll it.
      */
     stoppedKept: "Turn stopped — the partial reply was kept as the last turn.",
+    /**
+     * A turn that spent its budget thinking (§20 phase 224).
+     *
+     * Two sentences, and the second is the only one a reader can act on: the
+     * response cap is a preset setting, and raising it is what makes a
+     * reasoning model leave room for prose. The numbers are there because
+     * without them this reads as the app guessing — "it spent 4075 characters
+     * thinking and wrote 77" is a diagnosis; "the reply was short" is not.
+     *
+     * Not phrased as a failure. The provider did what it was asked; the ask
+     * was wrong.
+     */
+    thinTurnEmpty: (reasoning: number, reserved: number) =>
+      `No turn was written — the model spent its whole ${reserved}-token reply budget thinking (${reasoning} characters of it). Raise the response cap in the preset, or pick a model that does not reason.`,
+    thinTurnStub: (prose: number, reasoning: number) =>
+      `That turn came back short — ${prose} characters of story after ${reasoning} of reasoning, which shared the same reply budget. Raise the response cap in the preset for more room.`,
 
     /** Autopilot (SPEC §6) — the strip while it runs, the line when it stops. */
     autopilot: "Autopilot",
