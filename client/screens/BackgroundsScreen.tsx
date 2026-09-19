@@ -126,23 +126,39 @@ export function BackgroundsScreen() {
       <div className="flex flex-none flex-wrap items-center gap-[8px] px-[22px] pb-[10px]">
         <input
           className="field min-h-0 min-w-[140px] flex-1 py-[8px] text-[13px]"
+          aria-label={strings.characters.searchPlaceholder}
           placeholder={strings.characters.searchPlaceholder}
           value={needle}
           onChange={(event) => setNeedle(event.target.value)}
         />
-        <select className="field min-h-0 flex-none py-[8px]" value={tag} onChange={(event) => setTag(event.target.value)}>
+        <select
+          aria-label={strings.scenes.tagsLabel}
+          className="field min-h-0 flex-none py-[8px]"
+          value={tag}
+          onChange={(event) => setTag(event.target.value)}
+        >
           <option value="">{strings.scenes.allTags}</option>
           {allTags.map((t) => (
             <option key={t} value={t}>{t}</option>
           ))}
         </select>
-        <select className="field min-h-0 flex-none py-[8px]" value={folder} onChange={(event) => setFolder(event.target.value)}>
+        <select
+          aria-label={strings.scenes.folderLabel}
+          className="field min-h-0 flex-none py-[8px]"
+          value={folder}
+          onChange={(event) => setFolder(event.target.value)}
+        >
           <option value="">{strings.scenes.allFolders}</option>
           {allFolders.map((f) => (
             <option key={f} value={f}>{f}</option>
           ))}
         </select>
-        <select className="field min-h-0 flex-none py-[8px]" value={sort} onChange={(event) => setSort(event.target.value as Sort)}>
+        <select
+          aria-label={strings.scenes.sortLabel}
+          className="field min-h-0 flex-none py-[8px]"
+          value={sort}
+          onChange={(event) => setSort(event.target.value as Sort)}
+        >
           <option value="recent">{strings.scenes.sortRecent}</option>
           <option value="name">{strings.scenes.sortTitle}</option>
         </select>
@@ -321,6 +337,7 @@ function BackgroundEditorBody({
 
       <p className="section-label mb-[6px]">{strings.characters.name}</p>
       <input
+        aria-label={strings.characters.name}
         className="field mb-[12px]"
         value={name}
         onChange={(event) => setName(event.target.value)}
@@ -328,6 +345,7 @@ function BackgroundEditorBody({
 
       <p className="section-label mb-[6px]">{strings.settings.backgroundPrompt}</p>
       <textarea
+        aria-label={strings.settings.backgroundPrompt}
         rows={3}
         className="field mb-[12px] resize-none py-[10px]"
         value={prompt}
@@ -339,6 +357,7 @@ function BackgroundEditorBody({
 
       <p className="section-label mb-[6px]">{strings.characters.folderFilter}</p>
       <input
+        aria-label={strings.characters.folderFilter}
         className="field mb-[16px]"
         value={folder}
         onChange={(event) => setFolder(event.target.value)}

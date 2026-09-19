@@ -68,10 +68,20 @@ export function ApiKeyEditor({
           }}
         >
           <p className="section-label mb-[6px]">{strings.settings.apiKeyName}</p>
-          <input name="name" className="field mb-[16px]" required />
+          <input
+            aria-label={strings.settings.apiKeyName}
+            name="name"
+            className="field mb-[16px]"
+            required
+          />
 
           <p className="section-label mb-[6px]">{strings.settings.apiKeyScope}</p>
-          <select name="sceneId" className="field mb-[16px]" defaultValue="">
+          <select
+            aria-label={strings.settings.apiKeyScope}
+            name="sceneId"
+            className="field mb-[16px]"
+            defaultValue=""
+          >
             <option value="">{strings.settings.apiKeyAllScenes}</option>
             {scenes.map((scene) => (
               <option key={scene.id} value={scene.id}>

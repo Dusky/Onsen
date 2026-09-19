@@ -168,6 +168,7 @@ function ServiceEditor({
           <>
             <p className="section-label mb-[6px]">{strings.media.serviceKind}</p>
             <select
+              aria-label={strings.media.serviceKind}
               name="kind"
               className="field mb-[6px]"
               value={kind}
@@ -187,6 +188,7 @@ function ServiceEditor({
 
         <p className="section-label mb-[6px]">{strings.media.serviceName}</p>
         <input
+          aria-label={strings.media.serviceName}
           name="name"
           className="field mb-[14px]"
           defaultValue={service?.name ?? chosen?.label ?? ""}
@@ -213,12 +215,23 @@ function ServiceEditor({
         ) : (
           <>
             <p className="section-label mb-[6px]">{strings.media.serviceModel}</p>
-            <input name="model" className="field" defaultValue={service?.model ?? ""} />
+            <input
+              aria-label={strings.media.serviceModel}
+              name="model"
+              className="field"
+              defaultValue={service?.model ?? ""}
+            />
           </>
         )}
 
         <p className="section-label mb-[6px]">{strings.media.serviceKey}</p>
-        <input name="apiKey" type="password" className="field" autoComplete="off" />
+        <input
+          aria-label={strings.media.serviceKey}
+          name="apiKey"
+          type="password"
+          className="field"
+          autoComplete="off"
+        />
         <p className="explain mt-[6px] mb-[16px]">
           {service?.hasApiKey === true
             ? strings.media.serviceKeyKept(service.apiKeyMask ?? "")
@@ -338,7 +351,12 @@ function ComfyuiModelField({ service }: { service: MediaServiceDto }) {
   return (
     <>
       <p className="section-label mb-[6px]">{strings.media.serviceModel}</p>
-      <select name="model" className="field" defaultValue={service.model ?? ""}>
+      <select
+        aria-label={strings.media.serviceModel}
+        name="model"
+        className="field"
+        defaultValue={service.model ?? ""}
+      >
         <option value="">{strings.media.serviceModelNone}</option>
         {service.model !== null && !list.includes(service.model) ? (
           <option value={service.model}>{service.model}</option>

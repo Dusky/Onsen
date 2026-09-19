@@ -535,6 +535,7 @@ export function PresetFields({ preset, onClose }: { preset: PresetDto; onClose()
             <textarea
               rows={2}
               className="field resize-none py-[10px]"
+              aria-label={label}
               defaultValue={preset.utilityPrompts[field] ?? ""}
               onBlur={(event) => {
                 const value = event.target.value.trim();
@@ -589,6 +590,7 @@ export function PresetFields({ preset, onClose }: { preset: PresetDto; onClose()
           <>
             <p className="section-label mb-[6px]">{strings.settings.reasoningPrefix}</p>
             <input
+              aria-label={strings.settings.reasoningPrefix}
               className="field mb-[10px]"
               defaultValue={preset.reasoning.prefix}
               onBlur={(event) => {
@@ -598,6 +600,7 @@ export function PresetFields({ preset, onClose }: { preset: PresetDto; onClose()
             />
             <p className="section-label mb-[6px]">{strings.settings.reasoningSuffix}</p>
             <input
+              aria-label={strings.settings.reasoningSuffix}
               className="field mb-[10px]"
               defaultValue={preset.reasoning.suffix}
               onBlur={(event) => {

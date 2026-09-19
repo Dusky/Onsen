@@ -17,6 +17,7 @@ import { LAYOUT_PRESETS, READING_BOUNDS, READING_DEFAULTS } from "@shared/types.
 import type { ReaderDto, ReadingDto } from "@shared/types.ts";
 import type { LayoutDto, LayoutPreset } from "@shared/types.ts";
 import { strings } from "../strings.ts";
+import { CATEGORIES, type CategoryId } from "./settings-categories.ts";
 import { navigate } from "../lib/router.ts";
 import {
   useConnectionProfiles,
@@ -1355,7 +1356,13 @@ function EmbeddingsSection() {
             defaultValue={config.data?.model ?? ""}
           />
           <p className="section-label mb-[6px]">{strings.settings.embeddingsKey}</p>
-          <input name="apiKey" type="password" className="field mb-[10px]" autoComplete="off" />
+          <input
+            aria-label={strings.settings.embeddingsKey}
+            name="apiKey"
+            type="password"
+            className="field mb-[10px]"
+            autoComplete="off"
+          />
           <div className="flex items-center gap-[8px]">
             <button type="submit" className="btn btn-primary flex-1">
               {strings.settings.embeddingsSave}
@@ -1375,33 +1382,7 @@ function EmbeddingsSection() {
 
 /* ------------------------------------------------------------------ */
 
-/**
- * The nine places settings live (SPEC §20 phase 43).
- *
- * Thirty-one section labels in one 1,596-line scroll was not a hierarchy: when
- * everything is a heading, nothing is, and nothing can be found twice. The
- * filter searches these names and the words under them, so a reader who
- * remembers "webhook" but not "connections out" still lands on it.
- */
-const CATEGORIES = [
-  { id: "models", words: ["provider", "profile", "model", "api key", "endpoint", "anthropic", "llama"] },
-  { id: "generation", words: ["preset", "sampler", "temperature", "context", "reasoning", "prefill"] },
-  { id: "tasks", words: ["agent", "routing", "ops", "background", "guide", "summariser", "classifier"] },
-  { id: "reading", words: ["font", "size", "theme", "prose", "light", "dark"] },
-  { id: "branding", words: ["logo", "mark", "icon", "wordmark", "silhouette", "branding"] },
-  { id: "backgrounds", words: ["backdrop", "background", "wallpaper", "picture"] },
-  { id: "media", words: ["picture", "voice", "image", "speech", "tts", "draw", "caption"] },
-  { id: "data", words: ["embedding", "document", "retrieval", "rag", "data bank"] },
-  { id: "automation", words: ["trigger", "script", "regex", "action", "event"] },
-  { id: "outward", words: ["api key", "webhook", "outbound", "bridge", "token"] },
-  { id: "packs", words: ["pack", "update", "import", "export", "version", "extension"] },
-  {
-    id: "migrate",
-    words: ["sillytavern", "migrate", "move", "switch", "chats", "jsonl", "import"],
-  },
-] as const;
 
-type CategoryId = (typeof CATEGORIES)[number]["id"];
 
 /**
  * Changing the password, which is also the app's only session revocation.
@@ -1441,6 +1422,7 @@ function PasswordSheet({ onClose }: { onClose(): void }) {
       >
         <p className="section-label mb-[6px]">{strings.settings.currentPassword}</p>
         <input
+          aria-label={strings.settings.currentPassword}
           type="password"
           autoComplete="current-password"
           className="field mb-[14px]"
@@ -1451,6 +1433,7 @@ function PasswordSheet({ onClose }: { onClose(): void }) {
 
         <p className="section-label mb-[6px]">{strings.settings.newPassword}</p>
         <input
+          aria-label={strings.settings.newPassword}
           type="password"
           autoComplete="new-password"
           className="field mb-[14px]"
@@ -1497,7 +1480,17 @@ export function SettingsScreen() {
   const active = matching.some((entry) => entry.id === category)
     ? category
     : (matching[0]?.id ?? category);
-  const show = (id: CategoryId) => id === active;
+  /*
+   * Nothing matching shows nothing (§20 phase 226).
+   *
+   * `active` falls back to the *current* category when nothing survives, which
+   * is right for keeping a category open and wrong for what it fed: `show`
+   * compared against it, so typing `zzzznomatch` printed "Nothing here matches
+   * that." above a fully rendered Models panel — Providers, Profiles, Anthropic
+   * and the account buttons, all still on screen under a line saying there was
+   * nothing. The tab row narrowed and the body did not.
+   */
+  const show = (id: CategoryId) => matching.length > 0 && id === active;
   const providers = useProviders();
   const profiles = useConnectionProfiles();
   const presets = usePresets();
@@ -1918,20 +1911,35 @@ export function SettingsScreen() {
 
           {show("migrate") ? <MigrationSection /> : null}
 
-          {/* Last, and on their own: the two controls here that act on the
-              session rather than on what is in it. The password change is
-              beside Sign out because it is the stronger version of it — the
-              server bumps a generation counter every outstanding cookie is
-              checked against, so it signs out every *other* device too, which
-              is the only revocation this install has. */}
-          <div className="mt-[26px] flex flex-col gap-[8px] border-t border-rule pt-[18px]">
-            <button type="button" className="btn w-full" onClick={() => setPasswordOpen(true)}>
-              {strings.settings.changePassword}
-            </button>
-            <button type="button" className="btn w-full" onClick={() => signOut.mutate(undefined)}>
-              {strings.settings.signOut}
-            </button>
-          </div>
+          {/* The two controls that act on the session rather than on what is
+              in it (§20 phase 226). They used to sit outside every `show()`,
+              which meant they were the last two controls of *every* category
+              — under Models, under Backgrounds, under the "nothing matches"
+              state — filed wherever the reader happened to be rather than
+              anywhere. They have a category now.
+
+              The password change is beside Sign out because it is the stronger
+              version of it: the server bumps a generation counter every
+              outstanding cookie is checked against, so it signs out every
+              *other* device too, which is the only revocation this install
+              has. */}
+          {show("account") ? (
+            <>
+              <p className="group-heading mb-[12px]">{strings.settings.categories["account"]}</p>
+              <div className="flex flex-col gap-[8px]">
+                <button type="button" className="btn w-full" onClick={() => setPasswordOpen(true)}>
+                  {strings.settings.changePasswordAction}
+                </button>
+                <button
+                  type="button"
+                  className="btn w-full"
+                  onClick={() => signOut.mutate(undefined)}
+                >
+                  {strings.settings.signOut}
+                </button>
+              </div>
+            </>
+          ) : null}
         </div>
       </main>
 

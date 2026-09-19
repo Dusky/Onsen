@@ -25,12 +25,34 @@ import {
  * render the same two components; Settings keeps its Models category because a
  * phone has no rails and removing it would strand every phone reader.
  */
+/**
+ * A row's accessible name, with the parts kept apart (§20 phase 226).
+ *
+ * A row is three stacked `<span>`s and a chevron, and an accessible name
+ * computed from text content glues them: `"DeepSeekOpenAI-compatible · keyed›"`
+ * is what a screen reader read out, with the provider's name run into its kind
+ * and the disclosure arrow on the end. Phase 190 fixed this class in the header,
+ * where the controls were icon-only; its sweep did not reach a list whose
+ * buttons have text.
+ *
+ * Naming the parts explicitly also drops the chevron, which is a state the
+ * button already carries in `aria-expanded` and has no business saying twice.
+ */
+function rowName(...parts: (string | null | undefined)[]): string {
+  return parts.filter((part) => part !== null && part !== undefined && part !== "").join(", ");
+}
+
 export function ModelsPanel({ sceneId }: { sceneId: string | null }) {
   const providers = useProviders();
   const profiles = useConnectionProfiles();
   // Only the scene's own row, and only to read which profile it points at.
   // `1` because the messages are irrelevant here and a window of them is not.
-  const scene = useScene(sceneId ?? "", 1);
+  //
+  // Disabled without a scene (§20 phase 226): the `?? ""` fallback was being
+  // fetched, so every render of this panel off a roleplay asked the server for
+  // `/api/scenes/?limit=1` and took a 404 for it. Found in the console while
+  // driving the settings filter, which is a panel away from here.
+  const scene = useScene(sceneId ?? "", 1, sceneId !== null);
   const updateScene = useUpdateScene(sceneId ?? "");
 
   /** `undefined` closed, `null` the add form, an id the row being edited. */
@@ -64,6 +86,7 @@ export function ModelsPanel({ sceneId }: { sceneId: string | null }) {
                 key={profile.id}
                 type="button"
                 aria-current={on ? "true" : undefined}
+                aria-label={rowName(profile.name, byId.get(profile.providerId)?.name, profile.model)}
                 disabled={on || updateScene.isPending}
                 onClick={() => updateScene.mutate({ connectionProfileId: profile.id })}
                 className="tap flex w-full items-baseline gap-[8px] border-b border-rule py-[8px] text-left"
@@ -106,13 +129,18 @@ export function ModelsPanel({ sceneId }: { sceneId: string | null }) {
               type="button"
               onClick={() => setEditingProvider(isOpen ? undefined : provider.id)}
               aria-expanded={isOpen}
+              aria-label={rowName(
+                provider.name,
+                kindLabel(provider.kind),
+                provider.hasApiKey ? strings.models.keyed : null,
+              )}
               className="tap flex w-full gap-[9px] text-left"
             >
               {statusDot(provider.enabled && provider.baseUrl !== null)}
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-ui-loose font-medium">{provider.name}</span>
                 <span className="meta block truncate">
-                  {[kindLabel(provider.kind), provider.hasApiKey ? "keyed" : null]
+                  {[kindLabel(provider.kind), provider.hasApiKey ? strings.models.keyed : null]
                     .filter((part) => part !== null && part !== "")
                     .join(" · ")}
                 </span>
@@ -155,6 +183,12 @@ export function ModelsPanel({ sceneId }: { sceneId: string | null }) {
               type="button"
               onClick={() => setEditingProfile(isOpen ? undefined : profile)}
               aria-expanded={isOpen}
+              aria-label={rowName(
+                profile.name,
+                byId.get(profile.providerId)?.name,
+                profile.model,
+                profile.isDefault ? strings.settings.profileDefault : null,
+              )}
               className="tap flex w-full items-baseline gap-[9px] text-left"
             >
               <span className="min-w-0 flex-1">

@@ -4514,6 +4514,21 @@ Each phase ends in a working, usable application.
     *base* route, so an overlay opened from a chat keeps that chat's rails, and
     a width band still overrides both. Measured after, on a fresh load: 13 of 38
     on Roleplays, primary action #17. See §16, `client/lib/breakpoint.ts`.
+226. **Settings tells the truth, and the strays go home** — the filter printed
+    "Nothing here matches that." above a fully rendered Models panel, because
+    `show()` compared against an `active` that falls back to the current
+    category; it is gated on there being a match at all now. Change password and
+    Sign out were rendered outside every category, so they were the last two
+    controls of all of them, and they have an **Account** category. Five search
+    terms reached two drawers — two the review found, three the sweep did, and
+    two of those collided with a category's *name* rather than with another word
+    list, which is why the rule is "no term reaches two drawers". Forty more
+    fields whose visible `section-label` labelled nothing are named, on top of
+    the thirteen a browser drive found; the Models rows name themselves rather
+    than letting the DOM concatenate their spans; and `ModelsPanel` stops asking
+    for `/api/scenes/?limit=1` when there is no scene. The account line started
+    as a paragraph and `test/voice.test.ts` refused it, correctly — it is a
+    button's name now. See §16, `client/screens/settings-categories.ts`.
 
 Settled while building phase 15.
 

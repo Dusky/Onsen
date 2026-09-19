@@ -280,6 +280,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
           <p className="section-label mb-[8px]">{strings.sceneSetup.title_}</p>
           <input
             className="field mb-[22px]"
+            aria-label={strings.sceneSetup.title_}
             defaultValue={scene.title}
             onBlur={(event) => {
               const title = event.target.value.trim();
@@ -1349,6 +1350,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
 
             <p className="section-label mt-[12px] mb-[6px]">{strings.characters.documentTitle}</p>
             <input
+              aria-label={strings.characters.documentTitle}
               className="field mb-[8px]"
               value={docTitle}
               onChange={(event) => setDocTitle(event.target.value)}
@@ -1362,6 +1364,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
             </button>
             <p className="section-label mb-[6px]">{strings.characters.documentText}</p>
             <textarea
+              aria-label={strings.characters.documentText}
               className="field min-h-[90px] resize-y"
               value={docText}
               onChange={(event) => setDocText(event.target.value)}

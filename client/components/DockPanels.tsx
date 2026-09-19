@@ -451,11 +451,16 @@ export function PresetPanel({ sceneId }: { sceneId: string | null }) {
 
       {/* The model this preset answers with, when the scene names none (§20
           phase 105). */}
-      <label className="chrome mb-[6px] block text-ui text-ink-muted">
+      {/* A `<label>` element that wraps nothing and names no `for` labels
+          nothing — a screen reader announced this select as "edit, blank"
+          (§20 phase 226). The visible text is a `<p>` like every other section
+          label in the app, and the association is on the control. */}
+      <p className="chrome mb-[6px] block text-ui text-ink-muted">
         {strings.leftRail.presetModel}
-      </label>
+      </p>
       <select
         className="field mb-[16px]"
+        aria-label={strings.leftRail.presetModel}
         value={preset.connectionProfileId ?? ""}
         onChange={(event) =>
           update.mutate({ id: preset.id, connectionProfileId: event.target.value || null })

@@ -10911,3 +10911,117 @@ of six kinds of junk, a round trip, the two settings rows, the base-route read,
 `&&` over `||`, the previous-value refs, the sweep for a seventh toggle call
 site, and that `ui.ts` still holds the live state and still names no browser
 storage.
+
+## Phase 226 — Settings tells the truth, and the strays go home
+
+Three reproductions from the fourth review, one of them worse than it looked,
+and three more defects the guards found on their own.
+
+### The filter said one thing and showed another
+
+Typing `zzzznomatch` printed **"Nothing here matches that."** above a fully
+rendered Models panel — Providers, Profiles, Anthropic and the account buttons,
+all still on screen under a line saying there was nothing. The tab row narrowed;
+the body did not.
+
+The mechanism is one comparison. `active` falls back to the *current* category
+when nothing survives the filter, which is right for keeping a category open and
+was also what `show()` compared against:
+
+```ts
+const show = (id: CategoryId) => id === active;              // before
+const show = (id: CategoryId) => matching.length > 0 && id === active;
+```
+
+### Change password and Sign out were not "under Models"
+
+That is what it looked like, and it is not what was happening. They were
+rendered **outside every `show()` call**, so they were the last two controls of
+every category — under Backgrounds, under Automation, under the empty state —
+filed wherever the reader happened to be rather than anywhere at all.
+
+They have an **Account** category now. The password change is beside Sign out
+because it is the stronger version of it: the server bumps a generation counter
+every outstanding cookie is checked against, so it signs out every *other*
+device, which is the only revocation this install has.
+
+That last fact started as a line of prose above the two buttons, and
+`test/voice.test.ts` refused it — the explanatory-string ceiling is 45 and this
+made 46. The refusal was right. It went onto the button instead, where it is a
+name rather than an explanation: **"Change password and sign out other
+devices"**. The sheet keeps the short title, because a dialog heading names what
+is inside it. A guard that says "the app should stop explaining itself" caught
+the app explaining itself, in a commit whose whole subject was clarity.
+
+### Five search terms reached two drawers
+
+The review found two by hand. The sweep found three more, and two of those are
+a shape nobody had thought to look for.
+
+| term | reached | now |
+|---|---|---|
+| `picture` | Background, Pictures & voices | Background keeps `scenery` |
+| `api key` | Models, Connections out | Connections out takes `access token` |
+| `import` | Packs & updates, Moving in | Moving in takes `bring over` |
+| `picture` (as a **name**) | Background's word vs *Pictures & voices* | as above |
+| `background` (as a **name**) | Agents' word vs *Background* | Agents drops it |
+
+The last two are why the rule is about *terms* rather than about word lists: the
+filter matches a category's **name** as well as its words, so a word list can
+collide with something that is not a word list. A category owns the words in its
+own name.
+
+The table moved to `client/screens/settings-categories.ts` so the guard can read
+it. Importing a screen component into a test would drag the whole client tree in
+behind it; a table is a table.
+
+### The labels that were never labels
+
+Four fields on the add-a-provider form announced as "edit, blank". The visible
+text was there the whole time — a sibling `<p className="section-label">`, which
+labels nothing.
+
+A browser drive over every screen found **thirteen** such controls. A source
+sweep over the same house pattern found **forty more**, in the sheets the drive
+never opened: the script, trigger, webhook and API-key editors, narrative
+memory, the media services, the pack sheets, the preset's reasoning fields.
+That gap is the whole argument: a drive sees what somebody thought to open, and
+half this app's forms live behind a button.
+
+The sweep is `test/field-names.test.ts`, and it is a rule rather than a list: a
+`section-label` paragraph immediately followed by a control is an unambiguous
+pair, so there are no exceptions to name. A second assertion requires the two to
+be the *same expression*, because a copied label is how the visible text gets
+reworded and the announced one does not.
+
+A wider sweep over every control in `client/` was tried first and abandoned: 102
+hits, every one a false positive (a `<label>` wrapper, an `id` with a matching
+`for`, a hidden file input, a checkbox inside its own label). The rest of that
+question belongs to `scripts/rendered-guard.ts` measuring accessible names on a
+rendered page, which is phase 222 — named here so this is not mistaken for
+complete coverage.
+
+### Two more, found while driving
+
+- **Run-together names in the Models lists.** `"DeepSeekOpenAI-compatible ·
+  keyed›"` is what a screen reader read: three stacked spans and a disclosure
+  chevron, concatenated with no separator. They name themselves now —
+  `"DeepSeek, OpenAI-compatible, keyed"` — and the chevron is gone from the
+  name, since `aria-expanded` already says it. Phase 190 fixed this class in the
+  header, where the controls were icon-only; its sweep did not reach a list
+  whose buttons have text.
+- **A 404 per render.** `ModelsPanel` called `useScene(sceneId ?? "", 1)` with no
+  scene, so every render off a roleplay asked the server for
+  `/api/scenes/?limit=1` and took a 404 for it. `useScene` has had an `enabled`
+  parameter the whole time. Found in the console while driving the filter, which
+  is a panel away.
+
+### Verified
+
+Driven at 1600×950 on a fresh load: `zzzznomatch` now renders the empty line and
+nothing else; each of the five terms reaches exactly one tab; Account holds the
+two buttons and Models no longer does; and the unlabelled sweep comes back clean
+on eleven screens and sheets including the four editors the first drive never
+opened. No console errors, no 404s.
+
+2030 tests across 151 files, typecheck clean.

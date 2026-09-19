@@ -100,10 +100,17 @@ export function WebhookEditor({
         }}
       >
         <p className="section-label mb-[6px]">{strings.settings.webhookName}</p>
-        <input name="name" className="field mb-[16px]" defaultValue={webhook?.name ?? ""} required />
+        <input
+          aria-label={strings.settings.webhookName}
+          name="name"
+          className="field mb-[16px]"
+          defaultValue={webhook?.name ?? ""}
+          required
+        />
 
         <p className="section-label mb-[6px]">{strings.settings.webhookUrl}</p>
         <input
+          aria-label={strings.settings.webhookUrl}
           name="url"
           className="field font-mono text-[13px]"
           defaultValue={webhook?.url ?? ""}
@@ -128,7 +135,12 @@ export function WebhookEditor({
         {webhook === null ? (
           <>
             <p className="section-label mt-[18px] mb-[6px]">{strings.settings.webhookScope}</p>
-            <select name="sceneId" className="field mb-[16px]" defaultValue="">
+            <select
+              aria-label={strings.settings.webhookScope}
+              name="sceneId"
+              className="field mb-[16px]"
+              defaultValue=""
+            >
               <option value="">{strings.settings.webhookAllScenes}</option>
               {scenes.map((scene) => (
                 <option key={scene.id} value={scene.id}>

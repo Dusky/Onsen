@@ -129,6 +129,9 @@ export const strings = {
     allTags: "Every tag",
     tagsLabel: "Tags",
     folderLabel: "Folder",
+    /** The order a list is in. A `<select>` whose first option is its own
+     *  label announces as "edit, blank" without this (§20 phase 226). */
+    sortLabel: "Sort by",
     tagAdd: "Add a tag",
     noFolder: "No folder",
     more: "Show more",
@@ -625,8 +628,16 @@ export const strings = {
     railClose: "Close the rail",
     /* There was no way out of a signed-in install until now. */
     signOut: "Sign out",
-    /* And no way to revoke a cookie somebody else was holding. */
+    /* And no way to revoke a cookie somebody else was holding.
+       Two strings for one action, which is a title and a label rather than a
+       duplicate: the sheet is named for what it changes, and the button in
+       Account is named for what it *does to other devices* — the half a reader
+       cannot guess and the half they came to Account for (§20 phase 226).
+       It began as a paragraph above the two buttons and `test/voice.test.ts`
+       refused it, correctly: that was exactly the prose the voice pass exists
+       to stop, and a name carries it without explaining anything. */
     changePassword: "Change password",
+    changePasswordAction: "Change password and sign out other devices",
     currentPassword: "Current password",
     newPassword: "New password",
     changePasswordGo: "Change it",
@@ -646,6 +657,7 @@ export const strings = {
       outward: "Connections out",
       packs: "Packs & updates",
       migrate: "Moving in",
+      account: "Account",
     } as Record<string, string>,
     categoryEmpty: "Nothing here matches that.",
 
@@ -1340,6 +1352,10 @@ export const strings = {
     providerOverrideNote: (name: string) =>
       `This scene overrides its endpoint to ${name} (set before profiles carried the model).`,
     providerOverrideClear: "Use the profile's",
+    /** A provider that has an API key stored. Was a bare literal in the row
+     *  and is a string now, because §20 phase 226 puts it in an accessible
+     *  name as well as on screen and the two must be one word. */
+    keyed: "keyed",
     /** What the scene being read is talking to, and how to point it elsewhere. */
     inUse: "This roleplay",
     switchTo: "Point it at",

@@ -251,6 +251,7 @@ export function ProviderFields({
         <input
           ref={nameRef}
           name="name"
+          aria-label={strings.settings.providerName}
           className="field mb-[14px]"
           defaultValue={provider?.name ?? ""}
           required
@@ -259,7 +260,12 @@ export function ProviderFields({
         {provider === null ? (
           <>
             <p className="section-label mb-[6px]">{strings.settings.providerKind}</p>
-            <select ref={kindRef} name="kind" className="field mb-[14px]">
+            <select
+              ref={kindRef}
+              name="kind"
+              aria-label={strings.settings.providerKind}
+              className="field mb-[14px]"
+            >
               {PROVIDER_KINDS.map((kind) => (
                 <option key={kind} value={kind}>
                   {kindLabel(kind)}
@@ -273,13 +279,20 @@ export function ProviderFields({
         <input
           ref={baseUrlRef}
           name="baseUrl"
+          aria-label={strings.settings.providerBaseUrl}
           className="field mb-[14px]"
           placeholder="http://localhost:8080/v1"
           defaultValue={provider?.baseUrl ?? ""}
         />
 
         <p className="section-label mb-[6px]">{strings.settings.providerKey}</p>
-        <input name="apiKey" type="password" className="field" autoComplete="off" />
+        <input
+          name="apiKey"
+          type="password"
+          aria-label={strings.settings.providerKey}
+          className="field"
+          autoComplete="off"
+        />
         <p className="explain mt-[6px] mb-[14px]">
           {provider === null
             ? strings.settings.providerKeyNone
@@ -472,10 +485,21 @@ export function ProfileFields({
         }}
       >
         <p className="section-label mb-[6px]">{strings.settings.profileName}</p>
-        <input name="name" className="field mb-[14px]" defaultValue={profile?.name ?? ""} required />
+        <input
+          name="name"
+          aria-label={strings.settings.profileName}
+          className="field mb-[14px]"
+          defaultValue={profile?.name ?? ""}
+          required
+        />
 
         <p className="section-label mb-[6px]">{strings.settings.providers}</p>
-        <select name="providerId" className="field mb-[14px]" defaultValue={profile?.providerId ?? ""}>
+        <select
+          name="providerId"
+          aria-label={strings.settings.providers}
+          className="field mb-[14px]"
+          defaultValue={profile?.providerId ?? ""}
+        >
           {providers.map((provider) => (
             <option key={provider.id} value={provider.id}>
               {provider.name}
@@ -489,6 +513,7 @@ export function ProfileFields({
         <p className="section-label mb-[6px]">{strings.settings.preset}</p>
         <select
           name="presetId"
+          aria-label={strings.settings.preset}
           className="field mb-[14px]"
           defaultValue={profile?.presetId ?? ""}
         >
@@ -514,6 +539,7 @@ export function ProfileFields({
             <input
               ref={modelRef}
               name="model"
+              aria-label={strings.settings.providerModel}
               className="field min-w-0 flex-1"
               defaultValue={profile?.model ?? ""}
               onChange={(event) => setChosenModel(event.target.value)}
