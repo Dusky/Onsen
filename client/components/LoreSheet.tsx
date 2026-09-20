@@ -103,7 +103,7 @@ export function LoreSheet({
                 type="button"
                 onClick={() => onDetach(book.id, own.id)}
                 className="chrome flex-none text-ui"
-                style={{ color: "var(--onsen-color-red)" }}
+                style={{ color: "var(--onsen-color-red-text)" }}
               >
                 {strings.lore.detach}
               </button>

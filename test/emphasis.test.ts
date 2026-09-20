@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { emphasis, isPlain } from "../client/lib/emphasis.ts";
+import { emphasis, isPlain, plainText } from "../client/lib/emphasis.ts";
 
 /**
  * Bold and italics in the reading surface (§20 phase 161).
@@ -104,6 +104,67 @@ describe("emphasis", () => {
   test("text with no asterisk is known to be plain without scanning it", () => {
     expect(isPlain("She looked up.")).toBe(true);
     expect(isPlain("She *looked up*.")).toBe(false);
+    expect(isPlain('She said "hi."')).toBe(false);
+  });
+
+  test("quoted dialogue renders italic, quotes included", () => {
+    expect(emphasis('"Hello."')).toEqual([{ kind: "dialogue", text: '"Hello."' }]);
+    expect(emphasis('She said "Hello." and left.')).toEqual([
+      { kind: "text", text: "She said " },
+      { kind: "dialogue", text: '"Hello."' },
+      { kind: "text", text: " and left." },
+    ]);
+  });
+
+  test("marks inside speech are marks, not asterisks on screen", () => {
+    /*
+     * Phase 217 made a quoted run one terminal span, and phase 221 undid that
+     * for what is *inside* it. The reason the trade differs: the asterisk pairs
+     * flatten what is nested in them because a `**` is a mark somebody chose to
+     * write and the rare nested one is not worth resolving. A quote is not a
+     * mark — it is punctuation, in nearly every line of dialogue the app
+     * renders — so applying the same trade put `**has**` on screen verbatim, in
+     * the middle of the prose, in the reader's own live scene.
+     */
+    const spans = emphasis('"…road **has** a name."');
+    expect(spans).toHaveLength(1);
+    expect(spans[0]!.kind).toBe("dialogue");
+    expect(spans[0]!.children?.map((child) => `${child.kind}:${child.text}`)).toEqual([
+      'text:"',
+      "text:…road ",
+      "strong:has",
+      "text: a name.",
+      'text:"',
+    ]);
+  });
+
+  test("speech with nothing in it keeps the shape it always had", () => {
+    // The common case by a distance, and it carries no children at all: one
+    // span, nothing for the renderer to walk.
+    expect(emphasis('"Hello."')).toEqual([{ kind: "dialogue", text: '"Hello."' }]);
+    expect(emphasis('"Hello."')[0]!.children).toBeUndefined();
+  });
+
+  test("the round-trip is exact whether or not speech carries marks", () => {
+    // `text` still holds the whole run, quotes included, so `segments.ts`'s
+    // "never lose text" invariant is untouched — which is what a recast splice
+    // depends on, since its offsets address the canonical string.
+    for (const text of [
+      '"…road **has** a name."',
+      'He said "it is *fine*" and left.',
+      '"a *b* c" then "d **e** f"',
+      '"<b>shouted</b>"',
+      '"nothing in here"',
+    ]) {
+      expect({ text, out: emphasis(text).map((span) => span.text).join("") }).toEqual({
+        text,
+        out: text,
+      });
+    }
+  });
+
+  test("an unclosed quote is literal, never swallowed", () => {
+    expect(emphasis('She said "Hello.')).toEqual([{ kind: "text", text: 'She said "Hello.' }]);
   });
 
   test("coloured dialogue renders as a coloured span", () => {
@@ -191,8 +252,21 @@ describe("where it is used", () => {
   const LOG = readFileSync(join(ROOT, "client", "screens", "chat", "MessageLog.tsx"), "utf8");
 
   test("a finished turn and the streaming tail share one renderer", () => {
-    expect(BLOCK).toContain("<Emphasis text={paragraph} />");
-    expect(LOG).toContain("<Emphasis text={active.text} />");
+    /*
+     * The spelling of the tail's call changed in §20 phase 223, when it gained
+     * the `Name:` strip, so this asserts the relationship rather than the
+     * literal: both surfaces render prose through `Emphasis`, and the tail's
+     * text is still derived from `active.text` rather than from some second
+     * path. A guard pinned to the exact JSX fails on formatting and says
+     * nothing about the property it is named for.
+     */
+    expect(BLOCK).toContain("<Emphasis text={paragraph} colour={colour} />");
+    expect(LOG).toContain("<Emphasis");
+    expect(LOG).toContain("active.text");
+    // Two uses in the log, both accounted for: the streaming tail and phase
+    // 213's conversation bubble. Neither renders prose any other way, which is
+    // the property — a third would be a renderer free to drift from these.
+    expect(LOG.match(/<Emphasis/g)?.length).toBe(2);
   });
 
   test("it builds elements, never an HTML string", () => {
@@ -234,5 +308,82 @@ describe("where it is used", () => {
     // emphasis runs inside each paragraph and changes neither.
     expect(BLOCK).toContain("text.split(/\\n{2,}/)");
     expect(BLOCK).toContain("whitespace-pre-wrap");
+  });
+});
+
+
+/**
+ * The same prose with its marks taken off (§20 phase 229).
+ *
+ * The right rail's "just spoke" card was the one place in the app that showed
+ * raw markup: `**Elira Voss:** took two keys off the board…`, six inches from
+ * a transcript rendering the same content with a coloured label and no
+ * asterisks. `plainText` is the fix, and it is built on the tokenizer rather
+ * than on a regex of its own so there is one set of rules about what a mark
+ * is.
+ */
+describe("prose with its marks taken off", () => {
+  const ROOT = join(import.meta.dir, "..");
+
+  test("the marks come off and the words stay", () => {
+    expect(plainText("**Elira Voss:** took two keys, *quietly*"))
+      .toBe("Elira Voss: took two keys, quietly");
+  });
+
+  /**
+   * The case the obvious implementation gets wrong.
+   *
+   * A `dialogue` span's `text` holds the whole run *including* the marks
+   * inside it — deliberately, and `emphasis.ts` documents why — so
+   * `spans.map((s) => s.text).join("")` gives back `that road **has** a name.`
+   * with its asterisks intact. It looks right, it passes the test above, and
+   * it is wrong. `plainText` has to recurse into `children`.
+   */
+  test("marks inside a line of speech come off too", () => {
+    const flat = plainText('and said "that road **has** a name."');
+    expect(flat).toBe('and said "that road has a name."');
+    expect(flat).not.toContain("*");
+  });
+
+  test("a coloured run keeps its words and loses its tag", () => {
+    // The speaker's colour is chrome a 90-character card has no room for; the
+    // words are the point. The tokenizer has already flattened the run, so
+    // this is asserting that nothing puts the markup back.
+    const flat = plainText('<span style="color:#f00"><b>bold</b> *and*</span> quiet');
+    expect(flat).toBe("bold and quiet");
+  });
+
+  test("plain prose is returned unchanged", () => {
+    const plain = "She took two keys off the board behind her.";
+    expect(plainText(plain)).toBe(plain);
+  });
+
+  /**
+   * The governing invariant of this file, one layer on: never lose text.
+   *
+   * An unmatched marker is literal, so stripping cannot silently eat it — the
+   * card would show a shorter sentence than the turn and the reader could not
+   * tell.
+   */
+  test("an unmatched marker survives as itself", () => {
+    expect(plainText("two keys * and a ring")).toBe("two keys * and a ring");
+  });
+
+  /**
+   * The cast card goes through it rather than growing its own rules.
+   *
+   * Structural, because the card is a component and this project runs no DOM
+   * tests. What it pins is the thing that regresses: somebody adds a third
+   * place that shows a line of a turn, strips asterisks with a regex of its
+   * own, and the two surfaces disagree about what a mark is within a phase.
+   */
+  test("the cast card cuts the flattened text, not the raw text", () => {
+    const rail = readFileSync(join(ROOT, "client", "components", "CastRail.tsx"), "utf8");
+    expect(rail).toContain("plainText");
+    // Flattened *before* the cut, so the 90-character limit counts characters
+    // a reader sees rather than ones the model wrote.
+    expect(rail).toMatch(/plainText\(text\)\.replace/);
+    // And no second set of markup rules beside it.
+    expect(rail.replace(/\/\*[\s\S]*?\*\//g, "")).not.toMatch(/replace\(\/\\\*/);
   });
 });

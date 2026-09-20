@@ -124,6 +124,8 @@ export interface SceneRow {
   autopilot_max_turns: number;
   /** Visual novel staging, sprites above the log (SPEC §12). */
   vn_mode_enabled: number;
+  /** Messaging-client rendering of the same tree (§20 phase 213). */
+  conversation_mode: number;
   /** A scene background, when one is set (SPEC §12). */
   background_path: string | null;
   /** Whether an OOC aside renders inline in the log, or only in the channel (§7). */
@@ -204,17 +206,21 @@ const MAX_DEPTH = 100_000;
 export interface SpeakerLookup {
   ulidById: Map<number, string>;
   nameById: Map<number, string>;
+  /** Whether each character has a portrait, so the log can skip the request. */
+  hasAvatarById: Map<number, boolean>;
 }
 
 export function speakerLookup(db: Database): SpeakerLookup {
-  const rows = db.query("SELECT id, ulid, name FROM characters").all() as {
+  const rows = db.query("SELECT id, ulid, name, avatar_path FROM characters").all() as {
     id: number;
     ulid: string;
     name: string;
+    avatar_path: string | null;
   }[];
   return {
     ulidById: new Map(rows.map((row) => [row.id, row.ulid])),
     nameById: new Map(rows.map((row) => [row.id, row.name])),
+    hasAvatarById: new Map(rows.map((row) => [row.id, row.avatar_path !== null])),
   };
 }
 
@@ -265,6 +271,9 @@ export function toMessageDto(
     // Resolved here so the log does not need the character list to render.
     speakerName:
       row.character_id === null ? null : (speakers?.nameById.get(row.character_id) ?? null),
+    // A character with no portrait has no URL worth requesting (§20 phase 200).
+    hasAvatar:
+      row.character_id === null ? false : (speakers?.hasAvatarById.get(row.character_id) ?? false),
     content: row.content,
     reasoning: row.reasoning,
     isHidden: row.is_hidden === 1,
@@ -355,6 +364,7 @@ function toSceneDto(
     autopilotEnabled: row.autopilot_enabled === 1,
     autopilotMaxTurns: row.autopilot_max_turns,
     vnModeEnabled: row.vn_mode_enabled === 1,
+    conversationMode: row.conversation_mode === 1,
     hasBackground: row.background_path !== null,
     oocInline: row.ooc_inline === 1,
     apiEnabled: row.api_enabled === 1,
@@ -615,6 +625,15 @@ export function updateScene(
     isFavourite?: boolean;
     /** Display-only translation's target language (§20 phase 78). */
     translateTo?: string | null;
+    /**
+     * This scene's own framing, in place of the card's (§2). Null puts the
+     * card's scenario back.
+     *
+     * Here since §20 phase 219, which found the agent's `update_scene` offering
+     * it and this function quietly dropping it — the patch type had no such
+     * key, so the tool reported success on a column it never wrote.
+     */
+    scenarioOverride?: string | null;
   },
 ): SceneRow {
   const current = findSceneById(db, id);
@@ -636,6 +655,7 @@ export function updateScene(
               folder = $folder,
               is_favourite = $favourite,
               translate_to = $translate_to,
+              scenario_override = $scenario_override,
               updated_at = $now
         WHERE id = $id
         RETURNING *`,
@@ -651,6 +671,7 @@ export function updateScene(
       folder: keep(patch.folder, current.folder),
       favourite: (patch.isFavourite ?? current.is_favourite === 1) ? 1 : 0,
       translate_to: keep(patch.translateTo, current.translate_to),
+      scenario_override: keep(patch.scenarioOverride, current.scenario_override),
       now: Date.now(),
     }) as SceneRow;
 }
@@ -1167,7 +1188,8 @@ function ulidOf(db: Database, table: "presets" | "connection_profiles" | "messag
 function castOf(db: Database, sceneId: number): SceneMemberDto[] {
   const rows = db
     .query(
-      `SELECT c.ulid, c.name, c.avatar_path, c.colour, m.display_order, m.is_active, m.is_muted
+      `SELECT c.ulid, c.name, c.avatar_path, c.colour, c.description, c.personality,
+              m.display_order, m.is_active, m.is_muted
          FROM scene_members m JOIN characters c ON c.id = m.character_id
         WHERE m.scene_id = $scene_id
         ORDER BY m.display_order, m.id`,
@@ -1177,6 +1199,8 @@ function castOf(db: Database, sceneId: number): SceneMemberDto[] {
     name: string;
     avatar_path: string | null;
     colour: string | null;
+    description: string | null;
+    personality: string | null;
     display_order: number;
     is_active: number;
     is_muted: number;
@@ -1185,6 +1209,8 @@ function castOf(db: Database, sceneId: number): SceneMemberDto[] {
     characterId: row.ulid,
     name: row.name,
     hasAvatar: row.avatar_path !== null,
+    hasDescription: (row.description ?? "").trim() !== "",
+    hasPersonality: (row.personality ?? "").trim() !== "",
     colour: row.colour,
     displayOrder: row.display_order,
     isActive: row.is_active === 1,

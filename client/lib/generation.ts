@@ -3,6 +3,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { api, ApiRequestError } from "./api.ts";
 import { keys } from "./queries.ts";
 import { useGenerationStore } from "../state/generation.ts";
+import type { ThinTurn } from "@shared/types.ts";
+import { notify } from "../state/notices.ts";
+import { strings } from "../strings.ts";
 import { chimeIfWanted } from "./chime.ts";
 import type { BeatBound, ReviseMode, TurnScope } from "@shared/types.ts";
 
@@ -50,6 +53,11 @@ interface StartArgs {
 
 interface ServerEvent {
   type: "director" | "chunk" | "reasoning" | "done" | "cancelled" | "error";
+  /**
+   * `done` only: why the turn came back with little or no story in it
+   * (§20 phase 224). Null on an ordinary turn.
+   */
+  thin?: ThinTurn | null;
   offset?: number;
   text?: string;
   message?: string;
@@ -145,12 +153,33 @@ export function useGeneration() {
                   generationId,
                   event.type === "done" ? "done" : event.type,
                   event.message ?? null,
+                  event.detail ?? null,
                 );
                 // §5's completion chime, for a turn that finished while the
                 // reader was somewhere else. On the scene they are watching the
                 // prose arriving is the notification, and a sound over it would
                 // be the app talking during the story.
                 if (event.type === "done" && document.hidden) chimeIfWanted();
+                /*
+                 * A turn that produced nothing, or nearly nothing, says so
+                 * (§20 phase 224).
+                 *
+                 * The silence this replaces was the worst kind: the reader's
+                 * own message sitting there, Stop gone, no turn, no error and
+                 * nothing in any log — so the only available move was to send
+                 * again and pay for it. Not an error notice, because the
+                 * provider did what it was asked; the ask was wrong, and the
+                 * sentence names the setting that fixes it.
+                 */
+                if (event.type === "done" && event.thin != null) {
+                  const thin = event.thin;
+                  notify(
+                    "failed",
+                    thin.kind === "empty"
+                      ? strings.chat.thinTurnEmpty(thin.reasoningChars, thin.reserved)
+                      : strings.chat.thinTurnStub(thin.proseChars, thin.reasoningChars),
+                  );
+                }
                 // Invalidate here, on the terminal event itself, not after the
                 // stream loop exits: the message has landed in the tree, and
                 // the refetch must not wait on a reader that a proxy or a
@@ -251,7 +280,14 @@ export function useGeneration() {
   const cancel = useCallback(async () => {
     const active = useGenerationStore.getState().active;
     if (active === null) return;
-    await api.post(`/generations/${active.generationId}/cancel`);
+    const snapshot = await api.post<{ buffer: string }>(
+      `/generations/${active.generationId}/cancel`,
+    );
+    // Cancel keeps whatever was produced (§5.6), and the partial lands as the
+    // scene's last turn. The button says only "Stop", so this says the rest: a
+    // reader who stopped a turn that was going wrong knows the fragment is now
+    // in the story and can delete or reroll it through the turn's own controls.
+    if (snapshot.buffer.trim() !== "") notify("done", strings.chat.stoppedKept);
   }, []);
 
   /**

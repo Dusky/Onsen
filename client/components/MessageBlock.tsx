@@ -8,7 +8,7 @@ import type {
   MessageSegmentDto,
   TurnStyle,
 } from "@shared/types.ts";
-import { emphasis, isPlain } from "../lib/emphasis.ts";
+import { emphasis, isPlain, type Span } from "../lib/emphasis.ts";
 import { useSwipe } from "../lib/gestures.ts";
 import { strings } from "../strings.ts";
 import { MessageMedia } from "./MessageMedia.tsx";
@@ -141,7 +141,7 @@ export function Reasoning({ text }: { text: string }) {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="chrome flex min-h-[28px] w-full items-center gap-[8px] text-left text-[12px] text-ink-dim"
+        className="chrome tap flex w-full items-center gap-[8px] py-[5px] text-left text-[12px] text-ink-dim"
       >
         <span aria-hidden>{open ? "⌃" : "⌄"}</span>
         {strings.chat.reasoning(trimmed.length)}
@@ -175,7 +175,7 @@ export function Direction({ text }: { text: string }) {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="chrome flex min-h-[28px] w-full items-center gap-[8px] text-left text-[12px] text-ink-dim"
+        className="chrome tap flex w-full items-center gap-[8px] py-[5px] text-left text-[12px] text-ink-dim"
       >
         <span aria-hidden>{open ? "⌃" : "⌄"}</span>
         {strings.chat.directionNote(trimmed.length)}
@@ -202,35 +202,57 @@ export function Direction({ text }: { text: string }) {
  * the same prose while it is still arriving, and text that reflowed the
  * instant a turn finished would be worse than text that never formatted.
  */
-export function Emphasis({ text }: { text: string }) {
+export function Emphasis({ text, colour = null }: { text: string; colour?: string | null }) {
   if (isPlain(text)) return <>{text}</>;
-  return (
-    <>
-      {emphasis(text).map((span, index) => {
-        if (span.kind === "strong") {
-          return (
-            <strong key={index} className="font-semibold">
-              {span.text}
-            </strong>
-          );
-        }
-        if (span.kind === "em") {
-          return <em key={index}>{span.text}</em>;
-        }
-        if (span.kind === "underline") {
-          return <u key={index}>{span.text}</u>;
-        }
-        if (span.kind === "colour") {
-          return (
-            <span key={index} style={{ color: span.colour }}>
-              {span.text}
-            </span>
-          );
-        }
-        return <Fragment key={index}>{span.text}</Fragment>;
-      })}
-    </>
-  );
+  return <>{renderSpans(emphasis(text), colour)}</>;
+}
+
+/**
+ * One span list to elements, used for a paragraph and again for what is inside
+ * a quoted run (§20 phase 221).
+ *
+ * Recursive for exactly one kind. `dialogue` is the only span that carries
+ * children, because it is the only one whose delimiter — a quote — is ordinary
+ * punctuation rather than a mark somebody chose to write. The asterisk pairs
+ * still flatten what is nested in them, which is the trade the header explains
+ * and which phase 217 wrongly extended to speech, so `"…road **has** a name."`
+ * put its asterisks on screen.
+ */
+function renderSpans(spans: Span[], colour: string | null): ReactNode[] {
+  return spans.map((span, index) => {
+    if (span.kind === "strong") {
+      return (
+        <strong key={index} className="font-semibold">
+          {span.text}
+        </strong>
+      );
+    }
+    if (span.kind === "em") {
+      return <em key={index}>{span.text}</em>;
+    }
+    // Spoken words are italic *and* take the speaker's colour — the same
+    // colour the name and spine carry, so the voice is found the same way
+    // wherever it is. The model never supplies this colour: it is a fact
+    // the client already knows, applied to the quoted runs deterministically.
+    if (span.kind === "dialogue") {
+      return (
+        <em key={index} style={colour === null ? undefined : { color: colour }}>
+          {span.children === undefined ? span.text : renderSpans(span.children, colour)}
+        </em>
+      );
+    }
+    if (span.kind === "underline") {
+      return <u key={index}>{span.text}</u>;
+    }
+    if (span.kind === "colour") {
+      return (
+        <span key={index} style={{ color: span.colour }}>
+          {span.text}
+        </span>
+      );
+    }
+    return <Fragment key={index}>{span.text}</Fragment>;
+  });
 }
 
 /**
@@ -244,14 +266,26 @@ export function Emphasis({ text }: { text: string }) {
  * including its markup, and a recast splice stays correct only while that is
  * true.
  */
-function Prose({ text, lead }: { text: string; lead?: ReactNode }) {
+function Prose({
+  text,
+  lead,
+  colour = null,
+}: {
+  text: string;
+  lead?: ReactNode;
+  /** The speaker's colour, for the quoted dialogue inside this prose. */
+  colour?: string | null;
+}) {
   const paragraphs = text.split(/\n{2,}/).filter((paragraph) => paragraph.trim() !== "");
   // A run-in head with nothing after it yet — the first frame of a streamed
   // turn, or a part of a beat that has only been announced. The name still
   // belongs on screen: without this the speaker appears a character late.
   if (paragraphs.length === 0) {
     return lead === undefined ? null : (
-      <p className="mt-0 text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)]">
+      <p
+        data-prose
+        className="mt-0 text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)]"
+      >
         {lead}
       </p>
     );
@@ -261,10 +295,11 @@ function Prose({ text, lead }: { text: string; lead?: ReactNode }) {
       {paragraphs.map((paragraph, index) => (
         <p
           key={index}
-          className="mt-[9px] first:mt-0 text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)] whitespace-pre-wrap"
+          data-prose
+          className="mt-[14px] first:mt-0 text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)] whitespace-pre-wrap"
         >
           {index === 0 ? lead : null}
-          <Emphasis text={paragraph} />
+          <Emphasis text={paragraph} colour={colour} />
         </p>
       ))}
     </>
@@ -366,6 +401,7 @@ function Segment({
       )}
       <Prose
         text={replacement ?? segment.content}
+        colour={colour ?? null}
         {...(runin === true && segment.speakerName !== null
           ? {
               lead: (
@@ -404,7 +440,7 @@ function Annotation({
     <p
       className="chrome mt-[7px] flex gap-[7px] text-ui leading-[1.55]"
       style={{
-        color: flagged ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)",
+        color: flagged ? "var(--onsen-color-red-text)" : "var(--onsen-color-text-dim)",
         opacity: annotation.status === "ok" ? 0.7 : 1,
       }}
     >
@@ -605,9 +641,15 @@ function Avatar({
   personaId: string | null;
 }) {
   const [open, setOpen] = useState(false);
+  // A character with no portrait has no URL worth requesting; the initial
+  // letter is the whole thing (§20 phase 200). The reader's own picture is
+  // gated by the layout toggle and `personaId`, not by this flag, so it keeps
+  // the URL it always had.
   const url =
     message.characterId !== null
-      ? `/api/characters/${message.characterId}/avatar`
+      ? message.hasAvatar
+        ? `/api/characters/${message.characterId}/avatar`
+        : null
       : personaId === null
         ? null
         : `/api/personas/${personaId}/avatar`;
@@ -959,7 +1001,10 @@ export function MessageBlock({
             message: a beat's parts already name their own speakers, and a
             second name at the top would be saying it twice. */}
         {attribution === "inline" && segments === null ? (
-          <p className="mt-0 text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)] whitespace-pre-wrap">
+          <p
+            data-prose
+            className="mt-0 text-[length:var(--onsen-text-prose)] leading-[var(--onsen-leading-prose)] whitespace-pre-wrap"
+          >
             <span
               className="chrome text-ui-loose font-semibold"
               style={{
@@ -973,7 +1018,7 @@ export function MessageBlock({
             <span className="chrome text-ui-loose text-ink-dim"> &middot; </span>
             {text}
             {streamingText === undefined ? null : (
-              <span aria-hidden="true" style={{ color: "var(--onsen-color-amber)" }}>{"\u258c"}</span>
+              <span aria-hidden="true" style={{ color: "var(--onsen-color-amber-text)" }}>{"\u258c"}</span>
             )}
           </p>
         ) : segments === null ? (
@@ -983,6 +1028,7 @@ export function MessageBlock({
                 message header says only that the author wrote it. */}
             <Prose
               text={text}
+              colour={isUser ? null : (speakerColour ?? null)}
               {...(attribution === "runin"
                 ? {
                     lead: (
@@ -992,7 +1038,7 @@ export function MessageBlock({
                 : {})}
             />
             {streamingText === undefined ? null : (
-              <span aria-hidden="true" style={{ color: "var(--onsen-color-amber)" }}>{"\u258c"}</span>
+              <span aria-hidden="true" style={{ color: "var(--onsen-color-amber-text)" }}>{"\u258c"}</span>
             )}
           </>
         ) : (

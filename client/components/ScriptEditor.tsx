@@ -81,10 +81,17 @@ export function ScriptEditor({
         }}
       >
         <p className="section-label mb-[6px]">{strings.settings.scriptName}</p>
-        <input name="name" className="field mb-[16px]" defaultValue={script?.name ?? ""} required />
+        <input
+          aria-label={strings.settings.scriptName}
+          name="name"
+          className="field mb-[16px]"
+          defaultValue={script?.name ?? ""}
+          required
+        />
 
         <p className="section-label mb-[6px]">{strings.settings.scriptStage}</p>
         <select
+          aria-label={strings.settings.scriptStage}
           className="field"
           value={stage}
           onChange={(event) => setStage(event.target.value as ApplyStage)}
@@ -103,6 +110,7 @@ export function ScriptEditor({
           <>
             <p className="section-label mb-[6px]">{strings.settings.scriptScope}</p>
             <select
+              aria-label={strings.settings.scriptScope}
               className="field mb-[10px]"
               value={scope}
               onChange={(event) => setScope(event.target.value as ScriptScope)}
@@ -136,6 +144,7 @@ export function ScriptEditor({
 
         <p className="section-label mb-[6px]">{strings.settings.scriptPattern}</p>
         <input
+          aria-label={strings.settings.scriptPattern}
           className="field font-mono text-[13px]"
           value={pattern}
           onChange={(event) => setPattern(event.target.value)}
@@ -148,6 +157,7 @@ export function ScriptEditor({
 
         <p className="section-label mb-[6px]">{strings.settings.scriptReplacement}</p>
         <input
+          aria-label={strings.settings.scriptReplacement}
           className="field font-mono text-[13px]"
           value={replacement}
           onChange={(event) => setReplacement(event.target.value)}
@@ -159,6 +169,7 @@ export function ScriptEditor({
 
         <p className="section-label mb-[6px]">{strings.settings.scriptFlags}</p>
         <input
+          aria-label={strings.settings.scriptFlags}
           className="field font-mono text-[13px]"
           value={flags}
           onChange={(event) => setFlags(event.target.value)}

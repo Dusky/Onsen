@@ -425,7 +425,7 @@ export function ChatSheets({
                   type="button"
                   aria-label={strings.common.delete}
                   className="chrome flex-none py-[12px] text-[13px]"
-                  style={{ color: "var(--onsen-color-red)" }}
+                  style={{ color: "var(--onsen-color-red-text)" }}
                   onClick={() =>
                     confirm(
                       strings.chat.deleteVersionConfirm,

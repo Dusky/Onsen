@@ -354,6 +354,31 @@
     cursor: default;
   }
 
+  /*
+   * A `.btn` in a dense rail: 32px under a pointer, the floor under a thumb
+   * (§20 phase 229).
+   *
+   * The cast rail's scope and autopilot buttons carried `minHeight: "32px"`
+   * inline, which reads as density and is in fact a floor override: an inline
+   * style beats `.btn`'s own `min-height: var(--onsen-tap-target)` on every
+   * device, so the one control the phone puts on its cast strip was 32px under
+   * a thumb. The same shape as the four rectangles phase 222 deleted — a rule
+   * that answers a different question than the one it looks like it answers.
+   *
+   * Written the way `.row`, `.turn-actions` and `.tap` are: the floor is what
+   * you get by default and a fine pointer relaxes it, so a device that reports
+   * nothing gets the safe answer.
+   */
+  .btn-dense {
+    padding: 0 8px;
+  }
+
+  @media (pointer: fine) {
+    .btn-dense {
+      min-height: 32px;
+    }
+  }
+
   /* Primary actions are interactive, not destructive: the blue pencil. #fdf6ef
      fails 4.5:1 on this blue, so this uses the dark ink the send button
      already answers with. */

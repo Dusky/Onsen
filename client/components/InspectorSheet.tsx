@@ -59,7 +59,7 @@ export function InspectorSheet({
       {debug.headroom <= 0 ? (
         <p
           className="chrome mt-[6px] text-ui leading-[1.5]"
-          style={{ color: "var(--onsen-color-red)" }}
+          style={{ color: "var(--onsen-color-red-text)" }}
         >
           {strings.chat.inspectorNoHeadroom}
         </p>
@@ -130,7 +130,7 @@ export function InspectorSheet({
               </span>
               <span
                 className="chrome flex-none text-ui"
-                style={{ color: "var(--onsen-color-red)" }}
+                style={{ color: "var(--onsen-color-red-text)" }}
               >
                 {strings.chat.inspectorEviction[item.reason]}
               </span>

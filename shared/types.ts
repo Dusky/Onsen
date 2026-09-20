@@ -608,6 +608,35 @@ export interface AnnotationDto {
 /** Why a completion stopped, normalised across providers (SPEC §4). */
 export type FinishReasonName = "stop" | "length" | "tool_calls" | "content_filter" | "other";
 
+/**
+ * Why a turn came back with little or no story in it (§20 phase 224).
+ *
+ * A reasoning model's thinking is billed against the same `max_tokens` the
+ * prompt builder reserved for the reply (phase 196 sends that cap, correctly),
+ * so a budget spent thinking is a budget not spent writing. Measured against
+ * `deepseek-flash`: one turn landed **77 characters of prose after 4075
+ * characters of reasoning**, and two turns landed nothing at all — the reader's
+ * own message sitting there, Stop gone, no message, no error, no log line.
+ *
+ * The service has every number needed to explain that and said none of them.
+ * This is that explanation, carried on the turn's own `done` event so the
+ * client can say it without a second request.
+ *
+ * Null on an ordinary turn, which is the overwhelming majority: a non-reasoning
+ * model never produces one of these, and a reasoning model given room does not
+ * either.
+ */
+export interface ThinTurn {
+  /** Nothing landed at all, or prose far shorter than the room it was given. */
+  kind: "empty" | "stub";
+  /** Characters of reasoning this turn produced. */
+  reasoningChars: number;
+  /** Characters of prose that reached the story. Zero when `kind` is empty. */
+  proseChars: number;
+  /** The token budget the prompt reserved for the reply. */
+  reserved: number;
+}
+
 export interface GenerationMeta {
   provider: string;
   model: string;
@@ -661,6 +690,12 @@ export interface MessageDto {
   characterId: string | null;
   /** Resolved for display, so the log does not need the character list. */
   speakerName: string | null;
+  /**
+   * Whether the speaking character has a portrait to request. False for turns
+   * with no character (user, narration, asides): their picture, where one is
+   * drawn, is gated by the reader/author layout toggles, not by this flag.
+   */
+  hasAvatar: boolean;
   content: string;
   /**
    * The display-only translation of this turn, when the scene has a target
@@ -1003,11 +1038,51 @@ export interface AgentMessageDto {
   createdAt: number;
 }
 
+/**
+ * Every change the agent can record, and therefore every change the restore
+ * half has to know how to walk back (§20 phase 219).
+ *
+ * Shared rather than server-only because the client names each one in words —
+ * `lore_entry.created` is a storage detail and never belongs on screen — and a
+ * kind added here without words in `client/strings.ts` does not compile.
+ *
+ * A bare noun is an overwrite, so its undo puts the old state back. `.created`
+ * is the absence before a create, so its undo is a delete. `.deleted` is the
+ * state before a delete, so its undo is a re-create. `.added`/`.removed` are
+ * memberships, which undo by the opposite call.
+ */
+export const UNDO_KINDS = [
+  "character",
+  "character.deleted",
+  "scene.created",
+  "scene",
+  "scene.note",
+  "lorebook.created",
+  "lore_entry.created",
+  "lore_entry",
+  "lore_entry.deleted",
+  "persona.created",
+  "persona",
+  "author",
+  "theme.created",
+  "theme",
+  "theme.active",
+  "cast.added",
+  "cast.removed",
+  "group.created",
+  "group.added",
+  "group.removed",
+] as const;
+
+export type UndoKind = (typeof UNDO_KINDS)[number];
+
 /** A change the agent made, and what the thing looked like before it. */
 export interface AgentUndoDto {
   id: string;
-  kind: string;
+  kind: UndoKind;
   subjectId: string;
+  /** The thing's name, so the list reads without a lookup. */
+  label: string;
   at: number;
 }
 
@@ -1498,6 +1573,8 @@ export interface SceneDto {
   autopilotMaxTurns: number;
   /** Visual novel staging, sprites above the log (SPEC §12). */
   vnModeEnabled: boolean;
+  /** Messaging-client rendering of the same tree (§20 phase 213). */
+  conversationMode: boolean;
   /** Whether a background image is set (served at /scenes/:id/background). */
   hasBackground: boolean;
   /** Whether OOC asides render inline in the log, or only in the channel (§7). */
@@ -2230,6 +2307,25 @@ export interface DockDto {
   hidden: DockPanel[];
   leftWidth: number;
   rightWidth: number;
+  /**
+   * Whether each rail's panel starts open on a screen with no roleplay behind
+   * it (§20 phase 225).
+   *
+   * The prompt editor is 105 of the 141 controls on the Roleplays screen, 105
+   * of 143 on Settings, 105 of 147 on Characters — the reader's own first
+   * action is the 119th control in DOM order, measured. On the chat, where the
+   * prompt is the subject, the same rail is 26 of 117 and proportionate. So the
+   * default differs by whether a scene is behind the shell, and the reader's
+   * choice for the off-scene case is remembered here.
+   *
+   * Here rather than in `client/state/ui.ts`, which says the rails are "in
+   * memory only… no browser storage anywhere in this app" — that is about the
+   * *browser*, and this is the same server-side preference the widths beside it
+   * already are. What is stored is the reader's off-scene decision, not the
+   * rails' live open/closed state, which stays chrome and stays in memory.
+   */
+  leftOpenOffScene: boolean;
+  rightOpenOffScene: boolean;
 }
 
 export const DOCK_DEFAULTS: DockDto = {
@@ -2246,6 +2342,10 @@ export const DOCK_DEFAULTS: DockDto = {
   hidden: [],
   leftWidth: 326,
   rightWidth: 352,
+  // Closed off the chat, which is the change phase 225 makes. A reader who
+  // opens a rail on Characters is remembered; nobody has to close it first.
+  leftOpenOffScene: false,
+  rightOpenOffScene: false,
 };
 
 /**
@@ -2293,6 +2393,9 @@ export function readDock(input: Partial<Record<keyof DockDto, unknown>>): DockDt
     else hidden.push(panel);
   }
 
+  const flag = (value: unknown, fallback: boolean): boolean =>
+    typeof value === "boolean" ? value : fallback;
+
   const clampWidth = (value: unknown, fallback: number): number => {
     const raw = typeof value === "number" && Number.isFinite(value) ? value : fallback;
     const [min, max] = DOCK_WIDTH_BOUNDS;
@@ -2305,6 +2408,11 @@ export function readDock(input: Partial<Record<keyof DockDto, unknown>>): DockDt
     hidden,
     leftWidth: clampWidth(input.leftWidth, DOCK_DEFAULTS.leftWidth),
     rightWidth: clampWidth(input.rightWidth, DOCK_DEFAULTS.rightWidth),
+    // Coerced the way the widths are: anything that is not the type falls back
+    // to the default rather than to `undefined`, so a stored value written by
+    // an older build can never make a rail's state unreadable.
+    leftOpenOffScene: flag(input.leftOpenOffScene, DOCK_DEFAULTS.leftOpenOffScene),
+    rightOpenOffScene: flag(input.rightOpenOffScene, DOCK_DEFAULTS.rightOpenOffScene),
   };
 }
 
@@ -2648,8 +2756,6 @@ export type PromptBlockId =
   | "guides"
   | "trackers"
   | "depth_prompts"
-  /** Dialogue coloured per character (§20 phase 185). */
-  | "dialogue_colour"
   /** A selected prompt option, one block each so the inspector names it (§13.5). */
   | "prompt_option"
   /** The banned constructions in force (§13.6). */
@@ -2690,7 +2796,6 @@ export const DEFAULT_BLOCK_ORDER: readonly PromptBlockId[] = [
   // Instructions about *how* to write sit near the turn with the other
   // instructions, not up in the system prompt where a long history separates
   // them from the writing they govern.
-  "dialogue_colour",
   "prompt_option",
   "ban_list",
   "director_note",
@@ -3382,6 +3487,13 @@ export interface SceneMemberDto {
   name: string;
   hasAvatar: boolean;
   /**
+   * Whether the card's two identity fields carry anything. A cast member with
+   * neither has no anchor in the prompt, and the UI says so before a turn is
+   * sent rather than leaving the reader to discover it in the prose.
+   */
+  hasDescription: boolean;
+  hasPersonality: boolean;
+  /**
    * The card's colour, carried here so the log can tell five grey columns
    * apart without a request per speaker (§162). Null is every card until
    * somebody picks one.
@@ -3504,6 +3616,8 @@ export interface SceneSetupRequest {
   autopilotEnabled?: boolean;
   autopilotMaxTurns?: number;
   vnModeEnabled?: boolean;
+  /** Messaging-client rendering of the same tree (§20 phase 213). */
+  conversationMode?: boolean;
   summariseFreeze?: number;
   title?: string;
   /** Display-only translation's target language (§20 phase 78). */

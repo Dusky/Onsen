@@ -243,7 +243,7 @@ function BanRow({
           <button
             type="button"
             className="btn"
-            style={{ borderColor: "var(--onsen-color-red)", color: "var(--onsen-color-red)" }}
+            style={{ borderColor: "var(--onsen-color-red)", color: "var(--onsen-color-red-text)" }}
             onClick={() => onDelete(row.id)}
           >
             {strings.sceneSetup.bansRemove}
@@ -279,7 +279,7 @@ function BanRow({
         aria-label={`${strings.sceneSetup.bansRemove}: ${row.phrase}`}
         onClick={() => onDelete(row.id)}
         className="chrome min-h-[40px] flex-none px-[8px] text-[13px] leading-none"
-        style={{ color: "var(--onsen-color-red)" }}
+        style={{ color: "var(--onsen-color-red-text)" }}
       >
         ×
       </button>

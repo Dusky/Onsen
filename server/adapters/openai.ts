@@ -215,6 +215,13 @@ export function createOpenAiAdapter(config: AdapterConfig): Adapter {
             model: config.model,
             messages,
             stream: true,
+            // The response cap the prompt was fitted around (§13.6). Sent only
+            // when the builder reserved something: side calls reserve nothing
+            // and are bounded by the task runner instead, so sending a floor
+            // here would be a second, disagreeing cap.
+            ...(prompt.debug.reservedForResponse > 0
+              ? { max_tokens: prompt.debug.reservedForResponse }
+              : {}),
             ...(prompt.tools === undefined || prompt.tools.length === 0
               ? {}
               : {

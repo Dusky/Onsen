@@ -4180,6 +4180,16 @@ Each phase ends in a working, usable application.
     composer before, 15 by way of the skip link, 1 by key.
     See §16, `client/components/Composer.tsx`.
 
+192. **Chrome that fits — nothing to do.** The phase-188 review raised three
+    pieces of chrome; re-checking their evidence first, per `NEXT.md` step 3,
+    found all three answered. The empty scene's two text boxes are phase 157's
+    stated intent ("or just write your turn" is never taken away); the Settings
+    category row has been wrapped in `Scroller`, which fades whichever edge
+    still has something past it, since tens of phases earlier; and the
+    roleplay count had already moved off the sort row, where it "read as part
+    of Longest". Recorded rather than skipped, because a number with no entry
+    cannot say whether a phase was dropped or failed. See §16.
+
 193. **A guard that measures the rendered screen** — every visual guard in the
     repo compares tokens to tokens. `test/surfaces.test.ts` measures
     `contrastRatio(tokens[tier], tokens[ground])`, two flat hex values, while
@@ -4221,6 +4231,403 @@ Each phase ends in a working, usable application.
     grew from 16×22 and 22×26 to WCAG 2.5.8's 24px, with negative margins
     keeping the row where it was: 676 sub-24px targets to 208.
     See §16, `server/db/queries/themes.ts`.
+
+196. **The response cap reaches the wire** — `max_response_tokens` was reserved
+    by the prompt builder and sent by exactly one adapter, Anthropic, and only
+    because Anthropic requires `max_tokens`. So for OpenAI-compatible and
+    text-completion providers the cap was silently ignored *and* auto-continue
+    (§13.6) could never fire, because the `length` finish it triggers on is the
+    one the cap produces. Measured: a 24-token cap came back 126 tokens with
+    `stop`; after, 26 with `length`, and the continue chain ran for the first
+    time on that kind. Both adapters send the builder's own reservation now, and
+    `test/adapter-response-cap.test.ts` asserts it over every `PROVIDER_KINDS` —
+    the per-adapter files each passed on their own terms, which is how the
+    omission sat green. See §4, §13.6, `server/adapters/openai.ts`.
+
+197. **Stop says what it kept** — cancel persists whatever was produced (§5.6)
+    and lands it as the scene's active turn, so a reader who stopped a turn
+    going wrong got a mid-sentence fragment as their newest story with a button
+    that said only "Stop". The contract stays; the silence does not. `cancel()`
+    reads the response's buffer and posts a notice when something was kept.
+    See §5.6, `client/lib/generation.ts`.
+
+198. **The error says why** — `describeFailure` computes a specific `detail` and
+    the SSE `error` event carries it; `settle` passed only the summary, so a
+    dead provider read as "The generation failed." and nothing else. The detail
+    renders under the summary in the smaller, dimmer line a failed field
+    already uses. See §5, `client/state/generation.ts`.
+
+199. **The outbound stream logs its true status** — §19's surface recorded a
+    streaming request as HTTP 200 the moment it opened, before a token had
+    left, so one that died mid-stream was logged a success. The record is
+    written when the stream settles: 502 on error, 200 on done or cancel,
+    through an `onSettled` callback. The error-to-`length` mapping stays and is
+    now documented — OpenAI's stream has no error channel and a non-standard
+    `finish_reason` would break clients. See §19, `server/routes/openai.ts`.
+
+200. **No request for a portrait that is not there** — every turn spoken by a
+    character with no picture requested its avatar anyway and took a 404,
+    because `MessageDto` carried the speaker's id but not whether a portrait
+    existed. Six other call sites already guarded on `hasAvatar`. Resolved in
+    `toMessageDto` from a `SpeakerLookup.hasAvatarById`, character turns only.
+    See §2, `client/components/MessageBlock.tsx`.
+
+201. **A cue beats the classifier, in every scope** — a report of turns written
+    as the wrong character. `classify()` offers the cast minus whoever spoke
+    last, and when the speaker was pinned it answered `candidates[0]` on the
+    assumption that the cued character was first in that list. They are not, in
+    general, and are not even on the roster when they spoke last — so an
+    explicit cue was replaced by whoever happened to be first.
+    See §6, `server/generation/service.ts`.
+
+202. **The classifier reads a beat's last segment, not its lead** — the same
+    report, second cause. Three helpers read a message's own `character_id`,
+    which for a beat is whoever *opened* it: "never twice consecutively"
+    excluded the lead rather than the last speaker, "silent N turns" counted a
+    character who had spoken inside a beat as silent, and recent history
+    attributed a three-way exchange to one name. See §3.5, §6,
+    `server/generation/director.ts`.
+
+203. **A mention is the reader's words, not the author's** — the mention
+    strategy scans "the last message", which after a beat or under autopilot is
+    the author's own prose. Its `**Name:**` labels and dialogue were read as
+    mentions, electing whoever the model had last named itself.
+    `DirectorHistoryEntry` carries `isUser` now and the strategy scans only the
+    reader's words, falling back to round robin. See §6, `server/generation/turn.ts`.
+
+204. **The assistant's undo actually undoes** — the write tools recorded a
+    snapshot and `GET /agent/undo` listed them, and the restore half was never
+    built: the recorded `before` was written, listed, and read by nothing, while
+    the tool descriptions promised otherwise. `POST /agent/undo/:id` restores
+    and removes. See §25, `server/routes/agent.ts`.
+
+205. **The cast warns before a thin card writes** — a cast member with no
+    description and no personality gives the model nothing to hold onto, and
+    the first the reader heard of it was prose coming back wrong. One amber
+    line on the card it is about, before the turn. See §2, §6,
+    `client/components/CastRail.tsx`.
+
+206. **Dead code out of the client** — `CastStrip.tsx` had been replaced by the
+    deck in phase 50 and left behind, ~230 lines imported by nothing. A sweep
+    over `client/` found the rest: `useCharacterSnapshot` and its query key,
+    and the `OpsApi`/`Strings` convenience types. See §16.
+
+207. **The macro and lore engines, audited** — a targeted pass over the two
+    surfaces most likely to hide a wrong-prompt bug after the turn-director
+    work. Mostly no defect: macros resolve from the same `PromptContext` the
+    blocks draft from, so nothing can disagree with the assembled prompt, and
+    the lore engine's six rules run in the order §10 names. One `-0` footgun
+    pinned. See §10, §14, `server/prompt/macros.ts`.
+
+208. **The assistant's client** — phase 46 shipped the server half and parked
+    the client, so the whole surface was reachable only by curl for
+    forty-odd phases, excused in `reachable.test.ts` by that sentence.
+    `/assistant` now has threads, streaming tool calls, undo and both widths.
+    See §25, `client/screens/AssistantScreen.tsx`.
+
+209. **The assistant's own profile, and twelve more tools** — every thread fell
+    back to the install's default profile, which is the opposite of §7's point:
+    the assistant is the most bookkeeping-shaped call in the app and belongs on
+    a cheap model. `GET`/`PATCH /agent/profile` store one, and `runAgentTurn`
+    resolves thread → assistant profile → default. See §7, §25,
+    `server/agent/tools.ts`.
+
+210. **The model has one home: the profile** — a report that the provider and
+    model settings were "a complete mess" turned out to be several things
+    wearing one coat: a model field on three layers at once, a per-scene
+    provider override that skipped the profile's model, the per-scene controls
+    living in a rail panel rather than Scene Setup, and the classifier routed
+    from two surfaces. A provider is now name, kind, address and key; the model
+    and the Test button live on the profile; the scene's "Runs on" lives in
+    Scene Setup; the classifier has one routing knob. See §7,
+    `client/components/ConnectionFields.tsx`.
+
+211. **Product intent, durable lessons, a design contract, and global search** —
+    a learning pass over a fork with the same goals found that Onsen had the
+    machinery but nothing written down about what it is *for*, and no global
+    search. `docs/PRODUCT.md` (the writing is the product; the machinery
+    recedes, with an anti-patterns list to serve as a merge gate),
+    `docs/LESSONS.md` (the "check that asks a different question" sentence,
+    evidence over inference, data-loss first), `docs/DESIGN.md` (the human
+    reading of `tokens.css` and the rendered guard), `docs/PLAN-GAPS.md`. Plus
+    a library-wide find over the cached lists — roleplays, characters,
+    lorebooks, personas, authors — from the header and the phone's top bar.
+    See §15, §16, `client/components/SearchOverlay.tsx`.
+
+212. **The writing comes before the machinery, in the DOM** — `PRODUCT.md`
+    named "machinery louder than writing" as the prime anti-pattern, and the
+    composer sat behind the left rail's prompt panel at ~102 tab presses.
+    Reverted in phase 215; see there. See §16.
+
+213. **Conversation mode** — a per-scene skin over the same history tree: the
+    reader's words on the right, the cast on the left in their colour, a
+    timestamp where the reader has them on. The prompt, the tree, the composer
+    and every action are untouched — rendering, not a second product.
+    `scenes.conversation_mode` (migration 0080, off by default) reaches the
+    scene DTO, the PATCH and Scene Setup. See §16,
+    `client/screens/chat/MessageLog.tsx`.
+
+214. **Agents, discoverable and grouped by stage** — every named op in
+    `server/tasks/registry.ts` was already an agent in the sense the word is
+    used elsewhere: pre, sidecar and post stages, each routable, each with its
+    own words. What was missing was the framing — Settings called it
+    "Background tasks" and the list was flat. The category is **Agents** now,
+    grouped by when an op runs. Disclosure, not a rewrite. See §12, §20.
+
+215. **Revert the grid shell** — phase 212's CSS-grid DOM reorder produced a
+    single-column grid in the browser: the chat on top and the rails below it,
+    reachable only by scrolling past the log. The in-session verification had
+    measured a hot-reloaded bundle rather than a full page load, so it read the
+    old DOM and reported a pass on a change that never applied. The shell is
+    back to flex, verified on a fresh load. **A layout change is verified on a
+    fresh page load, never against the hot reload.** The composer-reachability
+    fix is reopened, not closed. See §16, `client/App.tsx`.
+
+216. **The log reads once, not twice** — the prompt's history renders past
+    turns as `Name: content`, so the model often opened its own spotlight turn
+    with the speaker's name, which the log had already attributed and which fed
+    back into the next prompt doubled. `land()` strips a leading `Name:` (or
+    `**Name:**`) matching the turn's own speaker, spotlight turns only — a
+    beat's prefixes are per-part labels and stay, and a name later in the prose
+    is dialogue. Also: the reasoning strip stopped saying "not sent back", which
+    was the app talking about its own plumbing. See §5,
+    `server/generation/service.ts`.
+
+217. **Formatting is a client concern, not a prompt one** — asked whether the
+    model should emit HTML for italic dialogue, the answer is no: its output is
+    untrusted and history is plain text re-fed into every prompt. So quoted
+    speech renders italic in the renderer, where it is deterministic and cannot
+    leak, as its own `dialogue` span kind so the no-text-lost round-trip stays
+    exact. Only a quote that can *open* speech counts, and an `=` before it
+    means an HTML attribute. The `dialogue_colour` prompt block is gone — it
+    made every prompt bigger and gave the model one more way to leak raw tags
+    — and the gap it papered over is closed at the source: a colourless
+    character joining a scene takes the first palette colour free in that
+    scene. See §14, §16, `client/lib/emphasis.ts`.
+
+218. **The wrong character was a client bug, not the director** — the composer
+    shows the director's provisional pick and the send button sent that pick
+    back as `characterId`, which the server reads as a *user cue* and honours
+    over the strategy. So every ordinary send froze a choice computed against
+    stale history: the mention strategy never scanned the message just typed,
+    and round robin ran one turn behind. Only the reader's explicit tap travels
+    now (`source === "user"`); a director suggestion stays on the client and the
+    server re-derives from fresh history. Separately, the `dialogue` span takes
+    the speaker's colour as well as the italic, client-side, and migration 0081
+    backfills a colour for every character that predates the palette. See §6,
+    §16, `client/screens/chat/useOps.tsx`.
+
+219. **Every change the assistant makes is in Undo** — `server/agent/tools.ts`
+    has nineteen write tools and `snapshotBefore` was called by two of them,
+    while the assistant's own screen promised that *every* change it made was
+    listed under Undo and `agent.ts` claimed "the write tools record a snapshot
+    before they touch anything". An overwritten author, an emptied lorebook, a
+    recast scene were simply gone; `character_versions` is the only history
+    table in the schema. All nineteen record now, `server/agent/restore.ts`
+    walks each of twenty kinds back through the same writer the tool used, and
+    the phone's Undo button — which toggled a flag only the desktop rail read,
+    so it did nothing at all — opens the same list in a sheet. Each kind reads
+    in words, because `lore_entry.created` is storage, not something to show a
+    reader. Two more found while in the file: `update_scene` advertised
+    `scenarioOverride` and `turnStrategy` and spread them into a patch type
+    that has neither, so both were accepted, reported as changed and dropped;
+    and `scenario_override` had two writers, which is now one.
+    `test/agent-undo.test.ts` runs every tool against a real database and
+    requires a snapshot from anything that changed a row — `total_changes()` is
+    the detector, so a write added later needs no declaration to be caught.
+    See §25, `server/agent/restore.ts`.
+
+220. **A speaker's colour is legible on both themes** — coloured dialogue
+    measured **2.07:1, 1.99:1 and 2.34:1** on composited pixels in the light
+    theme, against AA's 4.5:1 and below the 3:1 large-text floor; the name and
+    spine had failed the same way since phase 185. No better palette exists:
+    clearing 4.5:1 against `#e5eaee` needs relative luminance at or below 0.143
+    and against `#0a0d18` at or above 0.194, so no single stored hex is legible
+    in both bases. The stored colour is identity now and `readableOn` resolves
+    it against the ground before painting, once, in the one map that feeds the
+    name, the spine, each beat part's label, the quoted runs and the
+    conversation bubble. The client's floor is 5.5 rather than 4.5 because the
+    token is not the ground — prose sits on a translucent panel over the
+    reader's photograph, and resolving to exactly AA against the token landed at
+    4.07:1 on screen. After: 4.98, 4.88, 5.76 and 5.39 composited, dark
+    unmoved. The character editor reports what will be painted instead of
+    warning about a problem the app now fixes. See §16,
+    `client/lib/speaker-colour.ts`.
+
+221. **Markup inside speech renders again** — phase 217 made a quoted run one
+    terminal span so it could be italicised, which meant `"…that road **has** a
+    name."` showed its asterisks on screen, in the middle of the prose, in a
+    live scene. The flattening rule is sound for asterisks and documented since
+    phase 161 — a nested mark inside a `**pair**` is rare enough that flattening
+    beats resolving — but a quote is not a mark somebody chose to write, it is
+    punctuation in nearly every line of dialogue, so the trade was applied to
+    the commonest prose shape in the product. `dialogue` is the one span kind
+    with children now; `text` still holds the whole run so the no-text-lost
+    round-trip a recast splice depends on is untouched, and speech with no marks
+    in it keeps the exact shape it had. See §14, §16, `client/lib/emphasis.ts`.
+
+222. **The rendered guard measures the whole app** — it was doing the thing it
+    exists to catch. The scene route and every contrast sample were gated on
+    `ONSEN_SCENE`, which `package.json` does not set, so the documented
+    invocation printed "all within budget" having measured no prose and no
+    colour. Now the scene is discovered from the app and a run that measures
+    none fails; samples are DOM selectors against `data-rail` and `data-prose`
+    rather than four rectangles valid only at 1600×950, and a selector that
+    matches nothing fails; the coloured runs phase 220 introduced are swept by
+    carrying an inline colour rather than listed. It absorbed the fourth
+    review's two probes — controls with no accessible name (floor zero) and the
+    rails' share of a screen (24%, guarding phase 225) — and found three ink
+    tokens that clear 4.5:1 against their token ground and miss it on the
+    composited pixel: `text-dim` at 4.19–4.36:1, `amber` at 3.64:1,
+    `blue-text-muted` at 3.99:1. Those are recorded in `KNOWN_CONTRAST` as
+    *floors* rather than passes, so a regression still fails and an entry that
+    starts passing, improves, or stops being measured fails until it is
+    corrected. Every budget re-recorded against the whole app for the first
+    time. See §16, `scripts/rendered-guard.ts`.
+
+223. **The leaks in the new screens** — four, in surfaces phases 208–218 added.
+    The assistant's routing row put two adjacent buttons reading "Default" on
+    screen, meaning the app's own routing and a profile that shares the name;
+    the app default is called **App default** now. Global search never restored
+    focus (`BUTTON[Search]` → Escape → `<body>`) because it was mounted
+    unconditionally and self-gated *after* calling `useModalFocus`, which takes
+    the opener on first render and restores on unmount — so it captured the app
+    boot and never unmounted; the gate moved to a parent. Three cast-rail
+    buttons set 8.5px inline over `.btn`'s 12.5px, the smallest text in the app.
+    And the `Name:` prefix streamed in and vanished on settling, because phase
+    216 stripped what was stored and not what was watched — one regex in
+    `shared/speaker-prefix.ts` now, with a streaming half that holds back text
+    still becoming the prefix so it never flashes. The guard that missed the
+    focus bug was a filename allowlist; it sweeps for the shape now.
+    See §16, `shared/speaker-prefix.ts`.
+
+224. **A turn that produces nothing says so** — a reasoning model bills its
+    thinking against the same `max_tokens` the builder reserves for the reply,
+    so a turn can spend its whole budget thinking. Twice that landed nothing at
+    all: the reader's message, Stop gone, no turn, no error, no log line. Once
+    it landed 77 characters of prose after 4075 of reasoning. `finish()` was
+    right not to write an empty message and wrong to say nothing about it — it
+    held the buffer, the reasoning, the finish reason and the reservation, and
+    passed none of them on. `done` carries a `ThinTurn` now and the client says
+    what happened and which setting to change. The stub case keys on the
+    mechanism rather than a ratio: the cap was reached *and* more of it went to
+    thinking than to writing, because the first version's own cry-wolf test
+    caught it flagging a perfectly ordinary 156-character reply. See §5, §13,
+    `server/generation/service.ts`.
+225. **The rails start out of the way** — the prompt editor was 105 of the 141
+    interactive controls on the Roleplays screen, 105 of 143 on Settings, 105 of
+    147 on Characters, and the reader's own primary action was the 119th control
+    in DOM order. On the chat the same rail is 26 of 117, which is
+    proportionate, so the chat is unchanged. Off a scene both rails now start as
+    their icon strip, and the reader's choice for that case persists beside the
+    dock widths in `DockDto`. Phase 100's "editable anywhere" and phase 191's
+    citation of it are about *availability*, which an icon strip does not touch;
+    `ui.ts`'s "no browser storage" is about the browser, and the widths beside
+    this have been a server-side preference since phase 173. The rule reads the
+    *base* route, so an overlay opened from a chat keeps that chat's rails, and
+    a width band still overrides both. Measured after, on a fresh load: 13 of 38
+    on Roleplays, primary action #17. See §16, `client/lib/breakpoint.ts`.
+226. **Settings tells the truth, and the strays go home** — the filter printed
+    "Nothing here matches that." above a fully rendered Models panel, because
+    `show()` compared against an `active` that falls back to the current
+    category; it is gated on there being a match at all now. Change password and
+    Sign out were rendered outside every category, so they were the last two
+    controls of all of them, and they have an **Account** category. Five search
+    terms reached two drawers — two the review found, three the sweep did, and
+    two of those collided with a category's *name* rather than with another word
+    list, which is why the rule is "no term reaches two drawers". Forty more
+    fields whose visible `section-label` labelled nothing are named, on top of
+    the thirteen a browser drive found; the Models rows name themselves rather
+    than letting the DOM concatenate their spans; and `ModelsPanel` stops asking
+    for `/api/scenes/?limit=1` when there is no scene. The account line started
+    as a paragraph and `test/voice.test.ts` refused it, correctly — it is a
+    button's name now. See §16, `client/screens/settings-categories.ts`.
+227. **What the app says about itself** — three sentences it prints that were
+    not true, all found by driving it. The composer's only keyboard hint was
+    the constant `⌘↵ SEND · ⌘K CAST` while what sends is a three-valued
+    reader setting: on the install under test both Return and Ctrl+Return put a
+    newline in the draft and sent nothing, and at the shipped default a
+    *modified* Return is excluded outright, so ⌘↵ sends under one setting of
+    three and the hint showed under all of them — on a key most of this app's
+    readers do not have. It is a function of the setting now, and names no key
+    at all under `button`. Phase 224's empty-turn notice only fired when the
+    model had *thought*, so a turn that returned zero completion tokens of any
+    kind still said nothing — the plainest version of the defect it was written
+    for; the empty branch keys on the empty buffer now and its sentence drops
+    the instruction when there is nothing to raise. And both notices told the
+    reader to raise "the response cap in the preset" when the field is called
+    **Reserved for the reply**; the label is one hoisted constant both read.
+    See §5, §16, `client/strings.ts`, `server/generation/service.ts`.
+228. **The loop says what it is doing** — autopilot armed produced nothing
+    observable but a colour: no generation, no strip, no line, measured over 200
+    seconds. Correct (`autopilot.ts`: "a turn the reader started themselves is
+    what arms it"), and invisible, so a reader cannot tell armed from broken. It
+    has a line in the strip's own vocabulary now, with no button, because the
+    switch that armed it is the control that disarms it. And `maybeRetry`'s
+    `landedMessageId === null` guard blocked the *reroll* as well as the
+    continue, so "Reroll under N chars" could never reach a turn of zero
+    characters; the guard moved to the branch it belongs to, and the reroll
+    attaches to `generation.parentId` rather than the scene's leaf, which is
+    what the `generations.parent_id` column exists for. Deciding the retry was
+    split from running it so phase 224's notice stops telling a reader to send
+    again while the app is sending again — and that split exposed a second
+    defect: `terminalEvent()` recomputed the notice for a reconnecting client
+    and could not know what `finish()` knew, so the decision is stored once and
+    both paths read it. See §6, §7, `server/generation/service.ts`.
+229. **The surfaces beside the prose** — the cast rail's "just spoke" card was
+    the one place in the app that showed raw markup, reading
+    `**Elira Voss:** took two keys` six inches from a transcript rendering the
+    same content with a coloured label and no asterisks; `plainText()` runs it
+    through the tokenizer the transcript already uses, before the cut, so the
+    90-character limit counts what a reader sees. And §16's 44px thumb floor
+    was held by an allow-list of eleven *named files*, so a control in a
+    twelfth had nothing to fail: it passed while eleven controls sat between
+    18px and 33px on a phone, four of which nobody had written down. The
+    rendered guard sweeps it now. Two lessons came out of the fixing rather
+    than the finding: `.tap` relaxes to `min-height: 0` under a fine pointer,
+    so it is not a drop-in for a hardcoded minimum and collapsed the autopilot
+    switch to 21px on a desktop until `.btn-dense` replaced the three inline
+    `minHeight` overrides that were the real defect; and an `sr-only` skip link
+    is 1×1 until focused, so counting it as a small target counted the
+    technique. The turn's token readout and version counter stay inline on
+    purpose, as a named `EXEMPT_TARGETS` entry rather than a slack number. See
+    §16, `scripts/rendered-guard.ts`, `client/lib/emphasis.ts`.
+230. **The ink pass** — the four contrast failures phase 222 recorded once the
+    guard could composite real pixels, and the deletion it demands when they
+    stop failing. Measuring them first corrected the record: `text-dim` did
+    clear 4.5:1 on its token and miss it on the screen, but `blue-text-muted`
+    was **3.02:1 light on the token**, because `surfaces.test.ts` guards the
+    four greys and nothing guards the hues. `text-dim` had no composite
+    headroom in any of the eleven palettes (4.55–5.17 against its worst
+    ground) and the ramp had none either (eight of eleven at 1.123–1.140
+    against a required 1.12), so the fix is a **floor applied to every
+    palette** rather than hand-tuning the one the guard can see — the quiet
+    tiers clear `AA_CONTRAST × 1.25`, a figure the guard itself corrected from
+    1.2 after reading Bone at 5.48:1 on the token and 4.45:1 through the rail.
+    Values were solved as the least move along each token's own hue that clears
+    the floor and keeps its ramp step. `Cued` and the four `Default` badges
+    were the wrong token rather than the wrong value: `amber-text` exists in
+    every palette and the app was painting words with the raw hue, so the
+    labels moved and the borders kept it. `KNOWN_CONTRAST` is `{}` and
+    `theme-reconcile`'s cap is zero. See §16, `client/styles/tokens.css`,
+    `server/themes/builtin.ts`, `test/surfaces.test.ts`.
+231. **The hue ramp** — `surfaces.test.ts` guarded the four grey ink tiers and
+    nothing guarded the hues, so `red` sat at 3.39:1 against the worst ground
+    in the base dark palette, `amber` at 3.44:1 light, and the two
+    `*-text-muted` tokens near 3.1:1 — while `--onsen-color-red` was worn as a
+    CSS `color:` in about forty places and `--onsen-color-red-text`, which
+    measures 5.83:1 and exists in every palette, in none. Sixty-one sites now
+    split by *property*: `color` takes the hue's `-text` tier, while
+    `background`, `borderColor`, `stroke` and `fill` keep the hue, because a
+    status dot and a cued card's border are the hue doing its job. Blue is the
+    exception and is raised rather than swapped — `blue-text` is a muted prose
+    blue and would have greyed out every active tab — so `ACCENT_HUES` holds
+    the four hues at plain AA while `HUE_TEXT_TIERS` holds their text tiers at
+    the composite floor. The half that lasts is a source sweep: no `color` in
+    `client/` may carry a raw hue, scoped to the property so it never flags the
+    hue doing its job, and matching across a line wrap because ten of the
+    sixty-one were ternaries. See §16, `test/surfaces.test.ts`,
+    `client/components/blue.ts`.
 
 Settled while building phase 15.
 

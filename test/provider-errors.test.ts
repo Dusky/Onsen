@@ -183,8 +183,19 @@ describe("a preset names an address and nothing more", () => {
     expect(readFileSync("shared/providers.ts", "utf8")).not.toContain("models:");
   });
 
-  test("picking a preset clears whatever model was in the box", () => {
-    expect(FIELDS).toMatch(/modelRef\.current !== null\) modelRef\.current\.value = ""/);
+  test("a provider form carries no model box to go stale", () => {
+    /*
+     * Phase 210: a provider is an endpoint, not a model — the model lives on
+     * the profile. The staleness this describe block was written against came
+     * from a preset filling a model box the provider form no longer has; the
+     * profile form (which owns the model now) still fetches from the provider,
+     * so nothing can go stale.
+     */
+    const providerForm = FIELDS.slice(
+      FIELDS.indexOf("export function ProviderFields"),
+      FIELDS.indexOf("export function ProfileFields"),
+    );
+    expect(providerForm).not.toContain('name="model"');
   });
 
   test("every address agrees with its kind's path convention", () => {

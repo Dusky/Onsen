@@ -149,7 +149,7 @@ export function InstructPicker({
               <button
                 type="button"
                 className="btn"
-                style={{ color: "var(--onsen-color-red)" }}
+                style={{ color: "var(--onsen-color-red-text)" }}
                 onClick={() =>
                   confirm(
                     strings.instruct.removeConfirm(selected.name),

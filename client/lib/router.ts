@@ -21,6 +21,7 @@ export type Route =
   | { name: "author"; authorId: string }
   | { name: "setup"; sceneId: string }
   | { name: "settings" }
+  | { name: "assistant" }
   | { name: "lorebooks" }
   | { name: "lorebook"; bookId: string }
   | { name: "backgrounds" }
@@ -35,6 +36,7 @@ export function parseRoute(pathname: string): Route {
   if (scene !== null) return { name: "chat", sceneId: decodeURIComponent(scene[1]!) };
   if (pathname === "/characters") return { name: "characters" };
   if (pathname === "/settings") return { name: "settings" };
+  if (pathname === "/assistant") return { name: "assistant" };
   if (pathname === "/lorebooks") return { name: "lorebooks" };
   if (pathname === "/backgrounds") return { name: "backgrounds" };
   const book = /^\/lorebooks\/([^/]+)\/?$/.exec(pathname);
@@ -68,6 +70,8 @@ export function pathFor(route: Route): string {
       return `/scenes/${encodeURIComponent(route.sceneId)}/setup`;
     case "settings":
       return "/settings";
+    case "assistant":
+      return "/assistant";
     case "lorebooks":
       return "/lorebooks";
     case "backgrounds":

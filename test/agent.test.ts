@@ -291,11 +291,44 @@ describe("what the tools actually do", () => {
     expect((await t.fetch(`/api/characters/${bell.id}`)).status).toBe(404);
 
     const kept = snapshots(t.ctx);
-    expect(kept[0]).toMatchObject({ kind: "character", subjectId: bell.id });
+    // `character.deleted` rather than `character` since §20 phase 219: a
+    // delete and an overwrite undo differently, so they are different kinds.
+    expect(kept[0]).toMatchObject({ kind: "character.deleted", subjectId: bell.id });
     expect(JSON.parse(kept[0]!.before).name).toBe("Sister Bell");
 
     const listed = await json<{ kind: string }[]>(t, "GET", "/api/agent/undo");
-    expect(listed[0]!.kind).toBe("character");
+    expect(listed[0]!.kind).toBe("character.deleted");
+  });
+
+  test("a delete can actually be undone — that is the point of the snapshot", async () => {
+    const t = await signedIn();
+    const bell = await importBell(t);
+    const thread = await newThread(t);
+
+    await ask(
+      t,
+      thread.id,
+      "Delete Bell",
+      callThenAnswer([
+        { id: "c1", name: "delete_character", arguments: JSON.stringify({ id: bell.id }) },
+      ]),
+    );
+    const snapshot = snapshots(t.ctx)[0]!;
+
+    const restored = await json<{ restored: { name: string; note?: string }; removed: string }>(
+      t,
+      "POST",
+      `/api/agent/undo/${snapshot.id}`,
+    );
+    expect(restored.restored.name).toBe("Sister Bell");
+    expect(restored.restored.note).toContain("without its picture");
+
+    // The re-created character gets a fresh id; what matters is the text is back.
+    const library = await json<CharacterDto[]>(t, "GET", "/api/characters");
+    expect(library.some((character) => character.name === "Sister Bell")).toBe(true);
+
+    // And the snapshot is gone: an undo that can fire twice would resurrect twice.
+    expect(snapshots(t.ctx)).toHaveLength(0);
   });
 
   test("it can make a theme and switch to it", async () => {

@@ -201,6 +201,17 @@ describe("what used to say nothing", () => {
     );
     expect(files.map((file) => file.name)).toEqual([]);
   });
+
+  test("stopping a turn says what was kept, and only when something was", () => {
+    // Cancel persists the partial turn (§5.6), and the button says only
+    // "Stop" — so the reader would find a mid-sentence fragment as their last
+    // turn with no idea how it got there. The notice is the other half of the
+    // contract, and it must not fire for a stop that produced nothing.
+    const generation = readFileSync(join(ROOT, "client", "lib", "generation.ts"), "utf8");
+    expect(generation).toMatch(
+      /snapshot\.buffer\.trim\(\) !== ""[\s\S]{0,300}notify\("done", strings\.chat\.stoppedKept\)/,
+    );
+  });
 });
 
 describe("where a notice appears", () => {

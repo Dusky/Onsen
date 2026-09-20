@@ -131,6 +131,13 @@ describe("matching", () => {
     expect(fired(run([entry({ scanDepth: 2 })], { transcript }))).toEqual([]);
     expect(fired(run([entry({ scanDepth: 5 })], { transcript }))).toEqual(["e1"]);
   });
+
+  test("scan depth 0 scans the whole transcript — SillyTavern's 'unlimited'", () => {
+    // `slice(-0)` is the whole array, so depth 0 matches anywhere in the chat.
+    // The import carries 0 through unchanged, so this is the interop promise.
+    const transcript = ["oil was mentioned here", "a", "b", "c", "d"];
+    expect(fired(run([entry({ scanDepth: 0 })], { transcript }))).toEqual(["e1"]);
+  });
 });
 
 describe("secondary keys", () => {

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { CharacterDto, RegexScriptDto, UpdateCharacterRequest } from "@shared/types.ts";
 import { strings } from "../strings.ts";
-import { AA_CONTRAST, contrastRatio, isHex6, ratioLabel } from "@shared/contrast.ts";
+import { AA_CONTRAST, contrastRatio, ratioLabel, readableOn } from "@shared/contrast.ts";
+import { PAINT_FLOOR, proseGround } from "../lib/speaker-colour.ts";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
 import { navigate } from "../lib/router.ts";
 import {
@@ -124,7 +125,7 @@ function GreetingList({
           <button
             type="button"
             className="chrome mt-[6px] text-ui"
-            style={{ color: "var(--onsen-color-red)" }}
+            style={{ color: "var(--onsen-color-red-text)" }}
             onClick={() => onChange(items.filter((_, at) => at !== index))}
           >
             {strings.characters.removeGreeting}
@@ -139,18 +140,20 @@ function GreetingList({
 }
 
 /**
- * The character's colour, with the contrast measured as it is picked.
+ * The character's colour, with what the app will actually paint shown beside it.
  *
- * The warning is the reason this is a component rather than an `<input
- * type="color">` on its own. A colour picked against a dark theme can be
- * unreadable on a light one and the reader has no way to know until they
- * switch, so the ratio is measured against the ground the app is actually
- * painted on right now — read off the live computed styles rather than a
+ * This was a warning: a colour picked against a dark theme can be unreadable on
+ * a light one, the reader had no way to know until they switched, so the ratio
+ * was measured against the live ground and a line said it was too dim. True at
+ * the time, and obsolete since §20 phase 220 — the app resolves a speaker's
+ * colour against the ground before painting it, so the stored hex is identity
+ * and no choice is illegible any more.
+ *
+ * So it reports instead of warning, and shows the resolved swatch next to the
+ * chosen one, because "it is painted #9c6185 here" is a fact a reader can act
+ * on where "hard to read" was an instruction to fix something the app had
+ * already handled. Measured against the live computed styles rather than a
  * token table, so a custom theme is measured too.
- *
- * It warns rather than refuses. The floor is the app's promise about its own
- * ink (`test/surfaces.test.ts`); this is somebody's character, and "hard to
- * read" is their decision to make with the number in front of them.
  */
 function ColourField({
   value,
@@ -159,15 +162,13 @@ function ColourField({
   value: string | null;
   onCommit(colour: string | null): void;
 }) {
-  const ground = useMemo(() => {
-    if (typeof window === "undefined") return null;
-    const painted = getComputedStyle(document.documentElement)
-      .getPropertyValue("--onsen-color-bg")
-      .trim();
-    return isHex6(painted) ? painted : null;
-  }, [value]);
-
+  // The same ground the log resolves against, from the same function, so the
+  // number here and the colour there cannot disagree.
+  const ground = useMemo(() => proseGround(), [value]);
   const ratio = value !== null && ground !== null ? contrastRatio(value, ground) : null;
+  // The floor the log paints at, so the swatch here is the swatch there.
+  const painted =
+    value !== null && ground !== null ? readableOn(value, ground, PAINT_FLOOR) : null;
 
   return (
     <>
@@ -189,14 +190,16 @@ function ColourField({
           {strings.characters.colourNone}
         </button>
         {value === null ? null : (
-          <span className="chrome text-ui" style={{ color: value }}>
+          // In the colour it will be painted in, not the one stored: a swatch
+          // that lies about what the reader is about to see is worse than none.
+          <span className="chrome text-ui" style={{ color: painted ?? value }}>
             {value}
           </span>
         )}
       </div>
-      {ratio !== null && ratio < AA_CONTRAST ? (
-        <p className="explain explain-alert mb-[16px]">
-          {strings.characters.colourDim(ratioLabel(ratio))}
+      {ratio !== null && ratio < AA_CONTRAST && painted !== null && painted !== value ? (
+        <p className="explain mb-[16px]">
+          {strings.characters.colourAdjusted(ratioLabel(ratio), painted)}
         </p>
       ) : null}
     </>
@@ -782,7 +785,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                       }
                       aria-label={strings.settings.scriptDelete}
                       className="chrome flex-none text-[13px]"
-                      style={{ color: "var(--onsen-color-red)" }}
+                      style={{ color: "var(--onsen-color-red-text)" }}
                     >
                       {"\u00d7"}
                     </button>
@@ -847,7 +850,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
               <button
                 type="button"
                 className="btn w-full"
-                style={{ color: "var(--onsen-color-red)", borderColor: "var(--onsen-color-red-border)" }}
+                style={{ color: "var(--onsen-color-red-text)", borderColor: "var(--onsen-color-red-border)" }}
                 onClick={() =>
                   confirm(
                     strings.characters.deleteConfirm(character.name),

@@ -34,10 +34,25 @@
  */
 
 export interface Span {
-  kind: "text" | "strong" | "em" | "underline" | "colour";
+  kind: "text" | "strong" | "em" | "underline" | "colour" | "dialogue";
   text: string;
   /** The validated colour, only when `kind === "colour"`. */
   colour?: string;
+  /**
+   * What is *inside* a `dialogue` run, already tokenised (§20 phase 221).
+   *
+   * Only `dialogue` carries this, and it is the one span kind that does. The
+   * asterisk pairs flatten what is nested in them on purpose — see the header —
+   * and a quoted run does not, because a quote is not a mark somebody chose to
+   * write: it is punctuation, in nearly every line of dialogue the app renders.
+   * Applying the flattening trade to it meant `"…that road **has** a name."`
+   * showed its asterisks on screen.
+   *
+   * `text` still holds the whole run, quotes included, so the "never lose text"
+   * round-trip is untouched — `spans.map((s) => s.text).join("")` is still the
+   * input exactly. This is for rendering, and rendering only.
+   */
+  children?: Span[];
 }
 
 /** Whether a run of asterisks at `at` can open emphasis. */
@@ -210,6 +225,55 @@ export function emphasis(text: string): Span[] {
       continue;
     }
 
+    // Spoken dialogue, in straight quotes, renders italic — the reader's
+    // eye finds the voice before the name. The quotes stay inside the run, so
+    // "she said." reads as one italic phrase; an unclosed quote is literal.
+    // Its own kind (not `em`) keeps "no text lost" round-tripping exact: the
+    // quotes are part of the span, so rebuilding the input adds nothing.
+    //
+    // It is also the one kind with `children` (§20 phase 221): a mark written
+    // inside speech is rendered, not flattened, because a quote is punctuation
+    // rather than a mark and the trade the asterisks make does not carry.
+    //
+    // Only a quote that can *open* speech counts — after whitespace, the start
+    // of the paragraph, or sentence punctuation. An `=` before it means it is
+    // an HTML attribute (`href="…"`), which stays literal text.
+    if (text[at] === '"') {
+      const previous = at === 0 ? "" : text[at - 1]!;
+      const canOpen = at === 0 || /\s|[.,:;!?\u2014\u2013([{]/u.test(previous);
+      const close = text.indexOf('"', at + 1);
+      if (!canOpen || close === -1) {
+        plain += text[at];
+        at += 1;
+        continue;
+      }
+      flush();
+      // The interior is tokenised again, so marks inside speech render as
+      // marks. The quotes come along as text so the whole run is in `children`
+      // and the renderer has nothing to reassemble.
+      //
+      // Most speech has no marks in it, and that case keeps the shape it has
+      // always had: no `children`, one span, nothing for the renderer to walk.
+      // Worth the branch because it is the overwhelmingly common one.
+      const inner = text.slice(at + 1, close);
+      const marked = inner.includes("*") || inner.includes("<");
+      spans.push({
+        kind: "dialogue",
+        text: text.slice(at, close + 1),
+        ...(marked
+          ? {
+              children: [
+                { kind: "text", text: '"' } as Span,
+                ...emphasis(inner),
+                { kind: "text", text: '"' } as Span,
+              ],
+            }
+          : {}),
+      });
+      at = close + 1;
+      continue;
+    }
+
     if (text[at] !== "*") {
       plain += text[at];
       at += 1;
@@ -234,7 +298,31 @@ export function emphasis(text: string): Span[] {
   return spans;
 }
 
+/**
+ * The same prose with its marks taken off (§20 phase 229).
+ *
+ * For the places that show a line of a turn without rendering it — a cast
+ * card's "just spoke", a guide's first line — where the asterisks were
+ * arriving as themselves. `**Elira Voss:** took two keys` came out of the
+ * right rail exactly like that, while the transcript six inches away rendered
+ * the same content with a coloured label and no marks.
+ *
+ * Built on `emphasis()` rather than on a regex of its own, so there is one set
+ * of rules about what a mark is. The recursion is the part that matters: a
+ * `dialogue` span's `text` deliberately holds the whole run *including* the
+ * marks inside it (see `Span.children` above), so the obvious
+ * `spans.map((s) => s.text).join("")` returns `"that road **has** a name."`
+ * with its asterisks intact. It looks right and is not.
+ */
+export function plainText(text: string): string {
+  const flatten = (spans: Span[]): string =>
+    spans
+      .map((span) => (span.children === undefined ? span.text : flatten(span.children)))
+      .join("");
+  return flatten(emphasis(text));
+}
+
 /** True when nothing in the text would render differently. */
 export function isPlain(text: string): boolean {
-  return !text.includes("*") && !text.includes("<");
+  return !text.includes("*") && !text.includes("<") && !text.includes('"');
 }

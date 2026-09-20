@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { DOCK_DEFAULTS } from "@shared/types.ts";
-import { useDock } from "./queries.ts";
+import { useDock, useSetPreferences } from "./queries.ts";
+import { useShellRoute } from "./router.ts";
 import { useUiStore } from "../state/ui.ts";
 
 /**
@@ -107,6 +108,12 @@ export function useIsDesktop(): boolean {
  * band's own default, which is why this tracks the *previous* match rather
  * than reacting to the width itself: an unrelated re-render must not re-open
  * a rail the reader just closed.
+ *
+ * Phase 225 adds a second input of the same shape: whether a roleplay is
+ * mounted behind the shell. Off a scene both rails start as their icon strip,
+ * unless the reader has said otherwise and that is stored in `DockDto`. Same
+ * discipline — only a *change* of the answer forces a rail, so a rail opened by
+ * hand on Characters survives every re-render until the reader leaves.
  */
 export function useAutoCollapseRails(): void {
   const dock = useDock();
@@ -115,20 +122,72 @@ export function useAutoCollapseRails(): void {
   const hasLeftRoom = useMediaQuery(`(min-width: ${leftPanelMinWidth}px)`);
   const setLeftRailOpen = useUiStore((state) => state.setLeftRailOpen);
   const setRightRailOpen = useUiStore((state) => state.setRightRailOpen);
+  const onScene = useSceneBehind();
+
+  // What each rail should be, given the room and what is behind the shell.
+  // Width still wins: a rail that does not fit cannot open, whichever screen
+  // the reader is on.
+  const wantRight = hasRightRoom && (onScene || dock.rightOpenOffScene);
+  const wantLeft = hasLeftRoom && (onScene || dock.leftOpenOffScene);
 
   const prevRight = useRef<boolean | null>(null);
   useEffect(() => {
-    if (prevRight.current !== hasRightRoom) {
-      setRightRailOpen(hasRightRoom);
-      prevRight.current = hasRightRoom;
+    if (prevRight.current !== wantRight) {
+      setRightRailOpen(wantRight);
+      prevRight.current = wantRight;
     }
-  }, [hasRightRoom, setRightRailOpen]);
+  }, [wantRight, setRightRailOpen]);
 
   const prevLeft = useRef<boolean | null>(null);
   useEffect(() => {
-    if (prevLeft.current !== hasLeftRoom) {
-      setLeftRailOpen(hasLeftRoom);
-      prevLeft.current = hasLeftRoom;
+    if (prevLeft.current !== wantLeft) {
+      setLeftRailOpen(wantLeft);
+      prevLeft.current = wantLeft;
     }
-  }, [hasLeftRoom, setLeftRailOpen]);
+  }, [wantLeft, setLeftRailOpen]);
+}
+
+/**
+ * Whether a roleplay is mounted behind the shell (§20 phase 225).
+ *
+ * The *base* route, not the visible one, and that is the whole point. Since
+ * phase 171 an overlay screen fills only the content box and the base screen
+ * stays mounted underneath — so a reader who opens Settings from a chat still
+ * has that chat behind it and is going back to it. Collapsing its rails on the
+ * way in and re-opening them on the way out is churn nobody asked for. A reader
+ * who reaches Settings from the Roleplays list has no scene behind them, and
+ * that is the case the measurement was about.
+ */
+function useSceneBehind(): boolean {
+  return useShellRoute().base.name === "chat";
+}
+
+/**
+ * The two rail toggles, which also remember an off-scene choice (§20 phase 225).
+ *
+ * One hook rather than three components reaching into the store, because the
+ * write has to happen wherever the reader flips a rail and a seventh call site
+ * added later is exactly how that would be forgotten. On the chat these are the
+ * plain store toggles they have always been: there is no off-scene decision to
+ * record, and the rails stay chrome.
+ */
+export function useRailToggles(): { toggleLeft(): void; toggleRight(): void } {
+  const dock = useDock();
+  const save = useSetPreferences();
+  const onScene = useSceneBehind();
+  const leftRailOpen = useUiStore((state) => state.leftRailOpen);
+  const rightRailOpen = useUiStore((state) => state.rightRailOpen);
+  const toggleLeftRail = useUiStore((state) => state.toggleLeftRail);
+  const toggleRightRail = useUiStore((state) => state.toggleRightRail);
+
+  return {
+    toggleLeft: () => {
+      toggleLeftRail();
+      if (!onScene) save.mutate({ dock: { leftOpenOffScene: !leftRailOpen } });
+    },
+    toggleRight: () => {
+      toggleRightRail();
+      if (!onScene) save.mutate({ dock: { rightOpenOffScene: !rightRailOpen } });
+    },
+  };
 }

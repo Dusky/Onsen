@@ -480,9 +480,8 @@ export function sceneRoutes(
       if (scenario !== null && typeof scenario !== "string") {
         return c.json(badRequest("The scenario must be text, or nothing."), 400);
       }
-      ctx.db.query("UPDATE scenes SET scenario_override = $scenario WHERE id = $id").run({
-        id: row.id,
-        scenario: scenario === null || scenario.trim() === "" ? null : scenario.trim(),
+      updateScene(ctx.db, row.id, {
+        scenarioOverride: scenario === null || scenario.trim() === "" ? null : scenario.trim(),
       });
     }
     /*
@@ -610,6 +609,15 @@ export function sceneRoutes(
       ctx.db.query("UPDATE scenes SET vn_mode_enabled = $on WHERE id = $id").run({
         id: row.id,
         on: input.vnModeEnabled ? 1 : 0,
+      });
+    }
+    if ("conversationMode" in input) {
+      if (typeof input.conversationMode !== "boolean") {
+        return c.json(badRequest("conversationMode must be a boolean."), 400);
+      }
+      ctx.db.query("UPDATE scenes SET conversation_mode = $on WHERE id = $id").run({
+        id: row.id,
+        on: input.conversationMode ? 1 : 0,
       });
     }
     if ("summariseEvict" in input) {

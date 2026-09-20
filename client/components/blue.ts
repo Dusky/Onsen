@@ -19,7 +19,7 @@ export const blueSolid = {
 
 export const red = {
   borderColor: "var(--onsen-color-red)",
-  color: "var(--onsen-color-red)",
+  color: "var(--onsen-color-red-text)",
 };
 
 export const blueRule = { borderBottom: "1px solid var(--onsen-color-blue-border)" };

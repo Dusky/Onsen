@@ -10,6 +10,7 @@ import { AuthorsScreen, AuthorEditorScreen } from "./screens/AuthorsScreen.tsx";
 import { PersonasScreen } from "./screens/PersonasScreen.tsx";
 import { SceneSetupScreen } from "./screens/SceneSetupScreen.tsx";
 import { SettingsScreen } from "./screens/SettingsScreen.tsx";
+import { AssistantScreen } from "./screens/AssistantScreen.tsx";
 import { LoreScreen } from "./screens/LoreScreen.tsx";
 import { BackgroundsScreen } from "./screens/BackgroundsScreen.tsx";
 import { api } from "./lib/api.ts";
@@ -26,6 +27,7 @@ import { setChimeWanted, unlockAudio } from "./lib/chime.ts";
 import { usePreferences, useReader, useReading } from "./lib/queries.ts";
 import { useMotionPreference, useReadingVariables, useViewportHeight } from "./lib/viewport.ts";
 import { NoticeRegion } from "./components/NoticeRegion.tsx";
+import { SearchOverlay } from "./components/SearchOverlay.tsx";
 import { RouteOverlay } from "./components/RouteOverlay.tsx";
 import { useUiStore } from "./state/ui.ts";
 import type { BootstrapDto } from "@shared/types.ts";
@@ -271,6 +273,7 @@ function Shell() {
         {/* Above every screen on both layouts, mounted once: the live regions
             have to be watched before the first notice arrives (§167). */}
         <NoticeRegion position={reader.notices} />
+        <SearchOverlay />
         {vanished ? <VanishHandle onRestore={toggleVanished} /> : null}
       </div>
     );
@@ -302,6 +305,7 @@ function Shell() {
         {vanished ? null : <RightRail />}
       </div>
       <NoticeRegion position={reader.notices} />
+      <SearchOverlay />
       {vanished ? <VanishHandle onRestore={toggleVanished} /> : null}
     </div>
   );
@@ -329,6 +333,8 @@ function overlayLabelFor(route: Route): string {
       return strings.sceneSetup.kicker;
     case "settings":
       return strings.nav.settings;
+    case "assistant":
+      return strings.nav.assistant;
     case "lorebooks":
     case "lorebook":
       return strings.nav.lorebooks;
@@ -401,6 +407,8 @@ function Routed({ route }: { route: Route }) {
       return <SceneSetupScreen sceneId={route.sceneId} />;
     case "settings":
       return <SettingsScreen />;
+    case "assistant":
+      return <AssistantScreen />;
     case "lorebooks":
       return <LoreScreen />;
     case "backgrounds":

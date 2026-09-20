@@ -1,5 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { ulid } from "../lib/ulid.ts";
+import { stripSpeakerPrefix } from "../../shared/speaker-prefix.ts";
 import type { Keyring } from "../lib/crypto.ts";
 import { createAdapter as defaultCreateAdapter, AdapterError, type Adapter } from "../adapters/index.ts";
 import { buildPrompt, createEstimatingTokenizer, PromptBudgetError, type BuiltPrompt } from "../prompt/index.ts";
@@ -18,6 +19,7 @@ import {
   applySegmentExpressions,
   findMessageById,
   findSceneById,
+  lastSpeakerOf,
   reparseSegments,
   replaceSegment,
   segmentDtosOf,
@@ -60,7 +62,7 @@ import type { WebhookEvent } from "../webhooks/events.ts";
 import { sceneChannel } from "../sync/channel.ts";
 import { recall, type MemoryRunner } from "../memory/runner.ts";
 import type { PromptMemoryEntity } from "../prompt/types.ts";
-import type { MemoryRecallTrace } from "../../shared/types.ts";
+import type { MemoryRecallTrace, ThinTurn } from "../../shared/types.ts";
 import type { InstructTemplate } from "../prompt/index.ts";
 import type { TaskRunStatus } from "../../shared/types.ts";
 
@@ -109,7 +111,13 @@ export type GenerationEvent =
    * default, and what matters live is only that something is happening.
    */
   | { type: "reasoning"; text: string }
-  | { type: "done"; messageId: string; meta: GenerationMeta }
+  /**
+   * `thin` is set when the turn came back with little or no story in it
+   * (§20 phase 224) — the numbers the client needs to say why, carried on the
+   * turn's own terminal event rather than fetched afterwards. Null on an
+   * ordinary turn, which is nearly all of them.
+   */
+  | { type: "done"; messageId: string; meta: GenerationMeta; thin: ThinTurn | null }
   | { type: "cancelled"; messageId: string | null; meta: GenerationMeta }
   | { type: "error"; message: string; detail: string | null };
 
@@ -139,9 +147,31 @@ interface ActiveGeneration {
   sceneUlid: string;
   parentId: number | null;
   status: GenerationStatus;
+  /**
+   * What the reader is told about a turn that produced little or nothing
+   * (§20 phase 224), decided once in `finish()` (§20 phase 228).
+   *
+   * Recorded rather than recomputed, which reverses phase 224's own choice and
+   * is worth saying why. The replay below used to call `thinTurn()` a second
+   * time on the grounds that "the inputs are all still on the generation" —
+   * true, and not enough: phase 228 gave `finish()` an input the replay does
+   * not have, namely that a retry was about to run and the explanation was
+   * therefore the wrong thing to say. Two computations of one answer can only
+   * agree by luck once they see different things.
+   */
+  thin: ThinTurn | null;
   buffer: string;
   /** Reasoning, kept apart from the prose all the way to the message (§13). */
   reasoning: string;
+  /**
+   * The token budget the prompt reserved for this reply (§20 phase 224).
+   *
+   * Read off `prompt.debug` when the prompt is built and kept here because
+   * `finish()` is where it matters — that is the only place that can compare
+   * the room given against the prose that came back, and the prompt is long
+   * out of scope by then.
+   */
+  reservedForResponse: number;
   /** Splits inline `<think>` tags out of the stream. Stateful across chunks. */
   splitter: ReasoningSplitter;
   /**
@@ -433,6 +463,10 @@ export class GenerationService {
       rowId: row.id,
       sceneId: scene.id,
       sceneUlid: scene.ulid,
+      reservedForResponse: 0,
+      // Decided in `finish()`; until then the turn has produced nothing to
+      // say anything about (§20 phase 228).
+      thin: null,
       parentId,
       status: "pending",
       buffer: "",
@@ -746,6 +780,9 @@ export class GenerationService {
       const reasoningConfig = parseReasoningConfig(this.reasoningJson(presetId));
       generation.meta.promptTokens = prompt.debug.totalTokens;
       generation.meta.tokensAreEstimated = prompt.debug.tokensAreEstimated;
+      // Kept for `finish()`, which is the only place that can tell whether the
+      // reply used the room it was given and is long past the prompt's scope.
+      generation.reservedForResponse = prompt.debug.reservedForResponse;
 
       // Captured the moment the prompt is built, before a token streams, so
       // the inspector can answer for a cancelled or failed generation too
@@ -1361,16 +1398,22 @@ export class GenerationService {
         : { decided: null, why: null };
     const decided = asked.decided;
 
-    const characterUlid = decided?.characterId ?? fallback.characterId;
-    const name = decided?.name ?? fallback.name;
+    // An explicit cue always wins over the classifier (SPEC §6): with scope
+    // "auto" the classifier is asked only to settle one-voice-or-the-room, and
+    // its name answer was made against a roster that may not even have
+    // contained the cued character — taking it here would silently swap the
+    // speaker the reader chose. Only the scope answer is used.
+    const cued = fallback.source === "user";
+    const characterUlid = cued ? fallback.characterId : (decided?.characterId ?? fallback.characterId);
+    const name = cued ? fallback.name : (decided?.name ?? fallback.name);
     // When the classifier was asked and could not answer, the reason says so
     // rather than repeating the provisional sentence the scene carried before
     // the turn: a director that is quietly broken should not look exactly like
     // one that is quietly working. The fallback under `classifier` is round
     // robin (see `chooseSpeaker`), which is what the sentence names.
-    const reason =
-      decided?.reason ??
-      (asked.why === null ? fallback.reason : `Round robin — ${asked.why}`);
+    const reason = cued
+      ? fallback.reason
+      : (decided?.reason ?? (asked.why === null ? fallback.reason : `Round robin — ${asked.why}`));
     const scope: ResolvedTurnScope =
       generation.turn.kind === "beat"
         ? "beat"
@@ -1433,7 +1476,7 @@ export class GenerationService {
     };
 
     const path = activePathOf(this.db, scene.id);
-    const lastSpoke = lastCharacterOf(path);
+    const lastSpoke = lastCharacterOf(this.db, path);
     // Present and unmuted: who can be offered the next turn (§20 phase 62).
     const cast = castRowsOf(this.db, scene.id).filter(
       (row) => row.is_active === 1 && row.is_muted === 0,
@@ -1460,7 +1503,7 @@ export class GenerationService {
       id: row.ulid,
       name: row.name,
       description: row.description,
-      turnsSilent: turnsSinceSpeaking(path, row.id),
+      turnsSilent: turnsSinceSpeaking(this.db, path, row.id),
     }));
 
     const request = {
@@ -1491,10 +1534,13 @@ export class GenerationService {
     }
 
     const scope: ResolvedTurnScope = wantsScope ? (parsed.scope ?? "spotlight") : "spotlight";
+    // The name is the classifier's answer. A pinned speaker is handled by the
+    // caller, not here: when the reader cued a character, `direct()` keeps the
+    // cue whatever this said, and this function is asked only for the scope.
     return {
       decided: {
-        characterId: speakerIsPinned ? candidates[0]!.id : parsed.characterId,
-        name: speakerIsPinned ? candidates[0]!.name : parsed.name,
+        characterId: parsed.characterId,
+        name: parsed.name,
         reason: parsed.reason ?? "Chosen by the classifier",
         scope,
       },
@@ -1651,13 +1697,35 @@ export class GenerationService {
 
     generation.status = cancelled ? "cancelled" : "complete";
     this.persist(generation);
+
+    /*
+     * Decided here, run below (§20 phase 228).
+     *
+     * The terminal event goes out before the retry starts, and phase 224's
+     * thin-turn notice ends "Send again, or try another model" — poor advice
+     * while the app is already sending again. Knowing the answer before saying
+     * anything is what keeps the two from contradicting each other.
+     */
+    const retry = cancelled ? null : this.plannedRetry(generation);
+    generation.thin = retry === null ? thinTurn(generation) : null;
     // A cancelled generation that produced nothing has no message, so its event
     // carries null rather than a fabricated identifier.
     this.emit(
       generation,
       cancelled
         ? { type: "cancelled", messageId: generation.messageUlid, meta: generation.meta }
-        : { type: "done", messageId: generation.messageUlid ?? "", meta: generation.meta },
+        : {
+            type: "done",
+            messageId: generation.messageUlid ?? "",
+            meta: generation.meta,
+            // The turn is over and nothing landed, or too little did. Not an
+            // error — the provider did what it was asked — so it travels on the
+            // ordinary terminal event and the reader is told in a notice.
+            //
+            // Unless a retry is about to run, in which case the app is already
+            // doing the thing the notice would advise (§20 phase 228).
+            thin: generation.thin,
+          },
     );
 
     // The pipeline starts *after* the turn is finished and announced. SPEC §7
@@ -1710,7 +1778,8 @@ export class GenerationService {
     // The two automatic retries (§7, §20 phase 63). Before autopilot, because a
     // turn that is about to be continued or rerolled has not finished — telling
     // the loop it had would have it write the next one over the top.
-    if (!cancelled && this.maybeRetry(generation)) {
+    if (retry !== null) {
+      retry();
       this.scheduleEviction(generation);
       return;
     }
@@ -1797,23 +1866,32 @@ export class GenerationService {
 
     const revise = generation.turn.kind === "revise" ? generation.turn : null;
     const isBeat = revise === null ? generation.turn.kind === "beat" : revise.targetKind === "beat";
+    // Continue extends rather than replaces: the message that lands is the
+    // whole turn, original and continuation, so the log reads as one piece of
+    // writing rather than a fragment beside its own beginning.
+    // Trimmed, which matters once an aside can be lifted off the end of a
+    // turn (§7): the prose before it keeps the space that separated them,
+    // and a turn should not end in whitespace the reader cannot see.
+    let content = this.scripted(
+      generation,
+      revise?.mode === "continue"
+        ? `${revise.original.trimEnd()} ${generation.buffer.trimStart()}`
+        : generation.buffer.trim(),
+    );
+    // A model often opens a spotlight turn with the speaker's own name, in
+    // imitation of the history format. The log already attributes the turn and
+    // the prompt's history adds the name again, so a stored "Daphne: …" would
+    // read "Daphne" twice and feed back doubled. Beats keep their prefixes —
+    // those are per-part labels, not a header.
+    if (!isBeat && revise === null) {
+      content = stripSpotlightPrefix(this.db, content, generation.spotlightId);
+    }
     const message = appendMessage(this.db, {
       sceneId: generation.sceneId,
       parentId: generation.parentId,
       kind: isBeat ? "beat" : "spotlight",
       authorType: "character",
-      // Continue extends rather than replaces: the message that lands is the
-      // whole turn, original and continuation, so the log reads as one piece of
-      // writing rather than a fragment beside its own beginning.
-      // Trimmed, which matters once an aside can be lifted off the end of a
-      // turn (§7): the prose before it keeps the space that separated them,
-      // and a turn should not end in whitespace the reader cannot see.
-      content: this.scripted(
-        generation,
-        revise?.mode === "continue"
-          ? `${revise.original.trimEnd()} ${generation.buffer.trimStart()}`
-          : generation.buffer.trim(),
-      ),
+      content,
       // A beat is filed under whoever opened it, so the log has something to
       // attribute it to; who spoke *last* in it comes from its segments (§6).
       characterId: generation.spotlightId,
@@ -1933,7 +2011,16 @@ export class GenerationService {
   private terminalEvent(generation: ActiveGeneration): GenerationEvent | null {
     switch (generation.status) {
       case "complete":
-        return { type: "done", messageId: generation.messageUlid ?? "", meta: generation.meta };
+        return {
+          type: "done",
+          messageId: generation.messageUlid ?? "",
+          meta: generation.meta,
+          // What `finish()` decided, not a second opinion (§20 phase 228). A
+          // reconnecting client is replayed the terminal event and has to be
+          // told the same thing the first one was — which is an argument for
+          // one decision, not for computing it twice.
+          thin: generation.thin,
+        };
       case "cancelled":
         return { type: "cancelled", messageId: generation.messageUlid, meta: generation.meta };
       case "error":
@@ -2008,38 +2095,66 @@ export class GenerationService {
    *    stopped simply does not trigger it, which is the honest reading of
    *    silence and the reason `FinishReason` has an `other`.
    *
-   * Returns true when a follow-up was started, which is the caller's signal to
-   * leave autopilot alone: the turn is not over.
+   * Returns the follow-up to run, or null. **Deciding is separated from doing**
+   * (§20 phase 228) because the terminal event is emitted before the retry
+   * starts, and a turn about to be rerolled must not also be explained to the
+   * reader: phase 224's notice ends "Send again, or try another model", which
+   * is poor advice while the app is already sending again. A caller that gets
+   * a plan back knows both things before it says either.
+   *
+   * A non-null plan is also the caller's signal to leave autopilot alone: the
+   * turn is not over.
    */
-  private maybeRetry(generation: ActiveGeneration): boolean {
+  private plannedRetry(generation: ActiveGeneration): (() => void) | null {
     // A revise is already a retry; a recast is a splice and an aside is not the
     // scene. Only a turn the reader is waiting on gets one.
     const kind = generation.turn.kind;
     const continuing = kind === "revise" && generation.turn.mode === "continue";
-    if (kind !== "spotlight" && kind !== "beat" && !continuing) return false;
-    if (generation.landedMessageId === null) return false;
+    if (kind !== "spotlight" && kind !== "beat" && !continuing) return null;
 
     const scene = findSceneById(this.db, generation.sceneId);
-    if (scene === null) return false;
+    if (scene === null) return null;
     const preset = presetRetrySettings(this.db, scene);
-    if (preset === null) return false;
+    if (preset === null) return null;
 
-    const landed = findMessageById(this.db, generation.landedMessageId);
-    if (landed === null) return false;
+    /*
+     * A turn that landed nothing is still a turn that came back wrong
+     * (§20 phase 228).
+     *
+     * This began as `if (generation.landedMessageId === null) return false` at
+     * the top, which is right for *continue* — there is nothing to continue,
+     * and continuing from nothing is a reroll by another name. It was wrong for
+     * the reroll below it, which asks whether the turn was shorter than the
+     * reader's floor: a turn with zero characters answers that as plainly as a
+     * turn can, and it was the one case the setting could never reach.
+     *
+     * Measured against a live reasoning model: reserve 160, **Carry on 2**,
+     * `finishReason: "length"`, nothing landed, neither retry fired. The reader
+     * had set two numbers and got the behaviour of neither.
+     *
+     * So the guard moved down to the branch it belongs to, and `landed` is
+     * allowed to be null with the empty turn's length standing in as zero.
+     */
+    const landed =
+      generation.landedMessageId === null
+        ? null
+        : findMessageById(this.db, generation.landedMessageId);
+    if (generation.landedMessageId !== null && landed === null) return null;
 
     // Continue first: a turn cut off by the cap is short *because* it was cut
     // off, and rerolling it would throw away a good beginning to ask for a
-    // whole new one.
+    // whole new one. Only ever on a turn that landed one.
     if (
+      landed !== null &&
       generation.meta.finishReason === "length" &&
       generation.retries.continued < preset.autoContinue
     ) {
-      this.start({
-        scene,
-        revise: { message: landed, mode: "continue" },
-        retries: { ...generation.retries, continued: generation.retries.continued + 1 },
-      });
-      return true;
+      return () =>
+        this.start({
+          scene,
+          revise: { message: landed, mode: "continue" },
+          retries: { ...generation.retries, continued: generation.retries.continued + 1 },
+        });
     }
 
     /*
@@ -2050,10 +2165,14 @@ export class GenerationService {
      * A turn that is both too short *and* uses a banned phrase is rerolled for
      * being short, which is the more basic complaint.
      */
-    const tooShort =
-      preset.autoSwipeMinChars > 0 && landed.content.trim().length < preset.autoSwipeMinChars;
+    // A turn that landed nothing is zero characters long, which is the whole
+    // of the change: the comparison was always the right question and the
+    // early return above was what stopped it being asked (§20 phase 228).
+    const written = landed === null ? "" : landed.content.trim();
+    const tooShort = preset.autoSwipeMinChars > 0 && written.length < preset.autoSwipeMinChars;
+    // The ban list needs content to find a phrase in, so it keeps its turn.
     const banned =
-      !tooShort && preset.autoSwipeOnBanned
+      !tooShort && landed !== null && preset.autoSwipeOnBanned
         ? bannedPhraseIn(this.db, generation.sceneId, landed.content)
         : null;
 
@@ -2070,28 +2189,39 @@ export class GenerationService {
        * the turn itself and from the token count beside it, where *which
        * phrase* is not recoverable from anything on screen.
        */
-      if (banned !== null) {
-        this.db
-          .query("UPDATE messages SET generation_meta = $meta WHERE id = $id")
-          .run({
-            id: landed.id,
-            meta: JSON.stringify({ ...generation.meta, autoSwipedFor: banned }),
-          });
-      }
+      return () => {
+        if (banned !== null && landed !== null) {
+          this.db
+            .query("UPDATE messages SET generation_meta = $meta WHERE id = $id")
+            .run({
+              id: landed.id,
+              meta: JSON.stringify({ ...generation.meta, autoSwipedFor: banned }),
+            });
+        }
       // A sibling of the turn being rejected, not a replacement for it: the
       // rejected one stays one swipe away, because a reader who wanted it
       // should not have to regenerate to get it back, and deleting a
       // generation they paid for is the worse half of automation.
-      this.start({
-        scene,
-        parentId: landed.parent_id,
-        spotlightId: generation.requestedSpotlightId,
-        retries: { ...generation.retries, swiped: generation.retries.swiped + 1 },
-      });
-      return true;
+      /*
+       * Where the reroll attaches when there is no rejected turn to be a
+       * sibling of (§20 phase 228).
+       *
+       * `generation.parentId`, not the scene's active leaf. The
+       * `generations.parent_id` column exists precisely so "a leaf move
+       * mid-generation cannot silently reparent it" — its own schema comment
+       * — and reading the leaf here would reintroduce exactly that bug in the
+       * one path that runs without the reader watching.
+       */
+        this.start({
+          scene,
+          parentId: landed === null ? generation.parentId : landed.parent_id,
+          spotlightId: generation.requestedSpotlightId,
+          retries: { ...generation.retries, swiped: generation.retries.swiped + 1 },
+        });
+      };
     }
 
-    return false;
+    return null;
   }
 
   /**
@@ -2509,18 +2639,35 @@ function activePathOf(db: Database, sceneId: number): MessageRowWithSiblings[] {
   return activePath(db, sceneId);
 }
 
+/** Every cast member who spoke in a message. A beat's are its segments. */
+function speakersOf(db: Database, message: MessageRowWithSiblings): Set<number> {
+  const ids = new Set<number>();
+  if (message.kind === "beat") {
+    for (const segment of segmentRowsOf(db, message.id)) {
+      if (segment.character_id !== null) ids.add(segment.character_id);
+    }
+  } else if (message.character_id !== null) {
+    ids.add(message.character_id);
+  }
+  return ids;
+}
+
 /** The last cast member to speak, counting who a beat ended on (SPEC §3.5). */
-function lastCharacterOf(path: MessageRowWithSiblings[]): number | null {
+function lastCharacterOf(db: Database, path: MessageRowWithSiblings[]): number | null {
   for (let index = path.length - 1; index >= 0; index--) {
-    const row = path[index]!;
-    if (row.character_id !== null) return row.character_id;
+    const speaker = lastSpeakerOf(db, path[index]!);
+    if (speaker !== null) return speaker;
   }
   return null;
 }
 
-function turnsSinceSpeaking(path: MessageRowWithSiblings[], characterId: number): number | null {
+function turnsSinceSpeaking(
+  db: Database,
+  path: MessageRowWithSiblings[],
+  characterId: number,
+): number | null {
   for (let index = path.length - 1; index >= 0; index--) {
-    if (path[index]!.character_id === characterId) return path.length - 1 - index;
+    if (speakersOf(db, path[index]!).has(characterId)) return path.length - 1 - index;
   }
   return null;
 }
@@ -2536,11 +2683,15 @@ function recentTurns(
     .slice(-CLASSIFIER_HISTORY_TURNS)
     .map((row) => ({
       speaker:
-        row.character_id === null
-          ? row.author_type === "user"
-            ? "The reader"
-            : "Narration"
-          : (speakers.nameById.get(row.character_id) ?? "Someone"),
+        // A beat labels its own speakers inside its text, so an outer label
+        // would attribute the whole exchange to whoever opened it.
+        row.kind === "beat"
+          ? "Several characters"
+          : row.character_id === null
+            ? row.author_type === "user"
+              ? "The reader"
+              : "Narration"
+            : (speakers.nameById.get(row.character_id) ?? "Someone"),
       content: row.content,
     }));
 }
@@ -2557,6 +2708,86 @@ function personaNameOf(db: Database, scene: SceneRow): string | null {
 function directorChoice(db: Database, scene: SceneRow): number | null {
   const decision = resolveNextSpeaker(db, scene);
   return decision === null ? null : internalIdOf(db, scene, decision.characterId);
+}
+
+/**
+ * The speaker's own `Name:` off the front of a spotlight turn.
+ *
+ * The regex lives in `shared/speaker-prefix.ts` since §20 phase 223, because
+ * the streaming tail needs the identical answer: when only this end stripped,
+ * a turn streamed with the prefix and lost it on settling, and the reader
+ * watched the text jump.
+ */
+function stripSpotlightPrefix(
+  db: Database,
+  content: string,
+  spotlightId: number | null,
+): string {
+  if (spotlightId === null) return content;
+  const row = db.query("SELECT name FROM characters WHERE id = $id").get({ id: spotlightId }) as
+    | { name: string }
+    | null;
+  return stripSpeakerPrefix(content, row?.name ?? null);
+}
+
+/**
+ * Whether this turn came back with little or no story in it, and the numbers
+ * that say why (§20 phase 224).
+ *
+ * Two shapes, one cause. A reasoning model's thinking is billed against the
+ * same `max_tokens` the builder reserved for the reply, so a turn can spend its
+ * whole budget thinking and land **nothing** — which the service already
+ * handled correctly by not writing an empty message, and incorrectly by saying
+ * nothing about it. Or it can land a fragment: measured at 77 characters of
+ * prose after 4075 of reasoning, with nothing on screen to explain the length.
+ *
+ * **The stub test is the mechanism, not a ratio.** The first version of this
+ * asked whether the prose was a small fraction of the reserve, and its own
+ * cry-wolf test caught it immediately: a reserve of 1024 tokens is around four
+ * thousand characters and an ordinary turn is three hundred, so *every* normal
+ * turn is a small fraction of it. What actually distinguishes the 77-character
+ * case is that the model **was cut off** — `finishReason === "length"` means
+ * the cap was reached — and that it spent more of that cap thinking than
+ * writing. Both together are causal; either alone is a guess.
+ *
+ * A turn that stopped on its own is never diagnosed, however short it is,
+ * because a model that chose to write one line chose to write one line.
+ */
+function thinTurn(generation: ActiveGeneration): ThinTurn | null {
+  const prose = generation.buffer.trim();
+  const reasoningChars = generation.reasoning.trim().length;
+  const base = {
+    reasoningChars,
+    proseChars: prose.length,
+    reserved: generation.reservedForResponse,
+  };
+
+  /*
+   * Nothing at all is still nothing (§20 phase 227).
+   *
+   * Phase 224 opened with `if (reasoningChars === 0) return null`, so a turn
+   * was only diagnosed when the model had *thought*. Driving the app against
+   * the same provider a second time produced the other half: generation 11,
+   * `finishReason: "stop"`, **`completionTokens: 0`**, empty buffer, no
+   * message — and phase 224 said nothing, which is the exact complaint it was
+   * written for, in the one shape it did not cover.
+   *
+   * The reasoning count is what makes the *sentence* useful. It was never what
+   * should decide whether there is a sentence: an empty turn is worth saying
+   * so about however the model got there, and "it did not think either" is a
+   * diagnosis too — a provider returning zero tokens is a different problem
+   * from a budget spent thinking, and the reader can tell them apart from the
+   * numbers.
+   */
+  if (prose === "") return { kind: "empty", ...base };
+
+  // The stub case still needs reasoning, because reasoning is the mechanism:
+  // what distinguishes a cut-off fragment from a model that chose to write one
+  // line is that the budget went somewhere else.
+  if (reasoningChars === 0) return null;
+  const cutOff = generation.meta.finishReason === "length";
+  if (cutOff && reasoningChars > prose.length) return { kind: "stub", ...base };
+  return null;
 }
 
 function hashToSeed(value: string): number {

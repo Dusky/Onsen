@@ -190,7 +190,7 @@ export function SheetAction({
       onClick={onClick}
       disabled={disabled}
       className="chrome flex w-full items-center border-b border-rule py-[15px] text-left text-ui-loose disabled:opacity-40"
-      style={{ color: destructive ? "var(--onsen-color-red)" : "var(--onsen-color-text-label)" }}
+      style={{ color: destructive ? "var(--onsen-color-red-text)" : "var(--onsen-color-text-label)" }}
     >
       {label}
     </button>

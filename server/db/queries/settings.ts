@@ -17,6 +17,8 @@ export const SettingKey = {
   backgroundOpacity: "background.opacity",
   /** The native rolling summariser is suppressed by an extension (§147). */
   summariseSuppressed: "summarise.suppressed",
+  /** The connection profile the assistant runs on (a profile ULID, or null). */
+  assistantProfile: "assistant.profile",
 } as const;
 
 export type SettingKeyName = (typeof SettingKey)[keyof typeof SettingKey];

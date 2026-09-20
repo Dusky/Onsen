@@ -17,6 +17,7 @@ import { LAYOUT_PRESETS, READING_BOUNDS, READING_DEFAULTS } from "@shared/types.
 import type { ReaderDto, ReadingDto } from "@shared/types.ts";
 import type { LayoutDto, LayoutPreset } from "@shared/types.ts";
 import { strings } from "../strings.ts";
+import { CATEGORIES, type CategoryId } from "./settings-categories.ts";
 import { navigate } from "../lib/router.ts";
 import {
   useConnectionProfiles,
@@ -171,7 +172,11 @@ function OpFields({ task, profiles }: { task: TaskDto; profiles: ConnectionProfi
         ) : null}
 
         {/* Routing only means something for an op that makes its own call. */}
-        {task.runs === "side_call" ? (
+        {task.runs === "side_call" && task.key === "turn_classifier" ? (
+          <p className="explain mb-[16px]">
+            {strings.settings.classifierRoutedElsewhere}
+          </p>
+        ) : task.runs === "side_call" ? (
           <>
             <p className="section-label mb-[6px]">{strings.settings.routing}</p>
             <div className="mb-[16px] flex flex-wrap gap-[6px]">
@@ -324,7 +329,7 @@ function UpdateGroup() {
               that is not an error. */}
           <span
             className="chrome flex-none text-ui"
-            style={{ color: behind !== null && behind > 0 ? "var(--onsen-color-red)" : undefined }}
+            style={{ color: behind !== null && behind > 0 ? "var(--onsen-color-red-text)" : undefined }}
           >
             {state}
           </span>
@@ -1351,7 +1356,13 @@ function EmbeddingsSection() {
             defaultValue={config.data?.model ?? ""}
           />
           <p className="section-label mb-[6px]">{strings.settings.embeddingsKey}</p>
-          <input name="apiKey" type="password" className="field mb-[10px]" autoComplete="off" />
+          <input
+            aria-label={strings.settings.embeddingsKey}
+            name="apiKey"
+            type="password"
+            className="field mb-[10px]"
+            autoComplete="off"
+          />
           <div className="flex items-center gap-[8px]">
             <button type="submit" className="btn btn-primary flex-1">
               {strings.settings.embeddingsSave}
@@ -1371,33 +1382,7 @@ function EmbeddingsSection() {
 
 /* ------------------------------------------------------------------ */
 
-/**
- * The nine places settings live (SPEC §20 phase 43).
- *
- * Thirty-one section labels in one 1,596-line scroll was not a hierarchy: when
- * everything is a heading, nothing is, and nothing can be found twice. The
- * filter searches these names and the words under them, so a reader who
- * remembers "webhook" but not "connections out" still lands on it.
- */
-const CATEGORIES = [
-  { id: "models", words: ["provider", "profile", "model", "api key", "endpoint", "anthropic", "llama"] },
-  { id: "generation", words: ["preset", "sampler", "temperature", "context", "reasoning", "prefill"] },
-  { id: "tasks", words: ["routing", "ops", "background", "guide", "summariser", "classifier"] },
-  { id: "reading", words: ["font", "size", "theme", "prose", "light", "dark"] },
-  { id: "branding", words: ["logo", "mark", "icon", "wordmark", "silhouette", "branding"] },
-  { id: "backgrounds", words: ["backdrop", "background", "wallpaper", "picture"] },
-  { id: "media", words: ["picture", "voice", "image", "speech", "tts", "draw", "caption"] },
-  { id: "data", words: ["embedding", "document", "retrieval", "rag", "data bank"] },
-  { id: "automation", words: ["trigger", "script", "regex", "action", "event"] },
-  { id: "outward", words: ["api key", "webhook", "outbound", "bridge", "token"] },
-  { id: "packs", words: ["pack", "update", "import", "export", "version", "extension"] },
-  {
-    id: "migrate",
-    words: ["sillytavern", "migrate", "move", "switch", "chats", "jsonl", "import"],
-  },
-] as const;
 
-type CategoryId = (typeof CATEGORIES)[number]["id"];
 
 /**
  * Changing the password, which is also the app's only session revocation.
@@ -1437,6 +1422,7 @@ function PasswordSheet({ onClose }: { onClose(): void }) {
       >
         <p className="section-label mb-[6px]">{strings.settings.currentPassword}</p>
         <input
+          aria-label={strings.settings.currentPassword}
           type="password"
           autoComplete="current-password"
           className="field mb-[14px]"
@@ -1447,6 +1433,7 @@ function PasswordSheet({ onClose }: { onClose(): void }) {
 
         <p className="section-label mb-[6px]">{strings.settings.newPassword}</p>
         <input
+          aria-label={strings.settings.newPassword}
           type="password"
           autoComplete="new-password"
           className="field mb-[14px]"
@@ -1493,7 +1480,17 @@ export function SettingsScreen() {
   const active = matching.some((entry) => entry.id === category)
     ? category
     : (matching[0]?.id ?? category);
-  const show = (id: CategoryId) => id === active;
+  /*
+   * Nothing matching shows nothing (§20 phase 226).
+   *
+   * `active` falls back to the *current* category when nothing survives, which
+   * is right for keeping a category open and wrong for what it fed: `show`
+   * compared against it, so typing `zzzznomatch` printed "Nothing here matches
+   * that." above a fully rendered Models panel — Providers, Profiles, Anthropic
+   * and the account buttons, all still on screen under a line saying there was
+   * nothing. The tab row narrowed and the body did not.
+   */
+  const show = (id: CategoryId) => matching.length > 0 && id === active;
   const providers = useProviders();
   const profiles = useConnectionProfiles();
   const presets = usePresets();
@@ -1600,7 +1597,7 @@ export function SettingsScreen() {
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[15px] font-medium">{provider.name}</span>
                     <span className="meta block truncate">
-                      {[provider.model, kindLabel(provider.kind), provider.hasApiKey ? "keyed" : null]
+                      {[kindLabel(provider.kind), provider.hasApiKey ? "keyed" : null]
                         .filter((part) => part !== null && part !== "")
                         .join(" · ")}
                     </span>
@@ -1657,7 +1654,7 @@ export function SettingsScreen() {
                   {profile.isDefault ? (
                     <span
                       className="chrome flex-none text-[12px]"
-                      style={{ color: "var(--onsen-color-amber)" }}
+                      style={{ color: "var(--onsen-color-amber-text)" }}
                     >
                       {strings.settings.profileDefault}
                     </span>
@@ -1713,7 +1710,7 @@ export function SettingsScreen() {
                   <span className="flex items-baseline gap-[8px]">
                     <span className="truncate text-[15px] font-medium">{preset.name}</span>
                     {preset.isDefault ? (
-                      <span className="meta flex-none" style={{ color: "var(--onsen-color-amber)" }}>
+                      <span className="meta flex-none" style={{ color: "var(--onsen-color-amber-text)" }}>
                         {strings.settings.presetIsDefault}
                       </span>
                     ) : null}
@@ -1782,63 +1779,79 @@ export function SettingsScreen() {
           ) : null}
           {show("tasks") ? (
             <>
-          {/* Routing by operation — the interesting one. */}
-          <p className="group-heading mb-[12px]">{strings.settings.routing}</p>
-          {(tasks.data ?? []).map((task) => {
-            const routed =
-              task.runs === "turn"
-                ? "—"
-                : task.connectionProfileId === null
-                  ? strings.settings.routingSame
-                  : (profileList.find((profile) => profile.id === task.connectionProfileId)?.name ??
-                    strings.settings.routingSame);
-            const isOpen = isDesktop && openOp === task.key;
+          {/* Agents, grouped by when they run (§20 phase 214): before the
+              turn, alongside it, or after it. The same ops, now framed the
+              way a reader reaches for them. */}
+          {(["pre_generation", "sidecar", "post_generation"] as const).map((stage) => {
+            const stageTasks = (tasks.data ?? []).filter((task) => task.stage === stage);
+            if (stageTasks.length === 0) return null;
+            const heading =
+              stage === "pre_generation"
+                ? strings.settings.stagePre
+                : stage === "sidecar"
+                  ? strings.settings.stageSidecar
+                  : strings.settings.stagePost;
             return (
-              <Row key={task.key}>
-                <button
-                  type="button"
-                  onClick={() =>
-                    isDesktop ? setOpenOp(isOpen ? null : task.key) : setEditingOp(task)
-                  }
-                  aria-expanded={isDesktop ? isOpen : undefined}
-                  className="tap flex w-full items-baseline gap-[9px] text-left"
-                >
-                  <span className="min-w-0 flex-1">
-                    <span
-                      className="block truncate text-[15px] font-medium"
-                      style={{ opacity: task.enabled ? 1 : 0.55 }}
-                    >
-                      {task.label}
-                    </span>
-                    <span className="meta block truncate">
-                      {[
-                        task.enabled ? null : strings.settings.opDisabled,
-                        task.promptTemplate === null
-                          ? strings.settings.opWordsDefault
-                          : strings.settings.opWordsOverridden,
-                      ]
-                        .filter((part) => part !== null)
-                        .join(" · ")}
-                    </span>
-                  </span>
-                  <span className="chrome flex-none text-ui text-ink-muted">
-                    {routed}
-                  </span>
-                  <span className="chrome flex-none self-center text-[12px] text-ink-dim">
-                    {isDesktop ? (isOpen ? "▾" : "›") : "›"}
-                  </span>
-                </button>
+              <div key={stage}>
+                <p className="group-heading mb-[12px]">{heading}</p>
+                {stageTasks.map((task) => {
+                  const routed =
+                    task.runs === "turn"
+                      ? "—"
+                      : task.connectionProfileId === null
+                        ? strings.settings.routingSame
+                        : (profileList.find((profile) => profile.id === task.connectionProfileId)?.name ??
+                          strings.settings.routingSame);
+                  const isOpen = isDesktop && openOp === task.key;
+                  return (
+                    <Row key={task.key}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          isDesktop ? setOpenOp(isOpen ? null : task.key) : setEditingOp(task)
+                        }
+                        aria-expanded={isDesktop ? isOpen : undefined}
+                        className="tap flex w-full items-baseline gap-[9px] text-left"
+                      >
+                        <span className="min-w-0 flex-1">
+                          <span
+                            className="block truncate text-[15px] font-medium"
+                            style={{ opacity: task.enabled ? 1 : 0.55 }}
+                          >
+                            {task.label}
+                          </span>
+                          <span className="meta block truncate">
+                            {[
+                              task.enabled ? null : strings.settings.opDisabled,
+                              task.promptTemplate === null
+                                ? strings.settings.opWordsDefault
+                                : strings.settings.opWordsOverridden,
+                            ]
+                              .filter((part) => part !== null)
+                              .join(" · ")}
+                          </span>
+                        </span>
+                        <span className="chrome flex-none text-ui text-ink-muted">
+                          {routed}
+                        </span>
+                        <span className="chrome flex-none self-center text-[12px] text-ink-dim">
+                          {isDesktop ? (isOpen ? "▾" : "›") : "›"}
+                        </span>
+                      </button>
 
-                {/* With room, the options are the row itself (design 4a,
-                    §20 phase 71): expand in place, no sheet between the reader
-                    and the setting. On a phone there is no room, so the sheet
-                    stays. */}
-                {isOpen ? (
-                  <div className="mt-[14px] border-t border-rule pt-[14px]">
-                    <OpFields task={task} profiles={profileList} />
-                  </div>
-                ) : null}
-              </Row>
+                      {/* With room, the options are the row itself (design 4a,
+                          §20 phase 71): expand in place, no sheet between the
+                          reader and the setting. On a phone there is no room,
+                          so the sheet stays. */}
+                      {isOpen ? (
+                        <div className="mt-[14px] border-t border-rule pt-[14px]">
+                          <OpFields task={task} profiles={profileList} />
+                        </div>
+                      ) : null}
+                    </Row>
+                  );
+                })}
+              </div>
             );
           })}
             </>
@@ -1898,20 +1911,35 @@ export function SettingsScreen() {
 
           {show("migrate") ? <MigrationSection /> : null}
 
-          {/* Last, and on their own: the two controls here that act on the
-              session rather than on what is in it. The password change is
-              beside Sign out because it is the stronger version of it — the
-              server bumps a generation counter every outstanding cookie is
-              checked against, so it signs out every *other* device too, which
-              is the only revocation this install has. */}
-          <div className="mt-[26px] flex flex-col gap-[8px] border-t border-rule pt-[18px]">
-            <button type="button" className="btn w-full" onClick={() => setPasswordOpen(true)}>
-              {strings.settings.changePassword}
-            </button>
-            <button type="button" className="btn w-full" onClick={() => signOut.mutate(undefined)}>
-              {strings.settings.signOut}
-            </button>
-          </div>
+          {/* The two controls that act on the session rather than on what is
+              in it (§20 phase 226). They used to sit outside every `show()`,
+              which meant they were the last two controls of *every* category
+              — under Models, under Backgrounds, under the "nothing matches"
+              state — filed wherever the reader happened to be rather than
+              anywhere. They have a category now.
+
+              The password change is beside Sign out because it is the stronger
+              version of it: the server bumps a generation counter every
+              outstanding cookie is checked against, so it signs out every
+              *other* device too, which is the only revocation this install
+              has. */}
+          {show("account") ? (
+            <>
+              <p className="group-heading mb-[12px]">{strings.settings.categories["account"]}</p>
+              <div className="flex flex-col gap-[8px]">
+                <button type="button" className="btn w-full" onClick={() => setPasswordOpen(true)}>
+                  {strings.settings.changePasswordAction}
+                </button>
+                <button
+                  type="button"
+                  className="btn w-full"
+                  onClick={() => signOut.mutate(undefined)}
+                >
+                  {strings.settings.signOut}
+                </button>
+              </div>
+            </>
+          ) : null}
         </div>
       </main>
 

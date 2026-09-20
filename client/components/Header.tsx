@@ -11,6 +11,7 @@ import {
   useThemes,
 } from "../lib/queries.ts";
 import { useUiStore } from "../state/ui.ts";
+import { useRailToggles } from "../lib/breakpoint.ts";
 import { READING_BOUNDS } from "@shared/types.ts";
 
 /**
@@ -60,7 +61,12 @@ export function Header() {
   const save = useSetPreferences();
   const themes = useThemes();
   const activate = useActivateTheme();
-  const { toggleLeftRail, toggleRightRail } = useUiStore();
+  // The shared hook rather than the store, so the header's two rail buttons
+  // record an off-scene choice exactly as the rails' own do (§20 phase 225).
+  // It also drops a selector-less `useUiStore()` subscribe, which `Shell` has
+  // a long comment about.
+  const { toggleLeft: toggleLeftRail, toggleRight: toggleRightRail } = useRailToggles();
+  const setSearchOpen = useUiStore((state) => state.setSearchOpen);
 
   const sceneId = base.name === "chat" ? base.sceneId : null;
   const scene = (scenes.data ?? []).find((candidate) => candidate.id === sceneId) ?? null;
@@ -129,7 +135,7 @@ export function Header() {
             className="truncate font-medium"
             style={{
               color: sceneWriting
-                ? "var(--onsen-color-amber)"
+                ? "var(--onsen-color-amber-text)"
                 : overlay === null
                   ? "var(--onsen-color-text)"
                   : "var(--onsen-color-blue-text)",
@@ -239,6 +245,22 @@ export function Header() {
       {/* Settings: a destination, not a section, so it does not share the
           panel toggles' shape or the wordmark's weight \u2014 a hairline and the
           muted treatment mark it as leaving the page (design review fix 4). */}
+      <button
+        type="button"
+        onClick={() => setSearchOpen(true)}
+        aria-label={strings.search.title}
+        className="chrome flex items-center border-l border-rule px-[12px] text-[12px] text-ink-muted"
+      >
+        {strings.search.title}
+      </button>
+      <button
+        type="button"
+        onClick={() => navigate({ name: "assistant" })}
+        aria-label={strings.nav.assistant}
+        className="chrome flex items-center border-l border-rule px-[12px] text-[12px] text-ink-muted"
+      >
+        {strings.nav.assistant}
+      </button>
       <button
         type="button"
         onClick={() => navigate({ name: "settings" })}

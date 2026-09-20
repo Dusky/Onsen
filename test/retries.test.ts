@@ -456,3 +456,103 @@ describe("auto-swipe on a banned phrase", () => {
     expect(rejected?.generation?.autoSwipedFor ?? null).toBeNull();
   });
 });
+
+/**
+ * A turn that landed nothing is still a turn that came back wrong
+ * (§20 phase 228).
+ *
+ * `maybeRetry` opened with `if (generation.landedMessageId === null) return
+ * false`, which is right for *continue* — there is nothing to continue, and
+ * continuing from nothing is a reroll by another name — and was wrong for the
+ * reroll beneath it. "Reroll under N chars" asks whether the turn was shorter
+ * than the reader's floor, and a turn with zero characters answers that as
+ * plainly as a turn can. It was the one case the setting could never reach.
+ *
+ * Measured against a live reasoning model, which is how it was found: reserve
+ * 160 tokens, **Carry on 2**, `finishReason: "length"`, nothing landed, neither
+ * retry fired. The reader had set two numbers and got the behaviour of neither.
+ */
+describe("a turn that landed nothing", () => {
+  test("is rerolled when the reader asked for short turns to be rerolled", async () => {
+    const { t, scene, preset } = await setup();
+    await patchPreset(t, preset.id, { autoSwipe: { minChars: 40, attempts: 2 } });
+    await say(t, scene, "Anything at all?");
+
+    // Not one token, which is exactly what the provider did.
+    await generate(t, scene);
+    await adapter.started;
+    adapter.end();
+
+    await until(() => turnCount() >= 2, { timeoutMs: 4000 });
+    adapter.push("She set the lamp down and said it plainly, the way she says everything.");
+    adapter.end();
+
+    await until(async () => {
+      const log = await history(t, scene);
+      return log.messages.some((message) => message.content.includes("says everything"));
+    }, { timeoutMs: 4000 });
+  });
+
+  test("attaches the reroll to the generation's own parent, not the scene's leaf", async () => {
+    /*
+     * There is no rejected turn to be a sibling of, so the parent comes from
+     * `generations.parent_id` — the column that exists so "a leaf move
+     * mid-generation cannot silently reparent it". Reading the scene's active
+     * leaf here would reintroduce that bug in the one path that runs without
+     * the reader watching.
+     *
+     * Asserted as a shape rather than an id: the rerolled turn answers the
+     * reader's message, so it is that message's child and the log stays a line
+     * rather than gaining a stray branch.
+     */
+    const { t, scene, preset } = await setup();
+    await patchPreset(t, preset.id, { autoSwipe: { minChars: 40, attempts: 2 } });
+    const asked = await say(t, scene, "Say something.");
+
+    await generate(t, scene);
+    await adapter.started;
+    adapter.end();
+    await until(() => turnCount() >= 2, { timeoutMs: 4000 });
+    adapter.push("A reply long enough to be kept, which is the whole of what this checks.");
+    adapter.end();
+
+    await until(async () => (await history(t, scene)).messages.length >= 2, { timeoutMs: 4000 });
+    const log = await history(t, scene);
+    const landed = log.messages.at(-1)!;
+    expect(landed.parentId).toBe(asked.id);
+    // Nothing was rejected, so nothing is a sibling of it.
+    expect(landed.siblingCount).toBe(1);
+  });
+
+  test("is left alone when the reader asked for nothing", async () => {
+    // `autoSwipeMinChars` ships at 0, so the default install sees no change at
+    // all — which is the point: the behaviour belongs to the number.
+    const { t, scene } = await setup();
+    await say(t, scene, "Anything at all?");
+
+    await generate(t, scene);
+    await adapter.started;
+    adapter.end();
+
+    await until(async () => (await history(t, scene)).messages.length >= 1, { timeoutMs: 4000 });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(turnCount()).toBe(1);
+  });
+
+  test("is never *continued*, because there is nothing to continue", async () => {
+    // The half of the old guard that was right, kept. A continue asks the model
+    // to carry on from a message, and there is no message.
+    const { t, scene, preset } = await setup();
+    await patchPreset(t, preset.id, { autoContinue: 2 });
+    await say(t, scene, "Anything at all?");
+
+    await generate(t, scene);
+    await adapter.started;
+    adapter.pushFinish("length");
+    adapter.end();
+
+    await until(async () => (await history(t, scene)).messages.length >= 1, { timeoutMs: 4000 });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(turnCount()).toBe(1);
+  });
+});

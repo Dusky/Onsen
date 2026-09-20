@@ -72,25 +72,25 @@
   --onsen-color-text: #e8e2d6;
   --onsen-color-text-bright: #f0e9dc;
   --onsen-color-text-label: #c9c1b1;
-  --onsen-color-text-muted: #989286;
-  --onsen-color-text-dim: #8d8980;
-  --onsen-color-text-prose-muted: #9a9284;
-  --onsen-color-text-placeholder: #8d8980;
+  --onsen-color-text-muted: #a8a499;
+  --onsen-color-text-dim: #9d9a93;
+  --onsen-color-text-prose-muted: #a19a8d;
+  --onsen-color-text-placeholder: #9d9a93;
 
   /* Red pencil — live, active, destructive, now */
-  --onsen-color-red: #c0503c;
+  --onsen-color-red: #cb6f5e;
   --onsen-color-red-bg: #1e1712;
   --onsen-color-red-border: #4a3129;
   --onsen-color-red-text: #d78872;
 
   /* Blue pencil — the author's own voice and injected state */
-  --onsen-color-blue: #5b7fa6;
+  --onsen-color-blue: #6b8caf;
   --onsen-color-blue-bg: #191d22;
   --onsen-color-blue-bg-sheet: #171b20;
   --onsen-color-blue-border: #232a31;
   --onsen-color-blue-border-strong: #2f3a45;
   --onsen-color-blue-text: #b9c3ce;
-  --onsen-color-blue-text-muted: #6f7d8c;
+  --onsen-color-blue-text-muted: #909ca6;
   --onsen-color-blue-prose: #cdd5de;
   /* The reader's own words inside the blue OOC channel (design 2a). */
   --onsen-color-ooc-reader-bg: #2b2118;
@@ -111,10 +111,10 @@
    */
   --onsen-color-green: #7fa65b;
   --onsen-color-green-text: #b6c6a4;
-  --onsen-color-green-text-muted: #7d8c6f;
+  --onsen-color-green-text-muted: #929f86;
   --onsen-color-amber: #a6864f;
   --onsen-color-amber-text: #cbb894;
-  --onsen-color-amber-text-muted: #8c7d5b;
+  --onsen-color-amber-text-muted: #a59a7f;
   /*
    * A background/border wash for the cued-speaker and autopilot states that
    * need more than a border-left (a cast card, a deck segment) — the same
@@ -289,35 +289,35 @@
     --onsen-color-border-quiet: #d8cfbd; /* derived */
 
     --onsen-color-text: #1e1a15;
-    --onsen-color-text-label: #4a4237;
-    --onsen-color-text-muted: #5a5348;
-    --onsen-color-text-dim: #615b4f;
-    --onsen-color-text-placeholder: #615b4f;
+    --onsen-color-text-label: #453d34;
+    --onsen-color-text-muted: #4c453d;
+    --onsen-color-text-dim: #534d44;
+    --onsen-color-text-placeholder: #534d44;
     --onsen-color-text-bright: #14110d; /* derived */
-    --onsen-color-text-prose-muted: #635b4f; /* derived */
+    --onsen-color-text-prose-muted: #534d43; /* derived */
 
-    --onsen-color-red: #b0402c;
+    --onsen-color-red: #a13b28;
     --onsen-color-red-bg: #f8e9e3;
     --onsen-color-red-border: #d9b3a6;
-    --onsen-color-red-text: #8f3524; /* derived */
+    --onsen-color-red-text: #883222; /* derived */
 
-    --onsen-color-blue: #3f6486;
+    --onsen-color-blue: #3c6080;
     --onsen-color-blue-bg: #e9edf2;
     --onsen-color-blue-border: #d5dde6;
     --onsen-color-blue-text: #3d4c5c;
     --onsen-color-blue-bg-sheet: #e4e9ef; /* derived */
     --onsen-color-blue-border-strong: #c3cfdb; /* derived */
-    --onsen-color-blue-text-muted: #6b7a8a; /* derived */
+    --onsen-color-blue-text-muted: #464f59; /* derived */
     --onsen-color-blue-prose: #33414f; /* derived */
     --onsen-color-ooc-reader-bg: #e8ddc9; /* derived */
     --onsen-color-ooc-reader-text: #3a2c1d; /* derived */
 
-    --onsen-color-green: #5d7f3f; /* derived */
-    --onsen-color-green-text: #3f5a28; /* derived */
-    --onsen-color-green-text-muted: #6a7a55; /* derived */
-    --onsen-color-amber: #8a6a2f; /* derived */
+    --onsen-color-green: #4a6432; /* derived */
+    --onsen-color-green-text: #3c5526; /* derived */
+    --onsen-color-green-text-muted: #475139; /* derived */
+    --onsen-color-amber: #735827; /* derived */
     --onsen-color-amber-text: #5f4718; /* derived */
-    --onsen-color-amber-text-muted: #857556; /* derived */
+    --onsen-color-amber-text-muted: #574d39; /* derived */
 
   }
 }
@@ -339,34 +339,34 @@
   --onsen-color-border-quiet: #d8cfbd;
 
   --onsen-color-text: #1e1a15;
-  --onsen-color-text-label: #4a4237;
-  --onsen-color-text-muted: #5a5348;
-  --onsen-color-text-dim: #615b4f;
-  --onsen-color-text-placeholder: #615b4f;
+  --onsen-color-text-label: #453d34;
+  --onsen-color-text-muted: #4c453d;
+  --onsen-color-text-dim: #534d44;
+  --onsen-color-text-placeholder: #534d44;
   --onsen-color-text-bright: #14110d;
-  --onsen-color-text-prose-muted: #635b4f;
+  --onsen-color-text-prose-muted: #534d43;
 
-  --onsen-color-red: #b0402c;
+  --onsen-color-red: #a13b28;
   --onsen-color-red-bg: #f8e9e3;
   --onsen-color-red-border: #d9b3a6;
-  --onsen-color-red-text: #8f3524;
+  --onsen-color-red-text: #883222;
 
-  --onsen-color-blue: #3f6486;
+  --onsen-color-blue: #3c6080;
   --onsen-color-blue-bg: #e9edf2;
   --onsen-color-blue-border: #d5dde6;
   --onsen-color-blue-text: #3d4c5c;
   --onsen-color-blue-bg-sheet: #e4e9ef;
   --onsen-color-blue-border-strong: #c3cfdb;
-  --onsen-color-blue-text-muted: #6b7a8a;
+  --onsen-color-blue-text-muted: #464f59;
   --onsen-color-blue-prose: #33414f;
   --onsen-color-ooc-reader-bg: #e8ddc9;
   --onsen-color-ooc-reader-text: #3a2c1d;
 
-  --onsen-color-green: #5d7f3f;
-  --onsen-color-green-text: #3f5a28;
-  --onsen-color-green-text-muted: #6a7a55;
-  --onsen-color-amber: #8a6a2f;
+  --onsen-color-green: #4a6432;
+  --onsen-color-green-text: #3c5526;
+  --onsen-color-green-text-muted: #475139;
+  --onsen-color-amber: #735827;
   --onsen-color-amber-text: #5f4718;
-  --onsen-color-amber-text-muted: #857556;
+  --onsen-color-amber-text-muted: #574d39;
 
 }

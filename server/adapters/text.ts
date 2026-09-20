@@ -142,6 +142,15 @@ export function createTextCompletionAdapter(config: TextAdapterConfig): Adapter 
             model: config.model,
             prompt: prompt.rawText,
             stream: true,
+            // The response cap the prompt was fitted around (§13.6). This
+            // endpoint is OpenAI's legacy `/completions` shape, so the field is
+            // `max_tokens`; a native llama.cpp `/completion` would want
+            // `n_predict`, which a capability flag can cover if one is ever
+            // spoken to directly. Omitted for side calls, which reserve
+            // nothing and are bounded by the task runner instead.
+            ...(prompt.debug.reservedForResponse > 0
+              ? { max_tokens: prompt.debug.reservedForResponse }
+              : {}),
             // Without these the model writes the user's next turn too, which is
             // the complaint that makes people give up on text mode.
             ...(stop.length === 0 ? {} : { stop }),

@@ -135,6 +135,19 @@ export function Deck({
             ? strings.chat.yourPickOverrides
             : nextSpeaker.reason;
 
+  // A speaker with no card to anchor on. Only worth saying when a specific
+  // person is about to speak, and only when both identity fields are empty —
+  // a description alone is enough for the model to hold onto.
+  const thinSpeaker =
+    !decidesOnSend && nextSpeaker !== null
+      ? cast.find(
+          (member) =>
+            member.characterId === nextSpeaker.characterId &&
+            !member.hasDescription &&
+            !member.hasPersonality,
+        )
+      : undefined;
+
   return (
     <div className="flex flex-col gap-[10px]">
       <div className="flex flex-col gap-[6px]">
@@ -189,8 +202,8 @@ export function Deck({
             );
           })}
           {/* Unlike a cued member above, "beat" and "auto" pick a mode rather
-              than a speaker — the same chosen-not-live distinction CastStrip's
-              separate scope row draws — so this segment's own highlight is
+              than a speaker — the same chosen-not-live distinction a separate
+              scope row would draw — so this segment's own highlight is
               interactive blue. */}
           {canBeat ? (
             <button
@@ -243,7 +256,7 @@ export function Deck({
           )}{" "}
           <button
             type="button"
-            className="underline underline-offset-2"
+            className="tap underline underline-offset-2"
             style={{ color: "var(--onsen-color-blue)" }}
             onClick={() => {
               const at = inPlay.findIndex((m) => m.characterId === cuedId);
@@ -256,6 +269,15 @@ export function Deck({
           </button>
         </p>
       ) : null}
+
+      {thinSpeaker === undefined ? null : (
+        <p
+          className="chrome text-[12px] leading-[1.5]"
+          style={{ color: "var(--onsen-color-amber-text)" }}
+        >
+          {strings.chat.thinCard(thinSpeaker.name)}
+        </p>
+      )}
 
       {readouts ? (
         <Readouts

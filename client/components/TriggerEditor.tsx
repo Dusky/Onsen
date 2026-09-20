@@ -92,10 +92,17 @@ export function TriggerEditor({
         }}
       >
         <p className="section-label mb-[6px]">{strings.settings.triggerName}</p>
-        <input name="name" className="field mb-[16px]" defaultValue={trigger?.name ?? ""} required />
+        <input
+          aria-label={strings.settings.triggerName}
+          name="name"
+          className="field mb-[16px]"
+          defaultValue={trigger?.name ?? ""}
+          required
+        />
 
         <p className="section-label mb-[6px]">{strings.settings.triggerEvent}</p>
         <select
+          aria-label={strings.settings.triggerEvent}
           className="field mb-[16px]"
           value={event}
           disabled={trigger !== null}
@@ -112,6 +119,7 @@ export function TriggerEditor({
           <>
             <p className="section-label mb-[6px]">{strings.settings.triggerAutomationId}</p>
             <input
+              aria-label={strings.settings.triggerAutomationId}
               name="automationId"
               className="field font-mono text-[13px]"
               defaultValue={trigger?.automationId ?? ""}
@@ -123,6 +131,7 @@ export function TriggerEditor({
 
         <p className="section-label mb-[6px]">{strings.settings.triggerAction}</p>
         <select
+          aria-label={strings.settings.triggerAction}
           className="field mb-[10px]"
           value={action}
           disabled={trigger !== null}
@@ -136,7 +145,12 @@ export function TriggerEditor({
         </select>
 
         <p className="section-label mb-[6px]">{strings.settings.triggerActionRef}</p>
-        <select name="actionRef" className="field mb-[16px]" defaultValue={trigger?.actionRef ?? ""}>
+        <select
+          aria-label={strings.settings.triggerActionRef}
+          name="actionRef"
+          className="field mb-[16px]"
+          defaultValue={trigger?.actionRef ?? ""}
+        >
           {refs.map((ref) => (
             <option key={ref.value} value={ref.value}>
               {ref.label}
@@ -148,6 +162,7 @@ export function TriggerEditor({
           <>
             <p className="section-label mb-[6px]">{strings.settings.scriptScope}</p>
             <select
+              aria-label={strings.settings.scriptScope}
               className="field mb-[10px]"
               value={scope}
               onChange={(changed) => setScope(changed.target.value as "global" | "scene")}
@@ -197,6 +212,7 @@ export function TriggerEditor({
         <div className="border-t border-rule pt-[14px] pb-[10px]">
           <p className="section-label mb-[4px]">{strings.settings.triggerRun}</p>
           <select
+            aria-label={strings.settings.triggerRun}
             className="field"
             value={runIn}
             onChange={(changed) => setRunIn(changed.target.value)}

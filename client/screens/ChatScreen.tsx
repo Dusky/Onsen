@@ -40,6 +40,7 @@ import { QuickReplyRow } from "../components/QuickReplies.tsx";
 import { VnStage } from "../components/VnStage.tsx";
 import { TrackerPanel } from "../components/TrackerPanel.tsx";
 import { useIsDesktop } from "../lib/breakpoint.ts";
+import { useSpeakerColours } from "../lib/speaker-colour.ts";
 import { useUiStore } from "../state/ui.ts";
 import type { ContextTab } from "../components/ContextSheet.tsx";
 import {
@@ -284,15 +285,15 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     return byMessage;
   }, [trackerHistory.data]);
 
-  const colours = useMemo(
-    () =>
-      new Map(
-        cast
-          .filter((member) => member.colour !== null)
-          .map((member) => [member.characterId, member.colour!] as const),
-      ),
-    [cast],
-  );
+  /*
+   * Resolved against the ground, not taken raw (§20 phase 220).
+   *
+   * One map feeds the speaker's name, the spine, each beat part's label, the
+   * quoted runs inside the prose and the conversation bubble — so this is the
+   * single place a colour becomes something to paint, and the stored hex stays
+   * the reader's own choice.
+   */
+  const colours = useSpeakerColours(cast);
   // Versioned per message and read off the active path, so this changes when the
   // reader rewinds — which is why it is read from the scene every time rather
   // than cached anywhere (SPEC §8).
@@ -471,7 +472,6 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
     speakerName,
     scope,
     nextSpeaker,
-    decidesOnSend,
     cast,
     messages,
     cued,
@@ -565,6 +565,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
       "go-characters": () => navigate({ name: "characters" }),
       "go-authors": () => navigate({ name: "authors" }),
       "go-lorebooks": () => navigate({ name: "lorebooks" }),
+      "go-assistant": () => navigate({ name: "assistant" }),
       "go-settings": () => navigate({ name: "settings" }),
       "sign-out": () => signOut.mutate(undefined),
     };
@@ -711,6 +712,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           colours={colours}
           trackerState={trackerState}
           personaId={scene.data?.scene.personaId ?? null}
+          conversationMode={scene.data?.scene.conversationMode ?? false}
           onReroll={(message) => void reroll(message)}
           onOpenVersions={(message) => setVersionsFor(message)}
           onLongPress={(message) => setActing(message)}
@@ -724,6 +726,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
           recastInFlight={recastInFlight}
           oocInFlight={oocInFlight}
           autopilotActive={autopilotActive}
+          autopilotOn={scene.data?.scene.autopilotEnabled ?? false}
           apState={apState}
           onStopAutopilot={() => stopAutopilot.mutate()}
           onCancel={() => void generation.cancel()}
@@ -741,7 +744,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
               <p
                 role="alert"
                 className="chrome min-w-0 flex-1 truncate text-[13px]"
-                style={{ color: "var(--onsen-color-red)" }}
+                style={{ color: "var(--onsen-color-red-text)" }}
               >
                 {generation.startError.message}
               </p>
@@ -749,7 +752,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                 <button
                   type="button"
                   className="btn flex-none"
-                  style={{ color: "var(--onsen-color-red)", borderColor: "var(--onsen-color-red)" }}
+                  style={{ color: "var(--onsen-color-red-text)", borderColor: "var(--onsen-color-red)" }}
                   onClick={() => setProfilePickerOpen(true)}
                 >
                   {strings.chat.setProfile}
@@ -759,7 +762,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                 type="button"
                 aria-label="Close"
                 className="chrome flex-none text-[12px]"
-                style={{ color: "var(--onsen-color-red)" }}
+                style={{ color: "var(--onsen-color-red-text)" }}
                 onClick={() => generation.clearStartError()}
               >
                 ×
@@ -778,7 +781,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             className="flex-none border-t border-rule bg-bg-raised px-[16px] py-[8px] text-left"
           >
             <span className="chrome mx-auto flex w-full max-w-[var(--onsen-prose-measure)] gap-[8px] text-ui leading-[1.5]">
-              <span style={{ color: "var(--onsen-color-amber)" }}>{strings.chat.steerActive}</span>
+              <span style={{ color: "var(--onsen-color-amber-text)" }}>{strings.chat.steerActive}</span>
               <span className="min-w-0 flex-1 truncate text-ink-dim">{steer}</span>
             </span>
           </button>
@@ -841,7 +844,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                     <button
                       type="button"
                       className="flex-none"
-                      style={{ color: "var(--onsen-color-red)" }}
+                      style={{ color: "var(--onsen-color-red-text)" }}
                       onClick={() => setup.mutate({ directorNote: null })}
                     >
                       {strings.chat.opSteerClear}

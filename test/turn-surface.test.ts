@@ -62,8 +62,10 @@ describe("the turn surface", () => {
     expect(BLOCK).toContain("\\u258c");
   });
 
-  test("reasoning says what it is and that it is not sent back", () => {
-    expect(STRINGS).toContain("not sent back");
+  test("reasoning says what it is, without the 'not sent back' claim", () => {
+    // The reader does not need the reassurance, and it read as machinery.
+    expect(STRINGS).toContain("Model reasoning ·");
+    expect(STRINGS).not.toContain("not sent back");
   });
 });
 

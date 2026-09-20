@@ -467,7 +467,7 @@ export function CharactersScreen() {
               <button
                 type="button"
                 className="btn flex-1"
-                style={{ color: "var(--onsen-color-red)" }}
+                style={{ color: "var(--onsen-color-red-text)" }}
                 disabled={selected.size === 0}
                 onClick={() =>
                   confirm(

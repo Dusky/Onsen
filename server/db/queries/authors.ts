@@ -321,6 +321,39 @@ export function setAvatarPath(
 /* Scene membership                                                    */
 /* ------------------------------------------------------------------ */
 
+/**
+ * A muted, mid-dark palette, readable on the dark and the light theme alike.
+ *
+ * A character with no colour of their own takes the first palette colour not
+ * already used by someone else in the scene, so a fresh cast is told apart at
+ * a glance before anyone has opened the editor. The reader can repaint anyone
+ * later — this is a starting point, not a decree.
+ */
+/**
+ * A colour per voice, so a fresh cast is told apart at a glance (§20 phase 217).
+ *
+ * Eight hues, not eight *legible* colours — no such set exists, because clearing
+ * 4.5:1 on a near-white ground and on a near-black one are mutually exclusive
+ * (§20 phase 220). What is stored is identity; `readableOn` resolves it against
+ * whatever ground it is about to be painted on.
+ *
+ * Exported for `test/cast-colour.test.ts`, which holds the resolved forms to the
+ * floor on every ground every shipped theme defines, keeps the eight tellable
+ * apart afterwards, and checks that migration 0081 — which copies these values
+ * and asks in a comment that the two be kept in step — still wrote what this
+ * hands out.
+ */
+export const CAST_PALETTE = [
+  "#c77ba9",
+  "#6b9bd1",
+  "#5ba884",
+  "#c79a4e",
+  "#8f6bd1",
+  "#4aa8a3",
+  "#c76b6b",
+  "#6b7fd1",
+] as const;
+
 export function addSceneMember(db: Database, sceneId: number, characterId: number): void {
   const next = (
     db
@@ -351,6 +384,33 @@ export function addSceneMember(db: Database, sceneId: number, characterId: numbe
     joined_after: leaf,
     now: Date.now(),
   });
+
+  // A colourless newcomer gets the first palette colour free in this scene,
+  // so the log tells the cast apart without anyone touching the editor.
+  const own = db
+    .query("SELECT colour FROM characters WHERE id = $id")
+    .get({ id: characterId }) as { colour: string | null };
+  if (own.colour === null) {
+    const taken = new Set(
+      (
+        db
+          .query(
+            `SELECT c.colour FROM scene_members m
+             JOIN characters c ON c.id = m.character_id
+             WHERE m.scene_id = $scene_id`,
+          )
+          .all({ scene_id: sceneId }) as { colour: string | null }[]
+      )
+        .map((row) => row.colour)
+        .filter((colour) => colour !== null),
+    );
+    const free =
+      CAST_PALETTE.find((colour) => !taken.has(colour)) ?? CAST_PALETTE[next % CAST_PALETTE.length]!;
+    db.query("UPDATE characters SET colour = $colour WHERE id = $id").run({
+      colour: free,
+      id: characterId,
+    });
+  }
 }
 
 export function removeSceneMember(db: Database, sceneId: number, characterId: number): void {

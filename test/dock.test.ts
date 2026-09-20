@@ -35,6 +35,8 @@ const LEFT = readFileSync(join(ROOT, "client", "components", "LeftRail.tsx"), "u
 const RIGHT = readFileSync(join(ROOT, "client", "components", "RightRail.tsx"), "utf8");
 const EDITOR = readFileSync(join(ROOT, "client", "components", "DockEditor.tsx"), "utf8");
 const UI_STATE = readFileSync(join(ROOT, "client", "state", "ui.ts"), "utf8");
+const HEADER = readFileSync(join(ROOT, "client", "components", "Header.tsx"), "utf8");
+const BREAKPOINT = readFileSync(join(ROOT, "client", "lib", "breakpoint.ts"), "utf8");
 
 describe("the default is what the app already was", () => {
   test("the arrangement the rails used to hardcode, plus what use has added", () => {
@@ -253,5 +255,128 @@ describe("the editor is an opt-in, and it does not drag", () => {
   test("desktop only — the rails it edits do not exist on a phone", () => {
     expect(EDITOR).toContain("useIsDesktop");
     expect(EDITOR).toContain("if (!isDesktop) return null;");
+  });
+});
+
+/**
+ * Off a roleplay, the rails start out of the way (§20 phase 225).
+ *
+ * The measurement this answers, at 1600×950: 105 of the 141 interactive
+ * controls on the Roleplays screen are the prompt editor, 105 of 143 on
+ * Settings, 105 of 147 on Characters, 105 of 132 on the Assistant. The
+ * reader's own first action on the home screen is the **119th** control in DOM
+ * order. On the chat the same rail is 26 of 117, which is proportionate, and
+ * the chat is left exactly as it was.
+ *
+ * Two decisions were checked against their own rationale before this was
+ * written, and neither is overturned. Phase 100 gave the prompt's structure to
+ * the preset "so it is editable anywhere" and phase 191 cited that when it
+ * declined to move the rail — both about **availability**, which an icon strip
+ * does not touch. `client/state/ui.ts` says the rails are "in memory only… no
+ * browser storage anywhere in this app" — about **the browser**, where the
+ * dock's own widths have lived server-side since phase 173 and are called a
+ * preference in as many words.
+ */
+describe("off a roleplay the rails start closed, and the reader's choice sticks", () => {
+  test("the shipped default is closed on both sides", () => {
+    expect(DOCK_DEFAULTS.leftOpenOffScene).toBe(false);
+    expect(DOCK_DEFAULTS.rightOpenOffScene).toBe(false);
+  });
+
+  test("readDock coerces them the way it coerces the widths", () => {
+    // The same failure the widths are protected from: a value written by an
+    // older build, or by hand, must land on the default rather than on
+    // `undefined` — a rail whose state is neither true nor false renders
+    // whatever the last render happened to leave.
+    for (const junk of [undefined, null, "yes", 1, {}, []]) {
+      const read = readDock({ leftOpenOffScene: junk, rightOpenOffScene: junk });
+      expect({ junk: String(junk), left: read.leftOpenOffScene, right: read.rightOpenOffScene }).toEqual({
+        junk: String(junk),
+        left: false,
+        right: false,
+      });
+    }
+    const kept = readDock({ leftOpenOffScene: true, rightOpenOffScene: false });
+    expect([kept.leftOpenOffScene, kept.rightOpenOffScene]).toEqual([true, false]);
+  });
+
+  test("a round trip through the validator keeps what the reader chose", () => {
+    const once = readDock({ ...DOCK_DEFAULTS, leftOpenOffScene: true });
+    expect(readDock(once)).toEqual(once);
+  });
+
+  test("the server stores both beside the widths", () => {
+    expect(SYSTEM).toContain('getSetting(ctx.db, "dock_left_off_scene") === "1"');
+    expect(SYSTEM).toContain('getSetting(ctx.db, "dock_right_off_scene") === "1"');
+    expect(SYSTEM).toContain('setSetting(ctx.db, "dock_left_off_scene", next.leftOpenOffScene ? "1" : "0")');
+    expect(SYSTEM).toContain('setSetting(ctx.db, "dock_right_off_scene", next.rightOpenOffScene ? "1" : "0")');
+  });
+
+  test("the rule reads the base route, so an overlay over a chat keeps its rails", () => {
+    /*
+     * Phase 171's overlay fills the content box and leaves the base screen
+     * mounted, so a reader who opens Settings *from* a chat is coming back to
+     * that chat. Reading the visible route instead would collapse its rails on
+     * the way in and re-open them on the way out — churn, and a layout that
+     * moves under a reader who only wanted to change a setting.
+     */
+    expect(BREAKPOINT).toContain('useShellRoute().base.name === "chat"');
+  });
+
+  test("width still wins: a rail that does not fit cannot be opened by a preference", () => {
+    // The bands are the older rule and the stricter one. `hasRoom &&` rather
+    // than `||` is the whole of it, and it is the half that a later edit would
+    // most easily invert.
+    expect(BREAKPOINT).toContain("hasRightRoom && (onScene || dock.rightOpenOffScene)");
+    expect(BREAKPOINT).toContain("hasLeftRoom && (onScene || dock.leftOpenOffScene)");
+  });
+
+  test("still only a change of the answer forces a rail", () => {
+    // Phase 173's discipline, extended rather than replaced: a rail opened by
+    // hand on Characters must survive every unrelated re-render, which is what
+    // the previous-value refs are for.
+    expect(BREAKPOINT).toMatch(/prevRight\.current !== wantRight/);
+    expect(BREAKPOINT).toMatch(/prevLeft\.current !== wantLeft/);
+  });
+});
+
+describe("one owner for the toggles", () => {
+  test("every rail control goes through the shared hook, not the store", () => {
+    /*
+     * A sweep rather than three named assertions, because the way this
+     * regresses is a *seventh* call site: somebody adds a rail button, reaches
+     * for `useUiStore` like the six before it did, and the off-scene
+     * preference silently stops being written from that one control. So the
+     * rule is that no component calls the store's rail toggles at all.
+     */
+    const offenders: string[] = [];
+    for (const [name, source] of [
+      ["Header.tsx", HEADER],
+      ["LeftRail.tsx", LEFT],
+      ["RightRail.tsx", RIGHT],
+    ] as const) {
+      if (/state\.toggle(Left|Right)Rail/.test(source)) offenders.push(name);
+      if (/\{[^}]*\btoggle(Left|Right)Rail\b[^}]*\}\s*=\s*useUiStore\(\)/.test(source)) {
+        offenders.push(`${name} (destructured)`);
+      }
+      if (!source.includes("useRailToggles")) offenders.push(`${name} (no shared hook)`);
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  test("the chat is untouched — there, it is the plain store toggle", () => {
+    // Nothing is written on a scene, because there is no off-scene decision to
+    // record. The measurement said the chat's rail is proportionate; this is
+    // the line that keeps it that way.
+    expect(BREAKPOINT).toContain("if (!onScene) save.mutate({ dock: { leftOpenOffScene:");
+    expect(BREAKPOINT).toContain("if (!onScene) save.mutate({ dock: { rightOpenOffScene:");
+  });
+
+  test("the store still holds the live state, which is still chrome", () => {
+    // `DockDto` records the reader's *decision*; `ui.ts` keeps the rails'
+    // current open/closed state, in memory, as HANDOFF non-negotiable 8 says.
+    expect(UI_STATE).toContain("no browser storage anywhere in");
+    expect(UI_STATE).toContain("leftRailOpen: boolean");
+    expect(UI_STATE).not.toContain("OffScene");
   });
 });

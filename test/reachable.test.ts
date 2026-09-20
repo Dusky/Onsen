@@ -43,24 +43,10 @@ const DELIBERATE = new Map<string, string>([
   ],
   /*
    * The assistant's whole surface, §25. Phase 46 shipped the server half and
-   * said so; the client is its own phase. These are listed one by one rather
-   * than excused by a prefix, so building that client deletes eight lines from
-   * here and nothing silently keeps passing.
-   *
-   * They were not reported as orphans until phase 47, because the mount scan
-   * above could not read past the comment on their `api.route` call.
+   * said so; the client was its own phase, shipped in phase 208. The entries
+   * below were removed as the client wired each endpoint, so the guard now
+   * verifies the calls rather than excusing them.
    */
-  ["GET /agent/tools", "§25: the assistant's client is its own phase."],
-  ["GET /agent/undo", "§25: the assistant's client is its own phase."],
-  ["GET /agent/threads", "§25: the assistant's client is its own phase."],
-  ["POST /agent/threads", "§25: the assistant's client is its own phase."],
-  ["GET /agent/threads/:threadId", "§25: the assistant's client is its own phase."],
-  ["PATCH /agent/threads/:threadId", "§25: the assistant's client is its own phase."],
-  ["DELETE /agent/threads/:threadId", "§25: the assistant's client is its own phase."],
-  [
-    "POST /agent/threads/:threadId/messages",
-    "§25: the assistant's client is its own phase.",
-  ],
 ]);
 
 interface Endpoint {

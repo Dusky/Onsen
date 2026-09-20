@@ -24,8 +24,8 @@ function cast(...names: string[]): DirectorCandidate[] {
   }));
 }
 
-function said(characterId: string | null, content = "…"): DirectorHistoryEntry {
-  return { characterId, content };
+function said(characterId: string | null, content = "…", isUser = false): DirectorHistoryEntry {
+  return { characterId, content, isUser };
 }
 
 describe("rules that apply to every strategy", () => {
@@ -220,7 +220,11 @@ describe("manual", () => {
 
 describe("mention (SPEC §6)", () => {
   function mention(content: string, members = cast("Bell", "Mira", "Ana")) {
-    return chooseSpeaker({ strategy: "mention", cast: members, history: [said(null, content)] });
+    return chooseSpeaker({
+      strategy: "mention",
+      cast: members,
+      history: [said(null, content, true)],
+    });
   }
 
   test("a name in the last message hands over the turn", () => {
@@ -262,9 +266,21 @@ describe("mention (SPEC §6)", () => {
     const decision = chooseSpeaker({
       strategy: "mention",
       cast: cast("Bell", "Mira"),
-      history: [said("bell", "…"), said(null, "Bell, again?")],
+      history: [said("bell", "…"), said(null, "Bell, again?", true)],
     });
     expect(decision).toMatchObject({ characterId: "mira" });
+    expect(decision!.reason).toContain("round robin");
+  });
+
+  test("a character's own words are not read as an address", () => {
+    // After a reply, or a beat, the last message is the author's — its speaker
+    // labels and dialogue are not the reader naming anyone, and the strategy
+    // must fall back rather than elect whoever was named last inside it.
+    const decision = chooseSpeaker({
+      strategy: "mention",
+      cast: cast("Bell", "Mira", "Ana"),
+      history: [said("bell", "**Bell:** … **Mira:** …")],
+    });
     expect(decision!.reason).toContain("round robin");
   });
 
@@ -318,7 +334,8 @@ describe("self-responses (§155)", () => {
     const decision = chooseSpeaker({
       strategy: "mention",
       cast: cast("Bell", "Mira"),
-      history: [said("bell", "Bell, say more.")],
+      // Bell's turn, then the reader says her name — but she just spoke.
+      history: [said("bell"), said(null, "Bell, say more.", true)],
     });
     // Bell just spoke, so the mention of Bell is not eligible — Mira is.
     expect(decision!.characterId).toBe("mira");
@@ -328,7 +345,7 @@ describe("self-responses (§155)", () => {
     const decision = chooseSpeaker({
       strategy: "mention",
       cast: cast("Bell", "Mira"),
-      history: [said("bell", "Bell, say more.")],
+      history: [said("bell"), said(null, "Bell, say more.", true)],
       allowSelfResponses: true,
     });
     expect(decision!.characterId).toBe("bell");

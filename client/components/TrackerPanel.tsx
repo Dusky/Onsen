@@ -65,7 +65,7 @@ function TrackerBlock({ tracker, sceneId }: { tracker: TrackerDto; sceneId: stri
         <button
           type="button"
           className="chrome flex-none text-[12px]"
-          style={{ color: "var(--onsen-color-red)" }}
+          style={{ color: "var(--onsen-color-red-text)" }}
           onClick={() => flush.mutate(tracker.kind)}
         >
           {strings.chat.flush}
@@ -197,7 +197,7 @@ export function TrackerPanel({ sceneId }: { sceneId: string }) {
         <button
           type="button"
           onClick={() => setOpen(!open)}
-          className="flex w-full items-baseline gap-[8px] py-[2px] text-left"
+          className="tap flex w-full items-baseline gap-[8px] py-[2px] text-left"
         >
           <span className="chrome text-ui text-ink-label">
             {strings.chat.trackers}

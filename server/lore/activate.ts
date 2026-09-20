@@ -314,6 +314,11 @@ export function activateLore(input: ActivationInput): ActivationResult {
   /** The window an entry scans, joined. */
   const windowFor = (entry: LoreCandidate): string => {
     const depth = entry.scanDepth ?? entry.bookScanDepth;
+    // Depth 0 scans the whole transcript: `slice(-0)` is `slice(0)`, which is
+    // the entire array. That is the SillyTavern convention for "scan depth 0"
+    // (unlimited), and the import carries 0 through unchanged — so it is the
+    // behaviour the interop contract promises, stated rather than left to the
+    // `-0 === 0` footgun.
     return input.transcript.slice(-Math.max(0, depth)).join("\n");
   };
 

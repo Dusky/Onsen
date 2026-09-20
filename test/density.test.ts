@@ -144,6 +144,17 @@ describe("every turn command is reachable", () => {
  *
  * The fix was one class, `.tap`, and this pins the two halves of it that a
  * later edit could quietly undo.
+ *
+ * **The floor itself is held by `scripts/rendered-guard.ts` since §20 phase
+ * 229**, the way contrast has been since phase 222. What is below is
+ * structural — this project runs no DOM tests and a source file cannot be
+ * asked how tall it rendered — and structural is exactly what failed: the
+ * allow-list of named files at the bottom of this block passed all the way
+ * through while eleven controls sat between 18px and 33px on a phone, because
+ * a control in a twelfth file has nothing here to fail. The guard's
+ * `touchTargets` budget measures every control on the touch viewport and is
+ * at zero. These tests keep the specific classes from being dropped; the
+ * guard is what notices a new one.
  */
 describe("a thumb can hit it", () => {
   test(".tap sets the floor, and only a pointer relaxes it", () => {
@@ -184,6 +195,10 @@ describe("a thumb can hit it", () => {
       ["screens/BackgroundsScreen.tsx", "the back arrow"],
       ["screens/CharacterEditorScreen.tsx", "the back arrow"],
       ["screens/SettingsScreen.tsx", "the provider, profile and key rows"],
+      // §20 phase 229, from the rendered guard rather than from a list:
+      // 44px tall and 28–30px across, three of them adjacent with no spacing
+      // between, on the screen the app opens on.
+      ["screens/ScenesScreen.tsx", "a roleplay row's expand, favourite and manage"],
     ];
     const missing = short.filter(
       // In a class list, not in the prose above it.
@@ -205,5 +220,57 @@ describe("a thumb can hit it", () => {
   test("the token-count doorway is left inline on purpose", () => {
     const block = readFileSync(join(ROOT, "client", "components", "MessageBlock.tsx"), "utf8");
     expect(block).toContain('className="meta shrink-0 tabular-nums"');
+    // And the version counter beside it, on the same line, for the same
+    // reason: §20 phase 229 gave both of them `.tap`, measured a meta line
+    // that went from 19px to 44 on a phone, and took it back off. `versions`
+    // is a turn-scoped command in `commands.ts` exactly as `inspect` is, so
+    // neither doorway is the only way in.
+    expect(block).toContain('className="chrome shrink-0 text-ui text-ink-dim"');
+  });
+
+  /**
+   * No `.btn` overrides its own floor from a style attribute.
+   *
+   * A sweep rather than a list, because this is what phase 229 cost a desktop
+   * regression to learn. `.btn` carries `min-height: var(--onsen-tap-target)`
+   * unconditionally; three buttons in the cast rail carried
+   * `minHeight: "32px"` inline, which reads as density and is in fact a floor
+   * override — an inline style beats a class on every device, so the control
+   * the phone puts on its cast strip was 32px under a thumb. `.btn-dense` says
+   * the same thing in the place that can tell a pointer from a thumb.
+   */
+  test("no button overrides the floor from a style attribute", () => {
+    const offenders: string[] = [];
+    for (const dir of ["components", "screens"]) {
+      const base = join(ROOT, "client", dir);
+      for (const file of new Bun.Glob("**/*.tsx").scanSync({ cwd: base })) {
+        const source = readFileSync(join(base, file), "utf8");
+        // The class list and the style attribute of one element: matched
+        // together, because a `minHeight` on something that is not a `.btn`
+        // is a component setting its own size, which is fine.
+        for (const match of source.matchAll(/className=(?:"[^"]*"|\{`[^`]*`\})[\s\S]{0,400}?\/?>/g)) {
+          const element = match[0];
+          if (!/\bbtn\b/.test(element)) continue;
+          if (/minHeight\s*:/.test(element)) offenders.push(`${dir}/${file}`);
+        }
+      }
+    }
+    expect([...new Set(offenders)]).toEqual([]);
+  });
+
+  /**
+   * `.btn-dense` is a media query, not a smaller number.
+   *
+   * The whole point of moving the 32px off the style attribute is that it now
+   * applies to one kind of device. A later edit that drops the `@media` and
+   * leaves `min-height: 32px` puts the defect back with the fix's name on it.
+   */
+  test("the dense button is dense only under a pointer", () => {
+    expect(APP_CSS).toMatch(/@media \(pointer: fine\) \{\s*\.btn-dense \{\s*min-height: 32px;/);
+    // Not unconditionally: whatever `.btn-dense` sets outside the query must
+    // not be a height.
+    const base = /\.btn-dense \{([^}]*)\}/.exec(APP_CSS);
+    expect(base).not.toBeNull();
+    expect(base![1]).not.toContain("min-height");
   });
 });

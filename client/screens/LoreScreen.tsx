@@ -1048,7 +1048,7 @@ function EntryEditor({
             })
           }
           className="chrome text-ui"
-          style={{ color: "var(--onsen-color-red)" }}
+          style={{ color: "var(--onsen-color-red-text)" }}
         >
           {strings.lore.deleteEntry}
         </button>
@@ -1129,7 +1129,7 @@ function EntryRow({
             <span
               aria-hidden="true"
               className="mr-[7px]"
-              style={{ color: "var(--onsen-color-amber)" }}
+              style={{ color: "var(--onsen-color-amber-text)" }}
             >
               {"\u25cf"}
             </span>
@@ -1285,7 +1285,7 @@ function Bindings({ book }: { book: LorebookDto }) {
                 type="button"
                 onClick={() => unbind.mutate({ bookId: book.id, bindingId: binding.id })}
                 className="chrome flex-none text-ui"
-                style={{ color: "var(--onsen-color-red)" }}
+                style={{ color: "var(--onsen-color-red-text)" }}
               >
                 {strings.lore.detach}
               </button>
@@ -1560,7 +1560,7 @@ function BookEditor({ bookId, onBack }: { bookId: string; onBack?: () => void })
           <button
             type="button"
             className="chrome mt-[18px] mb-[8px] block text-ui"
-            style={{ color: "var(--onsen-color-red)" }}
+            style={{ color: "var(--onsen-color-red-text)" }}
             onClick={() =>
               confirmBook(
                 strings.lore.deleteBookConfirm(book.name),

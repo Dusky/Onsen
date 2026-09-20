@@ -137,7 +137,7 @@ export function AuthorsScreen() {
                 {author.isDefault ? (
                   <span
                     className="chrome flex-none text-[12px]"
-                    style={{ color: "var(--onsen-color-amber)" }}
+                    style={{ color: "var(--onsen-color-amber-text)" }}
                   >
                     {strings.authors.isDefault}
                   </span>
@@ -342,7 +342,7 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
           {/* Boundaries take the red pencil. */}
           <div className="mb-[18px]">
             <div className="mb-[8px] flex items-baseline justify-between gap-[10px]">
-              <span className="section-label" style={{ color: "var(--onsen-color-red)" }}>
+              <span className="section-label" style={{ color: "var(--onsen-color-red-text)" }}>
                 {strings.authors.boundaries}
               </span>
               <span className="token-count">
@@ -408,7 +408,7 @@ export function AuthorEditorScreen({ authorId }: { authorId: string }) {
             type="button"
             className="btn mb-[24px] w-full"
             style={{
-              color: "var(--onsen-color-red)",
+              color: "var(--onsen-color-red-text)",
               borderColor: "var(--onsen-color-red-border)",
             }}
             onClick={() =>

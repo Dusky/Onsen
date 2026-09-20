@@ -148,10 +148,21 @@ function MemoryEditor({
         }}
       >
         <p className="section-label mb-[6px]">{strings.sceneSetup.memoryName}</p>
-        <input name="name" className="field mb-[16px]" defaultValue={entity.name} required />
+        <input
+          aria-label={strings.sceneSetup.memoryName}
+          name="name"
+          className="field mb-[16px]"
+          defaultValue={entity.name}
+          required
+        />
 
         <p className="section-label mb-[6px]">{strings.sceneSetup.memoryKind}</p>
-        <select name="kind" className="field mb-[16px]" defaultValue={entity.kind}>
+        <select
+          aria-label={strings.sceneSetup.memoryKind}
+          name="kind"
+          className="field mb-[16px]"
+          defaultValue={entity.kind}
+        >
           {MEMORY_KINDS.map((kind) => (
             <option key={kind} value={kind}>
               {strings.sceneSetup.memoryKindLabel[kind]}
@@ -161,6 +172,7 @@ function MemoryEditor({
 
         <p className="section-label mb-[6px]">{strings.sceneSetup.memoryContent}</p>
         <textarea
+          aria-label={strings.sceneSetup.memoryContent}
           name="content"
           className="field mb-[16px] min-h-[72px]"
           defaultValue={entity.content}

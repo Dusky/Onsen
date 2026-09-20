@@ -10,7 +10,23 @@
  * Corollary: type names, database columns, and route paths take their names
  * from SPEC.md, never from the labels here.
  */
-import type { PromptBlockId } from "@shared/types.ts";
+import type { PromptBlockId, SendKey, UndoKind } from "@shared/types.ts";
+
+/**
+ * Field names that a sentence elsewhere tells the reader to go and change
+ * (§20 phase 227).
+ *
+ * Hoisted out of the table below so the label and the instruction are one
+ * string rather than two that agree today. Phase 224's notices said "raise the
+ * response cap in the preset" and the field was called **"Reserved for the
+ * reply"** — there is no "response cap" anywhere in this app, so a reader
+ * following the instruction opened the Preset rail and scanned for a name that
+ * was not there. Found by reading both, which is the only way that kind of
+ * thing is ever found.
+ */
+const FIELD = {
+  maxResponseTokens: "Reserved for the reply",
+} as const;
 
 export const strings = {
   app: {
@@ -129,6 +145,9 @@ export const strings = {
     allTags: "Every tag",
     tagsLabel: "Tags",
     folderLabel: "Folder",
+    /** The order a list is in. A `<select>` whose first option is its own
+     *  label announces as "edit, blank" without this (§20 phase 226). */
+    sortLabel: "Sort by",
     tagAdd: "Add a tag",
     noFolder: "No folder",
     more: "Show more",
@@ -181,10 +200,53 @@ export const strings = {
     send: "Send",
     writing: (speaker: string) => `${speaker} is writing`,
     stop: "Stop",
+    /**
+     * What cancel did with the part of the turn that had already arrived
+     * (§5.6 keeps it). Said once, so a reader who stopped a turn that was
+     * going wrong knows the fragment is now the last turn and can delete or
+     * reroll it.
+     */
+    stoppedKept: "Turn stopped — the partial reply was kept as the last turn.",
+    /**
+     * A turn that spent its budget thinking (§20 phase 224).
+     *
+     * Two sentences, and the second is the only one a reader can act on: the
+     * response cap is a preset setting, and raising it is what makes a
+     * reasoning model leave room for prose. The numbers are there because
+     * without them this reads as the app guessing — "it spent 4075 characters
+     * thinking and wrote 77" is a diagnosis; "the reply was short" is not.
+     *
+     * Not phrased as a failure. The provider did what it was asked; the ask
+     * was wrong.
+     */
+    thinTurnEmpty: (reasoning: number, reserved: number) =>
+      reasoning === 0
+        ? // The other half, found by driving the same provider twice (§20 phase
+          // 227): zero completion tokens of any kind. Nothing to raise and
+          // nothing to blame on reasoning, so the sentence says what happened
+          // and stops — an instruction the reader cannot act on is worse than
+          // none.
+          `No turn was written — the model returned nothing at all, not even reasoning. Nothing was charged for it. Send again, or try another model.`
+        : `No turn was written — the model spent its whole ${reserved}-token reply budget thinking (${reasoning} characters of it). Raise ${FIELD.maxResponseTokens} in the preset, or pick a model that does not reason.`,
+    thinTurnStub: (prose: number, reasoning: number) =>
+      `That turn came back short — ${prose} characters of story after ${reasoning} of reasoning, which shared the same reply budget. Raise ${FIELD.maxResponseTokens} in the preset for more room.`,
 
     /** Autopilot (SPEC §6) — the strip while it runs, the line when it stops. */
     autopilot: "Autopilot",
     autopilotCount: (turns: number, max: number) => `${turns} OF ${max}`,
+    /**
+     * Armed, and what it is waiting for (§20 phase 228).
+     *
+     * State, not explanation — the same job as "Nothing here matches that."
+     * `test/voice.test.ts` governs the app *explaining itself* and is at its
+     * ceiling of 45; this reports what the scene is doing, which is the half
+     * that comment carves out, and the key is deliberately not a `*Hint`.
+     *
+     * The cap is in it because it is the number the reader chose and the one
+     * that decides how long the run will be.
+     */
+    autopilotArmed: (max: number) =>
+      max > 0 ? `Autopilot · armed, up to ${max} after your next turn` : "Autopilot · armed",
     autopilotTakeOver: "Take over",
     autopilotStopped: (reason: string) => `Autopilot stopped — ${reason}`,
     autopilotReasons: {
@@ -197,7 +259,7 @@ export const strings = {
     } as Record<string, string>,
     edited: "Edited",
     /** The reasoning strip (SPEC §13), collapsed by default. */
-    reasoning: (chars: number) => `Model reasoning · ${chars} chars · not sent back`,
+    reasoning: (chars: number) => `Model reasoning · ${chars} chars`,
     /** The direction that produced this turn (§7, §20 phase 130), collapsed. */
     direction: "Direction",
     directionNote: (chars: number) => `Direction · ${chars} chars`,
@@ -337,8 +399,10 @@ export const strings = {
     statusWriting: "Writing",
     statusJustSpoke: "Just spoke",
     statusBenched: "Benched",
-    /** The desktop keyboard hints, at the end of the flattened ops row. */
-    keyHints: "⌘↵ send",
+    /**
+     * Dead since the ops row was flattened — nothing in `client/` reads it, and
+     * it was a second, staler copy of the hint below (§20 phase 227).
+     */
     /** The desktop hover row, which the design draws as REROLL · BRANCH · EDIT. */
     hoverBranch: "Branch",
     /*
@@ -375,7 +439,32 @@ export const strings = {
     /** Guided ops (SPEC §7). Lettered keys, like proofreading marks. */
     ops: "Ops",
     opsClose: "Close",
-    keyboardHints: "⌘↵ SEND · ⌘K CAST",
+    /**
+     * What actually sends, and what the key is called here (§20 phase 227).
+     *
+     * This was the constant `"⌘↵ SEND · ⌘K CAST"`, rendered on every desktop
+     * width and consulting nothing. Two things were wrong with it and both were
+     * measured by driving the app.
+     *
+     * The first: what sends is a *reader setting* with three values, and the
+     * hint named one of them. On the install under test (`send: "button"`)
+     * Return and Ctrl+Return each put a newline in the draft and sent nothing,
+     * twice, while the line underneath said ⌘↵ sends. At the shipped default
+     * (`"enter"`) `Composer.tsx` explicitly *excludes* a modified Return, so
+     * ⌘↵ sends under exactly one of the three settings.
+     *
+     * The second: ⌘ is a Mac key, and this was the one place in the app that
+     * assumed the reader was on one. The settings screen has had the right
+     * phrasing all along — `readerSendEnter`/`readerSendMod` — which is the
+     * kind of inconsistency that only shows up when somebody reads both.
+     */
+    keyboardHints: (send: SendKey) => {
+      // `button` names no key, because under that setting no key sends and a
+      // hint that invents one is how this got here in the first place.
+      const sends =
+        send === "enter" ? "↵ SEND" : send === "modEnter" ? "⌘/CTRL ↵ SEND" : null;
+      return sends === null ? "⌘/CTRL K CAST" : `${sends} · ⌘/CTRL K CAST`;
+    },
     extensionActions: "Extension actions",
     extensionActionsShort: "Ext",
     extensionActionsNone: "Nothing here. Enable an extension that offers actions.",
@@ -543,6 +632,14 @@ export const strings = {
     youOpens: "You chose",
     youCued: "You cued",
     yourPickOverrides: "Your pick overrides the director this turn",
+    /**
+     * A cast member with no card to anchor on. Shown beside the director's
+     * reason when the one about to speak has neither a description nor a
+     * personality, so the reader knows why they might sound generic *before*
+     * the turn is written rather than after.
+     */
+    thinCard: (name: string) =>
+      `${name} has no description or personality — they may not sound like themselves. Fill their card to fix it.`,
     /*
      * The deck (§20 phase 50). Each readout says what one subsystem is
      * holding right now — a figure, not a setting.
@@ -594,8 +691,16 @@ export const strings = {
     railClose: "Close the rail",
     /* There was no way out of a signed-in install until now. */
     signOut: "Sign out",
-    /* And no way to revoke a cookie somebody else was holding. */
+    /* And no way to revoke a cookie somebody else was holding.
+       Two strings for one action, which is a title and a label rather than a
+       duplicate: the sheet is named for what it changes, and the button in
+       Account is named for what it *does to other devices* — the half a reader
+       cannot guess and the half they came to Account for (§20 phase 226).
+       It began as a paragraph above the two buttons and `test/voice.test.ts`
+       refused it, correctly: that was exactly the prose the voice pass exists
+       to stop, and a name carries it without explaining anything. */
     changePassword: "Change password",
+    changePasswordAction: "Change password and sign out other devices",
     currentPassword: "Current password",
     newPassword: "New password",
     changePasswordGo: "Change it",
@@ -605,7 +710,7 @@ export const strings = {
     categories: {
       models: "Models",
       generation: "Generation",
-      tasks: "Background tasks",
+      tasks: "Agents",
       reading: "Reading",
       branding: "Branding",
       backgrounds: "Background",
@@ -615,6 +720,7 @@ export const strings = {
       outward: "Connections out",
       packs: "Packs & updates",
       migrate: "Moving in",
+      account: "Account",
     } as Record<string, string>,
     categoryEmpty: "Nothing here matches that.",
 
@@ -698,6 +804,14 @@ export const strings = {
     /** Routing by operation — the headline of this screen (design handoff). */
     routing: "Routing by operation",
     routingSame: "Scene's own",
+    /** The three stages an op can run in (§20 phase 214). */
+    stagePre: "Before the turn",
+    stageSidecar: "Alongside",
+    stagePost: "After the turn",
+    /** The classifier's routing lives in Scene Setup, which wins anyway (§210). */
+    classifierRoutedElsewhere:
+      "This op's profile is set in the scene's Setup — Director profile — which " +
+      "beats any choice here, so it is only set there.",
     opEnabled: "On",
     opDisabled: "Off",
     opHidden: "Button hidden",
@@ -794,7 +908,6 @@ export const strings = {
       guides: "Guides",
       trackers: "Trackers",
       depth_prompts: "Depth prompts",
-      dialogue_colour: "Dialogue colour",
       prompt_option: "Options",
       ban_list: "Banned constructions",
       director_note: "Director's note",
@@ -817,7 +930,7 @@ export const strings = {
 
     contextSize: "Context window",
     contextSizeUnit: "tokens",
-    maxResponseTokens: "Reserved for the reply",
+    maxResponseTokens: FIELD.maxResponseTokens,
     maxResponseTokensUnit: "tokens",
     /* Prompt assembly policy (§20 phase 64). */
     examples: "The examples",
@@ -1293,6 +1406,19 @@ export const strings = {
   /** The Models rail panel (§20 phase 179). */
   models: {
     title: "Models",
+    /** The group heading in Scene Setup (§20 phase 210): one place for it. */
+    runsOn: "Runs on",
+    /** The profile is where the model lives; a scene points at one. */
+    profileLabel: "Profile",
+    noProfile: "No profile is chosen — pick one so this scene can run.",
+    /** A scene that overrides its whole endpoint (legacy, phase 181). */
+    providerOverrideNote: (name: string) =>
+      `This scene overrides its endpoint to ${name} (set before profiles carried the model).`,
+    providerOverrideClear: "Use the profile's",
+    /** A provider that has an API key stored. Was a bare literal in the row
+     *  and is a string now, because §20 phase 226 puts it in an accessible
+     *  name as well as on screen and the two must be one word. */
+    keyed: "keyed",
     /** What the scene being read is talking to, and how to point it elsewhere. */
     inUse: "This roleplay",
     switchTo: "Point it at",
@@ -1308,6 +1434,23 @@ export const strings = {
     noScene: "Open a roleplay to choose what answers it.",
     addProvider: "Add a provider",
     addProfile: "Add a profile",
+  },
+
+  search: {
+    title: "Search",
+    placeholder: "Search the library\u2026",
+    hint: "Roleplays, characters, lorebooks, personas and authors. Type to find one.",
+    empty: "Nothing matches that.",
+    lorebook: "Lorebook",
+    persona: "Persona",
+    author: "Author",
+    kinds: {
+      scene: "Roleplay",
+      character: "Character",
+      lorebook: "Lorebook",
+      persona: "Persona",
+      author: "Author",
+    },
   },
 
   rightRail: {
@@ -1403,8 +1546,18 @@ export const strings = {
     greetingRandom: "A random one",
     colour: "Colour",
     colourNone: "No colour",
-    colourDim: (ratio: string) =>
-      `Hard to read on this theme — ${ratio} against the page, under the 4.5:1 the ink holds.`,
+    /**
+     * Not a warning any more (§20 phase 220).
+     *
+     * It used to read "Hard to read on this theme — {ratio} against the page,
+     * under the 4.5:1 the ink holds", which was true and is no longer: the app
+     * resolves a speaker's colour against the ground before painting it, so a
+     * colour that measures 2.1:1 stored is painted at 4.5:1 or better. Warning
+     * about a problem the app now fixes would send a reader to change something
+     * that does not need changing. What is worth saying is what will happen.
+     */
+    colourAdjusted: (ratio: string, painted: string) =>
+      `${ratio} against this page as picked, so it is painted ${painted} here to stay readable. Stored as you chose it.`,
     portraitPrompt: "Portrait prompt",
     /* The bound lorebook (§20 phase 139). */
     lore: "Lorebook",
@@ -1781,6 +1934,8 @@ export const strings = {
     vnMode: "Visual novel stage",
     vnModeOn: "On",
     vnModeOff: "Off",
+    /** Messaging-client rendering of the same tree (§20 phase 213). */
+    conversationMode: "Conversation mode",
     background: "Set a background",
     backgroundGenerate: "Generate",
     backgroundWorking: "Drawing…",
@@ -1874,6 +2029,105 @@ export const strings = {
     thinking: "Answering\u2026",
     reader: "You",
     noScene: "Open a roleplay to ask its author something.",
+  },
+
+  assistant: {
+    kicker: "Tools",
+    title: "Assistant",
+    /* The one-line description of what it is, under the title. */
+    blurb:
+      "The assistant can read and change what is in this install \u2014 characters, " +
+      "roleplays, lore, personas and themes \u2014 for real. It looks things up rather " +
+      "than guessing, and every change it makes is listed under Undo.",
+    newThread: "New conversation",
+    justNow: "now",
+    /** The model picker row. */
+    profile: "Runs on",
+    /**
+     * Not "Default" (§20 phase 223).
+     *
+     * The row renders this, then one button per connection profile — and an
+     * install whose only profile is *named* Default put two adjacent buttons on
+     * screen reading the same word and meaning different things: the app's own
+     * routing, and a profile that happens to share the name. Saying which
+     * default is meant costs three words and removes the collision whatever
+     * anybody has called their profiles.
+     */
+    profileDefault: "App default",
+    placeholder: "Ask the assistant\u2026",
+    send: "Send",
+    thinking: "Working\u2026",
+    /** The tools disclosure. */
+    tools: "What it can do",
+    toolsEmpty: "No tools are loaded.",
+    undo: "Undo",
+    undoEmpty: "Nothing to undo yet. Changes the assistant makes show up here.",
+    /**
+     * What each recorded change is called, in words (§20 phase 219).
+     *
+     * The list used to render the server's own `kind` string, which was fine
+     * while the only two were "character" and "theme" and became a raw key on
+     * screen the moment there were nineteen — `lore_entry.created` is a
+     * storage detail, not something to show a reader. Typed against
+     * `UndoKind`, so a kind added on the server without words here does not
+     * compile, and `test/agent-undo.test.ts` keeps the two lists level.
+     *
+     * Each one reads as the *undo*, because the button beside it does that:
+     * "Rewritten" is what Restore takes back.
+     */
+    undoKinds: {
+      character: "Rewritten",
+      "character.deleted": "Deleted",
+      "scene.created": "New roleplay",
+      scene: "Roleplay changed",
+      "scene.note": "Note added",
+      "lorebook.created": "New lorebook",
+      "lore_entry.created": "Lore added",
+      lore_entry: "Lore rewritten",
+      "lore_entry.deleted": "Lore deleted",
+      "persona.created": "New persona",
+      persona: "Persona changed",
+      author: "Author rewritten",
+      "theme.created": "New theme",
+      theme: "Theme changed",
+      "theme.active": "Theme switched",
+      "cast.added": "Cast added",
+      "cast.removed": "Cast removed",
+      "group.created": "New group",
+      "group.added": "Added to group",
+      "group.removed": "Removed from group",
+    } satisfies Record<UndoKind, string>,
+    /**
+     * A kind the server sent that this build has no words for — a newer server
+     * against an older page. The name still reads, which is the part a reader
+     * needs to recognise what they are about to take back.
+     */
+    undoEntry: (kind: string, name: string) => {
+      const words = (strings.assistant.undoKinds as Record<string, string>)[kind];
+      return words === undefined ? name : `${words} \u00b7 ${name}`;
+    },
+    restore: "Restore",
+    restored: (name: string) => `Restored ${name}.`,
+    restoreNote: (note: string) => note,
+    /** The thread list. */
+    threads: "Conversations",
+    threadsEmpty: "No conversations yet.",
+    rename: "Rename",
+    renamePrompt: "A title for this conversation.",
+    deleteThread: "Delete conversation",
+    deleteConfirm: "Delete this conversation? Its history goes with it.",
+    /** The message log. */
+    empty: "No conversation selected.",
+    /** Tool calls and results, in the log. */
+    toolCall: (name: string) => `Used ${name}`,
+    toolResult: "Returned",
+    toolFailed: "Failed",
+    /** The error strip. */
+    errorTitle: "The assistant stopped",
+    /** The streaming assistant bubble's name. */
+    name: "Assistant",
+    /** The reader's bubble name. */
+    reader: "You",
   },
 
   dossiers: {
@@ -2147,6 +2401,7 @@ export const strings = {
     /** The desktop sidebar's roleplay list (design 4a). */
     recent: "Recent",
     settings: "Settings",
+    assistant: "Assistant",
     roleplays: "Roleplays",
     characters: "Characters",
     authors: "Authors",
@@ -2206,5 +2461,3 @@ export const strings = {
     },
   },
 } as const;
-
-export type Strings = typeof strings;

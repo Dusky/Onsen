@@ -193,6 +193,59 @@ describe("what the classifier is allowed to decide", () => {
     expect(adapter.callsLabelled("Classifier")).toBe(0);
   });
 
+  test("a spotlight turn's redundant name prefix is stripped at land", async () => {
+    const t = await signedIn();
+    const { aldan, sceneId } = await classifierScene(t);
+    const started = await json<GenerationSnapshot>(
+      t,
+      "POST",
+      `/api/scenes/${sceneId}/generate`,
+      { characterId: aldan.id },
+    );
+    await adapter.started;
+    adapter.push("Aldan Roe: He set the lamp on the counter.");
+    adapter.end();
+    await until(() => t.generation.get(started.id)?.status === "complete");
+
+    const messages = await json<MessageDto[]>(t, "GET", `/api/scenes/${sceneId}/messages`);
+    expect(messages.at(-1)!.content).toBe("He set the lamp on the counter.");
+  });
+
+  test("after a beat, whoever ended it is the one kept off the next roster", async () => {
+    const t = await signedIn();
+    const { aldan, mira, sceneId } = await classifierScene(t);
+
+    // Aldan leads the beat; Mira closes it. The beat is filed under its lead,
+    // so a roster that read the message's own character_id would wrongly
+    // exclude Aldan and leave Mira eligible to speak twice in a row.
+    adapter.taskReply = "SPEAKER: Aldan Roe\nWHY: He has the lamp count.";
+    const started = await json<GenerationSnapshot>(t, "POST", `/api/scenes/${sceneId}/generate`, {
+      scope: "beat",
+    });
+    await adapter.started;
+    adapter.push(
+      [
+        "**Aldan Roe:** He set the lamp on the counter, wick still smoking.",
+        '**Mira Vance:** "You said an hour."',
+      ].join("\n\n"),
+    );
+    adapter.end();
+    await until(() => t.generation.get(started.id)?.status === "complete");
+
+    // The next question must not offer Mira — she ended the beat — and must
+    // still offer Aldan.
+    adapter.taskReply = "SPEAKER: Sister Bell\nWHY: She has not spoken.";
+    await generate(t, sceneId);
+    const question = adapter.promptsLabelled("Classifier").at(-1)!.messages[0]!.content;
+    const roster = question.slice(
+      question.indexOf("Who is available:"),
+      question.indexOf("What has just happened"),
+    );
+    expect(roster).not.toContain("Mira Vance");
+    expect(roster).toContain("Aldan Roe");
+    expect(roster).toContain("Sister Bell");
+  });
+
   test("the reader is named in the question and put out of reach", async () => {
     const t = await signedIn();
     const { sceneId } = await classifierScene(t);
@@ -232,6 +285,20 @@ describe("scope: one voice or the room", () => {
     expect(snapshot.director!.scope).toBe("spotlight");
     const messages = await json<MessageDto[]>(t, "GET", `/api/scenes/${sceneId}/messages`);
     expect(messages.at(-1)!.kind).toBe("spotlight");
+  });
+
+  test("a cued character stays cued while the classifier decides only the scope", async () => {
+    const t = await signedIn();
+    const { aldan, sceneId } = await classifierScene(t);
+    adapter.taskReply = "SPEAKER: Mira Vance\nSCOPE: room\nWHY: They all have a stake in the oil.";
+
+    const snapshot = await generate(t, sceneId, { characterId: aldan.id, scope: "auto" });
+    // The cue picks the speaker — an explicit pick always wins (SPEC §6). The
+    // classifier was asked only to settle one-voice-or-the-room.
+    expect(snapshot.director!.characterId).toBe(aldan.id);
+    expect(snapshot.director!.name).toBe("Aldan Roe");
+    expect(snapshot.director!.source).toBe("user");
+    expect(snapshot.director!.scope).toBe("beat");
   });
 
   test("scope is only asked about when it is still open", async () => {

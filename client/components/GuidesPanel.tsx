@@ -222,7 +222,7 @@ export function GuidesBody({
                           className="btn"
                           style={{
                             borderColor: "var(--onsen-color-red)",
-                            color: "var(--onsen-color-red)",
+                            color: "var(--onsen-color-red-text)",
                           }}
                           onClick={() =>
                             confirm(
@@ -295,7 +295,7 @@ export function GuidesBody({
             className="btn mt-[6px] w-full"
             style={{
               borderColor: "var(--onsen-color-red)",
-              color: "var(--onsen-color-red)",
+              color: "var(--onsen-color-red-text)",
             }}
             onClick={() =>
               confirm(

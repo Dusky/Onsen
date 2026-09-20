@@ -23,7 +23,9 @@ import {
 } from "../db/queries/agent.ts";
 import { runAgentTurn, type AgentAdapterFactory } from "../agent/loop.ts";
 import { toolSpecs } from "../agent/tools.ts";
-import { snapshots } from "../agent/snapshot.ts";
+import { removeSnapshot, snapshotById, snapshots } from "../agent/snapshot.ts";
+import { restoreSnapshot } from "../agent/restore.ts";
+import { SettingKey, getSetting, setSetting } from "../db/queries/settings.ts";
 import { badRequest, notFound } from "../lib/routes.ts";
 
 const MAX_ASK = 8000;
@@ -47,10 +49,87 @@ export function agentRoutes(
         id: entry.id,
         kind: entry.kind,
         subjectId: entry.subjectId,
+        label: labelOf(entry),
         at: entry.at,
       })),
     ),
   );
+
+  /**
+   * The connection profile the assistant runs on (§7's per-operation routing,
+   * applied to the assistant as a whole). Null means the install's default,
+   * which is what scenes use unless they say otherwise — so the assistant can
+   * be pointed at a cheap model without touching anything else.
+   */
+  app.get("/profile", (c) =>
+    c.json({ connectionProfileId: getSetting(ctx.db, SettingKey.assistantProfile) }),
+  );
+
+  app.patch("/profile", async (c) => {
+    let body: { connectionProfileId?: unknown } = {};
+    try {
+      const parsed: unknown = await c.req.json();
+      if (typeof parsed === "object" && parsed !== null) {
+        body = parsed as { connectionProfileId?: unknown };
+      }
+    } catch {
+      /* An empty body clears the override. */
+    }
+
+    if (body.connectionProfileId === null || body.connectionProfileId === undefined) {
+      // Delete the key rather than storing null, so an absent profile and a
+      // cleared one read the same on every path.
+      ctx.db.query("DELETE FROM app_settings WHERE key = $key").run({
+        key: SettingKey.assistantProfile,
+      });
+      return c.json({ connectionProfileId: null });
+    }
+    if (typeof body.connectionProfileId !== "string") {
+      return c.json(badRequest("connectionProfileId must be a profile id, or null."), 400);
+    }
+    const profile = ctx.db
+      .query("SELECT ulid FROM connection_profiles WHERE ulid = $ulid")
+      .get({ ulid: body.connectionProfileId }) as { ulid: string } | null;
+    if (profile === null) return c.json(badRequest("No such connection profile."), 400);
+    setSetting(ctx.db, SettingKey.assistantProfile, body.connectionProfileId);
+    return c.json({ connectionProfileId: body.connectionProfileId });
+  });
+
+  /**
+   * Put one snapshot back.
+   *
+   * Every write tool records a snapshot before it touches anything, and
+   * `server/agent/restore.ts` knows how to walk each kind back — which is what
+   * makes "so it can be undone" true rather than a promise the list cannot
+   * keep. It was a promise until §20 phase 219: two tools recorded, two kinds
+   * restored, and the other seventeen changes were simply gone.
+   *
+   * What a restore is honest about travels in the response's `note`: a
+   * re-created character comes back without its picture or lorebook bindings,
+   * a re-created lore entry under a new id.
+   */
+  app.post("/undo/:id", (c) => {
+    const snapshot = snapshotById(ctx, c.req.param("id"));
+    if (snapshot === null) return c.json(notFound("snapshot"), 404);
+
+    let restored: Record<string, unknown>;
+    try {
+      restored = restoreSnapshot(ctx, snapshot);
+    } catch (caught) {
+      return c.json(
+        {
+          error: {
+            code: "corrupt",
+            message: caught instanceof Error ? caught.message : "That snapshot could not be read.",
+          },
+        },
+        500,
+      );
+    }
+
+    removeSnapshot(ctx, snapshot.id);
+    return c.json({ restored, removed: snapshot.id });
+  });
 
   app.get("/threads", (c) => c.json(listThreads(ctx.db).map(toThreadDto)));
 
@@ -131,4 +210,14 @@ export function agentRoutes(
   });
 
   return app;
+}
+
+/** The name the snapshot's subject had, so the undo list reads without a join. */
+function labelOf(entry: { before: string }): string {
+  try {
+    const before = JSON.parse(entry.before) as { name?: unknown };
+    return typeof before.name === "string" ? before.name : "something";
+  } catch {
+    return "something";
+  }
 }

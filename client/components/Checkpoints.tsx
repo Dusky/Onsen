@@ -112,7 +112,7 @@ export function CheckpointsSheet({
                   type="button"
                   className="btn flex-none"
                   style={{
-                    color: "var(--onsen-color-red)",
+                    color: "var(--onsen-color-red-text)",
                     borderColor: "var(--onsen-color-red-border)",
                   }}
                   onClick={() =>

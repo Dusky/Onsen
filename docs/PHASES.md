@@ -9277,6 +9277,43 @@ scrolled to its bottom, the first Tab lands in the right rail and the skip link
 is reached on the wrap. It is still the first element in the DOM, which is what
 the guard asserts — the alternative would be asserting a browser heuristic.
 
+## Phase 192 — Chrome that fits (nothing to do)
+
+*Written in phase 219, which found the hole. The number was planned, its three
+items turned out to be already shipped or already decided, and it was skipped
+without a word — so `PHASES.md` read 191, 193 and nobody could tell whether a
+phase had been dropped or had failed. An empty entry is the answer; a gap is
+not.*
+
+The phase-188 use review raised three pieces of chrome and the plan gave them
+their own phase. Re-checked before building, per `NEXT.md` step 3, and all
+three had answers:
+
+**"An empty scene offers two live text boxes with nothing saying which comes
+first."** Decided, and documented at the component:
+`SceneDescribePrompt`'s own doc comment says the composer stays below "so 'or
+just write your turn' is never taken away" (§20 phase 157). Two ways in is the
+intent, not an oversight.
+
+**"Settings tabs clip silently — 209px hidden, no fade or arrow."** Already
+fixed, long before: the category row is wrapped in `Scroller`, which "fades
+whichever edge still has something past it", with a comment naming the exact
+complaint — ten categories in 390px, four fitting, six off the right edge. It
+shipped in the commit that made the palette a modal, tens of phases earlier.
+The review measured a width where the fade was present and read the clipping as
+unhandled.
+
+**"An unlabelled `2` floats beside New roleplay, and the sort buttons outweigh
+their content."** Also already fixed: the count moved to the title row, with a
+comment saying it had been "squeezed onto the edge of 'Longest' and read as
+part of it", and it reads "1 of 60" under a filter rather than a bare number.
+
+Nothing was built. Worth keeping as an entry because two of the three were
+findings the review got wrong by looking rather than measuring, which is the
+same lesson `docs/UX-REVIEW.md`'s Corrections section records six more of — and
+because the third, the empty-scene pair, is the fourth time a documented
+decision has been re-raised as a defect.
+
 ## Phase 193 — A guard that measures the rendered screen
 
 Three phases in a row have now found the same shape of defect:
@@ -9515,3 +9552,2113 @@ and every shipped theme sits at 4.55–4.60:1 on it. The new headroom test cover
 the grounds the rails paint on and leaves inset to plain AA, named in the test
 rather than silently excluded: re-tuning eight palettes' inset wells is a design
 pass, not a contrast fix.
+
+## Phase 196 — The response cap reaches the wire
+
+A second review (`docs/UX-REVIEW-2.md`) ran the generation loop against real
+providers for the first time and found one thing that makes a shipped feature
+silently dead, plus a handful of smaller defects. The dead feature is this one.
+
+### The cap was reserved but never sent
+
+`max_response_tokens` lives beside the samplers on the preset row, and the
+prompt builder *reserves* it — trims the prompt to leave room for it
+(`server/prompt/index.ts`). But only the Anthropic adapter ever sent it to the
+provider, and only because Anthropic *requires* `max_tokens`. The
+OpenAI-compatible and text-completion adapters built their request bodies
+without it, so for those providers the cap was silently ignored: turns ran to
+the provider's own default or natural stop, while the prompt was needlessly
+shortened to make room for a limit nobody enforced.
+
+And it is worse than an ignored setting, because it is the trigger for another
+feature. Auto-continue (§13.6, phase 63) fires on a reported `length` finish,
+and the cap that produces that `length` *is* `max_response_tokens`. A provider
+that is never told to stop at the cap never reports `length`, so auto-continue
+could never run on two of the three provider kinds. The tests passed because the
+only adapter required to send `max_tokens` — Anthropic — was the only one tested
+for it.
+
+Measured before the fix: `max_response_tokens = 24` on an OpenAI-compatible
+provider came back **126 tokens with `finishReason: "stop"`**. After: **26
+tokens with `finishReason: "length"`**, and with `auto_continue = 1` the
+continue chain fired and landed the joined turn — the first time auto-continue
+has ever run on that kind.
+
+### The change
+
+Both adapters now send `max_tokens: prompt.debug.reservedForResponse` when the
+builder reserved something, and omit it when it did not — side calls reserve
+nothing and are bounded by the task runner, so sending a floor there would be a
+second, disagreeing cap. The text adapter's comment records that the field name
+is the OpenAI legacy `/completions` one this adapter already targets; a native
+llama.cpp `/completion` would want `n_predict`, which a capability flag can
+cover if one is ever spoken to directly.
+
+Three tests, in the same shape as the tools conformance file so the next adapter
+cannot ship without a cap:
+
+- `test/adapter-openai.test.ts` — sends `max_tokens` from the reservation, and
+  omits it at zero.
+- `test/adapter-text.test.ts` — new; the same two assertions, plus the raw
+  prompt and stream flag.
+- `test/adapter-response-cap.test.ts` — new; every `PROVIDER_KINDS` sends
+  `max_tokens` from the reservation, which is the guard that makes the other
+  two files mean something.
+
+**Verified** with 1937 tests across 143 files (up from 1929), typecheck clean,
+and live against `nanogpt` and `DeepSeek` — the two numbers above are the
+before-and-after of the same call.
+
+### Surprises
+
+**The response-cap test had to run the text adapter too, and that is where the
+omission hid.** Each per-adapter test passes on its own terms, which is exactly
+how the OpenAI adapter's omission sat green for forty-plus phases; the shared
+file over `PROVIDER_KINDS` is the guard, the same reason the tools file exists.
+
+### Not done here
+
+The other review findings are scheduled in `docs/PLAN-REVIEW-2.md` and not
+shipped in this phase: the "Stop" button that keeps a partial turn without
+saying so, the client dropping a mid-stream error's `detail`, the OpenAI
+surface reporting streaming errors as `length`, and the avatar 404. Each is a
+phase of its own.
+
+## Phase 197 — Stop says what it kept
+
+Phase 196's review (`docs/UX-REVIEW-2.md`) found a smaller seam beside the dead
+cap: the generation "Stop" button. Cancel persists whatever was produced
+(§5.6), and the service lands that partial as the scene's active message — so a
+reader who stopped a turn that was going wrong got a mid-sentence fragment as
+their newest story turn, with a button that said only "Stop" and no
+explanation anywhere.
+
+### The notice, not the contract
+
+The keep is deliberate and stays: partial output is the reader's text, and the
+service's own comment defends landing it. The gap was that nothing said so.
+`client/lib/generation.ts`'s `cancel()` now reads the cancel response's `buffer`
+and, when it is non-empty, posts a `done` notice — "Turn stopped — the partial
+reply was kept as the last turn." — through the one `notify` primitive. A stop
+that produced nothing says nothing, which is the same gate the service's own
+`land()` uses (`buffer.trim() !== ""`).
+
+The notice, not a relabel: a reader who cancels and looks away is the one the
+notice reaches, and the fragment is already sitting in the log with delete and
+reroll on it.
+
+**Verified** in the browser against the real provider: cancel after the first
+token showed the notice over a 133-character partial, and the fragment was the
+last message. A source-level test in `test/notices.test.ts` asserts the wiring
+and the non-empty gate, beside the other "what used to say nothing" checks.
+1937 tests, typecheck clean.
+
+### Surprises
+
+**The first browser pass missed it and the second caught it.** The first drive
+clicked Stop too late — the turn had already finished, the button was gone, and
+nothing was cancelled, so no notice. The second intercepted the cancel response
+and confirmed the non-empty buffer before asserting the text. A browser check
+that does not verify *the action it is checking actually happened* reports a
+pass on a no-op, which is the browser's version of the same sentence the last
+three phases have been about.
+
+## Phase 198 — The error says why
+
+The second review (`docs/UX-REVIEW-2.md`) found that a mid-stream failure
+rendered as just "The generation failed." — the server computes a specific
+`detail` (`describeFailure` in `service.ts`), sends it on the SSE `error` event,
+and the client dropped it in `settle`. The one thing worth reading about a dead
+provider — the reason — never reached the screen.
+
+### Detail beside the summary
+
+`client/state/generation.ts` keeps `errorDetail` beside `error`, `settle` takes
+it, and `MessageLog.tsx` renders it under the summary when present. The summary
+stays the sentence; the detail is the diagnostic, in a smaller, dimmer line —
+the same hierarchy a failed field uses, only here the field is the turn.
+
+**Verified** in the browser against a mock provider that streams a few words
+and then drops the connection: the strip reads "The generation failed." over
+"The socket connection was closed unexpectedly…". Confirmed the server already
+sent `detail` before touching the client, so the change was exactly the gap.
+1938 tests, typecheck clean.
+
+### Surprises
+
+**The first browser pass reported the defect as fixed when nothing had
+rendered.** The scene used for the test had no cast, so the log showed the
+"Describe the scene" prompt with its own textarea, and the test typed into that
+instead of the composer — nothing generated, nothing errored, and the check for
+"the detail is absent" trivially passed. The fix was the same discipline as the
+last phase: make the test assert *the thing it is checking actually happened*
+(the user message in the log, the error strip present) before asserting the
+outcome.
+
+## Phase 199 — The outbound API's stream says what happened to its log
+
+The second review's fourth finding was on §19's outbound surface: a streaming
+request was logged as HTTP 200 the moment it started, before a token had left
+the server, so a request that errored mid-stream was recorded as a success.
+And the stream itself reported an error or a cancel as `finish_reason: "length"`
+with no other signal — indistinguishable from a clean cap.
+
+### The true status, once it is known
+
+The request is now recorded when the stream settles, not when it starts:
+`streamCompletion` takes an `onSettled` callback, and the terminal event calls
+it with 502 for an error and 200 for a done or cancelled turn. The generation
+is server-owned, so it always settles even if the client disconnects, which is
+what makes recording at the end reliable rather than optimistic.
+
+### The length mapping stays, and now says why
+
+OpenAI's stream shape has **no error channel** — `finish_reason` is the only
+word a chunk has for why it ended, and no client knows a non-standard value.
+So a failed or cancelled generation still terminates as a length-limited
+completion (partial content, then `[DONE]`), and the request log is what
+records the truth. The doc comment on `streamCompletion` says exactly that;
+inventing a `finish_reason: "error"` would have broken real OpenAI SDKs for a
+signal nobody could read.
+
+**Verified** with a new test in `test/openai-api.test.ts` — a scripted adapter
+streams a few words then fails, and the usage log shows 502, not the 200 the
+old code would have written up front. 1939 tests across 143 files, typecheck
+clean.
+
+### Not done here
+
+The remaining finding — the avatar 404 on every avatar-less message — is
+`docs/PLAN-REVIEW-2.md` phase 5 and is its own phase.
+
+## Phase 200 — No request for a portrait that is not there
+
+The second review's last finding was the smallest and the most visible in the
+network tab: every message spoken by a character with no portrait requested
+`/api/characters/:id/avatar` anyway, because the message DTO carried the
+speaker's id and name but not whether a portrait existed. The initial letter
+rendered through the failed image — nothing was *broken* — but six other avatar
+call sites already guarded on `hasAvatar`, and the log's own comment claimed
+the same graceful fallback while issuing a 404 to get it.
+
+### hasAvatar travels with the message
+
+`MessageDto.hasAvatar` is resolved in `toMessageDto` from a new
+`SpeakerLookup.hasAvatarById` map, for character turns only. The reader's and
+author's pictures are gated by their own layout toggles and a `personaId`, so
+they keep the URL they always had — this flag is about the *character* portrait,
+not a blanket "no picture".
+
+`MessageBlock`'s `Avatar` now skips the `backgroundImage` request when a
+character has no portrait, rendering the initial alone — the same guard the
+cast rail, cast strip, dock, and editor already had, and the same one the
+component's own doc comment had been claiming to have.
+
+**Verified** in the browser against the real database (three avatar-less cast
+members): zero `/avatar` requests on the chat screen, initials still rendered.
+Two tests in `test/greetings.test.ts` pin both directions — a PNG card's turn
+carries `hasAvatar: true`, a JSON card's carries `false`. 1940 tests across 143
+files, typecheck clean.
+
+### Surprises
+
+**Vite's module cache turned a code change into a blank page, and the first
+browser pass nearly reported the fix against nothing.** After the
+`MessageBlock.tsx` edit, the dev server served a stale HMR graph that threw
+`does not provide an export named 'Emphasis'` on every full load — the page
+rendered no articles, so "zero avatar 404s" was trivially true. The test only
+became a test once it asserted the thing it was checking *actually happened*:
+"Elira Voss" in the body and four articles rendered, then zero 404s. Restarting
+the dev server and clearing the vite cache fixed the graph; the code was never
+wrong.
+
+### That closes the review
+
+The five findings of `docs/UX-REVIEW-2.md` are all shipped: phases 196 (the
+response cap), 197 (Stop says what it kept), 198 (the error says why), 199 (the
+outbound stream's true status), and this one. `docs/PLAN-REVIEW-2.md` records
+the same in plan form.
+
+## Phase 201 — A cue beats the classifier, in every scope
+
+A report from real use: sometimes a turn was written as the wrong character. It
+traced to one narrow but real combination — the classifier turn director, the
+composer's "auto" scope (let the director pick one voice or the room), and a
+character the reader had explicitly cued.
+
+### The cue was fed to a roster it was not on
+
+`classify()` offers the model the cast minus whoever spoke last (the
+never-twice-consecutively rule), and when the speaker is pinned it answered with
+`candidates[0]` as the name — on the assumption that the cued character was the
+first candidate. It was not, in general: the cued character is whichever one the
+reader tapped, and it is not even on the roster when they spoke last. So the
+cue was silently replaced by the first offered cast member, and the director
+announced it as `source: "user"` — a reader who picked Dusky watched Elira
+speak, captioned as their own pick.
+
+The fix is in `direct()`, where the decision is assembled: when the source is a
+cue, the classifier's name answer is ignored outright — the cue picks the
+speaker, and the classifier was asked only for the scope, so only its scope
+answer is used. `classify()` no longer fakes a name for a pinned speaker; it
+returns what the model said and leaves the override to the one place that knows
+the cue.
+
+**Verified** with a new test in `test/turn-director.test.ts` — cue Aldan, scope
+"auto", classifier says Mira: the director names Aldan, source "user", scope
+"beat" (the classifier's scope answer still shapes the turn). It failed against
+the old code with the first cast member's id and passes now. 1941 tests across
+143 files, typecheck clean.
+
+## Phase 202 — The classifier sees who actually spoke in a beat
+
+The same "wrong character" report, second cause, same file. The classifier
+built its view of recent history from the message's own `character_id` — which,
+for a beat, is whoever *opened* it, not whoever *spoke last*. Three of its
+helpers read that column:
+
+- `lastCharacterOf` fed "never twice consecutively": the roster excluded the
+  beat's lead even when the lead had not said the last line, and kept whoever
+  *ended* the beat eligible to speak again immediately.
+- `turnsSinceSpeaking` reported "silent N turns" for a character who had spoken
+  inside a beat, because only the lead's id matched.
+- `recentTurns` labelled a whole beat with the lead's name, attributing a
+  three-way exchange to one person in the transcript the classifier reads.
+
+All three now read the segments. `lastCharacterOf` delegates to
+`lastSpeakerOf` — the same function the pure fallback director already used —
+and the other two go through a `speakersOf` helper that returns every cast
+member a beat's segments name.
+
+**Verified** with a test in `test/turn-director.test.ts`: Aldan leads a beat,
+Mira closes it; the next classifier question offers Aldan and excludes Mira.
+Against the old code the roster held Mira and dropped Aldan. 1942 tests across
+143 files, typecheck clean.
+
+## Phase 203 — A mention is the reader's words, not the author's
+
+The mention turn director scans "the last message" for a cast member's name.
+The last message is usually the reader's, so it worked — but after a beat, or
+under autopilot, the last message is the author's own output, whose `**Name:**`
+labels and dialogue are not anybody being addressed. The strategy read them as
+mentions anyway and elected whoever happened to be named last inside prose the
+model had produced itself.
+
+`DirectorHistoryEntry` now carries `isUser`, `turn.ts` sets it from the
+message's author type, and the mention case scans only the reader's words —
+anything else falls back to round robin. The `said` test helper grew a third
+argument so the fixtures say which entries are the reader's.
+
+**Verified** with two tests: a character's own words are not read as an address,
+and the self-response fixtures were rewritten to model the reader's message
+separately from the previous speaker's turn. 1944 tests across 143 files,
+typecheck clean.
+
+## Phase 204 — The assistant's undo actually undoes
+
+The agent's write tools recorded a snapshot before touching anything — "so this
+can be undone", "so it can be restored" — and `GET /agent/undo` listed them.
+The restore half was never built: the recorded `before` DTO was written, listed,
+and read by nothing. A delete made through the assistant was as irreversible as
+any other, while the tool description promised otherwise.
+
+`POST /agent/undo/:id` restores a snapshot and removes it from the list.
+Restoring a character re-creates it from the recorded card; its picture,
+version history and lorebook binding do not survive a delete and are not
+invented, which the response says rather than leaving silent. Restoring a theme
+reverts its tokens. The `delete_character` description now says the same thing
+out loud.
+
+**Verified** with a test in `test/agent.test.ts` — delete, undo, the character's
+text is back and the snapshot is gone. The endpoint is excused in
+`reachable.test.ts` beside its siblings, for the same stated reason: the
+assistant's client is still its own phase. 1944 tests, typecheck clean.
+
+## Phase 205 — The cast says when a card has nothing to anchor on
+
+The last open thread from the wrong-character hunt was thin cards: a cast
+member with no description and no personality gives the model nothing to hold
+onto, and the first the reader hears about it is the prose coming back wrong.
+Now the app says so *before* the turn.
+
+`SceneMemberDto` carries `hasDescription` and `hasPersonality`, resolved in
+`castOf` from the two columns it already joins. When the speaker about to write
+has neither, the cast rail and the phone deck print one amber line — "{name}
+has no description or personality — they may not sound like themselves." — on
+the card it is about, next to the director's own sentence, not as a separate
+panel.
+
+**Verified** in the browser: a scene with an empty card cued shows the line;
+a populated card does not. A test in `test/greetings.test.ts` pins the DTO
+flags for a full card and a description-only card. 1945 tests across 143 files,
+typecheck clean.
+
+### Surprises
+
+**The phone's cast strip was dead code.** `CastStrip.tsx` is exported and read
+by nothing — the deck replaced it (§20 phase 50) and the file stayed behind.
+The warning went on the deck and the rail, which is where the cast actually
+lives; the strip is left alone rather than deleted in a phase about a warning,
+but it is noted here so a future sweep can remove it deliberately.
+
+## Phase 206 — Dead code out of the client
+
+Phase 205 found the phone's cast strip was dead — replaced by the deck in
+phase 50 and left behind. A sweep over `client/` turned up the rest:
+
+- `CastStrip.tsx`, ~230 lines, exported and imported by nothing. Deleted; the
+  one comment in `Deck.tsx` that named it now says the same thing without it.
+- `useCharacterSnapshot` and its `characterKeys.snapshot` key — a query hook no
+  screen ever called. Gone, with its now-unused `CharacterSnapshotDto` import.
+- `OpsApi` and `Strings`, two exported convenience types nothing read. Gone.
+
+The sweep also surfaced that several interfaces (`OocProps`, `SwipeHandlers`,
+`SwipeBindings`, `MatchContext`, `OpsDeps`) are *exported but only read in their
+own file*. Those are left alone: de-exporting them is churn without a reader,
+and an exported type is a public surface, not a defect.
+
+**Verified** with 1945 tests across 143 files and a clean typecheck; no source
+guard reads any of the removed names.
+
+## Phase 207 — The macro and lore engines, audited
+
+A targeted audit of the two surfaces most likely to hide a "wrong prompt" bug
+after the turn-director work: macro/outlet resolution and the lorebook
+activation model.
+
+The result is mostly "no defect". `macros.ts` resolves every built-in macro
+from the same `PromptContext` the blocks draft from, so `{{char}}`,
+`{{user}}`, `{{scenario}}`, outlets and the seeded `{{random}}`/`{{pick}}`
+cannot disagree with the assembled prompt; 27 tests cover the surface. The
+lore engine's six rules run in the order the spec names, and 40 tests cover the
+whole matrix — character filter, sticky/cooldown/delay, inclusion groups,
+recursion, and the book budget.
+
+One latent footgun was found and pinned rather than changed: `windowFor` takes
+the scan window as `transcript.slice(-Math.max(0, depth))`, and `slice(-0)` is
+the whole array — so scan depth 0 scans the entire chat. That is the
+SillyTavern convention for "scan depth 0" (unlimited), and the import carries 0
+through unchanged, so the behaviour is the interop contract — but it sat
+undocumented on a JS quirk. It now says so in a comment, and a test pins it so
+a future reader cannot "fix" the `-0` into a regression without failing the
+suite. 1946 tests across 143 files, typecheck clean.
+
+## Phase 208 — The assistant's client
+
+Phase 46 shipped the assistant's server half — threads, a tool-calling loop, and
+an undo list — and parked the client as "its own phase". The whole surface has
+been reachable only by curl ever since, excused in `reachable.test.ts` under
+that sentence. This closes it.
+
+### The screen
+
+`/assistant`, reached like Settings — a Header button on desktop, the phone's
+"more" sheet, and a ⌘K command. One screen, two shapes:
+
+- **Desktop** — a 280px rail of conversations (new, pick, auto-titled by the
+  first question, delete with a confirmation), the conversation itself, and an
+  Undo drawer at the rail's foot.
+- **Phone** — the rail collapses into a native `<select>` plus New/Undo
+  buttons, and the composer stays pinned under the log.
+
+The conversation streams live — the assistant's words, each tool call as a chip
+("Used list characters"), then its result ("Returned …") — and a "What it can
+do" sheet lists every tool with its description before anyone asks. The Undo
+drawer names what each change touched (`character · Sister Bell`, now carried on
+the DTO rather than a raw ULID) and restores it with one press.
+
+### What the guard now verifies
+
+Every `/agent` endpoint came off `reachable.test.ts`'s allowlist. The guard that
+used to excuse "the assistant's client is its own phase" now asserts the client
+actually calls each one — which is the same shift the file made in phase 47,
+one level up.
+
+**Verified** in the browser at both widths: create a thread, ask "how many
+characters do I have", watch it call `list_characters` and answer with the
+count, rename a character for real, and see the composer, tool chips and Undo
+drawer all present with no console errors. 1946 tests across 143 files,
+typecheck clean.
+
+### Notes
+
+- `update_character` still undoes through the character's version history, not
+  the Undo drawer — the drawer lists the two tools that *snapshot* (delete a
+  character, edit a theme), which is the same split the tool descriptions draw.
+- The empty-state hint the screen first used was an explanation, and
+  `test/voice.test.ts`'s prose ceiling said so; it is gone, and the composer's
+  own placeholder does the prompting instead.
+
+## Phase 209 — The assistant's own model, and twelve more tools
+
+Two things the assistant was missing once it had a client.
+
+### Its own connection profile
+
+The assistant had no routing of its own: every thread fell back to the
+install's default profile — the same one scenes use. §7's whole point is that
+bookkeeping can go to a cheap model, and the assistant is the most
+bookkeeping-shaped call in the app. `GET`/`PATCH /agent/profile` store a
+profile ULID in `app_settings`, and `runAgentTurn` resolves
+thread → assistant profile → default. A "Runs on" row in the assistant's header
+— Default plus one button per profile — sets it, and the resolution is verified
+by the existing `reachable` guard, which now sees the `/agent/profile` calls.
+
+### The tools
+
+The registry covered characters, scenes, lorebooks, personas and themes. It
+could not manage an author, fix a lore entry, move a cast, or touch groups or
+the data bank — the things an assistant asked to "tidy up this install" would
+reach for first. Twelve tools:
+
+- **Authors** — `list_authors`, `get_author`, `update_author` (name, the five
+  voice fields; the author is the one partner who shapes every scene).
+- **A scene's cast** — `add_to_cast`, `remove_from_cast` (what they said stays).
+- **Lore entries** — `update_lore_entry` (title, text, keys; clears timed
+  state), `delete_lore_entry` (described as not undoable, because it is not).
+- **Groups** — `list_groups`, `create_group`, `add_to_group`, `remove_from_group`.
+- **Data bank** — `list_documents`.
+
+Each write resolves ULIDs through the same queries the routes use, so a tool
+cannot drift from what the UI would have done. The "every tool has a schema"
+and "registry key matches advertised name" guards cover the new set.
+
+**Verified**: 1946 tests across 143 files, typecheck clean; in the browser the
+"Runs on" row picks `nanogpt` and the setting round-trips.
+
+## Phase 210 — The model has one home: the profile
+
+A report that "navigating the provider/model settings is a complete mess"
+turned out to be several things wearing one coat: a model field on three
+layers at once (provider, profile, scene), a per-scene provider override that
+skipped the profile's model, the per-scene controls living in a rail panel
+instead of Scene Setup, and the classifier routed from two different surfaces.
+The fix collapses the layers.
+
+### The provider is an endpoint, not a model
+
+The provider form no longer carries a model box, a model-list fetch, or a Test
+button. A provider is name, kind, address and key — and its row shows
+`kind · keyed` rather than a model that a profile was about to shadow. The Test
+button moved to the profile form, where the model actually lives; it still asks
+the same question a turn asks (§20 phase 182's contract, now on the surface
+that can name the model). `provider.model` stays in the schema as a legacy
+fallback, but nothing new writes it.
+
+### The scene's routing is one place: Scene Setup
+
+Scene Setup gains a "Runs on" group — a profile picker and one override, the
+model. The rail's Models panel loses its per-scene "provider and model" section
+and keeps the quick one-click profile switch; a scene that still carries the
+legacy provider override (phase 181) is shown as an amber note with a "use the
+profile's" button rather than as a third model-ish knob. The classifier's
+second routing surface (Settings → Tasks) now points at Scene Setup instead of
+offering a competing choice that the director profile would silently beat.
+
+**Verified** in the browser (Scene Setup's "Runs on" renders; the provider form
+has no model box) and with 1946 tests across 143 files, typecheck clean. The
+phase-182 guard's "picking a preset clears the model box" assertion became "a
+provider form carries no model box to go stale", and the per-scene model tests
+followed the override into Scene Setup.
+
+## Phase 211 — Product intent, durable lessons, a design contract, and global search
+
+*Written in phase 219. This phase shipped a feature and four documents and
+never wrote its own entry, so `PHASES.md` jumped 210 → 212 and `SPEC.md` §20
+never learned about it. The gap is the reason phase 219 also added
+`test/tracker-drift.test.ts`, which fails on a numbering hole.*
+
+A learning pass over SillyBunny — a SillyTavern fork with the same goals —
+surfaced a real gap. Onsen had the machinery for everything it does and nothing
+written down about what it is *for*, so a decision about whether a feature
+belonged had no document to lose an argument against. And it had no global
+search: every list was filterable in place, and nothing answered "where is the
+thing".
+
+### The four documents
+
+- **`docs/PRODUCT.md`** — the writing is the product; the machinery recedes.
+  Ends in an anti-patterns and anti-references list meant to serve as a merge
+  gate, adapted for Onsen's deliberate dock system rather than copied from the
+  fork it was read against.
+- **`docs/LESSONS.md`** — durable engineering judgment, undated: the "a check
+  that asks a different question than the real thing can pass while the app is
+  broken" sentence, evidence beats inference, data-loss first, the turn
+  director's single source of truth, seeded data reconciles.
+- **`docs/DESIGN.md`** — the human reading of `client/styles/tokens.css` and
+  `scripts/rendered-guard.ts`: the amber/blue signal split, the 0px radius, one
+  owner per size, and what each budget is.
+- **`docs/PLAN-GAPS.md`** — phase-ready specs for the two remaining feature
+  gaps, which became phases 213 and 214.
+
+### Global search
+
+One box that finds anything in the library — roleplays, characters, lorebooks,
+personas, authors — reachable from the header on desktop and the top bar on the
+phone, keyboard-first. It searches the already-fetched lists rather than a
+server index: the install is single-user and small enough that a client-side
+filter over cached lists is the honest implementation, and a server index can
+come the day a library needs one.
+
+`SearchOverlay` goes through `useModalFocus` like the palette and the sheet, and
+`test/sheet-dialog.test.ts` grew it as a fourth file entitled to `fixed
+inset-0`.
+
+### The bookkeeping this phase skipped, and what it cost
+
+No `PHASES.md` entry, no `SPEC.md` §20 item, no README badge — the three things
+`NEXT.md` step 5 says move in the same commit as the code. It went unnoticed
+for seven phases and surfaced only when somebody read the file and found 210
+followed by 212. `NEXT.md` has now opened by complaining about this drift three
+times; phase 219's guard is the first version of the rule that a commit cannot
+pass.
+
+It also shipped an overlay whose focus behaviour differs from the palette's —
+`SearchOverlay` is mounted unconditionally and self-gates with
+`if (!open) return null` *after* `useModalFocus`, so the hook captures
+`document.activeElement` at app start and its restore never runs. The
+filename-allowlist guard was satisfied by adding the file to the list. Fixed in
+its own phase.
+
+## Phase 212 — The writing comes before the machinery, in the DOM
+
+`docs/PRODUCT.md` named the prime anti-pattern as "machinery louder than
+writing": the composer sat behind the left rail's prompt panel in the tab
+order, and a keyboard reader reached it in ~102 presses. Phase 191 shipped the
+fast routes (`c`, a skip link) and deferred the structural fix. This is it.
+
+The desktop shell now renders the main column **first in the DOM**, with the
+rails after it. The catch that forced a second attempt: flex `order` puts the
+rails back visually but also reorders the *tab sequence* along with them, so it
+cancelled itself out. The fix is CSS Grid placement instead — the container is
+`grid-template-columns: auto 1fr auto`, the main column sits in `gridColumn: 2`
+and the rails in 1 and 3, and grid placement (unlike `order`) does not touch
+sequential navigation. Visual order is unchanged; DOM and tab order now reach
+the composer first.
+
+**Verified** with a browser drive: composer at **58** tab presses from the top
+(down from 102), and the prompt rail now sits *after* it. `vanish.test.ts`'s
+guard was widened to the new grid-wrapper shape. 1946 tests across 143 files,
+typecheck clean. No horizontal overflow, rails at their old positions.
+
+### Not done here
+
+The remaining distance is the message log's own per-turn action buttons (reroll
+/ edit / branch / copy / hide / inspect — six per turn). Whether those should
+all be tab stops is a design decision for its own phase; the fast routes (`c`,
+the skip link) already answer the common case.
+
+## Phase 213 — Conversation mode
+
+The first of the two SillyBunny-derived feature gaps. Conversation mode is a
+per-scene skin over the same history tree: the reader's own words on the right,
+the cast on the left with their colour, and a timestamp where the reader has
+them on. The prompt, the tree, the composer and every action are untouched —
+this is rendering, not a second product.
+
+`scenes.conversation_mode` (migration 0080, off by default) reaches the scene
+DTO, the scene PATCH and Scene Setup's "Model" group as an On/Off toggle.
+`MessageLog` branches: conversation mode renders a `ConversationBubble` per
+turn (name, colour, optional time, the content) instead of the prose
+`MessageBlock`, and the streaming tail renders as the same bubble shape while a
+turn is being written. Long-press still opens the same turn actions.
+
+**Verified** in the browser: enabling the toggle on "The Last Inn" renders
+bubbles with speaker names and the two bubble radii, no console errors. 1946
+tests across 143 files, typecheck clean. The explainer string the toggle first
+carried was cut by `test/voice.test.ts`'s prose ceiling — the On/Off toggle
+needs no explanation, which is the ceiling doing its job.
+
+### Not done here
+
+The SillyBunny extras that make its conversation mode *more* than a skin —
+time-based scheduling, statuses, follow-up messages, a distinct conversation
+system prompt — are deliberately out of scope. This is the rendering first;
+those are their own phases if wanted.
+
+## Phase 214 — Agents, discoverable and grouped by stage
+
+The last SillyBunny-derived gap. Onsen already had the machinery — every named
+op in `server/tasks/registry.ts` is an agent in SillyBunny's sense: pre, sidecar
+and post stages, each routable, each with its own words. What it lacked was the
+framing. Settings called it "Background tasks", and the list was flat, so the
+agents were buried as machinery rather than reachable as a thing a reader would
+pick.
+
+The Settings category is now **Agents**, and the list is grouped by when an op
+runs — **Before the turn**, **Alongside**, **After the turn** — the same three
+stages SillyBunny names. The ops themselves are unchanged: this is disclosure,
+not a rewrite. The filter words gained "agent" so a reader who remembers the
+SillyBunny term still lands on it.
+
+**Verified** with 1946 tests across 143 files and a clean typecheck. The ops are
+the bundled templates; the remaining SillyBunny extras (prose polisher, choice
+marker as *new* extension templates) would ride the existing pass/extension
+machinery and are follow-up material, not part of the discoverability fix.
+
+## Phase 215 — Revert the grid shell (it stacked the rails)
+
+Phase 212's DOM-reorder tried to put the main column first using a CSS grid
+(`grid-template-columns: auto 1fr auto`, rails at grid-column 1/3). In the
+browser that produced a single-column grid — the chat on top, the rails below
+it, reachable only by scrolling past the log. The in-session verification had
+measured a hot-reloaded bundle rather than a full page load, so it saw the old
+layout and the defect shipped.
+
+The shell is back to the flex layout it always had, verified with a full page
+load this time (rails at x=0 / 381 / 1248, all at y=0). The composer
+reachability improvement is lost with it; the correct fix — main content first
+in the DOM without disturbing the visuals or the tab sequence — needs a full
+reload-tested approach and is reopened, not closed.
+
+### The lesson
+
+A layout change must be verified on a **fresh page load**, not against the hot
+reload. HMR can leave a stale bundle that measures the old DOM, and a check
+that reads the old DOM reports a pass on a change that never actually applied.
+
+## Phase 216 — The log reads once, not twice
+
+Two readability cleanups from real use.
+
+**The redundant name prefix.** The prompt's history renders past turns as
+`Name: content`, so the model often opens its own spotlight turn with the
+speaker's name — and the log already attributes the turn above it. A stored
+"Daphne: …" read as "Daphne" twice, and fed back into the next prompt doubled
+("Daphne: Daphne: …"). `land()` now strips a leading `Name:` (or `**Name:**`)
+that matches the turn's own speaker, for spotlight turns only — a beat's
+prefixes are per-part labels and stay. A name later in the prose is dialogue,
+not a header, and is untouched.
+
+**"Not sent back".** The reasoning strip said "Model reasoning · N chars · not
+sent back", reassurance the reader does not need; it read as the app talking
+about its plumbing. It is "Model reasoning · N chars" now.
+
+**Verified** with a new test in `test/turn-director.test.ts` (a cued spotlight
+turn pushes "Aldan Roe: He set the lamp…" and lands as "He set the lamp…") and
+the updated reasoning-string guard. 1947 tests across 143 files, typecheck
+clean.
+
+### On colouring dialogue
+
+Colouring per character already exists, in two halves: the **speaker's name and
+spine** take the character's colour (client-side, deterministic), and the
+**spoken text** can be coloured by the model via the `dialogue_colour` prompt
+block (phase 185) once the character has a colour set in the character editor.
+Neither is active until a colour is picked — which is the one gap, and it is a
+one-tap choice in the editor, not a missing feature.
+
+## Phase 217 — Formatting is a client concern, not a prompt one
+
+The reader asked for more breathing room and italic dialogue, and whether the
+model should just emit HTML. It should not: the model's output is untrusted,
+and history is plain text that gets re-fed into every prompt. So the
+formatting moved to the renderer, where it is deterministic and cannot leak.
+
+**Italic dialogue.** Quoted speech — `"Hello."` — renders italic in `Emphasis`,
+quotes included, as its own `dialogue` span kind (not `em`, so the "no text
+lost" round-trip stays exact). Only a quote that can *open* speech counts:
+after whitespace, the start of a paragraph, or sentence punctuation. An `=`
+before it means an HTML attribute (`href="…"`), which stays literal text, so
+the whitelist guarantee is untouched.
+
+**Breathing room.** Paragraphs split on blank lines now sit 14px apart (was
+9px), still `text-wrap: pretty`.
+
+**The `dialogue_colour` block is gone.** Phase 185 asked the model to wrap
+spoken lines in the character's colour span. It made every prompt bigger, gave
+the model one more way to leak raw tags, and was redundant — the client already
+colours the speaker's name, spine and each beat part's label from the cast's
+colours. The prompt no longer instructs it. (The `Emphasis` colour-span
+*parser* stays, for models that emit spans unprompted; the block and its
+`PromptBlockId` are removed, so the inspector and the label map no longer know
+it.)
+
+**The one real gap the block papered over is closed at the source.** A cast
+with no colours at all rendered nobody's name in colour. Now a colourless
+character joining a scene takes the first palette colour nobody else in that
+scene is using — a muted mid-dark palette readable on both themes — so a fresh
+cast is told apart at a glance. Anyone can still be repainted in the editor.
+
+**Verified**: 1949 tests across 143 files, typecheck clean. New tests cover
+italic dialogue, the unclosed-quote and attribute-quote cases, the absent
+prompt instruction, and auto-assignment (distinct colours; an existing colour
+is kept).
+
+## Phase 218 — The wrong-character bug, and the colour that was missing
+
+Two live reports fixed.
+
+**The wrong character was a client bug, not the director.** The composer
+shows the director's provisional pick, and the send button sent that pick back
+as `characterId`. The server reads any `characterId` as a *user cue* and
+honours it over the strategy — so every ordinary send froze a choice computed
+against stale history. The mention strategy never scanned the message just
+typed (the cue pre-empted it), and round robin ran one turn behind. The only
+cue that travels now is the reader's explicit tap (`source === "user"`); a
+"director" suggestion stays on the client and the server re-derives the choice
+from fresh history at generation time. `decidesOnSend` is gone from the ops
+hook — it was the gate that let the stale pick through for every non-classifier
+strategy. Guarded by `test/next-turn-cue.test.ts`.
+
+**Colour was applied to the name and spine but never the spoken words.** The
+`dialogue` span now renders italic *and* in the speaker's colour, client-side:
+`Emphasis` takes the colour, `Prose` passes it down, and the spotlight turn and
+each beat part hand over the speaker's own colour. The model supplies no colour
+— it is a fact the client already knows, applied to the quoted runs
+deterministically, so a scene reads "blue speaks, green answers" without the
+model being asked to emit markup. The conversation-mode bubble shares it.
+
+**And the colour that never existed is backfilled.** Migration 0081 gives every
+character that predates the palette a colour by creation order, so an existing
+library is told apart at a glance the same way a new cast is.
+
+**Verified**: 1951 tests across 144 files, typecheck clean.
+
+## Phase 219 — Every change the assistant makes is in Undo
+
+The assistant's own screen says, in the blurb under its title: *"The assistant
+can read and change what is in this install — characters, roleplays, lore,
+personas and themes — for real. It looks things up rather than guessing, and
+every change it makes is listed under Undo."*
+
+The last clause was true of two changes out of nineteen.
+
+### What the sweep found
+
+`server/agent/tools.ts` exports 32 tools, of which 19 write. A repo-wide sweep
+for `snapshotBefore` found **two** call sites: `delete_character` and
+`update_theme`. `POST /agent/undo/:id` could restore exactly those two kinds.
+`update_character` was honest by a different route — `updateCharacter` writes a
+`character_versions` row, with phase 61's exemption for organisational fields —
+and `character_versions` is the **only** history table in the schema, so
+authors, personas, lore entries, scenes and groups had none at all.
+
+The other sixteen left nothing behind: `update_scene`, `add_note_to_scene`,
+`update_author`, `upsert_persona`, `update_lore_entry`, `delete_lore_entry`
+(whose own description admitted it), `create_scene`, `create_lorebook`,
+`add_lore_entry`, `create_theme`, `set_theme`, `add_to_cast`,
+`remove_from_cast`, `create_group`, `add_to_group`, `remove_from_group`.
+
+And `server/routes/agent.ts`'s own doc comment said *"The write tools record a
+snapshot before they touch anything"*. This is the sentence `docs/LESSONS.md`
+keeps: **a check that asks a different question than the real thing can pass
+while the app is broken.** Here there was no check at all, and a comment
+standing in for one.
+
+### The recording half
+
+All nineteen record now. `UNDO_KINDS` is a union of twenty kinds in
+`shared/types.ts` — shared rather than server-only because the client names
+each one in words — and `snapshotBefore` takes that union rather than a string,
+so the compiler is the first guard. The naming carries the undo:
+
+- a bare noun is an overwrite, so its undo puts the old state back
+- `.created` is the absence before a create, so its undo is a delete
+- `.deleted` is the state before a delete, so its undo is a re-create
+- `.added` / `.removed` are memberships, which undo by the opposite call
+
+`snapshotCreated` is a sibling of `snapshotBefore` with the same storage, so a
+create's call site reads honestly: the id it records can only be known *after*
+the insert, and `snapshotBefore` would be a lie about the order.
+
+One consequence worth stating: `delete_character` records `character.deleted`
+rather than `character`, because a delete and an overwrite undo differently.
+`test/agent.test.ts`'s assertion moved with it.
+
+### The restoring half
+
+`server/agent/restore.ts`, new: one `switch` over `UndoKind`, exhaustive, so a
+kind added without a restore does not typecheck. Each branch goes through the
+same query-layer writer the tool used, so there is one way to write each thing.
+Each branch is also idempotent about the thing already being in the state asked
+for — a reader who taps Restore twice gets a note, not an error.
+
+What a restore is honest about travels in the response's `note`: a re-created
+character comes back without its picture or book bindings, a re-created lore
+entry under a **new id**, so anything that referred to the old one does not
+follow it back. The theme in use is not deleted out from under the app.
+
+Restores are not themselves snapshotted — an undo of an undo is the original
+state, which is already in the list until it is used, and recording one would
+make the list grow on the operation meant to shrink it.
+
+### Two more found while in the file
+
+**`update_scene` advertised two fields it could not write.** Its schema offers
+`title`, `scenarioOverride` and `turnStrategy`, and its `run` spread the raw
+arguments into `updateScene`, whose patch type has neither of the last two. So
+they were accepted, reported as changed, and dropped: a model told to set the
+turn strategy got a success and a scene that had not moved. Confirmed by
+execution before the fix — `{title: "Renamed", scenario_override: null,
+turn_strategy: "manual"}`. Each field now goes through the one thing that owns
+its column: `scenarioOverride` joined `updateScene`'s patch, and the strategy
+uses `setTurnStrategy`, which already existed.
+
+**`scenario_override` had two writers.** The scenes route wrote the column with
+a statement of its own. It calls `updateScene` now, so there is one.
+
+### The phone's Undo button did nothing
+
+`showUndo` was toggled by two controls and read by one: the list lives inside
+`AssistantScreen`'s `isDesktop` branch, so on a phone the button had been inert
+since the screen shipped in phase 208. The list is a component now — the
+desktop rail drops it under its own control, the phone opens it in a `Sheet` —
+and the phone's button carries the count, because "Undo" alone says nothing
+about whether there is anything to take back.
+
+### Words, not keys
+
+The list rendered the server's `kind` string. Fine while the only two were
+"character" and "theme"; a raw storage key on screen the moment there were
+twenty. `strings.assistant.undoKinds` is typed against `UndoKind`, so a kind
+added on the server without words does not compile, and each one reads as the
+*undo* — "Author rewritten · Mara" — because the button beside it is what does
+that. An unknown kind falls back to the name alone, which is what a reader
+needs to recognise what they are about to take back.
+
+### The guard
+
+`test/agent-undo.test.ts` does not read the source and does not name the tools
+that are supposed to snapshot. It **runs every tool in the registry against a
+real database** and asks the only question worth asking: did this change a row,
+and if it did, is there something to go back to?
+
+`total_changes()` is the detector — SQLite counts every row inserted, updated or
+deleted on the connection — so "this tool wrote" needs no declaration and a
+write added later is caught without anybody remembering to extend a list. Three
+things keep the sweep honest: destructive tools run last so they do not delete
+the subject the others need, every tool whose schema has required arguments must
+be listed in the fixtures (a missing one would throw before writing and pass
+having tested nothing), and the number of tools that wrote is asserted to be at
+least nineteen. Verified by removing one `snapshotBefore` call, which fails the
+suite and names the tool.
+
+Beside it: every `UNDO_KIND` is reachable by running the tools, so the union has
+no dead entries; every recorded snapshot restores without throwing; and six
+round-trips check real state — an overwritten author, a deleted lore entry back
+in its book, a created scene deleted again with its cast, a recast scene, the
+theme that was active, and the theme in use refusing to be deleted.
+
+### Verified
+
+1966 tests across 145 files, typecheck clean. Driven in the browser at
+1600×950 and 390×844: the desktop rail and the phone sheet both read "Author
+rewritten · Mara", "Lore deleted · The inn keeper", "Cast removed · Elira Voss
+in The Last Inn", "Theme switched · Midnight" — no raw kinds, no console
+errors. `data/onsen.db` was snapshotted before anything was written to it and
+restored byte-for-byte afterwards.
+
+### The trackers, reconciled first
+
+This phase could not add a `SPEC.md` §20 item because the list stopped at 195
+while the tree stood at 218 — a twenty-three-phase drift, and `NEXT.md` opens
+by complaining about the seventeen-phase one. Items 196–218 are backfilled,
+phase 211's missing `PHASES.md` entry is written, and `README.md` and `NEXT.md`
+say 219. `test/tracker-drift.test.ts` is the part that matters: the highest
+phase in `PHASES.md`, the highest item in §20 and the README badge must agree,
+and `PHASES.md` must have no numbering gaps. All three drifts would have failed
+on the commit that caused them.
+
+## Phase 220 — A speaker's colour is legible on both themes
+
+Measured on composited pixels at 1600×950, light theme, the real database — the
+coloured dialogue phase 218 introduced:
+
+| run | before |
+|---|---|
+| `"Name it anyway,"` | **2.07:1** |
+| `"It had no face,"` | **1.99:1** |
+| `"They never do, this early in the season."` | **2.34:1** |
+
+Against AA's 4.5:1, and below the 3:1 large-text floor as well. The speaker's
+name and spine had been failing the same way since phase 185 at 2.14–2.94:1 on
+the four light grounds; 218 put the same colour on the *spoken words*, which
+turned a dim label into a fifth of the prose on screen. Dark measures 7.5:1 and
+is fine, which is exactly why nobody saw it — the app's own default is dark.
+
+### The fix is not a better palette
+
+There is no better palette. To clear 4.5:1 against `#e5eaee` a colour needs
+relative luminance at or below **0.143**; against `#0a0d18` it needs **0.194**
+or above. The windows do not overlap, so **no single stored hex is legible in
+both theme bases**, and the plan's "repick `CAST_PALETTE` so all eight clear the
+floor unaided" was impossible before it started. `test/cast-colour.test.ts`
+states that as arithmetic, computed from the shipped themes rather than from
+these two numbers, so nobody tries again.
+
+So the stored colour is *identity* — what the reader picked, or what the palette
+handed them — and what gets painted is resolved against the ground in front of
+it. `readableOn(colour, ground, floor)` in `shared/contrast.ts` moves toward
+whichever end has the most headroom, by the smallest amount that clears the
+floor, found by bisection so it is deterministic and as close to the reader's
+colour as legibility allows. Darkening mixes toward black and preserves hue
+exactly, which is the direction light themes need.
+
+At the AA floor it always succeeds, and the arithmetic says why: black against a
+ground of luminance L gives `(L + 0.05) / 0.05` and white gives
+`1.05 / (L + 0.05)`, and the two cross at L ≈ 0.179 where both are 4.58:1. The
+worse of the two ends is never below 4.5:1 for *any* ground — including mid
+grey, which is the case that looks hopeless and is not.
+
+### One owner
+
+`ChatScreen` already built the single `Map<characterId, colour>` that feeds the
+speaker's name, the spine, each beat part's label, the quoted runs inside the
+prose and the conversation-mode bubble. `client/lib/speaker-colour.ts` resolves
+it there, so every surface moves together and there is no second place to
+forget. The ground comes from the live computed style rather than `builtin.ts`,
+because a reader's own theme is as real as a shipped one — phase 195's whole
+lesson. Of the candidate grounds it takes the one closest to mid grey, which is
+the hardest of them: clearing that clears the others on the same side.
+
+No observer watches the theme, because it cannot change without a reload —
+applying a theme calls `window.location.reload()`, and the header's Dark/Light
+switch activates a theme like any other.
+
+### The number the token could not give
+
+The first version resolved to exactly 4.5:1 against the token and **still came
+up short on screen**: 4.07:1 and 3.99:1 composited, with every token-pair check
+passing. Phase 193's argument, one layer in — prose sits on a translucent panel
+over the reader's photograph, so the ground a token names is not the ground text
+lands on.
+
+The headroom is therefore measured, not chosen. The darkest ground the
+transcript actually composited to was `#e3e6ea` against an `#f1f1f1` token,
+which demands 5.01:1 against the token to clear AA on screen. `PAINT_FLOOR` is
+**5.5**: it carries that with margin and still clears 4.04:1 against a `#d0d0d0`
+ground far darker than anything observed. Applied in both bases, because which
+way the photograph pushes is the picture's business and not the theme's.
+
+The guard holds the app's promise at AA; the client paints with headroom above
+it. `scripts/rendered-guard.ts` is what checks the approximation was right, and
+phase 222 is what makes it measure these runs.
+
+### The editor stopped warning about a problem that no longer exists
+
+`ColourField` measured the chosen colour against the live ground and printed
+"Hard to read on this theme — 2.31:1 against the page, under the 4.5:1 the ink
+holds." True when it was written; false now, and worse than useless — it would
+send a reader to change something the app already handles. It reports instead:
+the ratio as picked, the colour it will be painted in here, and that the choice
+is stored as made. The swatch beside the picker shows the *resolved* colour,
+because a swatch that lies about what is coming is worse than no swatch.
+
+### Verified
+
+Composited, on the real screen, through the app's own theme picker:
+
+| | before | after |
+|---|---|---|
+| `"Name it anyway,"` | 2.07:1 | **4.98:1** |
+| `"It had no face,"` | 1.99:1 | **4.88:1** |
+| `"They never do…"` | 2.34:1 | **5.76:1** |
+| the speaker's name | 2.14–2.94:1 | **5.39:1** |
+| dark theme, all of it | 7.5:1 | **7.5:1** (unmoved) |
+
+1985 tests across 147 files, typecheck clean. `test/cast-colour.test.ts` holds
+every palette colour, resolved, to AA on every ground every shipped theme
+defines; keeps the eight tellable apart afterwards (nothing closer than 20 in
+RGB, against a stored palette whose own tightest pair is 28), and checks that
+migration 0081 — which copies the palette and asks in a comment that the two be
+kept in step — still wrote what the live palette hands out.
+
+### Not done here
+
+The asterisks in `"…that road **has** a name."` are phase 221. They are visible
+in the same crop and are a different defect.
+
+## Phase 221 — Markup inside speech renders again
+
+Phase 217 made a quoted run one terminal `dialogue` span so it could be
+italicised and, in 218, coloured. The cost showed up in the reader's own live
+scene, in the middle of the prose:
+
+```
+"Half of what comes down that road **has** a name, and the half that does not
+is worse."
+```
+
+Asterisks, on screen, as text. Same input, before and after 217:
+
+```
+pre-217   text | strong("has") | text
+217–220   dialogue("…that road **has** a name.")
+```
+
+### Why the trade that was right for asterisks is wrong for quotes
+
+The tokenizer flattens what is nested inside a mark, and `test/emphasis.test.ts`
+has said why since phase 161: *"nothing inside a pair is read as markup again"*,
+because a nested `*x*` inside a `**sentence**` is rare enough that flattening
+beats resolving. That reasoning is sound and it still stands — for asterisks.
+
+It does not carry to quotes, and the difference is what a quote *is*. A `**` is
+a mark somebody chose to write. A quote is punctuation, in nearly every line of
+dialogue the app renders. So phase 217 took a trade justified by rarity and
+applied it to the commonest prose shape in the product.
+
+### The change
+
+`dialogue` is the one span kind with `children`: the interior is tokenised
+again and rendered inside the `<em>` that already carries the italic and the
+speaker's colour. `renderSpans` in `MessageBlock.tsx` recurses for that kind
+and no other, so the asterisk pairs keep flattening exactly as before.
+
+Two things it deliberately does not do:
+
+**`text` still holds the whole run, quotes included.** `children` is for
+rendering only. `segments.ts`'s "never lose text" invariant is untouched, which
+matters more than it sounds: a recast splice is correct only while segment
+offsets address the canonical string *including* its markup.
+
+**Speech with no marks in it carries no children at all.** That is the
+overwhelmingly common case and it keeps the exact shape it has always had — one
+span, nothing for the renderer to walk — so the contract only changes where the
+defect was. The existing assertion for `"Hello."` passes unedited, which is the
+sign the change is as narrow as it claims.
+
+### Verified
+
+1988 tests across 147 files, typecheck clean. New tests cover a mark inside
+speech resolving, the unmarked case keeping its old shape, and the round-trip
+staying exact across five inputs mixing quotes, asterisks and tags.
+
+## Phase 222 — The rendered guard measures the whole app
+
+Deferred at the time and written down rather than left as a hole — which is
+what `test/tracker-drift.test.ts` is for, and it caught the gap the moment 223
+landed. This is that entry, rewritten in place once the work was done.
+
+### The guard was doing the thing it exists to catch
+
+`bun run guard:rendered` printed **"all within budget"** having taken zero
+contrast samples and never opened a roleplay. The scene route and the whole
+contrast half were gated on `ONSEN_SCENE`, which `package.json` does not set —
+so the documented invocation measured neither the prose nor a single colour,
+and said so in a parenthesis at the bottom of a wall of `ok` lines.
+
+| | fontSizes | controlHeights | gaps | smallTargets | overflowing | contrast |
+|---|---|---|---|---|---|---|
+| as wired | 9 | 13 | 10 | 156 | 12 | **0 samples** |
+| with a scene | 14 | 27 | 14 | 202 | 38 | 8 |
+| budget as recorded | 14 | 27 | 14 | 208 | 38 | — |
+
+Four of the five budgets sat *exactly* at their ceiling once a scene was
+included, which is where they had been recorded — so the default invocation had
+been certifying a smaller app than the budgets described. The file's own header
+names the pattern: *a check that asks a different question than the real thing
+can pass while the app is broken.* This is the fourth instance, and this one was
+mine.
+
+### Three changes, all the same argument
+
+1. **The scene is discovered, not configured.** The guard asks the app which
+   roleplays exist and takes the first with turns on it. No such scene is a
+   *failure*, not a quiet skip. (The first version took `limit=1` and got the
+   400-turn audit fixture, whose active leaf is null — an empty log with no
+   prose to measure, which it duly reported as four samples matching nothing.
+   Which is the mechanism working.)
+2. **Samples are DOM selectors, not rectangles.** `{ x: 92, y: 188, w: 200,
+   h: 12 }` and three like it were a set of coordinates that happened to have
+   the right thing in them at 1600×950 with the rails open. **A selector that
+   matches nothing now fails**, because a silent no-match is exactly how the
+   gate survived. The components carry `data-rail` and `data-prose` so the
+   guard is not guessing at Tailwind classes, and `test/rendered-guard.test.ts`
+   holds both ends of that contract.
+3. **The coloured runs are swept, not listed.** They are `<em style="color: …">`
+   with no class of their own, so they are found by *having* an inline colour.
+   Phase 220 promised this measurement on this script's behalf and this is it
+   arriving.
+
+Each sample also knows where it exists: a rail panel is desktop-only and, since
+phase 225, only open on a roleplay, so requiring it everywhere would be the
+guard failing on the app working as designed.
+
+### What it found the first time it could see
+
+Two probes the fourth review built by hand moved in with it, and one of them
+was wrong on arrival in a way worth recording. **Controls with no accessible
+name**: budget zero, the only number here that is not a ratchet on an excess.
+**The rails' share of a screen**: a first pass counted everything left of
+x=390 and read **78%** on a screen whose rails were both collapsed — because
+the roleplay list starts at x=54 once they are. Measuring "the rails" by where
+they usually sit is the same mistake as the four rectangles. By the marker it
+reads 24%.
+
+And three ink tokens that clear 4.5:1 against their token ground and miss it on
+the pixel:
+
+| token | worn by | measured |
+|---|---|---|
+| `--onsen-color-text-dim` | the rails' icon-strip labels, the header's `Text` | 4.36:1 dark, 4.19:1 light |
+| `--onsen-color-amber` | a cast card's `Cued` | 3.64:1 light |
+| `--onsen-color-blue-text-muted` | a turn's token readout | 3.99:1 dark |
+
+`test/surfaces.test.ts` asserts every ink tier clears 4.5:1 and its comment
+insists `text-dim` "is not decorative". It is right, and it is measuring
+tokens — the rails and cards are translucent panels over the reader's
+photograph. Phase 193's argument one layer on, and phase 220's for a second
+time.
+
+### `KNOWN_CONTRAST` became a recorded floor
+
+The three tokens are a pass over nine palettes with an ordered ramp to
+preserve, which is a phase rather than a paragraph. So they are recorded — but
+recorded **as floors rather than as passes**. A reading below the number still
+fails, so the ratchet applies here too and a regression cannot hide behind a
+known failure. Three further rules keep the list from becoming a place things
+go to be forgotten: an entry that starts passing fails the run until it is
+deleted, an entry that *improves* fails until its floor is lowered, and an
+entry that is never measured fails as well.
+
+That last one exists because a known failure whose sample stops matching is the
+original defect wearing the fix's clothes.
+
+### Verified
+
+    ok    distinct font sizes                       13 (budget 13)
+    ok    distinct control heights                  27 (budget 27)
+    ok    distinct flex/grid gaps                   14 (budget 14)
+    ok    controls under 24px                       52 (budget 52)
+    ok    elements clipping their content           42 (budget 42)
+    ok    controls with no accessible name           0 (budget 0)
+    ok    rails' share of a screen                  24% (budget 45%)
+    …
+    ok    desktop/dark / transcript body         16.11:1 (floor 4.5:1)
+    ok    desktop/light / rail metadata           5.04:1 (floor 4.5:1)
+    scenes:  4 transcript route(s) measured
+
+Every budget is re-recorded against the whole app for the first time. Two moved
+because the guard sees more (`overflowing` 38 → 42, a scene route it never
+opened) and one because the app got better (`smallTargets` 202 → **52**, since
+phase 225 stopped putting the prompt editor's 105 controls on every screen).
+`contrast` stays at 4.5 and always will.
+
+2041 tests across 151 files, typecheck clean, `bun run guard:rendered` green
+with four recorded floors visible in its output.
+
+### One thing this cost, worth writing down
+
+Two dev servers were running at once — one started before a database restore,
+serving its own cached state. It answered `leftOpenOffScene: true` for a
+setting whose row did not exist, and the guard duly reported the rails at 78%
+of a screen where they were collapsed. Twenty minutes went into a defect that
+was a stale process. `HANDOFF.md` already says a running server writes its own
+pages back over a file replaced underneath it; the addition is that *checking
+there is exactly one* is part of that rule, not a separate one.
+
+## Phase 223 — The leaks in the new screens
+
+Four small things, all measured, all in surfaces phases 208–218 added.
+
+### "Runs on: Default / Default"
+
+The assistant's routing row renders a hardcoded default, then one button per
+connection profile — and this install's only profile is *named* Default. Two
+adjacent buttons, same visible text, different meanings (the app's own routing,
+and a profile that happens to share the name), neither carrying an `aria-label`
+or a `title` to tell them apart. The app default says **App default** now, which
+removes the collision whatever anybody has called their profiles.
+
+### Global search never restored focus
+
+Measured: `BUTTON[Search]` → Escape → `<body>`. The command palette, through the
+same hook, restores the button that opened it.
+
+`useModalFocus` takes the opener from `document.activeElement` on its **first
+render** and puts focus back in its **unmount cleanup**. Both halves assume the
+component is mounted when the modal opens and unmounted when it closes.
+`SearchOverlay` was mounted unconditionally in `App.tsx` and self-gated with
+`if (!open) return null` *after* calling the hook — so it captured whatever was
+focused when the app booted, and its cleanup never ran at all.
+
+The gate moved to a parent and the panel holds the hook. Two components rather
+than an early return, because an early return is exactly the shape that hides
+this.
+
+**The guard that missed it is the more interesting half.** `sheet-dialog.test.ts`
+checked a list of filenames allowed to use `fixed inset-0`, and phase 211
+satisfied it by adding the new file to the list. A check that asks a different
+question than the real thing — the fourth instance recorded in this file, and
+the reason the replacement sweeps for the *shape*: whatever function calls
+`useModalFocus` must not be able to render nothing. Verified by putting the old
+shape back, which fails the suite and names the file.
+
+### 8.5px text in the primary rail
+
+"One voice", "The room" and "Autopilot" set `fontSize: "8.5px"` inline,
+overriding `.btn`'s own `--onsen-text-button` (12.5px) — the smallest text in
+the app by 2.5px, in a rail a reader looks at every turn. Phase 194 gave the
+chrome two owners and swept the literals it knew about; 8.5 was not on its list,
+which is the argument for sweeping rather than listing. The inline size is gone;
+the height and padding stay, because the rail is deliberately dense and it was
+the type that was wrong. `test/labels.test.ts` now fails on any inline size
+under 11px anywhere in the client.
+
+### The `Name:` prefix arrived and then vanished
+
+Phase 216 taught `land()` to strip a leading `Name:` off a spotlight turn. It
+stripped what was **stored**. What was **streamed** still had it, so a turn
+arrived reading "Aldan Roe: He set the lamp down." and lost its first two words
+the instant it settled. `MessageLog`'s own comment beside that tail already
+names the principle it was breaking — prose that "reflows the instant the turn
+completes… reads as the app changing its mind".
+
+The regex lives in `shared/speaker-prefix.ts` now and both ends read it. The
+streaming half needed something the stored half does not: a stream delivers
+`"A"`, `"Ald"`, `"Aldan Roe"` before there is a colon to match, so a strip that
+only fired on the finished prefix would let the name flash and then remove it —
+the same jump, arriving in instalments. `stripStreamingPrefix` holds back text
+that is still a possible beginning of `Name:` and releases it the moment it
+stops being one, so `"Alone, he"` never stutters. A beat is never stripped: its
+`**Name:**` labels are per-part attribution and the app's own doing.
+
+### Verified
+
+2002 tests across 148 files, typecheck clean. On screen: focus returns to the
+Search button, the routing row reads "App default | Default", and the smallest
+inline type in the client is 11px.
+
+## Phase 224 — A turn that produces nothing says so
+
+Found by driving the app against a reasoning model, which no previous review
+had done. `deepseek-flash` bills its thinking against the same `max_tokens` the
+prompt builder reserves for the reply — the cap phase 196 correctly started
+sending — so a turn can spend its whole budget thinking.
+
+Twice, with a fixed wait so nothing was cut short, that produced: **the
+reader's own message sitting there, Stop gone, no assistant message, no error,
+and nothing in any log.** The only move left was to send again and pay for it.
+
+```
+415  user  "I set my cup down and ask her plainly what the Warden wants."  → no child
+421  user  "Tell me what the Warden actually wants."                       → no child
+```
+
+And the same cause with a different face — a turn that *did* land:
+
+| turn | reasoning | prose | share of the output that was the story |
+|---|---|---|---|
+| 417 | 4075 chars | **77 chars** | **2%** |
+| 419 | 932 chars | 404 chars | 30% |
+
+### What the service already knew
+
+`finish()` reads `if (generation.buffer.trim() !== "")` and, when it is empty,
+lands nothing and emits an ordinary `done`. Not landing an empty message is
+right. Saying nothing about it is not — and at that line the service holds the
+buffer, the reasoning, the finish reason and the reservation the prompt was
+built around. Every number needed to explain itself was in scope and none of it
+left the function.
+
+So `done` now carries a `ThinTurn` when there is one: what happened, how much
+reasoning arrived, how much prose, and the budget it was given. On the turn's
+own terminal event, because the reader has already waited once and an
+explanation should not cost a second request. `terminalEvent` recomputes it, so
+a client that reconnects after the end is told the same thing.
+
+### The stub test is the mechanism, not a ratio
+
+The first version asked whether the prose was a small fraction of the reserve,
+and **its own cry-wolf test caught it immediately**: a 1024-token reserve is
+about four thousand characters and an ordinary turn is three hundred, so every
+normal turn is a small fraction of it. The test that was meant to stop this
+from crying wolf failed on a perfectly good 156-character reply.
+
+What actually distinguishes the 77-character case is that the model **was cut
+off** — `finishReason === "length"` means the cap was reached — and that it
+spent more of that cap thinking than writing. Both together are causal; either
+alone is a guess. A turn that stopped on its own is never diagnosed however
+short it is, because a model that chose to write one line chose to write one
+line.
+
+### What the reader is told
+
+> No turn was written — the model spent its whole 64-token reply budget
+> thinking (264 characters of it). Raise the response cap in the preset, or
+> pick a model that does not reason.
+
+Posted as a notice, not an error: the provider did what it was asked, and the
+ask was wrong. The numbers are in it because without them the app is guessing —
+"it spent 4075 characters thinking and wrote 77" is a diagnosis, "the reply was
+short" is not. The second sentence is the only actionable half, and it names
+the setting.
+
+### Verified
+
+2009 tests across 149 files, typecheck clean. `test/thin-turn.test.ts` drives
+the real service with a scripted stream — scripted deliberately, because a
+scripted stream is exactly what hid this: every existing generation test pushes
+prose, so none of them ever produced the shape that breaks. Two of its seven
+tests exist only to stop it crying wolf, and one of those is what corrected the
+threshold.
+
+Then verified live against `deepseek-flash` with the cap dropped to 64, which
+is the sentence quoted above, read off the page. `data/onsen.db` was
+snapshotted first and restored byte-for-byte — and the restore needed the dev
+server stopped first, because a server holding the database open writes its own
+pages back over a file replaced underneath it. Worth writing down: the first
+restore reported success and had not worked.
+
+## Phase 225 — The rails start out of the way
+
+The fourth review's first finding was a count rather than an impression, and
+this is the answer to it. Interactive controls on screen at 1600×950, by where
+they were:
+
+| screen | total | left rail | the reader's own primary action |
+|---|---|---|---|
+| Roleplays | 141 | **105** (74%) | "New roleplay", the **119th** control |
+| Settings | 143 | **105** (73%) | the filter box, #119 |
+| Characters | 147 | **105** (71%) | "Cast groups", #119 |
+| Assistant | 132 | **105** (80%) | "What it can do", #119 |
+| Chat | 117 | 26 (22%) | "Setup", #41 |
+
+The 105 are the prompt editor: twenty-six blocks, each with a toggle, a name
+and two reorder arrows, open by default on every screen in the app. On the chat
+that is proportionate and the chat is the one place the prompt is the subject.
+
+### What the documented decisions actually said
+
+Two of them had to be read before anything moved, because both look like they
+forbid this and neither does.
+
+Phase 100 gave the prompt's *structure* to the preset "so it is editable
+anywhere", and phase 191 cited that when it declined to move the rail. Both are
+about **availability** — and an icon strip one click from open is as available
+as a panel already open. Nothing about reach changes here.
+
+`client/state/ui.ts` says the rails are "in memory only… no browser storage
+anywhere in this app", which is HANDOFF non-negotiable 8. That is about **the
+browser**. Prose scale, theme, notice position and the dock's own two widths
+all persist server-side in SQLite already, and phase 173 calls the widths a
+preference in as many words. What phase 225 stores is of exactly that kind: the
+reader's *decision* about how a rail should start. The rails' live open/closed
+state stays in the store, stays in memory, and still resets on reload.
+
+### The rule
+
+`useAutoCollapseRails` (`client/lib/breakpoint.ts`) already owned the forcing
+rule and already distinguished a width *crossing* from a re-render. This adds a
+third input of the same shape and keeps the same discipline:
+
+```ts
+const wantRight = hasRightRoom && (onScene || dock.rightOpenOffScene);
+const wantLeft  = hasLeftRoom  && (onScene || dock.leftOpenOffScene);
+```
+
+Width still wins — `&&`, not `||` — because a rail that does not fit cannot
+open whatever the reader prefers. And only a *change* of the answer forces a
+rail, so a rail opened by hand on Characters survives every unrelated
+re-render.
+
+### The base route, not the visible one
+
+`onScene` is `useShellRoute().base.name === "chat"`, and that choice is the
+interesting half. Since phase 171 an overlay screen fills only the content box
+and leaves the base screen mounted underneath, so a reader who opens Settings
+*from* a chat still has that chat behind them and is going back to it.
+Collapsing its rails on the way in and re-opening them on the way out would be
+churn nobody asked for — a layout moving under someone who only wanted to
+change a setting. A reader who reaches Settings from the Roleplays list has no
+scene behind them, and that is the case the measurement was about.
+
+### One owner for the toggles
+
+The six rail controls — two in the header, two on each rail — reached into
+`useUiStore` directly. They now go through `useRailToggles()`, which flips the
+store and, off a scene, writes the decision beside the dock widths. One hook
+rather than six call sites because the way this regresses is a *seventh*:
+somebody adds a rail button, reaches for the store like the six before it, and
+that one control silently stops recording the preference. `test/dock.test.ts`
+sweeps for it rather than naming the three files.
+
+It also removed a selector-less `useUiStore()` subscribe from `Header.tsx`, the
+pattern `Shell` has a long comment about.
+
+### Measured after, on a fresh page load
+
+Phase 215's lesson: a layout change is verified on a fresh document, never the
+hot reload.
+
+| screen | controls, before → after | in the left rail | primary action |
+|---|---|---|---|
+| Roleplays | 141 → **38** | 105 → **13** | #119 → **#17** |
+| Characters | 147 → **44** | 105 → **12** | #119 → **#17** |
+| Settings | 143 → **38** | 105 → **13** | — |
+| Assistant | 132 → **28** | 105 → **12** | — |
+| **Chat** | 117 → **117** | unchanged | unchanged |
+
+Opening the rail on Characters and reloading: still open (109 of 146). Closing
+it and reloading: closed again (12 of 44). Settings opened from a chat: the
+chat's rails, untouched. At 1300px the width bands still close the right rail
+first; on a phone there are no rails and nothing changed.
+
+### Verified
+
+2019 tests across 149 files, typecheck clean, no console errors. The new guard
+is ten assertions in `test/dock.test.ts`: the defaults, `readDock`'s coercion
+of six kinds of junk, a round trip, the two settings rows, the base-route read,
+`&&` over `||`, the previous-value refs, the sweep for a seventh toggle call
+site, and that `ui.ts` still holds the live state and still names no browser
+storage.
+
+## Phase 226 — Settings tells the truth, and the strays go home
+
+Three reproductions from the fourth review, one of them worse than it looked,
+and three more defects the guards found on their own.
+
+### The filter said one thing and showed another
+
+Typing `zzzznomatch` printed **"Nothing here matches that."** above a fully
+rendered Models panel — Providers, Profiles, Anthropic and the account buttons,
+all still on screen under a line saying there was nothing. The tab row narrowed;
+the body did not.
+
+The mechanism is one comparison. `active` falls back to the *current* category
+when nothing survives the filter, which is right for keeping a category open and
+was also what `show()` compared against:
+
+```ts
+const show = (id: CategoryId) => id === active;              // before
+const show = (id: CategoryId) => matching.length > 0 && id === active;
+```
+
+### Change password and Sign out were not "under Models"
+
+That is what it looked like, and it is not what was happening. They were
+rendered **outside every `show()` call**, so they were the last two controls of
+every category — under Backgrounds, under Automation, under the empty state —
+filed wherever the reader happened to be rather than anywhere at all.
+
+They have an **Account** category now. The password change is beside Sign out
+because it is the stronger version of it: the server bumps a generation counter
+every outstanding cookie is checked against, so it signs out every *other*
+device, which is the only revocation this install has.
+
+That last fact started as a line of prose above the two buttons, and
+`test/voice.test.ts` refused it — the explanatory-string ceiling is 45 and this
+made 46. The refusal was right. It went onto the button instead, where it is a
+name rather than an explanation: **"Change password and sign out other
+devices"**. The sheet keeps the short title, because a dialog heading names what
+is inside it. A guard that says "the app should stop explaining itself" caught
+the app explaining itself, in a commit whose whole subject was clarity.
+
+### Five search terms reached two drawers
+
+The review found two by hand. The sweep found three more, and two of those are
+a shape nobody had thought to look for.
+
+| term | reached | now |
+|---|---|---|
+| `picture` | Background, Pictures & voices | Background keeps `scenery` |
+| `api key` | Models, Connections out | Connections out takes `access token` |
+| `import` | Packs & updates, Moving in | Moving in takes `bring over` |
+| `picture` (as a **name**) | Background's word vs *Pictures & voices* | as above |
+| `background` (as a **name**) | Agents' word vs *Background* | Agents drops it |
+
+The last two are why the rule is about *terms* rather than about word lists: the
+filter matches a category's **name** as well as its words, so a word list can
+collide with something that is not a word list. A category owns the words in its
+own name.
+
+The table moved to `client/screens/settings-categories.ts` so the guard can read
+it. Importing a screen component into a test would drag the whole client tree in
+behind it; a table is a table.
+
+### The labels that were never labels
+
+Four fields on the add-a-provider form announced as "edit, blank". The visible
+text was there the whole time — a sibling `<p className="section-label">`, which
+labels nothing.
+
+A browser drive over every screen found **thirteen** such controls. A source
+sweep over the same house pattern found **forty more**, in the sheets the drive
+never opened: the script, trigger, webhook and API-key editors, narrative
+memory, the media services, the pack sheets, the preset's reasoning fields.
+That gap is the whole argument: a drive sees what somebody thought to open, and
+half this app's forms live behind a button.
+
+The sweep is `test/field-names.test.ts`, and it is a rule rather than a list: a
+`section-label` paragraph immediately followed by a control is an unambiguous
+pair, so there are no exceptions to name. A second assertion requires the two to
+be the *same expression*, because a copied label is how the visible text gets
+reworded and the announced one does not.
+
+A wider sweep over every control in `client/` was tried first and abandoned: 102
+hits, every one a false positive (a `<label>` wrapper, an `id` with a matching
+`for`, a hidden file input, a checkbox inside its own label). The rest of that
+question belongs to `scripts/rendered-guard.ts` measuring accessible names on a
+rendered page, which is phase 222 — named here so this is not mistaken for
+complete coverage.
+
+### Two more, found while driving
+
+- **Run-together names in the Models lists.** `"DeepSeekOpenAI-compatible ·
+  keyed›"` is what a screen reader read: three stacked spans and a disclosure
+  chevron, concatenated with no separator. They name themselves now —
+  `"DeepSeek, OpenAI-compatible, keyed"` — and the chevron is gone from the
+  name, since `aria-expanded` already says it. Phase 190 fixed this class in the
+  header, where the controls were icon-only; its sweep did not reach a list
+  whose buttons have text.
+- **A 404 per render.** `ModelsPanel` called `useScene(sceneId ?? "", 1)` with no
+  scene, so every render off a roleplay asked the server for
+  `/api/scenes/?limit=1` and took a 404 for it. `useScene` has had an `enabled`
+  parameter the whole time. Found in the console while driving the filter, which
+  is a panel away.
+
+### Verified
+
+Driven at 1600×950 on a fresh load: `zzzznomatch` now renders the empty line and
+nothing else; each of the five terms reaches exactly one tab; Account holds the
+two buttons and Models no longer does; and the unlabelled sweep comes back clean
+on eleven screens and sheets including the four editors the first drive never
+opened. No console errors, no 404s.
+
+2030 tests across 151 files, typecheck clean.
+
+## Phase 227 — What the app says about itself
+
+Three sentences the app prints that were not true. All three came out of
+driving it rather than reading it, and two of them are defects in phase 224,
+which shipped four commits earlier in the same session.
+
+### The composer's only keyboard hint named a key that does not send
+
+Found by trying to send a turn. Under the composer, at every desktop width:
+
+> `⌘↵ SEND · ⌘K CAST`
+
+`strings.chat.keyboardHints`, a constant, consulting nothing. On the install
+under test:
+
+| pressed in the composer | what happened |
+|---|---|
+| `Return` | a newline in the draft; nothing sent |
+| `Ctrl+Return` | a newline in the draft; nothing sent |
+| the send button | the turn went, reply in 7.4s |
+
+No message row appeared for either key press. The hint named the one input
+that did nothing, twice, and never named the one that worked.
+
+It was wrong at the shipped default too. `READER_DEFAULTS.send` is `"enter"`
+and `Composer.tsx` reads `sendKey === "enter" ? !event.shiftKey && !modified`,
+so with the default a **modified** Return is explicitly excluded. `⌘↵` sends
+under exactly one of three settings and the hint showed under all three.
+
+And `⌘` is a Mac key — the one place in the app that assumed the reader was on
+one. The settings screen has had the platform-neutral phrasing since the
+setting shipped (`"⌘ or Ctrl + Return sends"`), which is the kind of
+inconsistency only found by reading both.
+
+The hint is a function of the setting now:
+
+    enter     ↵ SEND · ⌘/CTRL K CAST
+    modEnter  ⌘/CTRL ↵ SEND · ⌘/CTRL K CAST
+    button    ⌘/CTRL K CAST
+
+`button` names no key, because under that setting no key sends and inventing
+one is how this started. `strings.chat.keyHints`, a staler second copy with no
+reader anywhere in `client/`, is deleted.
+
+`test/send-key.test.ts` sweeps `SEND_KEYS` so a fourth setting cannot arrive
+without a hint, and sweeps `strings.ts` for a `⌘` written without a `Ctrl`
+beside it.
+
+### A turn that came back with nothing at all still said nothing
+
+Phase 224 opened with:
+
+```ts
+if (reasoningChars === 0) return null;
+```
+
+so only a turn that had *thought* was diagnosed. Driving the same provider a
+second time produced the other half — generation 11: `finishReason: "stop"`,
+**`completionTokens: 0`**, empty buffer, no message, no notice, nothing in any
+log. The complaint phase 224 was written for, in the one shape it did not
+cover.
+
+The reasoning count is what makes the *sentence* useful. It was never what
+should decide whether there is a sentence. The empty branch fires on an empty
+buffer now, and the stub branch keeps its reasoning test because there
+reasoning is the mechanism: what separates a cut-off fragment from a model that
+chose to write one line is that the budget went somewhere else.
+
+The sentence changes with it, because "it spent its whole budget thinking (0
+characters of it)" is not a diagnosis:
+
+> No turn was written — the model returned nothing at all, not even reasoning.
+> Nothing was charged for it. Send again, or try another model.
+
+No instruction to raise anything, because reserving more room is no use to a
+turn that spent none of it. An instruction a reader cannot act on is worse than
+none.
+
+### Both notices named a setting the app does not have
+
+> Raise **the response cap** in the preset…
+
+The field is called **"Reserved for the reply"**. There is no "response cap"
+anywhere in the interface, so a reader following the instruction opened the
+Preset rail and scanned for a name that was not there — in the one place the
+app explicitly sends somebody to go and change something.
+
+The label is hoisted to a `FIELD` constant that both the settings table and the
+two notices read, so they are one string rather than two that agree today.
+`test/thin-turn.test.ts` asserts against `strings.settings.maxResponseTokens`
+rather than against the words, so renaming the field cannot orphan the
+sentence.
+
+### Verified
+
+Driven at 1600×950: the hint was read off the screen under all three settings,
+each one switched through the app's own control in Settings → Reading. The
+empty-turn case is scripted — a stream that yields not one token, which is
+exactly what the provider did — for the reason phase 224 gave: a scripted
+stream is what hid this, because every other generation test pushes prose.
+
+2049 tests across 152 files, typecheck clean.
+
+`data/onsen.db` was restored byte-for-byte afterwards; `reader_send` was moved
+through all three values by the browser drive and is back at the owner's
+`button`.
+
+## Phase 228 — The loop says what it is doing
+
+Findings 11 and 12 of the live-loop addendum. Both are the same complaint from
+two sides: the autopilot machinery is quieter, or narrower, than the controls
+that offer it.
+
+### Armed is not running, and the app only had a word for one of them
+
+Switch **Autopilot** on and wait 200 seconds. `aria-pressed` goes true,
+`scenes.autopilot_enabled` goes to 1, the button goes amber — and there is no
+generation, no turn, no `N OF 3` strip, no notice, no line saying what it waits
+for.
+
+All of that is correct. `server/generation/autopilot.ts` says so at the top:
+*"a turn the reader started themselves is what arms it, not what interrupts
+it."* The design is right and none of it reached the reader, who cannot tell
+armed from broken — which, in an app whose central complaint that week was a
+silent no-op, is the same failure wearing a different hat.
+
+The mechanism is `AutopilotStateDto.active`, true only while the loop *writes*.
+`MessageLog` gated its whole strip on `autopilotActive || isGenerating`, so the
+gap between the two had nothing in it.
+
+It has a line now, in the strip's own vocabulary:
+
+> `Autopilot · armed, up to 3 after your next turn`
+
+Three conditions, and the second two are what keep it from being noise: the
+running strip already says `Autopilot · 2 OF 3`, and a turn the reader started
+already says who is writing. Armed is the gap between them. It carries **no
+button** — the running strip has *Take over*, and here there is nothing to stop;
+the switch that armed it is the control that disarms it, and two controls for
+one state is how a reader learns to trust neither.
+
+`autopilotArmed` is deliberately **not** a `*Hint`. `test/voice.test.ts` caps
+explanatory strings at 45 and the app sits at exactly 45 — phase 226 hit that
+ceiling and had to withdraw a paragraph. This reports what the scene is doing,
+the same job as "Nothing here matches that.", which is the half that test's own
+comment carves out of the count. The guard asserts both the key's shape and the
+count, so the distinction cannot quietly erode.
+
+### Both retries were unreachable for the turn that most needed one
+
+`maybeRetry` opened with:
+
+```ts
+if (generation.landedMessageId === null) return false;
+```
+
+Measured live: reserve 160, **Carry on 2**, `finishReason: "length"`, nothing
+landed, neither retry fired. The reader had set two numbers and got the
+behaviour of neither.
+
+For *continue* that early return is right — there is nothing to continue, and
+continuing from nothing is a reroll by another name. It was wrong for the reroll
+beneath it, whose question is whether the turn came back shorter than the
+reader's floor. **A turn with zero characters answers that as plainly as a turn
+can**, and it was the one case the setting could never reach.
+
+So the guard moved down to the branch it belongs to. `landed` may be null, the
+empty turn's length stands in as zero, and the ban-phrase half keeps its own
+gate because it needs content to find a phrase in. Both retries still ship at 0,
+so a reader who has not asked for this sees no change at all — which is the
+point: the behaviour belongs to the number.
+
+**Where the reroll attaches** is the part that would have been easy to get
+wrong. There is no rejected turn to be a sibling of, so it uses
+`generation.parentId` — the `generations.parent_id` column exists precisely so
+"a leaf move mid-generation cannot silently reparent it", and reading the
+scene's active leaf here would reintroduce that bug in the one path that runs
+without the reader watching.
+
+### The notice and the retry no longer contradict each other
+
+Phase 224's sentence ends *"Send again, or try another model"* — poor advice
+while the app is already sending again. The terminal event is emitted **before**
+the retry starts, so `maybeRetry` became `plannedRetry`: it returns the
+follow-up rather than running it, `finish()` decides once, and the event carries
+the explanation only when nothing is about to happen anyway.
+
+### The bug that decision uncovered
+
+The behaviour was right and the test still failed, which took a detour to
+understand. `terminalEvent()` — the replay a client gets when it reconnects
+*after* the end — recomputed `thin` independently, with a comment from phase 224
+justifying it: *"the inputs are all still on the generation"*. True when it was
+written, and false the moment `finish()` gained an input the replay does not
+have.
+
+A test that subscribes after completion receives the replay, so it saw the old
+answer while the live event carried the new one. Two computations of one answer
+agree only by luck. The decision is stored on the generation now and both paths
+read it, and the guard counts the readers: exactly two, and zero recomputations.
+
+### Verified
+
+Driven at 1600×950: the line appears on arming, names the cap, has no button in
+its row, and is gone again on disarming. The retry half is scripted — a stream
+that yields not one token — with four cases: rerolled when the reader asked for
+it, attached to the generation's own parent with no stray sibling, left alone at
+the shipped default, and never *continued*.
+
+2060 tests across 152 files, typecheck clean.
+
+`data/onsen.db` was restored byte-for-byte afterwards; the drive toggled the
+scene's autopilot on and off.
+
+## Phase 229 — The surfaces beside the prose
+
+Findings 13 and 14 of the live-loop addendum. Both are about what sits next to
+the transcript rather than in it.
+
+### The one place in the app that showed raw markup
+
+The right rail's "Just spoke", after a beat:
+
+> `**Elira Voss:** took two keys off the board behind her, the ring rattling…`
+
+Six inches to the left, the transcript rendered the same content with a
+coloured label and no asterisks. `excerpt()` collapsed whitespace and cut to 90
+characters; it stripped nothing, because nothing had told it to.
+
+`plainText()` is the fix, in `client/lib/emphasis.ts`, built on the tokenizer
+the transcript already runs rather than on a regex of its own — one set of
+rules about what a mark is, not two that drift. The cut happens after the
+flattening, so the 90 counts characters a reader sees rather than ones the
+model wrote.
+
+The detail that makes the obvious version wrong: a `dialogue` span's `text`
+holds the whole run *including* the marks inside it, deliberately, and
+`emphasis.ts` documents why. So `spans.map((s) => s.text).join("")` hands back
+`that road **has** a name.` with its asterisks intact. It looks right, it
+passes a test written from the first example, and it is wrong. `plainText`
+recurses into `children`, and the guard for it uses the nested case rather than
+the flat one.
+
+### Eleven controls under the thumb floor, and the guard could not see any of them
+
+`test/density.test.ts` held §16's 44px rule with an allow-list of eleven named
+files, and its own comment was honest that this is all it could do from the
+source side. A control in a twelfth file had nothing to fail. It passed
+throughout while a browser drive at 390×844 with `hasTouch` measured the
+reasoning and out-of-character disclosures at 28px, the trackers strip at 24,
+"change" at 22, the phone nav's overflow and search at 33 and 27, and the
+autopilot switch at 32.
+
+That is the fifth instance of this branch's recurring shape — *a check that
+asks a different question than the real thing can pass while the app is
+broken* — and phase 222 had already named this as the thing the rendered guard
+should take over. So it did: `scripts/rendered-guard.ts` gained a
+`touchTargets` budget measured in the `phone`/`hasTouch` pass only, because
+`.tap` relaxes under `(pointer: fine)` on purpose and counting a desktop's 28px
+row would be counting the rule working.
+
+**Fixing the seven is not what the sweep found.** It came back with eleven.
+Four of them nobody had written down: a turn's token readout at 173×18, its
+version counter at 38×19, and three buttons 28–30px wide clustered at the right
+of every row on the screen the app opens on — three adjacent targets with no
+spacing between them, which is the shape a mis-tap comes from. The list an
+allow-list could not see was longer than the list it was written from.
+
+Nine reached the floor. Two did not, on purpose; see below.
+
+### `.tap` is not a drop-in for a hardcoded minimum
+
+This phase's own mistake, and worth the paragraph because the fix looked
+obviously right. Swapping the autopilot switch's inline `minHeight: "32px"` for
+`.tap` **collapsed it to 21px on a desktop** — `.tap` relaxes to `min-height: 0`
+under `(pointer: fine)`, and it is declared after `.btn`, so it beat `.btn`'s
+own unconditional 44px floor. The guard caught it the same minute: `controls
+under 24px` went 52 → 54 and printed the button by name. A guard that measures
+the rendered screen is worth having precisely for the edits that look safe.
+
+The real defect underneath was not the missing floor but the three inline
+`minHeight: "32px"` overrides in `CastRail.tsx`. They read as density and are
+in fact a floor override: an inline style beats a class on every device, so the
+control the phone puts on its cast strip was 32px under a thumb *because* of
+the rule that was supposed to make the rail dense on a desktop. `.btn-dense`
+says the same thing in the place that can tell a pointer from a thumb, the way
+`.row`, `.turn-actions` and `.tap` already do. `test/density.test.ts` sweeps
+for the shape rather than listing the file: no element whose class list
+contains `btn` may carry an inline `minHeight`, anywhere in `client/`.
+
+### An `sr-only` skip link is not a small target
+
+The second thing the sweep taught. A skip link is 1×1 with
+`clip-path: inset(50%)` until it is focused, and the probe counted one on every
+route of every viewport of every theme — sixteen "small targets" that are not
+targets at all, on a budget of 52. The probe skips a clipped 1×1 control now
+and `smallTargets` is re-recorded at **40**.
+
+### Two exemptions, named rather than counted
+
+The token readout and the version counter sit on one meta line, and both got
+`.tap` before it was taken back off. §16's density rule 2 — *"a number behind a
+tap is a number nobody reads"* — is why the readout doubles as the doorway to
+the prompt inspector in the first place, and a 44px box there pushes the line
+from 19px to 44 on a phone to serve the rule that put the number there.
+`test/density.test.ts` had already written that exemption down; this phase read
+it after making the change and withdrew.
+
+Neither is the only way in: `inspect` and `versions` are both turn-scoped
+commands in `commands.ts`, reachable from the turn's `⋯` sheet and the palette,
+and `.turn-actions > button` is 44×44 under a thumb.
+
+They are `EXEMPT_TARGETS` in the guard, a named list on `KNOWN_CONTRAST`'s
+contract rather than a budget of two — because a count records how many
+defects there are and a list records which, and only the second one notices
+when a third control takes a fixed one's place. An entry that stops matching
+fails the run until it is deleted. Verified by breaking one: the run reported
+both the stale exemption and the control it stopped covering.
+
+The list is keyed on the class list rather than the name or the size, because
+the name carries a roleplay's own title and the size carries the model's name.
+A guard that fails when you add a roleplay is a guard that gets deleted.
+
+### Verified
+
+`bun run guard:rendered` green: 0 controls under the 44px floor, 40 under 24px,
+both exemptions matched, every contrast sample where phase 222 left it. The
+stale-exemption and offender paths were both driven by breaking an entry on
+purpose and reading the failure. The `.btn` sweep was run against the
+pre-phase source of the two buttons it is about, and catches both while leaving
+`.field`'s legitimate `minHeight` alone.
+
+2073 tests across 152 files, typecheck clean, `bun run build` clean.
+
+`data/onsen.db` was not mutated — the guard signs in and reads — and `cmp`s
+identical to the snapshot taken before the drive.
+
+## Phase 230 — The ink pass
+
+The four `KNOWN_CONTRAST` entries phase 222 recorded, and the deletion the
+guard demands once they stop failing.
+
+### What the entries were
+
+`--onsen-color-text-dim` at 4.36:1 dark and 4.19:1 light, `--onsen-color-amber`
+at 3.64:1 light, `--onsen-color-blue-text-muted` at 3.99:1 dark — all composited
+on the rails and cards, which are translucent panels over the reader's
+photograph. Phase 193's argument one layer on; phase 220's for a second time.
+
+### Measuring it first said the note was wrong about two of the three
+
+The recorded note said all three clear 4.5:1 against their token ground and
+miss it only on the pixel. That is true of `text-dim`. It is false of the other
+two, and the reason is structural: `test/surfaces.test.ts` guards `INK_TIERS`,
+which is the four greys, and **nothing guards the hues**. `blue-text-muted`
+measured 3.80:1 dark and 3.02:1 light inside an inset — under AA before any
+compositing, on a token whose name says it is text.
+
+### The floor, not nine hand-tuned values
+
+`text-dim` measured 4.55–5.17 against the worst ground it can land on in *all
+eleven palettes* — over AA by between 1% and 15%, which is to say no palette
+had composite headroom anywhere. And the ramp had none either: the dim→muted
+step is required to be 1.12× and eight of eleven sat at 1.123–1.140.
+
+The rendered guard composites the **default palette only**. Tuning
+`tokens.css` until that one went green would have left eight themes exactly as
+fragile and entirely unmeasured — the allow-list mistake in another costume.
+So the mechanism is a floor in `surfaces.test.ts` applied to every palette: the
+quiet tiers clear `AA_CONTRAST × 1.25`, and the loud ones keep 4.5.
+
+The 1.25 was measured twice. Phase 220 found a `#f1f1f1` token compositing to
+`#e3e6ea` and set 5.5 for a 4.5 target. This phase's first pass used 1.2, and
+the guard came back with Bone's `text-dim` at 5.48:1 on the token and **4.45:1
+through the rail** — a 1.23× cost that 1.2 does not cover. The instrument said
+the number was short, so the number moved.
+
+Values were then solved rather than picked: the least move along each token's
+own hue that clears the floor on its worst ground *and* keeps the ramp step
+above its neighbour. Every palette converged; the tightest ramp step after the
+pass is 1.126.
+
+### `Cued` and `Default` were the wrong token, not the wrong value
+
+Light `amber` is 4.38:1 on the page and 3.44:1 inside an inset. But
+`--onsen-color-amber-text` already exists in every palette at 7.63:1 light and
+9.64:1 dark, and the app was painting words with the raw hue.
+
+So those are call-site fixes: the cast rail's `Cued` and thin-card warning, the
+autopilot switch's *label* (its border keeps the hue, which is the point of the
+hue), and the four copies of the in-use `Default` badge — `ModelsPanel`,
+`SettingsScreen`, `AuthorsScreen`, `MediaSettings`, one control duplicated four
+times, of which the guard reaches one. Darkening `amber` itself would have
+dragged the cued card's border and the "live/now" signal with it, which is a
+design decision phase 50 made and this phase has no reason to reopen.
+
+### What the guard measures is not what the stylesheet says
+
+Worth recording, because it shaped the work: the install runs **Midnight** on
+dark and **Bone** on light, so every composited reading through this branch has
+been of a builtin theme, not of `tokens.css`. The base blocks were fixed by the
+token-level floor rather than by anything the guard could see — which is the
+whole argument for the floor being the mechanism.
+
+### Done the way the guard insists
+
+`KNOWN_CONTRAST` is `{}` and `test/theme-reconcile.test.ts`'s cap came down
+from four to zero. The run that cleared the list printed
+`now passes … drop it from KNOWN_CONTRAST` four times before it would go green:
+the last step of the fix is a deletion the guard demands rather than one
+somebody remembers.
+
+### What this phase deliberately did not do
+
+The hue ramp is `red` at 3.39:1 in the base dark palette, 3.94 Midnight, 3.98
+light, 4.10 Nocturne, 4.52 Slate — and `--onsen-color-red` is worn as a CSS
+`color:` in **thirty-nine places** while `--onsen-color-red-text` is worn in
+**none**. Amber and `green-text-muted` are the same story. That is phase 231,
+scheduled rather than discovered: the `-text` variants exist in every palette
+and are the tokens those labels were meant to use, and the durable half is a
+sweep asserting a raw hue is never a `color:`, because an allow-list of the
+known sites cannot see the next one.
+
+### Verified
+
+`bun run guard:rendered`: **all within budget**, with every `coloured runs`
+label back at the full 4.5:1 floor and no KNOWN lines at all. Worst readings
+now 4.58 light and 5.11 dark, against 3.64 and 3.99 before.
+`test/surfaces.test.ts` passes across eleven palettes at the new floor with the
+ramp still ordered and separated. Driven at 1600×950 and 390×844 in both
+themes: the ramp still reads as four steps rather than one grey, and `Cued` and
+`Default` still read as amber.
+
+2073 tests across 152 files, typecheck clean, `bun run build` clean.
+
+`data/onsen.db` was not mutated — the guard signs in and reads.
+
+## Phase 231 — The hue ramp
+
+Phase 230 measured this and left it: `test/surfaces.test.ts` guards
+`INK_TIERS`, which is the grey ramp, and **nothing guarded the hues**.
+
+### What that cost
+
+Measured against the worst ground each palette defines:
+
+| token | under AA (4.5:1) in |
+|---|---|
+| `--onsen-color-red` | 3.39 base dark · 3.94 Midnight · 3.98 light · 4.10 Nocturne |
+| `--onsen-color-amber` | 3.44 light · 4.14 Slate · 4.44 Bone · 4.45 Graphite |
+| `--onsen-color-green-text-muted` | 3.18 light · 3.94 Midnight · 4.45 base dark |
+| `--onsen-color-amber-text-muted` | 3.08 light · 3.79 Midnight · 3.96 base dark |
+| `--onsen-color-blue` | 4.48 on the page dark, 3.83 inside an inset |
+
+And the call sites are why nobody noticed. **`--onsen-color-red` was worn as a
+CSS `color:` in about forty places and `--onsen-color-red-text` in none.** The
+text tier existed in every palette, measured 5.83:1 where the hue measured
+3.39:1, and nothing pointed at it. Same for amber, at ten sites against two.
+
+That is a token pair doing half its job for want of anything checking, which is
+the same shape as the four rectangles phase 222 deleted and the eleven named
+files phase 229 replaced. Sixth instance.
+
+### Sixty-one sites, split by property rather than by token
+
+`color:` takes the hue's `-text` tier. `background`, `borderColor`, `stroke`,
+`fill` and the `2px solid` borders keep the raw hue, because that is what a hue
+is for: the cued card's amber border, the context bar's red-over-90% fill, the
+model dot's green, `blockColor()`'s bar segments and the branch map's
+checkpoint stroke are all untouched. `client/components/blue.ts`'s shared `red`
+object splits down the same line — `color` moved, `borderColor` did not.
+
+Fifty-one were the plain `color: "var(--onsen-color-red)"` form. Ten were
+ternaries spanning lines, which is worth recording because the first version of
+the guard below matched a single line and missed every one of them.
+
+A destructive label still reads as destructive: `distance(red-text, amber)` is
+**60** on the dark base, against the 40 this file already requires between
+hues.
+
+### Blue is raised, not swapped
+
+`--onsen-color-blue-text` is a *muted prose* blue — `#b9c3ce` on the dark base,
+near grey — so putting the active nav tab, the "change" link and the command
+palette's highlighted row onto it would have deleted the accent rather than
+made it legible. The hue moved instead: `#5b7fa6` → `#6a8bae` dark, `#3f6486`
+→ `#3c6080` light, the least move that clears AA on the worst ground.
+
+It holds **4.5** rather than the ×1.25 composite floor the quiet greys carry,
+because it is an interactive accent that also fills and borders, and the
+rendered guard is the backstop — it reads "change" at 4.74:1 composited. The
+exemption is named in `surfaces.test.ts` with that reason, because an exemption
+nobody wrote down is indistinguishable from the oversight that produced this
+phase.
+
+### Two sets, two floors, and a cascade
+
+`HUE_TEXT_TIERS` (`red-text`, `green-text`, `amber-text`, `blue-text`,
+`green-text-muted`, `amber-text-muted`) clear the `COMPOSITE_FLOOR`; the four
+`ACCENT_HUES` clear plain AA. Values were solved the way phase 230's were —
+the least move along each token's own hue — across `tokens.css`'s three blocks
+and all eight builtin themes.
+
+It took two rounds, and the second is the interesting one. `completeTokens`
+derives `amber-text` from `amber` and `green-text` from `green` when a theme
+does not name them, so naming `color-amber` in Bottle, Graphite, Bone and
+Slate moved their `amber-text` underneath the floor it had just passed. The
+fix is to name the derived token too, and the way it surfaced is that the
+solver was re-run against the *resolved* palettes rather than against the
+source — which is the only way inheritance shows up at all.
+
+### The sweep is the half that lasts
+
+`no color in the client carries a raw hue token`, in `surfaces.test.ts`, in the
+shape phase 229 used for `.btn` and inline `minHeight`: scoped to the `color`
+property, blind to `background` and `borderColor`, and matching up to 200
+characters so a ternary across a wrap is caught. Verified by putting one site
+back in its multi-line form — the run named the file and printed the line.
+
+An allow-list of the sixty-one sites could not see the sixty-second.
+
+### One thing that is not a defect
+
+Bone ships `color-red: #1f3fe0` with a blue `red-bg` and `red-border`, and
+Slate ships `color-red: #0f766e` with a teal pair. A destructive label renders
+blue on Bone and teal on Slate, deliberately and consistently — the "red
+pencil" is a role, and these two themes cast it differently. Worth writing down
+because a browser drive on this install (which runs Bone) finds no red text at
+all, and that reads as a broken sweep until you know why.
+
+### Verified
+
+`bun run guard:rendered` still **all within budget** with `KNOWN_CONTRAST`
+still `{}` — the hue moves did not cost any composited reading, and the
+`Default` badge improved from 4.32:1 to 5.47:1. `test/surfaces.test.ts` passes
+across eleven palettes at both floors with the ramp still ordered, and its
+source sweep fails on a reintroduced site. The rendered colours were read back
+out of the running app: `amber-text` reaches `Cued` on a cast card and
+`Default` in the profile list.
+
+2074 tests across 152 files, typecheck clean, `bun run build` clean.
+
+`data/onsen.db` was not mutated — the drive signs in and reads.

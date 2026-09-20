@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { strings } from "../strings.ts";
 import { EmptyState } from "../components/EmptyState.tsx";
 import { useConfirm } from "../components/ConfirmSheet.tsx";
@@ -38,6 +38,7 @@ import {
   useCreatePersona,
   useDeleteBan,
   usePersonas,
+  useProviders,
   useRemoveFromCast,
   useResetOptions,
   useScene,
@@ -49,6 +50,7 @@ import {
   useUpdateBan,
 } from "../lib/queries.ts";
 import { Sheet } from "../components/Sheet.tsx";
+import { ModelPicker } from "../components/ModelPicker.tsx";
 import { TURN_STRATEGIES, type TurnStrategy } from "@shared/types.ts";
 import { MemorySection } from "../components/NarrativeMemory.tsx";
 import { RememberThis } from "../components/AuthorMemory.tsx";
@@ -170,6 +172,8 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
   const updateLoreEntry = useUpdateLoreEntry(loreBookId);
   const createPersona = useCreatePersona();
   const profiles = useConnectionProfiles();
+  const providers = useProviders();
+  const sceneModelRef = useRef<HTMLInputElement>(null);
   // What the turn director has actually been doing. A side call may never fail
   // a generation (SPEC §7), so its failures are swallowed on purpose — and a
   // swallowed failure nobody can read is the feature quietly not working.
@@ -217,6 +221,24 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
   const inCast = new Set(scene.cast.map((member) => member.characterId));
   const available = (characters.data ?? []).filter((character) => !inCast.has(character.id));
 
+  // The model this scene talks to, resolved the same way the server does
+  // (§20 phase 180): scene override, then profile, then provider. A scene's
+  // *provider* override is a legacy escape hatch (phase 181) and is surfaced
+  // as a note rather than as a third model-ish knob.
+  const providerList = providers.data ?? [];
+  const byId = new Map(providerList.map((provider) => [provider.id, provider]));
+  const activeProfile =
+    (profiles.data ?? []).find((profile) => profile.id === scene.connectionProfileId) ?? null;
+  const profileProvider =
+    activeProfile === null ? null : (byId.get(activeProfile.providerId) ?? null);
+  const sceneProviderId = scene.providerId;
+  const activeProvider =
+    sceneProviderId === null ? profileProvider : (byId.get(sceneProviderId) ?? profileProvider);
+  const inheritedModel =
+    sceneProviderId === null
+      ? (activeProfile?.model ?? activeProvider?.model ?? null)
+      : (activeProvider?.model ?? null);
+
   return (
     <div className="flex screen-height flex-col bg-bg">
       <header
@@ -258,6 +280,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
           <p className="section-label mb-[8px]">{strings.sceneSetup.title_}</p>
           <input
             className="field mb-[22px]"
+            aria-label={strings.sceneSetup.title_}
             defaultValue={scene.title}
             onBlur={(event) => {
               const title = event.target.value.trim();
@@ -318,6 +341,88 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               </button>
             )}
           </div>
+
+          {/* Which profile, and the one override a scene can have: the model.
+              The provider-per-scene escape hatch (phase 181) is shown as a
+              note rather than a third model-ish knob (§20 phase 210). */}
+          <p className="group-heading mb-[12px]">{strings.models.runsOn}</p>
+          <p className="section-label mb-[8px]">{strings.models.profileLabel}</p>
+          <div className="mb-[8px] flex flex-wrap gap-[6px]">
+            {(profiles.data ?? []).map((profile) => (
+              <button
+                key={profile.id}
+                type="button"
+                onClick={() => setup.mutate({ connectionProfileId: profile.id })}
+                className={`btn ${scene.connectionProfileId === profile.id ? "btn-primary" : ""}`}
+              >
+                {profile.name}
+              </button>
+            ))}
+          </div>
+          {activeProfile === null ? (
+            <p className="explain mb-[8px]">{strings.models.noProfile}</p>
+          ) : null}
+
+          <p className="section-label mb-[8px]">{strings.models.modelLabel}</p>
+          <div className="mb-[8px]">
+            <ModelPicker
+              request={() => ({
+                ...(activeProvider === null
+                  ? {}
+                  : { kind: activeProvider.kind, providerId: activeProvider.id }),
+                baseUrl: activeProvider?.baseUrl ?? "",
+              })}
+              selected={scene.model ?? inheritedModel ?? ""}
+              emptyMessage={strings.models.modelNoAddress}
+              onPick={(model) => {
+                if (sceneModelRef.current !== null) sceneModelRef.current.value = model;
+                setup.mutate({ model });
+              }}
+            >
+              <input
+                ref={sceneModelRef}
+                className="field min-w-0 flex-1"
+                aria-label={strings.models.modelLabel}
+                key={scene.model ?? inheritedModel ?? ""}
+                defaultValue={scene.model ?? inheritedModel ?? ""}
+                onBlur={(event) => {
+                  const next = event.target.value.trim();
+                  if (next === (scene.model ?? "")) return;
+                  setup.mutate({ model: next === "" ? null : next });
+                }}
+              />
+            </ModelPicker>
+          </div>
+          <p className="explain mb-[8px]">
+            {scene.model !== null
+              ? ""
+              : inheritedModel === null
+                ? strings.models.modelNoAddress
+                : sceneProviderId === null
+                  ? strings.models.modelFromProfile(inheritedModel)
+                  : strings.models.modelFromProvider(inheritedModel)}
+          </p>
+          {scene.model === null ? null : (
+            <button
+              type="button"
+              className="btn mb-[8px]"
+              onClick={() => setup.mutate({ model: null })}
+            >
+              {strings.models.modelClear}
+            </button>
+          )}
+          {sceneProviderId === null ? null : (
+            <p className="explain mb-[22px]" style={{ color: "var(--onsen-color-amber-text)" }}>
+              {strings.models.providerOverrideNote(activeProvider?.name ?? "")}{" "}
+              <button
+                type="button"
+                className="underline underline-offset-2"
+                onClick={() => setup.mutate({ providerId: null })}
+              >
+                {strings.models.providerOverrideClear}
+              </button>
+            </p>
+          )}
 
           <p className="group-heading mb-[12px]">{strings.sceneSetup.groupDirection}</p>
           <p className="section-label mb-[8px]">{strings.sceneSetup.turnStrategy}</p>
@@ -396,7 +501,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                               color:
                                 run.status === "ok"
                                   ? "var(--onsen-color-text-label)"
-                                  : "var(--onsen-color-red)",
+                                  : "var(--onsen-color-red-text)",
                             }}
                           >
                             {strings.sceneSetup.directorRunStatus(run.status)}
@@ -797,6 +902,22 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
               </button>
             ))}
           </div>
+
+          {/* Conversation mode (§20 phase 213): the same tree, rendered as
+              messages. A skin, not a different prompt or a different tree. */}
+          <p className="section-label mb-[8px]">{strings.sceneSetup.conversationMode}</p>
+          <div className="mb-[22px] flex gap-[6px]">
+            {[true, false].map((on) => (
+              <button
+                key={String(on)}
+                type="button"
+                onClick={() => setup.mutate({ conversationMode: on })}
+                className={`btn flex-1 ${scene.conversationMode === on ? "btn-primary" : ""}`}
+              >
+                {on ? strings.sceneSetup.vnModeOn : strings.sceneSetup.vnModeOff}
+              </button>
+            ))}
+          </div>
           <div className="mb-[8px] flex gap-[6px]">
             <button
               type="button"
@@ -945,7 +1066,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                 <button
                   type="button"
                   className="chrome mt-[2px] text-[12px]"
-                  style={{ color: "var(--onsen-color-red)" }}
+                  style={{ color: "var(--onsen-color-red-text)" }}
                   onClick={() => removeFromCast.mutate(member.characterId)}
                 >
                   {strings.sceneSetup.remove}
@@ -1218,7 +1339,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                   <button
                     type="button"
                     className="chrome flex-none text-ui"
-                    style={{ color: "var(--onsen-color-red)" }}
+                    style={{ color: "var(--onsen-color-red-text)" }}
                     onClick={() => removeDocument.mutate(document.id)}
                   >
                     ×
@@ -1229,6 +1350,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
 
             <p className="section-label mt-[12px] mb-[6px]">{strings.characters.documentTitle}</p>
             <input
+              aria-label={strings.characters.documentTitle}
               className="field mb-[8px]"
               value={docTitle}
               onChange={(event) => setDocTitle(event.target.value)}
@@ -1242,6 +1364,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
             </button>
             <p className="section-label mb-[6px]">{strings.characters.documentText}</p>
             <textarea
+              aria-label={strings.characters.documentText}
               className="field min-h-[90px] resize-y"
               value={docText}
               onChange={(event) => setDocText(event.target.value)}

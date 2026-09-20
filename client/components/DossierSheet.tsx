@@ -241,7 +241,7 @@ export function DossierSheet({
             <button
               type="button"
               className="btn flex-none"
-              style={{ color: "var(--onsen-color-red)" }}
+              style={{ color: "var(--onsen-color-red-text)" }}
               onClick={() =>
                 confirm(
                   strings.dossiers.deleteConfirm(open_.name),

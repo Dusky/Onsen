@@ -242,16 +242,30 @@ export function ExportPackSheet({ onClose }: { onClose(): void }) {
         }}
       >
         <p className="section-label mb-[6px]">{strings.settings.packName}</p>
-        <input name="name" className="field mb-[14px]" required />
+        <input
+          aria-label={strings.settings.packName}
+          name="name"
+          className="field mb-[14px]"
+          required
+        />
 
         <p className="section-label mb-[6px]">{strings.settings.packVersionField}</p>
-        <input name="version" className="field mb-[14px]" defaultValue="1.0.0" />
+        <input
+          aria-label={strings.settings.packVersionField}
+          name="version"
+          className="field mb-[14px]"
+          defaultValue="1.0.0"
+        />
 
         <p className="section-label mb-[6px]">{strings.settings.packAuthor}</p>
-        <input name="author" className="field mb-[14px]" />
+        <input aria-label={strings.settings.packAuthor} name="author" className="field mb-[14px]" />
 
         <p className="section-label mb-[6px]">{strings.settings.packDescription}</p>
-        <textarea name="description" className="field mb-[18px] min-h-[56px]" />
+        <textarea
+          aria-label={strings.settings.packDescription}
+          name="description"
+          className="field mb-[18px] min-h-[56px]"
+        />
 
         <p className="section-label mb-[4px]">{strings.settings.packContents}</p>
 

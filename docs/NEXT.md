@@ -2,16 +2,17 @@
 
 A short, honest list. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 195. 1929 tests across 141 files, typecheck clean. Feature
+**State:** phase 231. 2074 tests across 152 files, typecheck clean. Feature
 complete against `SPEC.md` §20 apart from the deferred phase 42.
 
-This file has now gone stale twice, and the second time was worse. It said
-phase 157 and 1515 tests while the repository stood at 174 and 1754 — a
-seventeen-phase drift covering two whole batches (158–164's audit work,
-165–169's settings parity, 170–174's structural UI), and `SPEC.md` §20 and
-`GAPS.md` had drifted with it. Caught the same way as last time: somebody
-asked what was next and the answer had to be re-derived from `PHASES.md`
-by hand.
+This file went stale three times, and the third was the worst: it said phase
+195 and 1929 tests while the repository stood at **218** and 1951, `SPEC.md`
+§20's list ended at item 195, the README badge said 195, and phase 211 had no
+`PHASES.md` entry at all — it shipped global search and four documents, and the
+file jumped 210 → 212. A twenty-three-phase drift against the seventeen-phase
+one this paragraph used to describe. Caught the same way both previous times
+were: somebody asked what was next and the answer had to be re-derived from
+`PHASES.md` by hand.
 
 Worth naming why, because the rule was already written. Step 5 below says
 §20, `PHASES.md`, `GAPS.md` and the README move *in the same commit*, and
@@ -21,11 +22,49 @@ person where they are. A queue is only as good as the last reconciliation,
 and a reconciliation nobody is forced to do is one that happens seventeen
 phases late.
 
+**It is no longer a rule nobody is forced to keep.** `test/tracker-drift.test.ts`
+(phase 219) asserts that the highest phase in `PHASES.md`, the highest item in
+§20, the README badge and the state line above all agree, and that `PHASES.md`
+has no numbering gaps. All three drifts would have failed on the commit that
+caused them. `GAPS.md` is deliberately not in it — that file is evidence, not a
+count, and asserting anything about its contents would be asserting a number
+meant to move on its own.
+
 ## The queue
 
 Ordered by what is ready to build without a decision, then by the decisions
 that gate the rest. Each line is a todo; check one off by closing its phase in
 `SPEC.md` §20 and `PHASES.md` in the same commit.
+
+### From the phase-218 review (in order)
+
+A review of phases 196–218 ran the app rather than reading it and found seven
+things; `219` is shipped and the rest are planned, each its own phase.
+
+0. ~~**Every change the assistant makes is in Undo.**~~ — **phase 219.**
+
+1. ~~**A speaker's colour is legible on both themes.**~~ — **phase 220**, and
+   the plan's own prescription turned out to be impossible: no palette clears
+   the floor on both bases, because the luminance windows do not overlap. The
+   stored colour is identity and `readableOn` resolves it against the ground.
+   2.07/1.99/2.34:1 composited before, 4.98/4.88/5.76:1 after.
+
+2. ~~**Markup inside speech renders again.**~~ — **phase 221.** The
+   flattening rule stands for asterisks and does not carry to quotes, because a
+   quote is punctuation rather than a mark somebody chose to write.
+
+3. **The rendered guard measures the whole app.** `bun run guard:rendered`
+   prints "all within budget" having taken **zero** contrast samples and never
+   opened a scene — both are gated on `ONSEN_SCENE`, which `package.json` does
+   not set. The four `SAMPLES` rectangles are absolute coordinates, which is
+   why item 1 was never measured.
+
+4. **The leaks in the new screens.** "Runs on: Default / Default" (a hardcoded
+   button beside a profile with the same name); `SearchOverlay` mounted
+   unconditionally so its focus never restores (measured: Search button →
+   Escape → `<body>`, where the palette restores correctly); 8.5px text on
+   three cast-rail buttons; and the `Name:` prefix that streams in and vanishes
+   when the turn lands, because `stripSpeakerPrefix` has no client mirror.
 
 ### Ready to build
 

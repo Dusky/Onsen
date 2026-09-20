@@ -9,6 +9,7 @@ import type {
 } from "@shared/types.ts";
 import type { ActiveGeneration } from "../../state/generation.ts";
 import { strings } from "../../strings.ts";
+import { stripStreamingPrefix } from "@shared/speaker-prefix.ts";
 import { SceneDescribePrompt } from "./SceneDescribePrompt.tsx";
 import {
   Emphasis,
@@ -50,6 +51,7 @@ export function MessageLog({
   colours,
   trackerState,
   personaId,
+  conversationMode,
   onReroll,
   onOpenVersions,
   onLongPress,
@@ -63,6 +65,7 @@ export function MessageLog({
   recastInFlight,
   oocInFlight,
   autopilotActive,
+  autopilotOn,
   apState,
   onStopAutopilot,
   onCancel,
@@ -87,6 +90,8 @@ export function MessageLog({
   /** Message id → the state written at that turn (§163). */
   trackerState: Map<string, TrackerDto[]>;
   layout: LayoutDto;
+  /** Messaging-client rendering (§20 phase 213). */
+  conversationMode: boolean;
   /** The reader's own controls (§20 phase 166). */
   reader: ReaderDto;
   personaId: string | null;
@@ -103,30 +108,56 @@ export function MessageLog({
   recastInFlight: { messageId: string; ordinal: number; text: string } | null;
   oocInFlight: boolean;
   autopilotActive: boolean;
+  /**
+   * The scene's switch, which is not the same thing as the loop running
+   * (§20 phase 228). `apState.active` is true only while it writes.
+   */
+  autopilotOn: boolean;
   apState: AutopilotStateDto | null;
   onStopAutopilot(): void;
   onCancel(): void;
 }) {
-  // One message, in every shape it can be: an aside, an edit, or a turn.
-  const renderMessage = (message: MessageDto, index: number) =>
-    message.kind === "ooc" ? (
-      <OocBlock
-        key={message.id}
-        message={message}
-        speakerName={message.authorType === "user" ? strings.chat.you : authorName}
-        onOpenChannel={onOpenOoc}
-      />
-    ) : editing === message.id ? (
-      <MessageEditor
-        key={message.id}
-        initial={message.content}
-        onCancel={onCancelEdit}
-        onSave={(content) => {
-          onCancelEdit();
-          onSaveEdit(message.id, content);
-        }}
-      />
-    ) : (
+  // One message, in every shape it can be: an aside, an edit, a turn, or — in
+  // conversation mode — a messaging bubble (§20 phase 213).
+  const renderMessage = (message: MessageDto, index: number) => {
+    if (message.kind === "ooc") {
+      return (
+        <OocBlock
+          key={message.id}
+          message={message}
+          speakerName={message.authorType === "user" ? strings.chat.you : authorName}
+          onOpenChannel={onOpenOoc}
+        />
+      );
+    }
+    if (editing === message.id) {
+      return (
+        <MessageEditor
+          key={message.id}
+          initial={message.content}
+          onCancel={onCancelEdit}
+          onSave={(content) => {
+            onCancelEdit();
+            onSaveEdit(message.id, content);
+          }}
+        />
+      );
+    }
+    if (conversationMode) {
+      return (
+        <ConversationBubble
+          key={message.id}
+          message={message}
+          speakerName={speakerFor(message, authorName)}
+          speakerColour={
+            message.characterId === null ? null : (colours.get(message.characterId) ?? null)
+          }
+          timestamp={reader.timestamps}
+          onLongPress={() => onLongPress(message)}
+        />
+      );
+    }
+    return (
       <MessageBlock
         key={message.id}
         message={message}
@@ -172,6 +203,7 @@ export function MessageLog({
           : {})}
       />
     );
+  };
 
   /**
    * A turn, and the scene state it was written under (§20 phase 163).
@@ -219,7 +251,25 @@ export function MessageLog({
   // area when it is engaged, so a streamed turn can grow without a re-measure.
   const tail = (
     <>
-      {isGenerating && recastInFlight === null && !oocInFlight && active?.speaker != null ? (
+      {isGenerating && recastInFlight === null && !oocInFlight && active?.speaker != null && conversationMode ? (
+        <div className="mb-[12px] flex flex-col items-start">
+          <span className="chrome mb-[4px] text-[12px]" style={{ color: "var(--onsen-color-text-label)" }}>
+            {active.speaker}
+          </span>
+          <div
+            className="chrome max-w-[85%] px-[12px] py-[9px] text-ui leading-[1.55] whitespace-pre-wrap"
+            style={{
+              background: "var(--onsen-color-bg-raised)",
+              border: "1px solid var(--onsen-color-border-quiet)",
+              borderRadius: "3px 12px 12px 12px",
+            }}
+          >
+            {active.text === "" ? strings.assistant.thinking : active.text}
+          </div>
+        </div>
+      ) : null}
+
+      {isGenerating && recastInFlight === null && !oocInFlight && active?.speaker != null && !conversationMode ? (
         <article>
           {/* Document mode runs the name into the paragraph here too (§20 phase
               165). The director's reason stays either way: it is only on screen
@@ -250,7 +300,18 @@ export function MessageLog({
             {layout.attribution === "runin" ? (
               <RunIn name={active.speaker} colour={null} isUser={false} />
             ) : null}
-            <Emphasis text={active.text} />
+            {/* The same `Name:` strip `land()` applies to what gets stored
+                (§20 phase 223). Without it the prefix streamed in and vanished
+                the instant the turn settled — the jump this paragraph's own
+                comment above is about. A beat's `**Name:**` labels are per-part
+                attribution, so only a spotlight is stripped. */}
+            <Emphasis
+              text={
+                active.director?.scope === "beat"
+                  ? active.text
+                  : stripStreamingPrefix(active.text, active.speaker)
+              }
+            />
           </p>
         </article>
       ) : null}
@@ -261,6 +322,11 @@ export function MessageLog({
           className="chrome border border-red-border bg-red-bg px-[11px] py-[9px] text-ui-loose text-red-text"
         >
           {active.error ?? strings.errors.generationFailed}
+          {active.errorDetail === null ? null : (
+            <span className="block text-[12px] leading-[1.5] opacity-80">
+              {active.errorDetail}
+            </span>
+          )}
         </p>
       ) : null}
 
@@ -280,10 +346,35 @@ export function MessageLog({
             type="button"
             onClick={() => (autopilotActive ? onStopAutopilot() : onCancel())}
             className="chrome border border-red-border px-[10px] py-[6px] text-[13px]"
-            style={{ color: "var(--onsen-color-red)" }}
+            style={{ color: "var(--onsen-color-red-text)" }}
           >
             {autopilotActive ? strings.chat.autopilotTakeOver : strings.chat.stop}
           </button>
+        </div>
+      ) : null}
+
+      {/*
+       * Armed, and waiting for the reader's turn (§20 phase 228).
+       *
+       * Switching autopilot on produced nothing observable but a colour: no
+       * generation, no strip, no line — measured over 200 seconds. That is
+       * correct, and `autopilot.ts` says why at the top ("a turn the reader
+       * started themselves is what arms it, not what interrupts it"), but none
+       * of it reached the reader, who cannot tell armed from broken.
+       *
+       * Quieter than the running strip and with no button, because there is
+       * nothing to stop: the switch that armed it is the control that disarms
+       * it, and a second one here would be two ways to say the same thing.
+       */}
+      {autopilotOn && !autopilotActive && !isGenerating ? (
+        <div className="flex items-center gap-[10px]">
+          <span
+            className="h-[6px] w-[6px] flex-none"
+            style={{ background: "var(--onsen-color-amber)", opacity: 0.45 }}
+          />
+          <span className="chrome flex-1 text-[13px] text-ink-dim">
+            {strings.chat.autopilotArmed(apState?.maxTurns ?? 0)}
+          </span>
         </div>
       ) : null}
 
@@ -326,6 +417,80 @@ export function MessageLog({
           {tail}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * One turn, rendered as a messaging bubble (§20 phase 213).
+ *
+ * Conversation mode is a skin over the same tree: the reader's own words on
+ * the right, the cast on the left with their colour, and a timestamp where the
+ * reader has them on. Long-press still opens the same turn actions; nothing
+ * about the prompt or the tree changes.
+ */
+function ConversationBubble({
+  message,
+  speakerName,
+  speakerColour,
+  timestamp,
+  onLongPress,
+}: {
+  message: MessageDto;
+  speakerName: string;
+  speakerColour: string | null;
+  timestamp: boolean;
+  onLongPress(): void;
+}) {
+  const isUser = message.authorType === "user";
+  const name = speakerName;
+  const time =
+    timestamp === false
+      ? null
+      : new Date(message.createdAt).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+
+  return (
+    <div
+      className={`mb-[12px] flex flex-col ${isUser ? "items-end" : "items-start"}`}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        onLongPress();
+      }}
+    >
+      <span
+        className="chrome mb-[4px] text-[12px]"
+        style={{
+          color:
+            speakerColour ??
+            (isUser ? "var(--onsen-color-text-muted)" : "var(--onsen-color-text-label)"),
+        }}
+      >
+        {name}
+        {time === null ? null : (
+          <span className="opacity-60"> · {time}</span>
+        )}
+      </span>
+      <div
+        className="chrome max-w-[85%] px-[12px] py-[9px] text-ui leading-[1.55] whitespace-pre-wrap"
+        style={
+          isUser
+            ? {
+                background: "var(--onsen-color-ooc-reader-bg)",
+                color: "var(--onsen-color-ooc-reader-text)",
+                borderRadius: "12px 3px 12px 12px",
+              }
+            : {
+                background: "var(--onsen-color-bg-raised)",
+                border: "1px solid var(--onsen-color-border-quiet)",
+                borderRadius: "3px 12px 12px 12px",
+              }
+        }
+      >
+        <Emphasis text={message.translation ?? message.content} colour={isUser ? null : speakerColour} />
+      </div>
     </div>
   );
 }
