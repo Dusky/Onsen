@@ -4637,6 +4637,20 @@ Each phase ends in a working, usable application.
     struck through, whose title matches a phase heading, fails the suite. A
     match rather than a judgement, so it catches the same sentence in two files
     and claims nothing more. See `test/tracker-drift.test.ts`, `docs/NEXT.md`.
+233. **Tabletop, the first slice** — §40 has described a tabletop module since
+    the spec was written and prescribed its own split: "rolls and checks as
+    recorded events first, stats only if the checks get used". That is exactly
+    what shipped, as a built-in extension seeded disabled — no stats, no
+    inventory, no schema language. Pressing *Roll* runs `rollDice` server-side,
+    records it, and injects it into the next prompt as settled fact the model
+    narrates, which is §22's "don't roll dice in the model" end to end.
+    `rollDice` moved out of `macros.ts` to `prompt/random.ts` so `{{roll:}}`
+    and the extension share one die. Three things the code corrected about the
+    plan: a tracker was the wrong home for a roll (its `kind` is CHECKed and it
+    is rebuilt state, not an append-only fact), `ExtensionAction.run` was
+    handed no `sceneId` though the caller had one, and it could not return
+    anything, so a code action was a button that worked in silence. See §40,
+    §15, `server/extensions/builtins.ts`, `test/tabletop.test.ts`.
 
 Settled while building phase 15.
 

@@ -84,7 +84,7 @@ export function extensionRoutes(ctx: AppContext): Hono<AppEnv> {
       return c.json({ error: { code: "not_found", message: "No such global action." } }, 404);
     }
     try {
-      await entry.action.run!({ db: ctx.db });
+      await entry.action.run!({ db: ctx.db, sceneId: null });
       return c.json({ ok: true });
     } catch {
       return c.json({ error: { code: "failed", message: "The action failed." } }, 500);

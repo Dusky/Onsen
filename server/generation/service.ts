@@ -1090,8 +1090,12 @@ export class GenerationService {
     const action = entry.action;
     if (action.scope === "global" || action.run !== undefined) {
       try {
-        await action.run!({ db: this.db });
-        return { ok: true, text: "" };
+        // The scene the button was pressed in (§20 phase 233). A code action
+        // in a chat needs it; a global one gets `null` from the caller below.
+        const said = await action.run!({ db: this.db, sceneId });
+        // What it says is what the reader sees. Empty is still allowed — an
+        // action with nothing to report should not invent something.
+        return { ok: true, text: typeof said === "string" ? said : "" };
       } catch {
         return { ok: false, error: "The action failed." };
       }
@@ -1129,8 +1133,8 @@ export class GenerationService {
       return { ok: false, error: "That action belongs to a chat." };
     }
     try {
-      await action.run!({ db: this.db });
-      return { ok: true, text: "" };
+      const said = await action.run!({ db: this.db, sceneId: null });
+      return { ok: true, text: typeof said === "string" ? said : "" };
     } catch {
       return { ok: false, error: "The action failed." };
     }

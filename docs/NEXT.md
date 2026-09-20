@@ -2,7 +2,7 @@
 
 A short, honest list. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 232. 2075 tests across 152 files, typecheck clean. Feature
+**State:** phase 233. 2093 tests across 153 files, typecheck clean. Feature
 complete against `SPEC.md` §20 apart from the deferred phase 42.
 
 This file went stale three times, and the third was the worst: it said phase
@@ -74,7 +74,10 @@ things; `219` is shipped and the rest are planned, each its own phase.
    `client/lib/generation.ts` — **only if** streaming judders on a phone.
    Reproduce the judder first; this is a conditional, not a default.
 
-2. **Tabletop** (§20 phase 40) — **as an extension, not core.** The decisions
+2. ~~**Tabletop** (§20 phase 40) — **as an extension, not core.**~~ — **phase
+   233**, first slice only, which is the split §40 itself prescribed: rolls
+   and checks as recorded events, stats only if the checks get used. What
+   remains below is the *rest* of it, unbuilt and deliberately so. The decisions
    this was gated on are made: it is called Tabletop, after §20 phase 40's own
    name and the `mode` option already called that, and it ships through §15's
    extension host rather than into the app. The first slice is the one SPEC

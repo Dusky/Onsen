@@ -59,9 +59,11 @@ export interface ExtensionInjection {
  * An action button the host surfaces (§20 phases 148, 150).
  *
  * Chat-scoped (default): the operator presses it, the host runs the prompt
- * against the scene, and `apply` stores the answer. Global-scoped: pure code —
- * a `run` callback with no model call, surfaced app-wide in the extension
- * manager rather than the composer.
+ * against the scene, and `apply` stores the answer — or, when the action
+ * carries a `run` instead of a `prompt`, the host runs that code against the
+ * scene and no model is called at all. Global-scoped: the same `run`, app-wide
+ * and with no scene, surfaced in the extension manager rather than the
+ * composer.
  */
 export interface ExtensionAction {
   key: string;
@@ -76,8 +78,24 @@ export interface ExtensionAction {
   timeoutMs?: number;
   /** Chat-scoped: runs after the model answers. */
   apply?(reply: string, context: { db: Database; sceneId: number | null; messageCount: number | null }): void | Promise<void>;
-  /** Global-scoped only: the action itself. No model, no scene. */
-  run?(context: { db: Database }): void | Promise<void>;
+  /**
+   * Pure code, no model call. The host runs this *instead of* `prompt`.
+   *
+   * `sceneId` is the scene the button was pressed in, or `null` when the
+   * action is global — the same shape `apply` already takes, and for the same
+   * reason. It was `{ db }` alone until §20 phase 233: the chat path in
+   * `runSceneExtensionAction` had the scene in hand and dropped it on the
+   * floor, so a code action could run against a scene without being able to
+   * tell which one. Tabletop is the first extension that has to know.
+   *
+   * A returned string is what the reader is shown. The host used to hardcode
+   * an empty one, so a code action was a button that did its work in silence —
+   * the same silent no-op §20 phases 224, 227 and 228 each fixed one of.
+   */
+  run?(context: {
+    db: Database;
+    sceneId: number | null;
+  }): void | string | Promise<void | string>;
 }
 
 /**
