@@ -11662,3 +11662,49 @@ out of the running app: `amber-text` reaches `Cued` on a cast card and
 2074 tests across 152 files, typecheck clean, `bun run build` clean.
 
 `data/onsen.db` was not mutated — the drive signs in and reads.
+
+## Phase 232 — The queue cannot go stale quietly
+
+A small phase, and the reason it exists is the joke at its centre: the file
+whose opening paragraphs are about having gone stale three times had gone stale
+a fourth, and the guard written to stop that could not see it.
+
+### What was wrong
+
+`docs/NEXT.md`'s phase-218 review list still carried two open items:
+
+> 3. **The rendered guard measures the whole app.**
+> 4. **The leaks in the new screens.**
+
+Both had shipped — as **phase 222** and **phase 223** — and their `PHASES.md`
+headings are *word for word* the queue entries' titles. Anyone reading the
+queue to decide what to build next would have picked up finished work, which is
+precisely what `NEXT.md` exists to prevent.
+
+`test/tracker-drift.test.ts` did not catch it because it was written against
+the previous three drifts, which were all **numbers**: the README badge, the
+state line, §20's highest item, and the absence of a numbering hole. This one
+was an *entry*, and nothing in that file looked at the queue at all.
+
+### The rule
+
+> A numbered queue entry that is not struck through, whose bolded title matches
+> a `## Phase N — <title>` heading in `PHASES.md`, is work that shipped and
+> must be struck.
+
+Title only, case-insensitive, trailing period stripped. It is deliberately a
+match rather than a judgement: it catches the cheap and common case — the same
+sentence written into both files — and it cannot tell that an open entry
+describes shipped work in *different* words. It does not pretend to. What it
+enforces is the convention every closed entry above item 3 already follows:
+closing a queue item means striking it and naming its phase.
+
+Verified by reverting one strike; the run named the entry and the phase it
+shipped as.
+
+### Verified
+
+2075 tests across 152 files, typecheck clean, `bun run build` clean, and
+`bun run guard:rendered` unchanged — this phase touches no rendered surface.
+
+`data/onsen.db` was not touched.

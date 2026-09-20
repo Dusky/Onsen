@@ -15,9 +15,18 @@ import { readFileSync } from "node:fs";
  *
  * `NEXT.md` step 5 has said since phase 60 that §20, `PHASES.md`, `GAPS.md` and
  * the README move in the same commit, and saying it has now failed three times.
- * So this is the rule as a test. It is deliberately narrow — three numbers and a
- * sequence, nothing about prose — because a guard that tried to check whether an
- * entry was any *good* would be the kind nobody can keep passing.
+ * So this is the rule as a test. It is deliberately narrow — numbers, a sequence,
+ * and one exact string match, nothing about prose — because a guard that tried to
+ * check whether an entry was any *good* would be the kind nobody can keep
+ * passing.
+ *
+ * **A fourth drift, and a different shape (§20 phase 232).** The numbers all
+ * agreed while the *queue* did not: `NEXT.md` still listed "The rendered guard
+ * measures the whole app" and "The leaks in the new screens" as open work,
+ * months after they shipped as phases 222 and 223 — with the queue entry's
+ * title word-for-word identical to the `PHASES.md` heading. Nothing here looked
+ * at the queue, so nothing failed. `a shipped item is struck through` below is
+ * that hole closed.
  *
  * `GAPS.md` is not in here on purpose: it is evidence rather than a count, and
  * asserting anything about its contents would be asserting a number that is
@@ -101,5 +110,40 @@ describe("the phase list, the spec and the README agree", () => {
     const state = /\*\*State:\*\* phase (\d+)\b/.exec(read("docs/NEXT.md"));
     expect(state).not.toBeNull();
     expect(Number(state![1])).toBe(Math.max(...phaseNumbers()));
+  });
+
+  /**
+   * A queue item whose work has shipped is struck through.
+   *
+   * The fourth drift was not a number, it was an entry: two items sat open in
+   * `NEXT.md`'s queue whose titles are *word for word* the headings of phases
+   * 222 and 223 in `PHASES.md`. Somebody reading the queue to decide what to
+   * build next would have picked up finished work.
+   *
+   * Matched on the title alone, so it catches the cheap and common case — the
+   * same sentence written in both files — and nothing else. It cannot tell that
+   * an open entry describes shipped work in *different* words, and it does not
+   * pretend to: the convention this enforces is that closing a queue item means
+   * striking it and naming its phase, which is what every closed entry above
+   * item 3 already does.
+   */
+  test("a shipped item is struck through in the queue", () => {
+    const next = read("docs/NEXT.md");
+    // Every `## Phase N — Title` heading, by its title.
+    const shipped = new Map(
+      [...read("docs/PHASES.md").matchAll(/^## Phase (\d+) — (.+)$/gm)].map((m) => [
+        m[2]!.trim().toLowerCase().replace(/\.$/, ""),
+        Number(m[1]),
+      ]),
+    );
+    // Every numbered queue entry's bolded title, and whether it is struck.
+    const open: string[] = [];
+    for (const entry of next.matchAll(/^\d+\. (~~)?\*\*(.+?)\.?\*\*/gm)) {
+      if (entry[1] !== undefined) continue;
+      const title = entry[2]!.trim().toLowerCase().replace(/\.$/, "");
+      const phase = shipped.get(title);
+      if (phase !== undefined) open.push(`"${entry[2]}" shipped as phase ${phase}`);
+    }
+    expect(open).toEqual([]);
   });
 });

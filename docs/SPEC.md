@@ -4628,6 +4628,15 @@ Each phase ends in a working, usable application.
     hue doing its job, and matching across a line wrap because ten of the
     sixty-one were ternaries. See §16, `test/surfaces.test.ts`,
     `client/components/blue.ts`.
+232. **The queue cannot go stale quietly** — `NEXT.md` still listed two items
+    as open whose titles are word-for-word the `PHASES.md` headings of phases
+    222 and 223, so the queue was offering finished work to whoever read it
+    next. `tracker-drift` missed it because the previous three drifts were all
+    numbers — the badge, the state line, §20's highest item — and nothing
+    looked at the queue. The rule now: a numbered queue entry that is not
+    struck through, whose title matches a phase heading, fails the suite. A
+    match rather than a judgement, so it catches the same sentence in two files
+    and claims nothing more. See `test/tracker-drift.test.ts`, `docs/NEXT.md`.
 
 Settled while building phase 15.
 
