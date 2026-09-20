@@ -185,13 +185,16 @@ describe("the rendered guard carries nothing quietly", () => {
 
   test("the list is bounded, so it cannot grow a defect at a time", () => {
     /*
-     * Four, which is what phase 222 measured when the guard could first see:
-     * three ink tokens on translucent panels, across two viewports and two
-     * themes. The number is a ceiling rather than a target and it should only
-     * ever come down — a fifth entry means somebody deferred something without
-     * this conversation.
+     * **Zero** since §20 phase 230, which is the shape a list like this should
+     * spend most of its life in. It was four — what phase 222 measured when the
+     * guard could first see: three ink tokens on translucent panels, across two
+     * viewports and two themes — and the ink pass cleared all four.
+     *
+     * A ceiling rather than a target, and it came down with the work rather
+     * than staying at four as slack. An entry now means somebody deferred
+     * something without this conversation.
      */
-    expect(known().length).toBeLessThanOrEqual(4);
+    expect(known().length).toBeLessThanOrEqual(0);
   });
 
   test("and each one is written down where the next person looks", () => {

@@ -70,7 +70,7 @@ export function MediaSettings() {
                   {service.isDefault ? (
                     <span
                       className="chrome flex-none text-[12px]"
-                      style={{ color: "var(--onsen-color-amber)" }}
+                      style={{ color: "var(--onsen-color-amber-text)" }}
                     >
                       {strings.media.serviceIsDefault}
                     </span>

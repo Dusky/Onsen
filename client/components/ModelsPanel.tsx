@@ -202,7 +202,10 @@ export function ModelsPanel({ sceneId }: { sceneId: string | null }) {
               {profile.isDefault ? (
                 <span
                   className="chrome flex-none text-[12px]"
-                  style={{ color: "var(--onsen-color-amber)" }}
+                  /* The hue's text tier, not the hue (§20 phase 230): this
+                     badge is a word, and the rendered guard read it at 3.64:1
+                     on a light theme. */
+                  style={{ color: "var(--onsen-color-amber-text)" }}
                 >
                   {strings.settings.profileDefault}
                 </span>

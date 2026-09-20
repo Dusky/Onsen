@@ -11455,3 +11455,103 @@ pre-phase source of the two buttons it is about, and catches both while leaving
 
 `data/onsen.db` was not mutated — the guard signs in and reads — and `cmp`s
 identical to the snapshot taken before the drive.
+
+## Phase 230 — The ink pass
+
+The four `KNOWN_CONTRAST` entries phase 222 recorded, and the deletion the
+guard demands once they stop failing.
+
+### What the entries were
+
+`--onsen-color-text-dim` at 4.36:1 dark and 4.19:1 light, `--onsen-color-amber`
+at 3.64:1 light, `--onsen-color-blue-text-muted` at 3.99:1 dark — all composited
+on the rails and cards, which are translucent panels over the reader's
+photograph. Phase 193's argument one layer on; phase 220's for a second time.
+
+### Measuring it first said the note was wrong about two of the three
+
+The recorded note said all three clear 4.5:1 against their token ground and
+miss it only on the pixel. That is true of `text-dim`. It is false of the other
+two, and the reason is structural: `test/surfaces.test.ts` guards `INK_TIERS`,
+which is the four greys, and **nothing guards the hues**. `blue-text-muted`
+measured 3.80:1 dark and 3.02:1 light inside an inset — under AA before any
+compositing, on a token whose name says it is text.
+
+### The floor, not nine hand-tuned values
+
+`text-dim` measured 4.55–5.17 against the worst ground it can land on in *all
+eleven palettes* — over AA by between 1% and 15%, which is to say no palette
+had composite headroom anywhere. And the ramp had none either: the dim→muted
+step is required to be 1.12× and eight of eleven sat at 1.123–1.140.
+
+The rendered guard composites the **default palette only**. Tuning
+`tokens.css` until that one went green would have left eight themes exactly as
+fragile and entirely unmeasured — the allow-list mistake in another costume.
+So the mechanism is a floor in `surfaces.test.ts` applied to every palette: the
+quiet tiers clear `AA_CONTRAST × 1.25`, and the loud ones keep 4.5.
+
+The 1.25 was measured twice. Phase 220 found a `#f1f1f1` token compositing to
+`#e3e6ea` and set 5.5 for a 4.5 target. This phase's first pass used 1.2, and
+the guard came back with Bone's `text-dim` at 5.48:1 on the token and **4.45:1
+through the rail** — a 1.23× cost that 1.2 does not cover. The instrument said
+the number was short, so the number moved.
+
+Values were then solved rather than picked: the least move along each token's
+own hue that clears the floor on its worst ground *and* keeps the ramp step
+above its neighbour. Every palette converged; the tightest ramp step after the
+pass is 1.126.
+
+### `Cued` and `Default` were the wrong token, not the wrong value
+
+Light `amber` is 4.38:1 on the page and 3.44:1 inside an inset. But
+`--onsen-color-amber-text` already exists in every palette at 7.63:1 light and
+9.64:1 dark, and the app was painting words with the raw hue.
+
+So those are call-site fixes: the cast rail's `Cued` and thin-card warning, the
+autopilot switch's *label* (its border keeps the hue, which is the point of the
+hue), and the four copies of the in-use `Default` badge — `ModelsPanel`,
+`SettingsScreen`, `AuthorsScreen`, `MediaSettings`, one control duplicated four
+times, of which the guard reaches one. Darkening `amber` itself would have
+dragged the cued card's border and the "live/now" signal with it, which is a
+design decision phase 50 made and this phase has no reason to reopen.
+
+### What the guard measures is not what the stylesheet says
+
+Worth recording, because it shaped the work: the install runs **Midnight** on
+dark and **Bone** on light, so every composited reading through this branch has
+been of a builtin theme, not of `tokens.css`. The base blocks were fixed by the
+token-level floor rather than by anything the guard could see — which is the
+whole argument for the floor being the mechanism.
+
+### Done the way the guard insists
+
+`KNOWN_CONTRAST` is `{}` and `test/theme-reconcile.test.ts`'s cap came down
+from four to zero. The run that cleared the list printed
+`now passes … drop it from KNOWN_CONTRAST` four times before it would go green:
+the last step of the fix is a deletion the guard demands rather than one
+somebody remembers.
+
+### What this phase deliberately did not do
+
+The hue ramp is `red` at 3.39:1 in the base dark palette, 3.94 Midnight, 3.98
+light, 4.10 Nocturne, 4.52 Slate — and `--onsen-color-red` is worn as a CSS
+`color:` in **thirty-nine places** while `--onsen-color-red-text` is worn in
+**none**. Amber and `green-text-muted` are the same story. That is phase 231,
+scheduled rather than discovered: the `-text` variants exist in every palette
+and are the tokens those labels were meant to use, and the durable half is a
+sweep asserting a raw hue is never a `color:`, because an allow-list of the
+known sites cannot see the next one.
+
+### Verified
+
+`bun run guard:rendered`: **all within budget**, with every `coloured runs`
+label back at the full 4.5:1 floor and no KNOWN lines at all. Worst readings
+now 4.58 light and 5.11 dark, against 3.64 and 3.99 before.
+`test/surfaces.test.ts` passes across eleven palettes at the new floor with the
+ramp still ordered and separated. Driven at 1600×950 and 390×844 in both
+themes: the ramp still reads as four steps rather than one grey, and `Cued` and
+`Default` still read as amber.
+
+2073 tests across 152 files, typecheck clean, `bun run build` clean.
+
+`data/onsen.db` was not mutated — the guard signs in and reads.

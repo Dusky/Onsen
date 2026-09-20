@@ -162,47 +162,24 @@ const BUDGET = {
  *
  * The alternative was letting this script exit non-zero the day it landed,
  * which is how a guard becomes a thing people pass `|| true` to. Naming the
- * two regions keeps them visible in the output, keeps every *other* region
- * enforced at the full 4.5:1, and makes the fix a deletion: remove the entry
- * and the floor applies.
+ * region keeps it visible in the output, keeps every *other* region enforced
+ * at the full 4.5:1, and makes the fix a deletion: remove the entry and the
+ * floor applies.
  *
- * It is empty as of §20 phase 195, which is the shape a list like this should
- * spend most of its life in. It held two entries for exactly one phase: rail
- * metadata at 4.15:1 dark and 2.63:1 light, both fixed by reconciling stale
- * builtin theme palettes and giving the light ramps headroom. They came off
- * the list because the guard refused to let them stay — a known failure that
- * starts passing is itself a failure here.
+ * **Empty, and emptied by the guard rather than by somebody remembering.**
+ * It has held entries twice and both times the mechanism below ended it: an
+ * entry that starts passing *fails the run*, so the last step of a fix is a
+ * deletion the guard demands.
+ *
+ * Phase 195 parked two — rail metadata at 4.15:1 dark and 2.63:1 light — for
+ * exactly one phase. Phase 222 parked four, the composited cost of three ink
+ * tokens once the guard could finally see pixels: `text-dim` at 4.36:1 dark
+ * and 4.19:1 light, `amber` at 3.64:1 light, `blue-text-muted` at 3.99:1
+ * dark. Phase 230 cleared them, and the run that cleared them printed
+ * "now passes … drop it from KNOWN_CONTRAST" four times before it would go
+ * green.
  */
-const KNOWN_CONTRAST: Record<string, { floor: number; why: string }> = {
-  /*
-   * The composited cost of three ink tokens (§20 phase 222).
-   *
-   * Each of these is a *recorded floor*, not a pass. A reading below the
-   * number still fails, so the ratchet the rest of this file runs on applies
-   * here too and a regression cannot hide behind a known failure. The entry
-   * is deleted when the ink pass lands, and the full 4.5:1 applies again.
-   *
-   * What the guard found, once it could see: `--onsen-color-text-dim` on the
-   * rail's icon-strip labels and the header's `Text`, `--onsen-color-amber` on
-   * a cast card's `Cued`, and `--onsen-color-blue-text-muted` on a token
-   * readout. All three clear 4.5:1 against the token ground —
-   * `test/surfaces.test.ts` asserts exactly that and its own comment insists
-   * `text-dim` "is not decorative". They do not clear it on the *pixel*,
-   * because the rails and cards are translucent panels over the reader's
-   * photograph.
-   *
-   * Which is phase 193's argument one layer on, and phase 220's for a second
-   * time: a token pair cannot tell you what the composite came out as. The fix
-   * is the same shape phase 220 used for the speaker's colour — headroom
-   * against the token so the composite still clears — and it is a pass over
-   * nine palettes with an ordered ramp to preserve, which is a phase rather
-   * than a paragraph.
-   */
-  "desktop/dark / coloured runs": { floor: 3.99, why: "text-dim, amber, blue-text-muted on translucent panels" },
-  "desktop/light / coloured runs": { floor: 3.64, why: "text-dim, amber, blue-text-muted on translucent panels" },
-  "phone/dark / coloured runs": { floor: 4.32, why: "text-dim on the bottom nav and the Models list" },
-  "phone/light / coloured runs": { floor: 4.32, why: "text-dim on the bottom nav and the Models list" },
-};
+const KNOWN_CONTRAST: Record<string, { floor: number; why: string }> = {};
 
 /**
  * The controls allowed under the 44px floor, by class list, and why.

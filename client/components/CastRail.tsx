@@ -130,7 +130,11 @@ export function CastRail({
           className="btn btn-dense w-full"
           style={{
             borderColor: autopilotOn ? "var(--onsen-color-amber)" : undefined,
-            color: autopilotOn ? "var(--onsen-color-amber)" : undefined,
+            // The border is the hue; the label is the hue's *text* tier
+            // (§20 phase 230). Light `amber` measures 3.44:1 inside an inset
+            // and 3.64:1 composited on a rail; `amber-text` is 7.63:1 and
+            // exists in every palette for exactly this.
+            color: autopilotOn ? "var(--onsen-color-amber-text)" : undefined,
           }}
         >
           {strings.chat.autopilot}
@@ -201,7 +205,7 @@ export function CastRail({
                         className="chrome flex-none text-[11.5px]"
                         style={{
                           color: cued || writing
-                            ? "var(--onsen-color-amber)"
+                            ? "var(--onsen-color-amber-text)"
                             : "var(--onsen-color-text-dim)",
                         }}
                       >
@@ -224,7 +228,7 @@ export function CastRail({
                   {cued && !member.hasDescription && !member.hasPersonality ? (
                     <span
                       className="chrome mt-[4px] block text-[11.5px] leading-[1.5]"
-                      style={{ color: "var(--onsen-color-amber)" }}
+                      style={{ color: "var(--onsen-color-amber-text)" }}
                     >
                       {strings.chat.thinCard(member.name)}
                     </span>

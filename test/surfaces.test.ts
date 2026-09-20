@@ -172,6 +172,52 @@ const GROUND_TOKENS = [
   "color-bg-input",
 ] as const;
 
+/**
+ * The tiers that land on a translucent panel, and the floor they clear.
+ *
+ * AA is 4.5:1 and every tier above cleared it — against the *token* ground.
+ * `scripts/rendered-guard.ts` composites real pixels and read `text-dim` at
+ * 4.36:1 dark and 4.19:1 light on the rails, because a rail is a translucent
+ * panel over the reader's photograph and no token pair can tell you what came
+ * out the other side. Phase 193's argument one layer on; phase 220's for a
+ * second time.
+ *
+ * So the quiet tiers carry headroom instead. 1.25 is measured rather than
+ * chosen, twice: phase 220 found a `#f1f1f1` token compositing to `#e3e6ea`
+ * and set a 5.5 floor for a 4.5 target, and this phase's first pass at 1.2
+ * left Bone's `text-dim` at 5.48:1 on the token and **4.45:1** through the
+ * rail — a 1.23× cost, which 1.2 does not cover. The guard is the instrument
+ * here and it said the number was short.
+ *
+ * The floor rather than nine hand-tuned values, because the rendered guard
+ * composites the *default* palette only. Tuning `tokens.css` until that one
+ * goes green would leave eight themes exactly as fragile and entirely
+ * unmeasured — which is the allow-list mistake in another costume.
+ */
+const COMPOSITE_FLOOR = Math.round(AA_CONTRAST * 1.25 * 100) / 100;
+
+/**
+ * Which tiers those are.
+ *
+ * The quiet end of the ramp, plus the blue pencil's muted readout, which is
+ * the one hue token the rendered guard names: `blue-text-muted` measured
+ * 3.99:1 composited and is under AA on the token too — 3.80:1 dark and 3.02:1
+ * light inside an inset. It is a *text* token by name and had no guard at all,
+ * because `INK_TIERS` is the grey ramp and nothing covers the hues.
+ *
+ * The rest of that hue ramp is phase 231 and is deliberately not here: `red`
+ * measures 3.39:1 in the base dark palette and is worn as a `color:` in
+ * thirty-nine places while `red-text` is worn in none, which is a sweep of its
+ * own rather than a number to nudge.
+ */
+const COMPOSITED_TIERS = [
+  "color-text-dim",
+  "color-text-placeholder",
+  "color-text-prose-muted",
+  "color-text-muted",
+  "color-blue-text-muted",
+] as const;
+
 /** Quietest first. A tier must read as a step above the one below it. */
 const INK_RAMP = ["color-text-dim", "color-text-muted", "color-text-label", "color-text"] as const;
 
@@ -234,7 +280,7 @@ function palettes(): { name: string; base: "dark" | "light"; tokens: Record<stri
 describe("ink on its ground", () => {
   test("every palette defines every tier and every ground", () => {
     for (const palette of palettes()) {
-      for (const token of [...INK_TIERS, ...GROUND_TOKENS]) {
+      for (const token of [...INK_TIERS, ...COMPOSITED_TIERS, ...GROUND_TOKENS]) {
         const value = palette.tokens[token];
         expect({ palette: palette.name, token, hex: isHex6(value ?? "") }).toMatchObject({
           hex: true,
@@ -245,7 +291,12 @@ describe("ink on its ground", () => {
 
   test("clears WCAG AA on every surface it can land on", () => {
     for (const palette of palettes()) {
-      for (const tier of INK_TIERS) {
+      for (const tier of [...INK_TIERS, ...COMPOSITED_TIERS]) {
+        // A quiet tier is read through a translucent panel, so it clears AA
+        // with the headroom that costs rather than clearing AA exactly.
+        const floor = (COMPOSITED_TIERS as readonly string[]).includes(tier)
+          ? COMPOSITE_FLOOR
+          : AA_CONTRAST;
         for (const ground of GROUND_TOKENS) {
           const ratio = contrastRatio(palette.tokens[tier]!, palette.tokens[ground]!);
           expect({
@@ -253,7 +304,8 @@ describe("ink on its ground", () => {
             tier,
             ground,
             measured: ratioLabel(ratio),
-            legible: ratio >= AA_CONTRAST,
+            floor,
+            legible: ratio >= floor,
           }).toMatchObject({ legible: true });
         }
       }

@@ -137,7 +137,7 @@ export function AuthorsScreen() {
                 {author.isDefault ? (
                   <span
                     className="chrome flex-none text-[12px]"
-                    style={{ color: "var(--onsen-color-amber)" }}
+                    style={{ color: "var(--onsen-color-amber-text)" }}
                   >
                     {strings.authors.isDefault}
                   </span>

@@ -4592,6 +4592,25 @@ Each phase ends in a working, usable application.
     technique. The turn's token readout and version counter stay inline on
     purpose, as a named `EXEMPT_TARGETS` entry rather than a slack number. See
     §16, `scripts/rendered-guard.ts`, `client/lib/emphasis.ts`.
+230. **The ink pass** — the four contrast failures phase 222 recorded once the
+    guard could composite real pixels, and the deletion it demands when they
+    stop failing. Measuring them first corrected the record: `text-dim` did
+    clear 4.5:1 on its token and miss it on the screen, but `blue-text-muted`
+    was **3.02:1 light on the token**, because `surfaces.test.ts` guards the
+    four greys and nothing guards the hues. `text-dim` had no composite
+    headroom in any of the eleven palettes (4.55–5.17 against its worst
+    ground) and the ramp had none either (eight of eleven at 1.123–1.140
+    against a required 1.12), so the fix is a **floor applied to every
+    palette** rather than hand-tuning the one the guard can see — the quiet
+    tiers clear `AA_CONTRAST × 1.25`, a figure the guard itself corrected from
+    1.2 after reading Bone at 5.48:1 on the token and 4.45:1 through the rail.
+    Values were solved as the least move along each token's own hue that clears
+    the floor and keeps its ramp step. `Cued` and the four `Default` badges
+    were the wrong token rather than the wrong value: `amber-text` exists in
+    every palette and the app was painting words with the raw hue, so the
+    labels moved and the borders kept it. `KNOWN_CONTRAST` is `{}` and
+    `theme-reconcile`'s cap is zero. See §16, `client/styles/tokens.css`,
+    `server/themes/builtin.ts`, `test/surfaces.test.ts`.
 
 Settled while building phase 15.
 
