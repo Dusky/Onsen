@@ -11662,3 +11662,152 @@ out of the running app: `amber-text` reaches `Cued` on a cast card and
 2074 tests across 152 files, typecheck clean, `bun run build` clean.
 
 `data/onsen.db` was not mutated — the drive signs in and reads.
+
+## Phase 232 — The queue cannot go stale quietly
+
+A small phase, and the reason it exists is the joke at its centre: the file
+whose opening paragraphs are about having gone stale three times had gone stale
+a fourth, and the guard written to stop that could not see it.
+
+### What was wrong
+
+`docs/NEXT.md`'s phase-218 review list still carried two open items:
+
+> 3. **The rendered guard measures the whole app.**
+> 4. **The leaks in the new screens.**
+
+Both had shipped — as **phase 222** and **phase 223** — and their `PHASES.md`
+headings are *word for word* the queue entries' titles. Anyone reading the
+queue to decide what to build next would have picked up finished work, which is
+precisely what `NEXT.md` exists to prevent.
+
+`test/tracker-drift.test.ts` did not catch it because it was written against
+the previous three drifts, which were all **numbers**: the README badge, the
+state line, §20's highest item, and the absence of a numbering hole. This one
+was an *entry*, and nothing in that file looked at the queue at all.
+
+### The rule
+
+> A numbered queue entry that is not struck through, whose bolded title matches
+> a `## Phase N — <title>` heading in `PHASES.md`, is work that shipped and
+> must be struck.
+
+Title only, case-insensitive, trailing period stripped. It is deliberately a
+match rather than a judgement: it catches the cheap and common case — the same
+sentence written into both files — and it cannot tell that an open entry
+describes shipped work in *different* words. It does not pretend to. What it
+enforces is the convention every closed entry above item 3 already follows:
+closing a queue item means striking it and naming its phase.
+
+Verified by reverting one strike; the run named the entry and the phase it
+shipped as.
+
+### Verified
+
+2075 tests across 152 files, typecheck clean, `bun run build` clean, and
+`bun run guard:rendered` unchanged — this phase touches no rendered surface.
+
+`data/onsen.db` was not touched.
+
+## Phase 233 — Tabletop, the first slice
+
+`SPEC.md` §20 item 40 has described a tabletop module since the spec was
+written, and it prescribes its own scope. This phase followed that prescription
+rather than reopening it:
+
+> If this is picked up later, split it: **rolls and checks as recorded events
+> first, stats only if the checks get used.**
+
+So there are no stats, no inventory, no schema language and no builder UI. §40
+calls the user-defined schemas "a product in its own right" and it is right;
+this is the half worth having on its own, and it is about a page of code.
+
+### The rule it exists to keep
+
+§22: **don't roll dice in the model.** Pressing *Roll* runs `rollDice`
+server-side, records the result, and injects it into the next prompt as settled
+fact:
+
+> `[Rolled d20: 16 against 11 — success. This already happened. Narrate the
+> outcome; do not change the number and do not roll again.]`
+
+The model never decides the number and never sees the roll before it is fixed,
+which is the whole point of a check.
+
+### One roller
+
+`rollDice` was module-private in `server/prompt/macros.ts`, where `{{roll:NdM}}`
+has used it since §3. It moved to `server/prompt/random.ts`, beside the RNG it
+already takes, and both callers import it. A second implementation of one die
+is the shape this branch has now recorded six times, and a guard sweeps
+`server/` and `client/` for a second `function rollDice`.
+
+### Three things the code found that the plan had wrong
+
+**The tracker was the wrong home.** The plan's preferred candidate for "a
+recorded event" was a tracker row, since a tracker is already per-turn
+structured state the transcript renders. Reading it settled the question the
+other way: `trackers.kind` carries `CHECK (kind IN ('scene','characters'))`, and
+a tracker is the scene's state *rebuilt* each turn under a contract that says a
+parse failure keeps the previous state. A roll is an append-only fact about a
+moment. It would have cost a migration to say something the contract does not
+mean. The roll log is one key in `extension_state` holding a JSON array —
+bounded at fifty, because a long scene should not carry a thousand rolls into
+every prompt build.
+
+**A code action could not tell which scene it was in.** `ExtensionAction.run`
+already existed and `runSceneExtensionAction` already short-circuited the model
+when an action carried one — but it called `run({ db })` while holding the
+`sceneId`, so a code action in a chat ran against a scene it could not name.
+`run` now takes `{ db, sceneId }`, `null` on the global path, which is the shape
+`apply` has always had.
+
+**A code action could not say anything.** The host hardcoded `text: ""` for the
+`run` path, so pressing *Roll* would have recorded the roll and shown the reader
+nothing until the next turn arrived — the same silent no-op §20 phases 224, 227
+and 228 each fixed one of. `run` may return a string and the composer's sheet
+already renders it. The reader sees `d20: 16 against 11 — success.`
+
+### A loaded die, caught by its own guard failing to catch it
+
+The first seed was `hashString(\`tabletop::${sceneId}::${Date.now()}\`)`, so two
+rolls in the same millisecond produced the same number. The tell was the test
+output printing `12` twice in a row.
+
+The first *guard* for it was statistical — roll forty, expect more than one
+value — and it **passed against the defect**, because the clock does tick
+between most rolls. So the seed derivation was extracted into an exported
+`rollSeed(sceneId, index, now)` and tested directly: two rolls in one
+millisecond, and the same roll in two scenes, must differ. That one fails when
+the fix is reverted, which is the difference between a guard and a decoration.
+
+### Provenance
+
+The idea of committing to a difficulty *before* the result is revealed came
+from reading about ST's **Multihog D&D Framework**. It is GPL-3.0 and this
+repository ships no licence, so it is a reference for what capability is worth
+having and **never a source of code or text** — the same rule the regex and
+renderer work followed. Nothing here is ported.
+
+An extension rather than core, per §15: §21 lists a code-executing runtime as a
+non-goal and a built-in needs none, because the code ships in the host and the
+row exists so the manager can toggle it. Seeded **disabled**, like every
+built-in.
+
+### Verified
+
+Driven end to end in the running app: the row seeded disabled on server start,
+was enabled through the app's own API, and the action appeared in the
+composer's *Extension actions* sheet with its description. Pressing it rolled
+`d20 → 16`, wrote
+`[{"dice":"d20","total":16,"difficulty":11,"outcome":"success","narrated":false}]`
+to `extension_state`, showed the reader `d20: 16 against 11 — success.`, and the
+next prompt built through `/api/scenes/:id/preview` carried the roll as a
+37-token system block at depth 0.
+
+2093 tests across 153 files, typecheck clean, `bun run build` clean,
+`bun run guard:rendered` all within budget.
+
+`data/onsen.db` **was** mutated: the server seeded a `Tabletop` row on start,
+the drive enabled it, and the roll wrote one `extension_state` row. Restored
+byte-for-byte from the snapshot with the server stopped.

@@ -1,4 +1,4 @@
-import { createRng, hashString } from "./random.ts";
+import { createRng, hashString, rollDice } from "./random.ts";
 import type { PromptContext } from "./types.ts";
 
 /**
@@ -47,18 +47,6 @@ function splitOptions(argument: string): string[] {
     .split(",")
     .map((option) => option.trim())
     .filter((option) => option.length > 0);
-}
-
-/** "d20", "2d6", "d%" — anything else yields no roll. */
-function rollDice(spec: string, next: () => number): string | null {
-  const match = /^(\d*)d(\d+)$/i.exec(spec.trim());
-  if (match === null) return null;
-  const count = match[1] === "" || match[1] === undefined ? 1 : Number(match[1]);
-  const sides = Number(match[2]);
-  if (count < 1 || count > 100 || sides < 1 || sides > 1_000_000) return null;
-  let total = 0;
-  for (let i = 0; i < count; i++) total += 1 + Math.floor(next() * sides);
-  return String(total);
 }
 
 function humaniseDuration(ms: number): string {

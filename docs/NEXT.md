@@ -2,7 +2,7 @@
 
 A short, honest list. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 231. 2074 tests across 152 files, typecheck clean. Feature
+**State:** phase 233. 2093 tests across 153 files, typecheck clean. Feature
 complete against `SPEC.md` §20 apart from the deferred phase 42.
 
 This file went stale three times, and the third was the worst: it said phase
@@ -53,18 +53,20 @@ things; `219` is shipped and the rest are planned, each its own phase.
    flattening rule stands for asterisks and does not carry to quotes, because a
    quote is punctuation rather than a mark somebody chose to write.
 
-3. **The rendered guard measures the whole app.** `bun run guard:rendered`
-   prints "all within budget" having taken **zero** contrast samples and never
-   opened a scene — both are gated on `ONSEN_SCENE`, which `package.json` does
-   not set. The four `SAMPLES` rectangles are absolute coordinates, which is
-   why item 1 was never measured.
+3. ~~**The rendered guard measures the whole app.**~~ — **phase 222**, and the
+   diagnosis was right about the mechanism and short about the scale: the
+   `ONSEN_SCENE` gate meant the documented invocation printed "all within
+   budget" having measured no transcript and no colour at all, which is the
+   guard doing the exact thing it exists to catch. The scene is discovered from
+   the app now, the four absolute rectangles are gone, a selector that matches
+   nothing fails the run, and the coloured runs are swept rather than listed.
+   What it then saw took two more phases to fix (230, 231).
 
-4. **The leaks in the new screens.** "Runs on: Default / Default" (a hardcoded
-   button beside a profile with the same name); `SearchOverlay` mounted
-   unconditionally so its focus never restores (measured: Search button →
-   Escape → `<body>`, where the palette restores correctly); 8.5px text on
-   three cast-rail buttons; and the `Name:` prefix that streams in and vanishes
-   when the turn lands, because `stripSpeakerPrefix` has no client mirror.
+4. ~~**The leaks in the new screens.**~~ — **phase 223.** All four: the
+   hardcoded "Runs on: Default" button, `SearchOverlay` mounting
+   unconditionally so its focus never restored, the 8.5px text on three
+   cast-rail buttons, and the `Name:` prefix that streamed in and vanished when
+   the turn landed for want of a client mirror of `stripSpeakerPrefix`.
 
 ### Ready to build
 
@@ -72,7 +74,10 @@ things; `219` is shipped and the rest are planned, each its own phase.
    `client/lib/generation.ts` — **only if** streaming judders on a phone.
    Reproduce the judder first; this is a conditional, not a default.
 
-2. **Tabletop** (§20 phase 40) — **as an extension, not core.** The decisions
+2. ~~**Tabletop** (§20 phase 40) — **as an extension, not core.**~~ — **phase
+   233**, first slice only, which is the split §40 itself prescribed: rolls
+   and checks as recorded events, stats only if the checks get used. What
+   remains below is the *rest* of it, unbuilt and deliberately so. The decisions
    this was gated on are made: it is called Tabletop, after §20 phase 40's own
    name and the `mode` option already called that, and it ships through §15's
    extension host rather than into the app. The first slice is the one SPEC

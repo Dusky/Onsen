@@ -4628,6 +4628,29 @@ Each phase ends in a working, usable application.
     hue doing its job, and matching across a line wrap because ten of the
     sixty-one were ternaries. See §16, `test/surfaces.test.ts`,
     `client/components/blue.ts`.
+232. **The queue cannot go stale quietly** — `NEXT.md` still listed two items
+    as open whose titles are word-for-word the `PHASES.md` headings of phases
+    222 and 223, so the queue was offering finished work to whoever read it
+    next. `tracker-drift` missed it because the previous three drifts were all
+    numbers — the badge, the state line, §20's highest item — and nothing
+    looked at the queue. The rule now: a numbered queue entry that is not
+    struck through, whose title matches a phase heading, fails the suite. A
+    match rather than a judgement, so it catches the same sentence in two files
+    and claims nothing more. See `test/tracker-drift.test.ts`, `docs/NEXT.md`.
+233. **Tabletop, the first slice** — §40 has described a tabletop module since
+    the spec was written and prescribed its own split: "rolls and checks as
+    recorded events first, stats only if the checks get used". That is exactly
+    what shipped, as a built-in extension seeded disabled — no stats, no
+    inventory, no schema language. Pressing *Roll* runs `rollDice` server-side,
+    records it, and injects it into the next prompt as settled fact the model
+    narrates, which is §22's "don't roll dice in the model" end to end.
+    `rollDice` moved out of `macros.ts` to `prompt/random.ts` so `{{roll:}}`
+    and the extension share one die. Three things the code corrected about the
+    plan: a tracker was the wrong home for a roll (its `kind` is CHECKed and it
+    is rebuilt state, not an append-only fact), `ExtensionAction.run` was
+    handed no `sceneId` though the caller had one, and it could not return
+    anything, so a code action was a button that worked in silence. See §40,
+    §15, `server/extensions/builtins.ts`, `test/tabletop.test.ts`.
 
 Settled while building phase 15.
 
