@@ -209,7 +209,7 @@ function GroupEditorSheet({
         <button
           type="button"
           className="chrome mt-[14px] w-full text-[14px]"
-          style={{ color: "var(--onsen-color-red)" }}
+          style={{ color: "var(--onsen-color-red-text)" }}
           onClick={() =>
             confirm(
               strings.characters.groupsDeleteConfirm(group.name),

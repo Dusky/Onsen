@@ -263,7 +263,7 @@ export function PromptManager({ preset }: { preset: PresetDto }) {
                 <button
                   type="button"
                   className="chrome text-ui"
-                  style={{ color: "var(--onsen-color-red)" }}
+                  style={{ color: "var(--onsen-color-red-text)" }}
                   onClick={() =>
                     confirm(
                       strings.settings.blockDeleteConfirm,

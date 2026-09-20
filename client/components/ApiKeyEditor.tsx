@@ -163,7 +163,7 @@ export function ApiKeyEditor({
                 <span
                   className="chrome flex-none text-[13px]"
                   style={
-                    request.status >= 400 ? { color: "var(--onsen-color-red)" } : undefined
+                    request.status >= 400 ? { color: "var(--onsen-color-red-text)" } : undefined
                   }
                 >
                   {request.status}

@@ -135,7 +135,7 @@ export function Header() {
             className="truncate font-medium"
             style={{
               color: sceneWriting
-                ? "var(--onsen-color-amber)"
+                ? "var(--onsen-color-amber-text)"
                 : overlay === null
                   ? "var(--onsen-color-text)"
                   : "var(--onsen-color-blue-text)",

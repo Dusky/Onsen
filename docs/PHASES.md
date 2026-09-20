@@ -11555,3 +11555,110 @@ themes: the ramp still reads as four steps rather than one grey, and `Cued` and
 2073 tests across 152 files, typecheck clean, `bun run build` clean.
 
 `data/onsen.db` was not mutated — the guard signs in and reads.
+
+## Phase 231 — The hue ramp
+
+Phase 230 measured this and left it: `test/surfaces.test.ts` guards
+`INK_TIERS`, which is the grey ramp, and **nothing guarded the hues**.
+
+### What that cost
+
+Measured against the worst ground each palette defines:
+
+| token | under AA (4.5:1) in |
+|---|---|
+| `--onsen-color-red` | 3.39 base dark · 3.94 Midnight · 3.98 light · 4.10 Nocturne |
+| `--onsen-color-amber` | 3.44 light · 4.14 Slate · 4.44 Bone · 4.45 Graphite |
+| `--onsen-color-green-text-muted` | 3.18 light · 3.94 Midnight · 4.45 base dark |
+| `--onsen-color-amber-text-muted` | 3.08 light · 3.79 Midnight · 3.96 base dark |
+| `--onsen-color-blue` | 4.48 on the page dark, 3.83 inside an inset |
+
+And the call sites are why nobody noticed. **`--onsen-color-red` was worn as a
+CSS `color:` in about forty places and `--onsen-color-red-text` in none.** The
+text tier existed in every palette, measured 5.83:1 where the hue measured
+3.39:1, and nothing pointed at it. Same for amber, at ten sites against two.
+
+That is a token pair doing half its job for want of anything checking, which is
+the same shape as the four rectangles phase 222 deleted and the eleven named
+files phase 229 replaced. Sixth instance.
+
+### Sixty-one sites, split by property rather than by token
+
+`color:` takes the hue's `-text` tier. `background`, `borderColor`, `stroke`,
+`fill` and the `2px solid` borders keep the raw hue, because that is what a hue
+is for: the cued card's amber border, the context bar's red-over-90% fill, the
+model dot's green, `blockColor()`'s bar segments and the branch map's
+checkpoint stroke are all untouched. `client/components/blue.ts`'s shared `red`
+object splits down the same line — `color` moved, `borderColor` did not.
+
+Fifty-one were the plain `color: "var(--onsen-color-red)"` form. Ten were
+ternaries spanning lines, which is worth recording because the first version of
+the guard below matched a single line and missed every one of them.
+
+A destructive label still reads as destructive: `distance(red-text, amber)` is
+**60** on the dark base, against the 40 this file already requires between
+hues.
+
+### Blue is raised, not swapped
+
+`--onsen-color-blue-text` is a *muted prose* blue — `#b9c3ce` on the dark base,
+near grey — so putting the active nav tab, the "change" link and the command
+palette's highlighted row onto it would have deleted the accent rather than
+made it legible. The hue moved instead: `#5b7fa6` → `#6a8bae` dark, `#3f6486`
+→ `#3c6080` light, the least move that clears AA on the worst ground.
+
+It holds **4.5** rather than the ×1.25 composite floor the quiet greys carry,
+because it is an interactive accent that also fills and borders, and the
+rendered guard is the backstop — it reads "change" at 4.74:1 composited. The
+exemption is named in `surfaces.test.ts` with that reason, because an exemption
+nobody wrote down is indistinguishable from the oversight that produced this
+phase.
+
+### Two sets, two floors, and a cascade
+
+`HUE_TEXT_TIERS` (`red-text`, `green-text`, `amber-text`, `blue-text`,
+`green-text-muted`, `amber-text-muted`) clear the `COMPOSITE_FLOOR`; the four
+`ACCENT_HUES` clear plain AA. Values were solved the way phase 230's were —
+the least move along each token's own hue — across `tokens.css`'s three blocks
+and all eight builtin themes.
+
+It took two rounds, and the second is the interesting one. `completeTokens`
+derives `amber-text` from `amber` and `green-text` from `green` when a theme
+does not name them, so naming `color-amber` in Bottle, Graphite, Bone and
+Slate moved their `amber-text` underneath the floor it had just passed. The
+fix is to name the derived token too, and the way it surfaced is that the
+solver was re-run against the *resolved* palettes rather than against the
+source — which is the only way inheritance shows up at all.
+
+### The sweep is the half that lasts
+
+`no color in the client carries a raw hue token`, in `surfaces.test.ts`, in the
+shape phase 229 used for `.btn` and inline `minHeight`: scoped to the `color`
+property, blind to `background` and `borderColor`, and matching up to 200
+characters so a ternary across a wrap is caught. Verified by putting one site
+back in its multi-line form — the run named the file and printed the line.
+
+An allow-list of the sixty-one sites could not see the sixty-second.
+
+### One thing that is not a defect
+
+Bone ships `color-red: #1f3fe0` with a blue `red-bg` and `red-border`, and
+Slate ships `color-red: #0f766e` with a teal pair. A destructive label renders
+blue on Bone and teal on Slate, deliberately and consistently — the "red
+pencil" is a role, and these two themes cast it differently. Worth writing down
+because a browser drive on this install (which runs Bone) finds no red text at
+all, and that reads as a broken sweep until you know why.
+
+### Verified
+
+`bun run guard:rendered` still **all within budget** with `KNOWN_CONTRAST`
+still `{}` — the hue moves did not cost any composited reading, and the
+`Default` badge improved from 4.32:1 to 5.47:1. `test/surfaces.test.ts` passes
+across eleven palettes at both floors with the ramp still ordered, and its
+source sweep fails on a reintroduced site. The rendered colours were read back
+out of the running app: `amber-text` reaches `Cued` on a cast card and
+`Default` in the profile list.
+
+2074 tests across 152 files, typecheck clean, `bun run build` clean.
+
+`data/onsen.db` was not mutated — the drive signs in and reads.

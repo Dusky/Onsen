@@ -245,7 +245,7 @@ export function WebhookEditor({
                     className="chrome flex-none text-[13px]"
                     style={
                       delivery.status === "failed"
-                        ? { color: "var(--onsen-color-red)" }
+                        ? { color: "var(--onsen-color-red-text)" }
                         : undefined
                     }
                   >

@@ -329,7 +329,7 @@ function UpdateGroup() {
               that is not an error. */}
           <span
             className="chrome flex-none text-ui"
-            style={{ color: behind !== null && behind > 0 ? "var(--onsen-color-red)" : undefined }}
+            style={{ color: behind !== null && behind > 0 ? "var(--onsen-color-red-text)" : undefined }}
           >
             {state}
           </span>
@@ -1710,7 +1710,7 @@ export function SettingsScreen() {
                   <span className="flex items-baseline gap-[8px]">
                     <span className="truncate text-[15px] font-medium">{preset.name}</span>
                     {preset.isDefault ? (
-                      <span className="meta flex-none" style={{ color: "var(--onsen-color-amber)" }}>
+                      <span className="meta flex-none" style={{ color: "var(--onsen-color-amber-text)" }}>
                         {strings.settings.presetIsDefault}
                       </span>
                     ) : null}

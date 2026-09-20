@@ -235,7 +235,7 @@ function SceneRow({
 
           {scene.directorNote === null || scene.directorNote === "" ? null : (
             <p className="meta mt-[6px]">
-              <span style={{ color: "var(--onsen-color-amber)" }}>
+              <span style={{ color: "var(--onsen-color-amber-text)" }}>
                 {strings.scenes.steerLabel}:{" "}
               </span>
               {scene.directorNote}

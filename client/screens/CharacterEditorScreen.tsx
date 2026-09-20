@@ -125,7 +125,7 @@ function GreetingList({
           <button
             type="button"
             className="chrome mt-[6px] text-ui"
-            style={{ color: "var(--onsen-color-red)" }}
+            style={{ color: "var(--onsen-color-red-text)" }}
             onClick={() => onChange(items.filter((_, at) => at !== index))}
           >
             {strings.characters.removeGreeting}
@@ -785,7 +785,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
                       }
                       aria-label={strings.settings.scriptDelete}
                       className="chrome flex-none text-[13px]"
-                      style={{ color: "var(--onsen-color-red)" }}
+                      style={{ color: "var(--onsen-color-red-text)" }}
                     >
                       {"\u00d7"}
                     </button>
@@ -850,7 +850,7 @@ export function CharacterEditorScreen({ characterId }: { characterId: string }) 
               <button
                 type="button"
                 className="btn w-full"
-                style={{ color: "var(--onsen-color-red)", borderColor: "var(--onsen-color-red-border)" }}
+                style={{ color: "var(--onsen-color-red-text)", borderColor: "var(--onsen-color-red-border)" }}
                 onClick={() =>
                   confirm(
                     strings.characters.deleteConfirm(character.name),

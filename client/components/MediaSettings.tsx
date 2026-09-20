@@ -290,7 +290,7 @@ function ServiceEditor({
               type="button"
               className="btn mt-[8px] w-full"
               style={{
-                color: "var(--onsen-color-red)",
+                color: "var(--onsen-color-red-text)",
                 borderColor: "var(--onsen-color-red-border)",
               }}
               onClick={() =>

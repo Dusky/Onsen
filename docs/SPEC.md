@@ -4611,6 +4611,23 @@ Each phase ends in a working, usable application.
     labels moved and the borders kept it. `KNOWN_CONTRAST` is `{}` and
     `theme-reconcile`'s cap is zero. See §16, `client/styles/tokens.css`,
     `server/themes/builtin.ts`, `test/surfaces.test.ts`.
+231. **The hue ramp** — `surfaces.test.ts` guarded the four grey ink tiers and
+    nothing guarded the hues, so `red` sat at 3.39:1 against the worst ground
+    in the base dark palette, `amber` at 3.44:1 light, and the two
+    `*-text-muted` tokens near 3.1:1 — while `--onsen-color-red` was worn as a
+    CSS `color:` in about forty places and `--onsen-color-red-text`, which
+    measures 5.83:1 and exists in every palette, in none. Sixty-one sites now
+    split by *property*: `color` takes the hue's `-text` tier, while
+    `background`, `borderColor`, `stroke` and `fill` keep the hue, because a
+    status dot and a cued card's border are the hue doing its job. Blue is the
+    exception and is raised rather than swapped — `blue-text` is a muted prose
+    blue and would have greyed out every active tab — so `ACCENT_HUES` holds
+    the four hues at plain AA while `HUE_TEXT_TIERS` holds their text tiers at
+    the composite floor. The half that lasts is a source sweep: no `color` in
+    `client/` may carry a raw hue, scoped to the property so it never flags the
+    hue doing its job, and matching across a line wrap because ten of the
+    sixty-one were ternaries. See §16, `test/surfaces.test.ts`,
+    `client/components/blue.ts`.
 
 Settled while building phase 15.
 

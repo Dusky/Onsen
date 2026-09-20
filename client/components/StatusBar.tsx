@@ -81,7 +81,7 @@ export function StatusBar({
     >
       <span
         className="chrome flex items-center gap-[6px] text-[12px]"
-        style={{ color: profileName === null ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)" }}
+        style={{ color: profileName === null ? "var(--onsen-color-red-text)" : "var(--onsen-color-text-dim)" }}
       >
         <span
           className="inline-block h-[5px] w-[5px] flex-none"
@@ -161,7 +161,7 @@ export function StatusBar({
       <span
         className="chrome text-[12px]"
         style={{
-          color: generating ? "var(--onsen-color-amber)" : "var(--onsen-color-text-dim)",
+          color: generating ? "var(--onsen-color-amber-text)" : "var(--onsen-color-text-dim)",
         }}
       >
         {generating ? strings.chat.barWriting : strings.chat.barIdle}

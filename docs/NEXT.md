@@ -2,7 +2,7 @@
 
 A short, honest list. `GAPS.md` is the evidence; this is the order.
 
-**State:** phase 230. 2073 tests across 152 files, typecheck clean. Feature
+**State:** phase 231. 2074 tests across 152 files, typecheck clean. Feature
 complete against `SPEC.md` §20 apart from the deferred phase 42.
 
 This file went stale three times, and the third was the worst: it said phase
@@ -68,32 +68,11 @@ things; `219` is shipped and the rest are planned, each its own phase.
 
 ### Ready to build
 
-1. **Phase 231 — the hue ramp** (measured in phase 230, not built there).
-   `test/surfaces.test.ts` guards the four grey ink tiers and **nothing guards
-   the hues**, and the numbers say what that cost: `--onsen-color-red` measures
-   3.39:1 against the worst ground in the base dark palette (3.94 Midnight,
-   3.98 light, 4.10 Nocturne, 4.52 Slate), `amber` 3.44:1 light,
-   `green-text-muted` 3.18:1 light — all under AA before any compositing.
-
-   The call sites say why. `--onsen-color-red` is worn as a CSS `color:` in
-   **thirty-nine places** and `--onsen-color-red-text` in **none**; `amber` in
-   about ten against two for `amber-text`. The `-text` variants exist in every
-   palette and are the tokens those labels were meant to use — phase 230 moved
-   six of them (the cast rail's `Cued`, the autopilot label, the four `Default`
-   badges) and stopped there on purpose.
-
-   Two halves, the second being the one that lasts: replace the raw hue with
-   its `-text` variant wherever a hue is worn as text, and extend
-   `surfaces.test.ts` with a `HUE_TEXT_TIERS` floor plus a **source sweep**
-   asserting a raw hue is never a `color:` in `client/`. A sweep, because an
-   allow-list of the forty-seven known sites cannot see the forty-eighth —
-   which is the finding this branch has now recorded six times.
-
-2. **Smooth streaming throttle.** Add a render throttle in
+1. **Smooth streaming throttle.** Add a render throttle in
    `client/lib/generation.ts` — **only if** streaming judders on a phone.
    Reproduce the judder first; this is a conditional, not a default.
 
-3. **Tabletop** (§20 phase 40) — **as an extension, not core.** The decisions
+2. **Tabletop** (§20 phase 40) — **as an extension, not core.** The decisions
    this was gated on are made: it is called Tabletop, after §20 phase 40's own
    name and the `mode` option already called that, and it ships through §15's
    extension host rather than into the app. The first slice is the one SPEC

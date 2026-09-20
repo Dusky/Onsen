@@ -744,7 +744,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
               <p
                 role="alert"
                 className="chrome min-w-0 flex-1 truncate text-[13px]"
-                style={{ color: "var(--onsen-color-red)" }}
+                style={{ color: "var(--onsen-color-red-text)" }}
               >
                 {generation.startError.message}
               </p>
@@ -752,7 +752,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                 <button
                   type="button"
                   className="btn flex-none"
-                  style={{ color: "var(--onsen-color-red)", borderColor: "var(--onsen-color-red)" }}
+                  style={{ color: "var(--onsen-color-red-text)", borderColor: "var(--onsen-color-red)" }}
                   onClick={() => setProfilePickerOpen(true)}
                 >
                   {strings.chat.setProfile}
@@ -762,7 +762,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                 type="button"
                 aria-label="Close"
                 className="chrome flex-none text-[12px]"
-                style={{ color: "var(--onsen-color-red)" }}
+                style={{ color: "var(--onsen-color-red-text)" }}
                 onClick={() => generation.clearStartError()}
               >
                 ×
@@ -781,7 +781,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
             className="flex-none border-t border-rule bg-bg-raised px-[16px] py-[8px] text-left"
           >
             <span className="chrome mx-auto flex w-full max-w-[var(--onsen-prose-measure)] gap-[8px] text-ui leading-[1.5]">
-              <span style={{ color: "var(--onsen-color-amber)" }}>{strings.chat.steerActive}</span>
+              <span style={{ color: "var(--onsen-color-amber-text)" }}>{strings.chat.steerActive}</span>
               <span className="min-w-0 flex-1 truncate text-ink-dim">{steer}</span>
             </span>
           </button>
@@ -844,7 +844,7 @@ export function ChatScreen({ sceneId }: { sceneId: string }) {
                     <button
                       type="button"
                       className="flex-none"
-                      style={{ color: "var(--onsen-color-red)" }}
+                      style={{ color: "var(--onsen-color-red-text)" }}
                       onClick={() => setup.mutate({ directorNote: null })}
                     >
                       {strings.chat.opSteerClear}

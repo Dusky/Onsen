@@ -26,7 +26,8 @@ import {
  * is measured.
  */
 
-const TOKENS = readFileSync(join(import.meta.dir, "..", "client", "styles", "tokens.css"), "utf8");
+const ROOT_DIR = join(import.meta.dir, "..");
+const TOKENS = readFileSync(join(ROOT_DIR, "client", "styles", "tokens.css"), "utf8");
 
 /**
  * The maths moved to `shared/contrast.ts` in the ink pass, because the
@@ -218,6 +219,47 @@ const COMPOSITED_TIERS = [
   "color-blue-text-muted",
 ] as const;
 
+/**
+ * The hue ramp, which had no floor at all until §20 phase 231.
+ *
+ * `INK_TIERS` above is the grey ramp, and that is *all* it is. Every hue token
+ * — the red pencil, the blue pencil, the subsystem greens and ambers — sat
+ * outside every legibility check this file makes, and the measurements say
+ * what that cost: `red` at 3.39:1 against the worst ground in the base dark
+ * palette, `amber` at 3.44:1 light, `green-text-muted` at 3.18:1,
+ * `amber-text-muted` at 3.08:1.
+ *
+ * The call sites say how it went unnoticed. `--onsen-color-red` was worn as a
+ * CSS `color:` in about forty places and `--onsen-color-red-text` in none: the
+ * text tier existed in every palette, measured 5.8–11.6:1, and nothing was
+ * using it. Phase 230 moved six of these by hand; phase 231 moved the rest and
+ * put `noRawHueAsText` below behind them.
+ *
+ * Two sets, because they answer to different rules.
+ */
+
+/** A hue's text tier is ink, read through the same panels. Same floor. */
+const HUE_TEXT_TIERS = [
+  "color-red-text",
+  "color-green-text",
+  "color-amber-text",
+  "color-blue-text",
+  "color-green-text-muted",
+  "color-amber-text-muted",
+] as const;
+
+/**
+ * The hues themselves, at plain AA.
+ *
+ * Each is a fill and a border as well as — in the blue pencil's case — an
+ * accent worn as text. `blue-text` is a *muted prose* blue (`#b9c3ce` dark,
+ * near grey), so putting the active nav tab and the "change" link on it would
+ * delete the accent rather than fix it; the hue moves instead and holds 4.5
+ * rather than the composite floor, with the rendered guard as the backstop
+ * (it reads "change" at 4.74:1 composited). §20 phase 231.
+ */
+const ACCENT_HUES = ["color-red", "color-green", "color-amber", "color-blue"] as const;
+
 /** Quietest first. A tier must read as a step above the one below it. */
 const INK_RAMP = ["color-text-dim", "color-text-muted", "color-text-label", "color-text"] as const;
 
@@ -277,10 +319,78 @@ function palettes(): { name: string; base: "dark" | "light"; tokens: Record<stri
   ];
 }
 
+/**
+ * A hue is never worn as text (§20 phase 231).
+ *
+ * The other half of the floor above, and the half that lasts. Every palette
+ * carries a `-text` tier for each hue, and before this phase the app barely
+ * used them: `--onsen-color-red` appeared as a CSS `color:` in about forty
+ * places and `--onsen-color-red-text` in none, while `red` measured 3.39:1
+ * against the worst ground in the base dark palette and `red-text` measured
+ * 5.83:1. The tokens were right and nothing pointed at them.
+ *
+ * A sweep rather than a list of the sixty-one sites it took to fix, because an
+ * allow-list cannot see the sixty-second — which is the shape this branch has
+ * now recorded six times, most recently when `test/density.test.ts` held the
+ * 44px floor with eleven named files and eleven controls went short anyway.
+ *
+ * Scoped to the property rather than the token. A hue *is* the fill of a
+ * status dot, the stroke of a checkpoint node and the border of a cued card;
+ * `background`, `borderColor`, `stroke` and `fill` are the hue doing its job
+ * and are not matched here. Only `color` is.
+ */
+describe("a hue is never worn as text", () => {
+  /**
+   * `--onsen-color-blue`, and only as `color`.
+   *
+   * `blue-text` is a *muted prose* blue — `#b9c3ce` on the dark base, near
+   * grey — so putting the active nav tab, the "change" link and the command
+   * palette's highlighted row onto it would delete the accent rather than make
+   * it legible. The hue moved instead, to 4.50:1 dark and 4.52:1 light against
+   * the worst ground it can land on, and `ACCENT_HUES` above holds it there.
+   *
+   * Named here rather than left silent, because an exemption nobody wrote down
+   * is indistinguishable from an oversight — which is exactly how the hue ramp
+   * came to have no floor at all.
+   */
+  const ACCENT_AS_TEXT = "color-blue";
+
+  test("no `color` in the client carries a raw hue token", () => {
+    const offenders: string[] = [];
+    for (const dir of ["components", "screens", "lib"]) {
+      const base = join(ROOT_DIR, "client", dir);
+      for (const file of new Bun.Glob("**/*.{ts,tsx}").scanSync({ cwd: base })) {
+        const source = readFileSync(join(base, file), "utf8")
+          // The prose in this repo quotes the tokens it is about.
+          .replace(/\/\*[\s\S]*?\*\//g, "")
+          .replace(/\/\/[^\n]*/g, "");
+        /*
+         * `color:` and everything up to the end of the value, including a
+         * ternary spanning lines — which is most of them: the first version of
+         * this matched a single line and missed ten sites that read
+         * `color: flagged ? red : text-dim` across a wrap.
+         */
+        for (const match of source.matchAll(/(?<![a-zA-Z])color:[\s\S]{0,200}?[,;}]/g)) {
+          const hue = /var\(--onsen-(color-(?:red|amber|green|blue))\)/.exec(match[0]);
+          if (hue === null || hue[1] === ACCENT_AS_TEXT) continue;
+          offenders.push(`${dir}/${file}: ${match[0].trim().replace(/\s+/g, " ").slice(0, 70)}`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+});
+
 describe("ink on its ground", () => {
   test("every palette defines every tier and every ground", () => {
     for (const palette of palettes()) {
-      for (const token of [...INK_TIERS, ...COMPOSITED_TIERS, ...GROUND_TOKENS]) {
+      for (const token of [
+        ...INK_TIERS,
+        ...COMPOSITED_TIERS,
+        ...HUE_TEXT_TIERS,
+        ...ACCENT_HUES,
+        ...GROUND_TOKENS,
+      ]) {
         const value = palette.tokens[token];
         expect({ palette: palette.name, token, hex: isHex6(value ?? "") }).toMatchObject({
           hex: true,
@@ -291,12 +401,18 @@ describe("ink on its ground", () => {
 
   test("clears WCAG AA on every surface it can land on", () => {
     for (const palette of palettes()) {
-      for (const tier of [...INK_TIERS, ...COMPOSITED_TIERS]) {
+      for (const tier of [
+        ...INK_TIERS,
+        ...COMPOSITED_TIERS,
+        ...HUE_TEXT_TIERS,
+        ...ACCENT_HUES,
+      ]) {
         // A quiet tier is read through a translucent panel, so it clears AA
-        // with the headroom that costs rather than clearing AA exactly.
-        const floor = (COMPOSITED_TIERS as readonly string[]).includes(tier)
-          ? COMPOSITE_FLOOR
-          : AA_CONTRAST;
+        // with the headroom that costs rather than clearing AA exactly. A
+        // hue's text tier is the same kind of ink; the hue itself is an accent
+        // that also fills and borders, so it holds plain AA.
+        const composited = [...COMPOSITED_TIERS, ...HUE_TEXT_TIERS] as readonly string[];
+        const floor = composited.includes(tier) ? COMPOSITE_FLOOR : AA_CONTRAST;
         for (const ground of GROUND_TOKENS) {
           const ratio = contrastRatio(palette.tokens[tier]!, palette.tokens[ground]!);
           expect({

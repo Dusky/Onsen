@@ -65,7 +65,7 @@ function TrackerBlock({ tracker, sceneId }: { tracker: TrackerDto; sceneId: stri
         <button
           type="button"
           className="chrome flex-none text-[12px]"
-          style={{ color: "var(--onsen-color-red)" }}
+          style={{ color: "var(--onsen-color-red-text)" }}
           onClick={() => flush.mutate(tracker.kind)}
         >
           {strings.chat.flush}

@@ -254,7 +254,7 @@ export function Composer({
             style={{
               borderColor: "var(--onsen-color-border-quiet)",
               color: attaching === true
-                ? "var(--onsen-color-red)"
+                ? "var(--onsen-color-red-text)"
                 : "var(--onsen-color-text-muted)",
             }}
             aria-label={strings.media.attach}

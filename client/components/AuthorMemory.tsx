@@ -98,7 +98,7 @@ export function AuthorNotes({ authorId, authorName }: { authorId: string; author
           type="button"
           className="btn w-full"
           style={{
-            color: "var(--onsen-color-red)",
+            color: "var(--onsen-color-red-text)",
             borderColor: "var(--onsen-color-red-border)",
           }}
           disabled={wipe.isPending}

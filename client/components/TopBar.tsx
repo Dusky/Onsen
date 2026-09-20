@@ -154,7 +154,7 @@ export function TopBar() {
           type="button"
           onClick={() => navigate({ name: "chat", sceneId: writing!.sceneId })}
           className="chrome tap flex flex-none items-center gap-[6px] py-[12px] pl-[10px] pr-[4px] text-[11px]"
-          style={{ color: "var(--onsen-color-amber)" }}
+          style={{ color: "var(--onsen-color-amber-text)" }}
         >
           <span
             aria-hidden="true"

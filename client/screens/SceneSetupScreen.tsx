@@ -501,7 +501,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                               color:
                                 run.status === "ok"
                                   ? "var(--onsen-color-text-label)"
-                                  : "var(--onsen-color-red)",
+                                  : "var(--onsen-color-red-text)",
                             }}
                           >
                             {strings.sceneSetup.directorRunStatus(run.status)}
@@ -1066,7 +1066,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                 <button
                   type="button"
                   className="chrome mt-[2px] text-[12px]"
-                  style={{ color: "var(--onsen-color-red)" }}
+                  style={{ color: "var(--onsen-color-red-text)" }}
                   onClick={() => removeFromCast.mutate(member.characterId)}
                 >
                   {strings.sceneSetup.remove}
@@ -1339,7 +1339,7 @@ export function SceneSetupScreen({ sceneId }: { sceneId: string }) {
                   <button
                     type="button"
                     className="chrome flex-none text-ui"
-                    style={{ color: "var(--onsen-color-red)" }}
+                    style={{ color: "var(--onsen-color-red-text)" }}
                     onClick={() => removeDocument.mutate(document.id)}
                   >
                     ×

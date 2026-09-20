@@ -346,7 +346,7 @@ export function MessageLog({
             type="button"
             onClick={() => (autopilotActive ? onStopAutopilot() : onCancel())}
             className="chrome border border-red-border px-[10px] py-[6px] text-[13px]"
-            style={{ color: "var(--onsen-color-red)" }}
+            style={{ color: "var(--onsen-color-red-text)" }}
           >
             {autopilotActive ? strings.chat.autopilotTakeOver : strings.chat.stop}
           </button>

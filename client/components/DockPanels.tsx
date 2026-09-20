@@ -183,7 +183,7 @@ export function PromptPanel({ sceneId }: { sceneId: string | null }) {
             type="button"
             className="chrome text-ui"
             aria-pressed={rawOpen}
-            style={{ color: rawOpen ? "var(--onsen-color-amber)" : "var(--onsen-color-blue-text)" }}
+            style={{ color: rawOpen ? "var(--onsen-color-amber-text)" : "var(--onsen-color-blue-text)" }}
             onClick={() => setRawOpen(!rawOpen)}
           >
             {strings.leftRail.viewRaw}
@@ -225,7 +225,7 @@ export function PromptPanel({ sceneId }: { sceneId: string | null }) {
                   </span>
                   <span
                     className="chrome flex-none text-ui"
-                    style={{ color: "var(--onsen-color-red)" }}
+                    style={{ color: "var(--onsen-color-red-text)" }}
                   >
                     {strings.chat.inspectorEviction[item.reason]}
                   </span>
@@ -552,7 +552,7 @@ function BanList({ sceneId }: { sceneId: string }) {
           <button
             type="button"
             className="chrome flex-none text-ui"
-            style={{ color: "var(--onsen-color-green)" }}
+            style={{ color: "var(--onsen-color-green-text)" }}
             onClick={() => update.mutate({ banId: phrase.id, accept: true })}
           >
             {strings.sceneSetup.bansAccept}
@@ -865,7 +865,7 @@ export function CharacterPane({ sceneId }: { sceneId: string | null }) {
                       ? undefined
                       : {
                           label: strings.rightRail.remove,
-                          color: "var(--onsen-color-red)",
+                          color: "var(--onsen-color-red-text)",
                           onClick: () => removeFromCast.mutate(character.id),
                         }
                   }
@@ -934,7 +934,7 @@ function CharacterRow({
         {badge === undefined ? null : (
           <span
             className="chrome flex-none text-[11px]"
-            style={{ color: "var(--onsen-color-amber)" }}
+            style={{ color: "var(--onsen-color-amber-text)" }}
           >
             {badge}
           </span>
@@ -1022,7 +1022,7 @@ export function AuthorPane({ sceneId }: { sceneId: string | null }) {
               {candidate.id === sceneAuthorId ? (
                 <span
                   className="chrome flex-none text-[11px]"
-                  style={{ color: "var(--onsen-color-amber)" }}
+                  style={{ color: "var(--onsen-color-amber-text)" }}
                 >
                   {strings.rightRail.inUse}
                 </span>

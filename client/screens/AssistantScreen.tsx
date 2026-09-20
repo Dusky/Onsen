@@ -163,7 +163,7 @@ export function AssistantScreen() {
         <button
           type="button"
           className="chrome text-ui"
-          style={{ color: "var(--onsen-color-red)" }}
+          style={{ color: "var(--onsen-color-red-text)" }}
           onClick={() => removeThread(selected)}
         >
           {strings.assistant.deleteThread}
@@ -470,7 +470,7 @@ function PersistedMessage({ message }: { message: AgentMessageDto }) {
       <div className="mb-[8px] ml-[10px]">
         <span
           className="chrome block text-[12px] leading-[1.5]"
-          style={{ color: message.isError ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)" }}
+          style={{ color: message.isError ? "var(--onsen-color-red-text)" : "var(--onsen-color-text-dim)" }}
         >
           {message.isError ? strings.assistant.toolFailed : strings.assistant.toolResult} ·{" "}
           {message.content.slice(0, 160)}

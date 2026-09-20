@@ -440,7 +440,7 @@ function Annotation({
     <p
       className="chrome mt-[7px] flex gap-[7px] text-ui leading-[1.55]"
       style={{
-        color: flagged ? "var(--onsen-color-red)" : "var(--onsen-color-text-dim)",
+        color: flagged ? "var(--onsen-color-red-text)" : "var(--onsen-color-text-dim)",
         opacity: annotation.status === "ok" ? 0.7 : 1,
       }}
     >
@@ -1018,7 +1018,7 @@ export function MessageBlock({
             <span className="chrome text-ui-loose text-ink-dim"> &middot; </span>
             {text}
             {streamingText === undefined ? null : (
-              <span aria-hidden="true" style={{ color: "var(--onsen-color-amber)" }}>{"\u258c"}</span>
+              <span aria-hidden="true" style={{ color: "var(--onsen-color-amber-text)" }}>{"\u258c"}</span>
             )}
           </p>
         ) : segments === null ? (
@@ -1038,7 +1038,7 @@ export function MessageBlock({
                 : {})}
             />
             {streamingText === undefined ? null : (
-              <span aria-hidden="true" style={{ color: "var(--onsen-color-amber)" }}>{"\u258c"}</span>
+              <span aria-hidden="true" style={{ color: "var(--onsen-color-amber-text)" }}>{"\u258c"}</span>
             )}
           </>
         ) : (
