@@ -18,7 +18,7 @@
   <img src="https://img.shields.io/badge/phase-224-989286" alt="Phase 224">
 </p>
 
-> **Status: phase 228 — feature complete, less the deferred phase 42.**
+> **Status: phase 229 — feature complete, less the deferred phase 42.**
 > Set it up, **point it at your SillyTavern folder and move in** — cards, chats, group chats, personas, world info, instruct templates and regex scripts all come across, with your swipes intact as branches.
 
 ---

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { emphasis, isPlain } from "../client/lib/emphasis.ts";
+import { emphasis, isPlain, plainText } from "../client/lib/emphasis.ts";
 
 /**
  * Bold and italics in the reading surface (§20 phase 161).
@@ -308,5 +308,82 @@ describe("where it is used", () => {
     // emphasis runs inside each paragraph and changes neither.
     expect(BLOCK).toContain("text.split(/\\n{2,}/)");
     expect(BLOCK).toContain("whitespace-pre-wrap");
+  });
+});
+
+
+/**
+ * The same prose with its marks taken off (§20 phase 229).
+ *
+ * The right rail's "just spoke" card was the one place in the app that showed
+ * raw markup: `**Elira Voss:** took two keys off the board…`, six inches from
+ * a transcript rendering the same content with a coloured label and no
+ * asterisks. `plainText` is the fix, and it is built on the tokenizer rather
+ * than on a regex of its own so there is one set of rules about what a mark
+ * is.
+ */
+describe("prose with its marks taken off", () => {
+  const ROOT = join(import.meta.dir, "..");
+
+  test("the marks come off and the words stay", () => {
+    expect(plainText("**Elira Voss:** took two keys, *quietly*"))
+      .toBe("Elira Voss: took two keys, quietly");
+  });
+
+  /**
+   * The case the obvious implementation gets wrong.
+   *
+   * A `dialogue` span's `text` holds the whole run *including* the marks
+   * inside it — deliberately, and `emphasis.ts` documents why — so
+   * `spans.map((s) => s.text).join("")` gives back `that road **has** a name.`
+   * with its asterisks intact. It looks right, it passes the test above, and
+   * it is wrong. `plainText` has to recurse into `children`.
+   */
+  test("marks inside a line of speech come off too", () => {
+    const flat = plainText('and said "that road **has** a name."');
+    expect(flat).toBe('and said "that road has a name."');
+    expect(flat).not.toContain("*");
+  });
+
+  test("a coloured run keeps its words and loses its tag", () => {
+    // The speaker's colour is chrome a 90-character card has no room for; the
+    // words are the point. The tokenizer has already flattened the run, so
+    // this is asserting that nothing puts the markup back.
+    const flat = plainText('<span style="color:#f00"><b>bold</b> *and*</span> quiet');
+    expect(flat).toBe("bold and quiet");
+  });
+
+  test("plain prose is returned unchanged", () => {
+    const plain = "She took two keys off the board behind her.";
+    expect(plainText(plain)).toBe(plain);
+  });
+
+  /**
+   * The governing invariant of this file, one layer on: never lose text.
+   *
+   * An unmatched marker is literal, so stripping cannot silently eat it — the
+   * card would show a shorter sentence than the turn and the reader could not
+   * tell.
+   */
+  test("an unmatched marker survives as itself", () => {
+    expect(plainText("two keys * and a ring")).toBe("two keys * and a ring");
+  });
+
+  /**
+   * The cast card goes through it rather than growing its own rules.
+   *
+   * Structural, because the card is a component and this project runs no DOM
+   * tests. What it pins is the thing that regresses: somebody adds a third
+   * place that shows a line of a turn, strips asterisks with a regex of its
+   * own, and the two surfaces disagree about what a mark is within a phase.
+   */
+  test("the cast card cuts the flattened text, not the raw text", () => {
+    const rail = readFileSync(join(ROOT, "client", "components", "CastRail.tsx"), "utf8");
+    expect(rail).toContain("plainText");
+    // Flattened *before* the cut, so the 90-character limit counts characters
+    // a reader sees rather than ones the model wrote.
+    expect(rail).toMatch(/plainText\(text\)\.replace/);
+    // And no second set of markup rules beside it.
+    expect(rail.replace(/\/\*[\s\S]*?\*\//g, "")).not.toMatch(/replace\(\/\\\*/);
   });
 });

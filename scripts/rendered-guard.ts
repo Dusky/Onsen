@@ -84,8 +84,15 @@ const BUDGET = {
    * both rails start as their icon strip and the prompt editor's 105 controls
    * stopped being on every screen. The rest are smaller clusters, and each one
    * that comes down should bring this number with it.
+   *
+   * **40** at phase 229, and the fall from 52 is the guard learning to read:
+   * an `sr-only` skip link is 1×1 with `clip-path: inset(50%)` until it is
+   * focused, and the old sweep counted one on every route of every viewport of
+   * every theme — sixteen "small targets" that are not targets at all. The
+   * autopilot switch is the rest of it: it stopped collapsing to 21px on a
+   * pointer when its floor moved off an inline style.
    */
-  smallTargets: 52,
+  smallTargets: 40,
   /**
    * Content clipped with overflow visible and no ellipsis — genuinely
    * unhandled. 38 at phase 193, **42** at phase 222 — and the increase is the
@@ -104,6 +111,38 @@ const BUDGET = {
    * thirteen a browser drive found and forty more a source sweep did.
    */
   unlabelled: 0,
+  /**
+   * Controls under the house's 44px thumb floor, on the touch viewport only
+   * (§20 phase 229).
+   *
+   * A *different and stricter* question than `smallTargets` above, which is
+   * WCAG 2.5.8's 24px. §16's density rule 4 sets 44, `.tap` implements it, and
+   * until now the only thing checking it was `test/density.test.ts` — an
+   * allow-list of eleven named files, so a control in a twelfth had nothing to
+   * fail. It passed while seven controls sat at 22–33px: the reasoning and
+   * out-of-character disclosures, the trackers strip, "change", the phone
+   * nav's overflow and search, and the autopilot switch.
+   *
+   * Fixing those seven is what the sweep was for and not what it found. It
+   * came back with **eleven**, four of which nobody had written down: a turn's
+   * token readout at 173×18, its version counter at 38×19, and the three
+   * 28–30px-wide buttons clustered at the right of every row on the screen
+   * the app opens on. The list an allow-list could not see was longer than the
+   * list it was written from — the fifth instance of the shape this branch
+   * keeps finding, and the reason this is a sweep.
+   *
+   * Nine of the eleven had a `.tap` or a `.btn-dense` to reach for. The other
+   * two are `EXEMPT_TARGETS` below, which is a named list rather than a count
+   * for the same reason `KNOWN_CONTRAST` is: a budget of "2" is a place a
+   * third can hide.
+   *
+   * So this is zero, and it counts what is *not* on that list.
+   *
+   * Measured only in the `phone`/`hasTouch` pass, because `.tap` relaxes under
+   * `(pointer: fine)` on purpose and counting a desktop's 28px row would be
+   * counting the rule working.
+   */
+  touchTargets: 0,
   /**
    * The rails' share of the controls on a screen that is not a roleplay
    * (§20 phase 225, guarded here).
@@ -163,6 +202,33 @@ const KNOWN_CONTRAST: Record<string, { floor: number; why: string }> = {
   "desktop/light / coloured runs": { floor: 3.64, why: "text-dim, amber, blue-text-muted on translucent panels" },
   "phone/dark / coloured runs": { floor: 4.32, why: "text-dim on the bottom nav and the Models list" },
   "phone/light / coloured runs": { floor: 4.32, why: "text-dim on the bottom nav and the Models list" },
+};
+
+/**
+ * The controls allowed under the 44px floor, by class list, and why.
+ *
+ * Same contract as `KNOWN_CONTRAST` above and for the same reason: a count
+ * records *how many* defects there are, a list records *which*, and only the
+ * second one notices when a different control takes a fixed one's place.
+ *
+ * Both entries are the turn's meta line, and they are one decision. §16's
+ * density rule 2 says "a number behind a tap is a number nobody reads", which
+ * is why the token readout doubles as the doorway to the prompt inspector in
+ * the first place; the version counter sits on the same line. Phase 229 gave
+ * both of them `.tap`, measured the line going from 19px to 44 on a phone, and
+ * took it back off: a 44px box here pushes the meta line apart to serve the
+ * rule that put the number there. Neither is the only way in — `inspect` and
+ * `versions` are both turn-scoped commands in `client/lib/commands.ts`,
+ * reachable from the turn's `⋯` sheet and the palette, and
+ * `.turn-actions > button` is 44×44 under a thumb.
+ *
+ * `test/density.test.ts` pins the same exemption from the source side.
+ */
+const EXEMPT_TARGETS: Record<string, string> = {
+  "meta shrink-0 tabular-nums":
+    "a turn's token readout — the doorway §16 rule 2 asks for, inline in a 12px mono meta line",
+  "chrome shrink-0 text-ui text-ink-dim":
+    "the version counter beside it, on that same line",
 };
 
 /**
@@ -234,6 +300,8 @@ const PROBE = `(() => {
     fontSizes: {}, controlHeights: {}, gaps: {}, small: 0, overflowing: 0,
     // Absorbed from the probes the fourth review built by hand (\u00a720 phase 222).
     unlabelled: [], controls: 0, inRail: 0,
+    // Under \u00a716's 44px thumb floor (\u00a720 phase 229).
+    short: [],
   };
   const bump = (o, k) => { o[k] = (o[k] || 0) + 1; };
 
@@ -247,6 +315,13 @@ const PROBE = `(() => {
     el.closest("label") !== null ||
     (el.getAttribute("placeholder") || "").trim() !== "" ||
     (el.getAttribute("title") || "").trim() !== "";
+
+  /* Clipped to a pixel and parked off-screen: an \`sr-only\` skip link, which
+     is a control a screen reader announces rather than one a thumb hits. It is
+     1×1 by construction, so counting it as a small target is counting the
+     technique. */
+  const isOffscreen = (el, r, cs) =>
+    r.width <= 1 && r.height <= 1 && (cs.clip !== "auto" || cs.clipPath !== "none");
 
   /* The rails by their marker, not by geometry (\u00a720 phase 222).
      A first pass counted everything left of x=390 and read 78% on a screen
@@ -265,8 +340,26 @@ const PROBE = `(() => {
     const interactive = tag === "button" || tag === "a" || tag === "input"
       || tag === "select" || tag === "textarea" || el.getAttribute("role") === "button";
     if (interactive) {
+      const offscreen = isOffscreen(el, r, cs);
       bump(out.controlHeights, Math.round(r.height) + "px");
       out.controls += 1;
+      /* \u00a716's density rule 4 \u2014 the house floor, not WCAG's. Recorded with
+         where it is, because "seven controls are short" is a number and
+         "the trackers strip is 24px" is a defect somebody can fix. */
+      if ((r.width < 44 || r.height < 44) && !offscreen) {
+        /* Keyed by the class list, reported by name. The name carries a
+           roleplay's own title and the width carries the model's name, so a
+           key made of either moves when somebody adds a roleplay or picks a
+           different model — and a guard that fails when you add data is a
+           guard that gets deleted. The class list is what a person edits to
+           fix one of these, which makes it the unit. */
+        out.short.push({
+          key: (el.className || el.tagName).toString(),
+          where: ((el.getAttribute("aria-label") || el.textContent || "?").trim()
+            .replace(/\\s+/g, " ").slice(0, 24))
+            + " " + Math.round(r.width) + "x" + Math.round(r.height),
+        });
+      }
       if (el.closest("[data-rail]") !== null) out.inRail += 1;
       if (tag === "input" || tag === "select" || tag === "textarea") {
         if (el.type !== "hidden" && !named(el)) {
@@ -278,7 +371,7 @@ const PROBE = `(() => {
       }
       // WCAG 2.5.8 exempts an inline control in a sentence; approximate that
       // by ignoring anything inside a paragraph.
-      if ((r.width < 24 || r.height < 24) && el.closest("p") === null) out.small += 1;
+      if ((r.width < 24 || r.height < 24) && el.closest("p") === null && !offscreen) out.small += 1;
     }
     if ((cs.display === "flex" || cs.display === "grid") && cs.gap && cs.gap !== "normal") {
       bump(out.gaps, cs.gap);
@@ -458,6 +551,7 @@ async function main(): Promise<void> {
   let overflowing = 0;
   let unlabelled = 0;
   const unlabelledWhere: string[] = [];
+  const shortTargets = new Map<string, string>();
   let railShare = 0;
   let railWhere = "";
   const ratios: { where: string; name: string; ratio: number; detail?: string }[] = [];
@@ -511,6 +605,7 @@ async function main(): Promise<void> {
           unlabelled: string[];
           controls: number;
           inRail: number;
+          short: { key: string; where: string }[];
         };
         for (const size of Object.keys(probe.fontSizes)) distinct.fontSizes.add(size);
         for (const h of Object.keys(probe.controlHeights)) distinct.controlHeights.add(h);
@@ -519,6 +614,19 @@ async function main(): Promise<void> {
         overflowing += probe.overflowing;
         unlabelled += probe.unlabelled.length;
         for (const near of probe.unlabelled) unlabelledWhere.push(`${label}/${theme}${route} ${near}`);
+
+        /*
+         * Touch only (§20 phase 229). `.tap` relaxes under `(pointer: fine)`
+         * by design, so a desktop's 28px row is the rule working rather than a
+         * defect, and counting it would make the number meaningless.
+         *
+         * Deduplicated by name and size: the same control on four routes is
+         * one thing to fix, and a budget that counted it four times would move
+         * when somebody added a route.
+         */
+        if (touch) for (const control of probe.short) {
+          if (!shortTargets.has(control.key)) shortTargets.set(control.key, control.where);
+        }
 
         /*
          * How much of a screen is the rails (§20 phase 225, guarded here).
@@ -574,6 +682,13 @@ async function main(): Promise<void> {
   check("elements clipping their content", overflowing, BUDGET.overflowing);
   check("controls with no accessible name", unlabelled, BUDGET.unlabelled);
   check("rails' share of a screen", railShare, BUDGET.railShare, "%");
+  const exemptSeen = new Set<string>();
+  const offenders = new Map<string, string>();
+  for (const [key, where] of shortTargets) {
+    if (key in EXEMPT_TARGETS) exemptSeen.add(key);
+    else offenders.set(key, where);
+  }
+  check("controls under the 44px thumb floor", offenders.size, BUDGET.touchTargets);
 
   console.log("");
   /** The worst reading per label, for the known-list bookkeeping below. */
@@ -605,6 +720,20 @@ async function main(): Promise<void> {
    * fine — the first version of this fired six times on the same four entries
    * and would have had somebody delete a live record to quiet it.
    */
+  /*
+   * An exemption that stops applying stops being an exemption. If the control
+   * reached the floor on its own, or was deleted, or had its class list
+   * rewritten, the entry is describing something that is no longer there —
+   * and a list nobody has to keep true is a list that stops being true.
+   */
+  for (const [key, why] of Object.entries(EXEMPT_TARGETS)) {
+    if (!exemptSeen.has(key)) {
+      failures.push(
+        `no control matched the exemption "${key}" (${why}) — drop it from EXEMPT_TARGETS`,
+      );
+    }
+  }
+
   for (const [label, { floor }] of Object.entries(KNOWN_CONTRAST)) {
     const worstSeen = best.get(label);
     if (worstSeen === undefined) {
@@ -634,6 +763,12 @@ async function main(): Promise<void> {
   if (unlabelledWhere.length > 0) {
     console.log("");
     for (const line of unlabelledWhere.slice(0, 20)) console.log(`      unnamed: ${line}`);
+  }
+  if (offenders.size > 0) {
+    console.log("");
+    for (const line of [...offenders.values()].slice(0, 20)) {
+      console.log(`      short: ${line}`);
+    }
   }
 
   console.log("");

@@ -298,6 +298,30 @@ export function emphasis(text: string): Span[] {
   return spans;
 }
 
+/**
+ * The same prose with its marks taken off (§20 phase 229).
+ *
+ * For the places that show a line of a turn without rendering it — a cast
+ * card's "just spoke", a guide's first line — where the asterisks were
+ * arriving as themselves. `**Elira Voss:** took two keys` came out of the
+ * right rail exactly like that, while the transcript six inches away rendered
+ * the same content with a coloured label and no marks.
+ *
+ * Built on `emphasis()` rather than on a regex of its own, so there is one set
+ * of rules about what a mark is. The recursion is the part that matters: a
+ * `dialogue` span's `text` deliberately holds the whole run *including* the
+ * marks inside it (see `Span.children` above), so the obvious
+ * `spans.map((s) => s.text).join("")` returns `"that road **has** a name."`
+ * with its asterisks intact. It looks right and is not.
+ */
+export function plainText(text: string): string {
+  const flatten = (spans: Span[]): string =>
+    spans
+      .map((span) => (span.children === undefined ? span.text : flatten(span.children)))
+      .join("");
+  return flatten(emphasis(text));
+}
+
 /** True when nothing in the text would render differently. */
 export function isPlain(text: string): boolean {
   return !text.includes("*") && !text.includes("<") && !text.includes('"');

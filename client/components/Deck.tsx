@@ -256,7 +256,7 @@ export function Deck({
           )}{" "}
           <button
             type="button"
-            className="underline underline-offset-2"
+            className="tap underline underline-offset-2"
             style={{ color: "var(--onsen-color-blue)" }}
             onClick={() => {
               const at = inPlay.findIndex((m) => m.characterId === cuedId);

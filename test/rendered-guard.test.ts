@@ -46,6 +46,7 @@ describe("it still measures what it was written to measure", () => {
       "gaps",
       "smallTargets",
       "overflowing",
+      "touchTargets",
     ]) {
       expect(`${key}: ${GUARD.includes(key + ":")}`).toBe(`${key}: true`);
     }
@@ -144,6 +145,73 @@ describe("the probes this review built by hand now live here", () => {
     // reader announces as "edit, blank" has no acceptable quantity.
     expect(GUARD).toMatch(/unlabelled:\s*0/);
     expect(GUARD).toContain("controls with no accessible name");
+  });
+
+  /**
+   * The 44px floor is swept, not listed (§20 phase 229).
+   *
+   * `test/density.test.ts` held it with an allow-list of named files and
+   * passed while eleven controls sat between 18px and 33px on a phone. Three
+   * properties make the replacement a sweep rather than a longer list, and
+   * each one is a thing a later edit could quietly take back.
+   */
+  describe("the thumb floor", () => {
+    test("it is measured on the touch viewport only, at zero", () => {
+      // `.tap` relaxes under `(pointer: fine)` on purpose, so counting a
+      // desktop's 28px row would be counting the rule working.
+      expect(GUARD).toMatch(/touchTargets:\s*0/);
+      expect(GUARD).toContain("controls under the 44px thumb floor");
+      expect(GUARD).toContain("if (touch) for (const control of probe.short)");
+    });
+
+    test("a short control is reported with where it is", () => {
+      // "Seven controls are short" is a number; "the trackers strip is 24px"
+      // is a defect somebody can fix.
+      expect(GUARD).toContain("short: ");
+      expect(GUARD).toContain("aria-label");
+    });
+
+    /**
+     * Keyed by class, not by name.
+     *
+     * The name carries a roleplay's own title — "Favourite: The Last Inn" —
+     * so a budget keyed on it moves when somebody adds a roleplay, and a
+     * budget that moves when you add data is a budget that gets deleted.
+     */
+    test("the count does not move when the install's data does", () => {
+      expect(GUARD).toContain("el.className || el.tagName");
+      expect(GUARD).toContain("shortTargets.has(control.key)");
+    });
+
+    /**
+     * The exemptions are a named list, not a slack number.
+     *
+     * Same contract as `KNOWN_CONTRAST`: an entry that stops matching fails
+     * the run until it is deleted. A budget of "2" would let a third control
+     * take a fixed one's place in silence, which is the allow-list failure
+     * this whole phase was written about.
+     */
+    test("an exemption that stops applying fails the run", () => {
+      expect(GUARD).toContain("EXEMPT_TARGETS");
+      expect(GUARD).toContain("drop it from EXEMPT_TARGETS");
+      // Counted against zero, not against the size of the list.
+      expect(GUARD).toContain("offenders.size, BUDGET.touchTargets");
+    });
+
+    /**
+     * A skip link is not a small target.
+     *
+     * `sr-only` is 1×1 with `clip-path: inset(50%)` until it is focused. The
+     * first version of this counted one on every route of every viewport of
+     * every theme — sixteen "small targets" that are not targets at all, and
+     * more than half of what `smallTargets` was recording.
+     */
+    test("a control clipped to a pixel is not counted as a small one", () => {
+      expect(GUARD).toContain("isOffscreen");
+      expect(GUARD).toMatch(/cs\.clip !== "auto" \|\| cs\.clipPath !== "none"/);
+      // Both budgets, not just the new one.
+      expect(GUARD).toContain("el.closest(\"p\") === null && !offscreen");
+    });
   });
 
   test("the rails' share of a screen is measured by the marker, not by geometry", () => {

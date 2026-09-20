@@ -197,7 +197,7 @@ export function TrackerPanel({ sceneId }: { sceneId: string }) {
         <button
           type="button"
           onClick={() => setOpen(!open)}
-          className="flex w-full items-baseline gap-[8px] py-[2px] text-left"
+          className="tap flex w-full items-baseline gap-[8px] py-[2px] text-left"
         >
           <span className="chrome text-ui text-ink-label">
             {strings.chat.trackers}

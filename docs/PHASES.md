@@ -11332,3 +11332,126 @@ the shipped default, and never *continued*.
 
 `data/onsen.db` was restored byte-for-byte afterwards; the drive toggled the
 scene's autopilot on and off.
+
+## Phase 229 — The surfaces beside the prose
+
+Findings 13 and 14 of the live-loop addendum. Both are about what sits next to
+the transcript rather than in it.
+
+### The one place in the app that showed raw markup
+
+The right rail's "Just spoke", after a beat:
+
+> `**Elira Voss:** took two keys off the board behind her, the ring rattling…`
+
+Six inches to the left, the transcript rendered the same content with a
+coloured label and no asterisks. `excerpt()` collapsed whitespace and cut to 90
+characters; it stripped nothing, because nothing had told it to.
+
+`plainText()` is the fix, in `client/lib/emphasis.ts`, built on the tokenizer
+the transcript already runs rather than on a regex of its own — one set of
+rules about what a mark is, not two that drift. The cut happens after the
+flattening, so the 90 counts characters a reader sees rather than ones the
+model wrote.
+
+The detail that makes the obvious version wrong: a `dialogue` span's `text`
+holds the whole run *including* the marks inside it, deliberately, and
+`emphasis.ts` documents why. So `spans.map((s) => s.text).join("")` hands back
+`that road **has** a name.` with its asterisks intact. It looks right, it
+passes a test written from the first example, and it is wrong. `plainText`
+recurses into `children`, and the guard for it uses the nested case rather than
+the flat one.
+
+### Eleven controls under the thumb floor, and the guard could not see any of them
+
+`test/density.test.ts` held §16's 44px rule with an allow-list of eleven named
+files, and its own comment was honest that this is all it could do from the
+source side. A control in a twelfth file had nothing to fail. It passed
+throughout while a browser drive at 390×844 with `hasTouch` measured the
+reasoning and out-of-character disclosures at 28px, the trackers strip at 24,
+"change" at 22, the phone nav's overflow and search at 33 and 27, and the
+autopilot switch at 32.
+
+That is the fifth instance of this branch's recurring shape — *a check that
+asks a different question than the real thing can pass while the app is
+broken* — and phase 222 had already named this as the thing the rendered guard
+should take over. So it did: `scripts/rendered-guard.ts` gained a
+`touchTargets` budget measured in the `phone`/`hasTouch` pass only, because
+`.tap` relaxes under `(pointer: fine)` on purpose and counting a desktop's 28px
+row would be counting the rule working.
+
+**Fixing the seven is not what the sweep found.** It came back with eleven.
+Four of them nobody had written down: a turn's token readout at 173×18, its
+version counter at 38×19, and three buttons 28–30px wide clustered at the right
+of every row on the screen the app opens on — three adjacent targets with no
+spacing between them, which is the shape a mis-tap comes from. The list an
+allow-list could not see was longer than the list it was written from.
+
+Nine reached the floor. Two did not, on purpose; see below.
+
+### `.tap` is not a drop-in for a hardcoded minimum
+
+This phase's own mistake, and worth the paragraph because the fix looked
+obviously right. Swapping the autopilot switch's inline `minHeight: "32px"` for
+`.tap` **collapsed it to 21px on a desktop** — `.tap` relaxes to `min-height: 0`
+under `(pointer: fine)`, and it is declared after `.btn`, so it beat `.btn`'s
+own unconditional 44px floor. The guard caught it the same minute: `controls
+under 24px` went 52 → 54 and printed the button by name. A guard that measures
+the rendered screen is worth having precisely for the edits that look safe.
+
+The real defect underneath was not the missing floor but the three inline
+`minHeight: "32px"` overrides in `CastRail.tsx`. They read as density and are
+in fact a floor override: an inline style beats a class on every device, so the
+control the phone puts on its cast strip was 32px under a thumb *because* of
+the rule that was supposed to make the rail dense on a desktop. `.btn-dense`
+says the same thing in the place that can tell a pointer from a thumb, the way
+`.row`, `.turn-actions` and `.tap` already do. `test/density.test.ts` sweeps
+for the shape rather than listing the file: no element whose class list
+contains `btn` may carry an inline `minHeight`, anywhere in `client/`.
+
+### An `sr-only` skip link is not a small target
+
+The second thing the sweep taught. A skip link is 1×1 with
+`clip-path: inset(50%)` until it is focused, and the probe counted one on every
+route of every viewport of every theme — sixteen "small targets" that are not
+targets at all, on a budget of 52. The probe skips a clipped 1×1 control now
+and `smallTargets` is re-recorded at **40**.
+
+### Two exemptions, named rather than counted
+
+The token readout and the version counter sit on one meta line, and both got
+`.tap` before it was taken back off. §16's density rule 2 — *"a number behind a
+tap is a number nobody reads"* — is why the readout doubles as the doorway to
+the prompt inspector in the first place, and a 44px box there pushes the line
+from 19px to 44 on a phone to serve the rule that put the number there.
+`test/density.test.ts` had already written that exemption down; this phase read
+it after making the change and withdrew.
+
+Neither is the only way in: `inspect` and `versions` are both turn-scoped
+commands in `commands.ts`, reachable from the turn's `⋯` sheet and the palette,
+and `.turn-actions > button` is 44×44 under a thumb.
+
+They are `EXEMPT_TARGETS` in the guard, a named list on `KNOWN_CONTRAST`'s
+contract rather than a budget of two — because a count records how many
+defects there are and a list records which, and only the second one notices
+when a third control takes a fixed one's place. An entry that stops matching
+fails the run until it is deleted. Verified by breaking one: the run reported
+both the stale exemption and the control it stopped covering.
+
+The list is keyed on the class list rather than the name or the size, because
+the name carries a roleplay's own title and the size carries the model's name.
+A guard that fails when you add a roleplay is a guard that gets deleted.
+
+### Verified
+
+`bun run guard:rendered` green: 0 controls under the 44px floor, 40 under 24px,
+both exemptions matched, every contrast sample where phase 222 left it. The
+stale-exemption and offender paths were both driven by breaking an entry on
+purpose and reading the failure. The `.btn` sweep was run against the
+pre-phase source of the two buttons it is about, and catches both while leaving
+`.field`'s legitimate `minHeight` alone.
+
+2073 tests across 152 files, typecheck clean, `bun run build` clean.
+
+`data/onsen.db` was not mutated — the guard signs in and reads — and `cmp`s
+identical to the snapshot taken before the drive.

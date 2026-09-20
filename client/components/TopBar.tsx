@@ -126,7 +126,7 @@ export function TopBar() {
           type="button"
           onClick={() => setMoreOpen(true)}
           aria-label={strings.nav.more}
-          className="chrome flex-none px-[10px] py-[14px] text-[13px] sm:hidden"
+          className="chrome tap flex-none px-[10px] py-[14px] text-[13px] sm:hidden"
           style={{
             color: overflowActive ? "var(--onsen-color-blue)" : "var(--onsen-color-text-muted)",
             borderBottom: `2px solid ${overflowActive ? "var(--onsen-color-blue)" : "transparent"}`,
@@ -139,7 +139,7 @@ export function TopBar() {
           onClick={() => setSearchOpen(true)}
           aria-label={strings.search.title}
           title={strings.search.title}
-          className="chrome flex-none px-[10px] py-[14px] text-[13px]"
+          className="chrome tap flex-none px-[10px] py-[14px] text-[13px]"
           style={{ color: "var(--onsen-color-text-muted)" }}
         >
           {"\u2315"}

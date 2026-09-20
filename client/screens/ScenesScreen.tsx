@@ -131,14 +131,21 @@ function SceneRow({
 
             Always visible and 44px tall: the first version of the manage
             affordance faded in on hover, which on a phone left a long-press
-            nobody is told about as the only way in (§20 phase 54). */}
+            nobody is told about as the only way in (§20 phase 54).
+
+            44px *wide* too, under a thumb (§20 phase 229). Tall and 28px
+            across is the shape a mis-tap comes from: three adjacent targets,
+            no spacing between them, on the screen the app opens on. `.tap`'s
+            `min-width` beats the explicit `w-[28px]` on a coarse pointer and
+            relaxes to nothing on a fine one, so the desktop cluster is the
+            same dense 86px it has always been. */}
         <span className="absolute top-[4px] right-[-8px] flex items-center">
           <button
             type="button"
             onClick={() => setExpanded(!expanded)}
             aria-expanded={expanded}
             aria-label={expanded ? strings.scenes.collapse : strings.scenes.expand}
-            className="chrome flex h-[44px] w-[28px] items-center justify-center text-[13px] text-ink-dim hover:text-ink-label"
+            className="chrome tap flex h-[44px] w-[28px] items-center justify-center text-[13px] text-ink-dim hover:text-ink-label"
           >
             {expanded ? "\u25be" : "\u25b8"}
           </button>
@@ -147,7 +154,7 @@ function SceneRow({
             onClick={onFavourite}
             aria-label={`${scene.isFavourite ? strings.scenes.unfavourite : strings.scenes.favourite}: ${scene.title}`}
             aria-pressed={scene.isFavourite}
-            className="chrome flex h-[44px] w-[28px] items-center justify-center text-[13px]"
+            className="chrome tap flex h-[44px] w-[28px] items-center justify-center text-[13px]"
             style={{
               color: scene.isFavourite ? "var(--onsen-color-blue)" : "var(--onsen-color-text-dim)",
             }}
@@ -158,7 +165,7 @@ function SceneRow({
             type="button"
             onClick={onManage}
             aria-label={`${strings.scenes.manage} ${scene.title}`}
-            className="chrome flex h-[44px] w-[30px] items-center justify-center text-[15px] text-ink-dim hover:text-ink-label"
+            className="chrome tap flex h-[44px] w-[30px] items-center justify-center text-[15px] text-ink-dim hover:text-ink-label"
           >
             &hellip;
           </button>

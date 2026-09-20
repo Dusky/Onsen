@@ -141,7 +141,7 @@ export function Reasoning({ text }: { text: string }) {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="chrome flex min-h-[28px] w-full items-center gap-[8px] text-left text-[12px] text-ink-dim"
+        className="chrome tap flex w-full items-center gap-[8px] py-[5px] text-left text-[12px] text-ink-dim"
       >
         <span aria-hidden>{open ? "⌃" : "⌄"}</span>
         {strings.chat.reasoning(trimmed.length)}
@@ -175,7 +175,7 @@ export function Direction({ text }: { text: string }) {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="chrome flex min-h-[28px] w-full items-center gap-[8px] text-left text-[12px] text-ink-dim"
+        className="chrome tap flex w-full items-center gap-[8px] py-[5px] text-left text-[12px] text-ink-dim"
       >
         <span aria-hidden>{open ? "⌃" : "⌄"}</span>
         {strings.chat.directionNote(trimmed.length)}

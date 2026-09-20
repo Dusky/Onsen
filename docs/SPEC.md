@@ -4574,6 +4574,24 @@ Each phase ends in a working, usable application.
     defect: `terminalEvent()` recomputed the notice for a reconnecting client
     and could not know what `finish()` knew, so the decision is stored once and
     both paths read it. See §6, §7, `server/generation/service.ts`.
+229. **The surfaces beside the prose** — the cast rail's "just spoke" card was
+    the one place in the app that showed raw markup, reading
+    `**Elira Voss:** took two keys` six inches from a transcript rendering the
+    same content with a coloured label and no asterisks; `plainText()` runs it
+    through the tokenizer the transcript already uses, before the cut, so the
+    90-character limit counts what a reader sees. And §16's 44px thumb floor
+    was held by an allow-list of eleven *named files*, so a control in a
+    twelfth had nothing to fail: it passed while eleven controls sat between
+    18px and 33px on a phone, four of which nobody had written down. The
+    rendered guard sweeps it now. Two lessons came out of the fixing rather
+    than the finding: `.tap` relaxes to `min-height: 0` under a fine pointer,
+    so it is not a drop-in for a hardcoded minimum and collapsed the autopilot
+    switch to 21px on a desktop until `.btn-dense` replaced the three inline
+    `minHeight` overrides that were the real defect; and an `sr-only` skip link
+    is 1×1 until focused, so counting it as a small target counted the
+    technique. The turn's token readout and version counter stay inline on
+    purpose, as a named `EXEMPT_TARGETS` entry rather than a slack number. See
+    §16, `scripts/rendered-guard.ts`, `client/lib/emphasis.ts`.
 
 Settled while building phase 15.
 

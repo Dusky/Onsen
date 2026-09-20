@@ -5,6 +5,7 @@ import type {
   SceneMemberDto,
   TurnScope,
 } from "@shared/types.ts";
+import { plainText } from "../lib/emphasis.ts";
 import { strings } from "../strings.ts";
 import { blueMuted, blueText } from "./blue.ts";
 
@@ -96,14 +97,16 @@ export function CastRail({
                 key={value}
                 type="button"
                 onClick={() => onScope(value)}
-                className={`btn flex-1 ${scope === value ? "btn-primary" : ""}`}
                 /* 8.5px until §20 phase 223 — the smallest text in the app by
                    2.5px, inline, overriding `.btn`'s own `--onsen-text-button`,
                    in the primary rail. Phase 194 gave the chrome two owners and
-                   this was not on its list. The height and padding stay: the
-                   rail is deliberately dense, and it is the type that was
-                   wrong. */
-                style={{ minHeight: "32px", padding: "0 8px" }}
+                   this was not on its list. The rail stays dense, and it was
+                   the type that was wrong.
+
+                   The 32px moved onto `.btn-dense` in phase 229: inline, it
+                   beat `.btn`'s 44px floor under a thumb as well as under a
+                   pointer, which is not what "dense" was asking for. */
+                className={`btn btn-dense flex-1 ${scope === value ? "btn-primary" : ""}`}
               >
                 {value === "spotlight" ? strings.chat.scopeSpotlight : strings.chat.scopeBeat}
               </button>
@@ -120,10 +123,12 @@ export function CastRail({
           type="button"
           onClick={() => onToggleAutopilot(!autopilotOn)}
           aria-pressed={autopilotOn}
-          className="btn w-full"
+          // The 32px that used to be here was inline, so it beat `.btn`'s own
+          // floor on a phone too — on the one surface the phone puts this
+          // control on (§20 phase 229). `.btn-dense` says the same thing in
+          // the place that can tell a thumb from a pointer.
+          className="btn btn-dense w-full"
           style={{
-            minHeight: "32px",
-            padding: "0 8px",
             borderColor: autopilotOn ? "var(--onsen-color-amber)" : undefined,
             color: autopilotOn ? "var(--onsen-color-amber)" : undefined,
           }}
@@ -274,8 +279,17 @@ export function CastRail({
   );
 }
 
-/** A line of prose, cut to fit a card rather than wrapping down the rail. */
+/**
+ * A line of prose, cut to fit a card rather than wrapping down the rail.
+ *
+ * Through `plainText` since §20 phase 229, because this was the one place in
+ * the app that showed raw markup: the "just spoke" card read
+ * `**Elira Voss:** took two keys off the board…` while the transcript beside
+ * it rendered the same content with a coloured label and no asterisks. The
+ * marks are stripped *before* the cut, so the limit counts the characters a
+ * reader actually sees rather than the ones the model wrote.
+ */
 function excerpt(text: string, limit = 90): string {
-  const flat = text.replace(/\s+/g, " ").trim();
+  const flat = plainText(text).replace(/\s+/g, " ").trim();
   return flat.length <= limit ? flat : `${flat.slice(0, limit - 1)}…`;
 }
